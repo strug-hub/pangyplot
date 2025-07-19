@@ -1,6 +1,6 @@
 # PangyPlot
 
-![PangyPlot logo](static/images/pangyplot_logo.svg)
+![PangyPlot logo](images/pangyplot_logo.svg)
 
                 Mastromatteo, Scott. 
                 <b>PangyPlot: a paper title</b>. 
@@ -19,8 +19,8 @@ Features
     Customizable Visualization: Tailor the visualization to suit your data and research needs.
     High-Performance Rendering: Optimized for large genomic datasets.
 
-![Analogy](static/images/figures/graph_analogy.svg)
-![Analogy](static/images/figures/graph_analogy2.svg)
+![Analogy](images/figures/graph_analogy.svg)
+![Analogy](images/figures/graph_analogy2.svg)
 
 
 # Getting Started
