@@ -1,13 +1,13 @@
-from pangyplot.db.sqlite.db_utils import get_connection
+import pangyplot.db.sqlite.db_utils as utils
 from pangyplot.objects.Link import Link
 
 DB_NAME = "links.db"
 
 def get_connection(chr_dir):
-    return get_connection(chr_dir, DB_NAME)
+    return utils.get_connection(chr_dir, DB_NAME)
 
 def create_link_table(dir, sample_idx):
-    conn = get_connection(dir, DB_NAME, clear_existing=True)
+    conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
     cur.execute("""
@@ -19,7 +19,7 @@ def create_link_table(dir, sample_idx):
             to_strand TEXT NOT NULL,
             haplotype TEXT NOT NULL,
             reverse TEXT NOT NULL,
-            frequency REAL NOT NULL,
+            frequency REAL NOT NULL
         );
     """)
 
@@ -46,19 +46,18 @@ def insert_link(cur, link):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         key,
-        link["from_id"],
-        link["from_id"],
-        link["from_strand"],
-        link["to_id"],
-        link["to_strand"],
-        link["haplotype"],
-        link["reverse"],
-        link["frequency"]
+        link.from_id,
+        link.from_strand,
+        link.to_id,
+        link.to_strand,
+        link.haplotype,
+        link.reverse,
+        link.frequency
     ))
 
-def load_sample_index(self):
-    self.cur.execute("SELECT sample, idx FROM sample_index")
-    return {row["sample"]: row["idx"] for row in self.cur.fetchall()}
+def load_sample_index(cur):
+    cur.execute("SELECT sample, idx FROM sample_index")
+    return {row["sample"]: row["idx"] for row in cur.fetchall()}
 
 def load_links(cur):
     cur.execute("SELECT from_id, to_id, from_strand, to_strand FROM links")

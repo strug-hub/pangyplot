@@ -1,12 +1,12 @@
-from pangyplot.db.sqlite.db_utils import get_connection
+import pangyplot.db.sqlite.db_utils as utils
 
 DB_NAME = "step_index.db"
 
 def get_connection(chr_dir):
-    return get_connection(chr_dir, DB_NAME)
+    return utils.get_connection(chr_dir, DB_NAME)
 
 def write_step_index(segments, path, dir):
-    conn = get_connection(dir, DB_NAME, clear_existing=True)
+    conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
     cur.execute("""
@@ -22,7 +22,7 @@ def write_step_index(segments, path, dir):
     pos = 1
     for i, step in enumerate(path["path"]):
         sid = int(step[:-1])
-        length = segments[sid]["length"]
+        length = segments[sid].length
         start = pos
         end = pos + length - 1
         cur.execute("INSERT INTO step_index (step, seg_id, start, end) VALUES (?, ?, ?, ?)",

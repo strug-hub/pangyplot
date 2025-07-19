@@ -5,15 +5,18 @@ class SegmentIndex:
     def __init__(self, chr_dir):
         self.conn = db.get_connection(chr_dir)
         self.cur = self.conn.cursor()
+        
+        rows = db.load_segments(self.cur)
+        max_id = max(row["id"] for row in rows) if rows else 0
 
-        self.id = array('I')
-        self.length = array('I')
-        self.x1 = array('f')
-        self.y1 = array('f')
-        self.x2 = array('f')
-        self.y2 = array('f')
+        self.id = array('I', [0] * (max_id + 1))
+        self.length = array('I', [0] * (max_id + 1))
+        self.x1 = array('f', [0.0] * (max_id + 1))
+        self.y1 = array('f', [0.0] * (max_id + 1))
+        self.x2 = array('f', [0.0] * (max_id + 1))
+        self.y2 = array('f', [0.0] * (max_id + 1))
 
-        for row in db.load_segments():
+        for row in rows:
             sid = row["id"]
             self.length[sid] = row["length"]
             self.x1[sid] = row["x1"]

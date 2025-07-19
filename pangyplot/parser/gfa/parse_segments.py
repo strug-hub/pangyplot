@@ -21,11 +21,11 @@ def parse_segments(gfa, layout_coords, dir):
     for line in gfa:
         if line[0] == "S":
             segment = parse_line_S(line)
-
-            segment.x1 = layout_coords[counter].x1
-            segment.y1 = layout_coords[counter].y1
-            segment.x2 = layout_coords[counter].x2
-            segment.y2 = layout_coords[counter].y2
+            
+            segment.x1 = layout_coords[counter]["x1"]
+            segment.y1 = layout_coords[counter]["y1"]
+            segment.x2 = layout_coords[counter]["x2"]
+            segment.y2 = layout_coords[counter]["y2"]
 
             db.insert_segment(cur, segment)
             segment_dict[segment.id] = segment

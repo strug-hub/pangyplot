@@ -1,11 +1,15 @@
 import json
 from pangyplot.objects.Bubble import Bubble
 from pangyplot.db.sqlite.db_utils import get_connection
+import pangyplot.db.sqlite.db_utils as utils
 
 DB_NAME = "bubbles.db"
 
+def get_connection(chr_dir):
+    return utils.get_connection(chr_dir, DB_NAME)
+
 def create_bubble_tables(dir):
-    conn = get_connection(dir, DB_NAME, clear_existing=True)
+    conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
     cur.execute("""

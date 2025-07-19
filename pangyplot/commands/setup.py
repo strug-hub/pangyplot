@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from pangyplot_app import DEFAULT_DB
 
-def handle_setup_env():
+def pangyplot_setup(args):
 
     env_path = Path(__file__).resolve().parent / ".env"
 
@@ -28,13 +27,6 @@ def handle_setup_env():
         
         new_env_values[var_name] = final_value
 
-    # Neo4j
-    prompt_env_var("DB_USER", "Neo4j username", default="neo4j")
-    prompt_env_var("DB_PASS", "Neo4j password", default="password")
-    prompt_env_var("DB_HOST", "Neo4j host address", default="7687")
-    prompt_env_var("DB_PORT", "Neo4j port number", default="bolt://localhost")
-    prompt_env_var("DB_NAME", "Target database name within Neo4j", default=DEFAULT_DB)
-
     # Analytics
     prompt_env_var("GA_TAG_ID", "Google Analytics tag ID (optional)", default="None", optional=True)
 
@@ -53,7 +45,6 @@ def handle_setup_env():
     if new_env_values["ORGANISM"] == "custom":
         prompt_env_var("CYTOBAND_PATH", "Path to custom cytoband file")
         prompt_env_var("CANONICAL_PATH", "Path to canonical chromosome file")
-
 
 
     with open(env_path, "w") as f:

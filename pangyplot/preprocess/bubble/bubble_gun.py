@@ -15,11 +15,11 @@ def to_bubblegun_obj(segments, links):
         segment = segments[sid]
         sid = str(sid)
         node = BubbleGunNode.Node(sid)
-        node.seq = segment["seq"]
-        node.seq_len = segment["length"]
+        node.seq = segment.seq
+        node.seq_len = segment.length
         info = {
-            "gc_count": segment["gc_count"],
-            "n_count": segment["n_count"],
+            "gc_count": segment.gc_count,
+            "n_count": segment.n_count,
             "compacted": []
         }
         node.optional_info = info
@@ -30,8 +30,8 @@ def to_bubblegun_obj(segments, links):
         from_id = str(from_id)
         to_id = str(to_id)
 
-        from_strand = link["from_strand"]
-        to_strand = link["to_strand"]
+        from_strand = link.from_strand
+        to_strand = link.to_strand
 
         overlap = 0
         

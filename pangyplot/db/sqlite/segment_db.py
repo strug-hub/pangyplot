@@ -1,13 +1,13 @@
-from pangyplot.db.sqlite.db_utils import get_connection
+import pangyplot.db.sqlite.db_utils as utils
 from pangyplot.objects.Segment import Segment
 
 DB_NAME="segments.db"
 
 def get_connection(chr_dir):
-    return get_connection(chr_dir, DB_NAME)
+    return utils.get_connection(chr_dir, DB_NAME)
 
 def create_segment_table(dir):
-    conn = get_connection(dir, DB_NAME, clear_existing=True)
+    conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
     cur.execute("""
