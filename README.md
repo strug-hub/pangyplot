@@ -1,6 +1,6 @@
 # PangyPlot
 
-![PangyPlot logo](images/pangyplot_logo.svg)
+![PangyPlot logo](images/pangyplot_logo_circle.svg)
 
                 Mastromatteo, Scott. 
                 <b>PangyPlot: a paper title</b>. 
