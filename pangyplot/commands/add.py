@@ -30,5 +30,5 @@ def pangyplot_add(args):
     print(f"Indexing GFA data from {args.gfa}...")
 
     layout_coords = parse_layout(args.layout)
-    segment_dict, link_dict  = parse_gfa(args.gfa, args.ref, layout_coords, chr_path)
-    bubble_gun.shoot(segment_dict, link_dict, chr_path)
+    segment_dict, link_dict  = parse_gfa(args.gfa, args.ref, args.path, layout_coords, chr_path)
+    bubble_gun.shoot(segment_dict, link_dict, chr_path, args.ref)

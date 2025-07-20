@@ -4,16 +4,17 @@ from array import array
 import pangyplot.db.sqlite.step_db as db
 
 class StepIndex:
-    def __init__(self, chr_dir):
+    def __init__(self, chr_dir, genome):
         self.conn = db.get_connection(chr_dir)
         self.cur = self.conn.cursor()
+        self.genome = genome
 
         # step i = index i
         self.starts = array('I')
         self.ends = array('I')
         self.segments = array('I')
 
-        for row in db.load_steps(self.cur):
+        for row in db.load_steps(self.cur, genome):
             self.segments.append(row["seg_id"])
             self.starts.append(row["start"])
             self.ends.append(row["end"])
@@ -44,6 +45,9 @@ class StepIndex:
                   END:   step={res2[0]} / ref coords {res2[1]}-{res2[2]} / nodes {self._step_to_segment[res2[0]]}""")
         return (res1[0], res2[0])
 
+    def get_genome(self):
+        return self.genome
+    
     def segment_map(self):
         seg_map = defaultdict(list)
         for i in range(len(self.segments)):

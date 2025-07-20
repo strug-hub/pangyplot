@@ -4,8 +4,8 @@ import pangyplot.preprocess.bubble.bubble_utils as utils
 import pangyplot.db.sqlite.bubble_db as db
 from pangyplot.utils.plot_bubbles import plot_bubbles
 
-def construct_bubble_index(graph, chr_dir, plot=False):
-    step_index = StepIndex(chr_dir)
+def construct_bubble_index(graph, chr_dir, ref, plot=False):
+    step_index = StepIndex(chr_dir, ref)
     step_dict = step_index.segment_map()
 
     bubbles = []

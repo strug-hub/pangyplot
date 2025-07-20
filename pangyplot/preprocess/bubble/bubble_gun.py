@@ -53,7 +53,7 @@ def to_bubblegun_obj(segments, links):
 
     return nodes
 
-def shoot(segments, links, chr_path):
+def shoot(segments, links, chr_path, ref):
     print("➡️ Finding bubbles.")
 
     graph = BubbleGunGraph.Graph()
@@ -83,7 +83,7 @@ def shoot(segments, links, chr_path):
     print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
 
     print("   💾  Indexing bubbles...", end="")
-    indexer.construct_bubble_index(graph, chr_path)
+    indexer.construct_bubble_index(graph, chr_path, ref)
     print(f" Done.")
 
     return graph

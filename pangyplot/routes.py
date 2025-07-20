@@ -1,23 +1,20 @@
 from flask import Flask, render_template, request, jsonify, make_response
+from flask import current_app
+
 from dotenv import load_dotenv
 
 import os
 import pangyplot.cytoband as cytoband
+import pangyplot.db.initialize_indexes as db_init
 
-script_dir = os.path.dirname(os.path.realpath(__file__))
 app = Flask(__name__)
 
-DEFAULT_DB_FOLDER = os.path.join(script_dir, "datastore")
-DEFAULT_DB = "_default"
-DEFAULT_PORT = 5700
-
-def initialize_app(db_name=None, port=None, development=True):
+def initialize_app(db_path, port, ref, development=True):
     load_dotenv()
 
     organism = os.getenv("ORGANISM", "human")
     cytoband_path = os.getenv("CYTOBAND_PATH")
     canonical_path = os.getenv("CANONICAL_PATH")
-    db_name = db_name or os.getenv("DB_NAME", DEFAULT_DB)
 
     if organism == "custom":
         if not cytoband_path or not canonical_path:
@@ -28,10 +25,11 @@ def initialize_app(db_name=None, port=None, development=True):
         canonical_path = None
 
     cytoband.set_cytoband(organism, cytoband_path, canonical_path)
-    #todo db.db_init(db_name)
+
+    print(f"Loading indexes from {db_path}...")
+    db_init.initialize(app, db_path, ref)
 
     if development:
-        port = port if port else DEFAULT_PORT
         print(f"Starting PangyPlot (non-production environment)... http://127.0.0.1:{port}")
         app.run(port=port)
     
@@ -46,8 +44,7 @@ def inject_ga_tag_id():
 
 @app.route('/default-genome', methods=['GET'])
 def get_default_genome():
-    return jsonify({"genome": "???"})
-
+    return jsonify({"genome": current_app.genome})
 
 @app.route('/select', methods=["GET"])
 def select():
