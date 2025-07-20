@@ -9,7 +9,7 @@ from pangyplot.commands import annotate
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_DB_FOLDER = os.path.join(script_dir, "datastore")
-DEFAULT_DB = "_default"
+DEFAULT_DB = "_default_"
 DEFAULT_PORT = 5700
 
 def parse_args():

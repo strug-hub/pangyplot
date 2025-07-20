@@ -1,52 +1,65 @@
-from flask import Flask, render_template, request, jsonify, make_response
-from flask import current_app
-
+import os
+from flask import Blueprint, current_app, render_template, request, jsonify, make_response
 from dotenv import load_dotenv
 
-import os
-import pangyplot.cytoband as cytoband
-import pangyplot.db.initialize_indexes as db_init
+bp = Blueprint("routes", __name__)
 
-app = Flask(__name__)
+@bp.route('/default-genome', methods=['GET'])
+def get_default_genome():
+    return jsonify({"genome": current_app.genome})
 
-def initialize_app(db_path, port, ref, development=True):
-    load_dotenv()
+@bp.route('/chromosomes', methods=["GET"])
+def chromosomes():
+    show_noncanonical = request.args.get('noncanonical', 'false').lower() == 'true'
 
-    organism = os.getenv("ORGANISM", "human")
-    cytoband_path = os.getenv("CYTOBAND_PATH")
-    canonical_path = os.getenv("CANONICAL_PATH")
-
-    if organism == "custom":
-        if not cytoband_path or not canonical_path:
-            print("No information about CYTOBAND_PATH or CANONICAL_PATH was found in .env")
-            organism = "human"
+    if show_noncanonical:
+        canonical = set(current_app.cytoband["chromosomes"])
+        all_chroms = current_app.chromosomes
+        result = [chrom for chrom in all_chroms if chrom not in canonical]
     else:
-        cytoband_path = None
-        canonical_path = None
+        result = current_app.cytoband["chromosomes"]
 
-    cytoband.set_cytoband(organism, cytoband_path, canonical_path)
+    return jsonify(result)
 
-    print(f"Loading indexes from {db_path}...")
-    db_init.initialize(app, db_path, ref)
 
-    if development:
-        print(f"Starting PangyPlot (non-production environment)... http://127.0.0.1:{port}")
-        app.run(port=port)
-    
-    return app
+@bp.route('/cytoband', methods=["GET"])
+def cytobands():
+    chromosome = request.args.get("chromosome")
 
-@app.context_processor
+    if not chromosome:
+        return jsonify({
+            "chromosome": current_app.cytoband["cytobands"],
+            "order": current_app.cytoband["chromosomes"],
+            "organism": current_app.cytoband["organism"]
+        })
+
+    print(f"Getting cytobands for {chromosome}...")
+
+    bands = current_app.cytoband["cytobands"].get(chromosome)
+    if bands is None:
+        return jsonify({"error": f"Chromosome '{chromosome}' not found"}), 404
+
+    return jsonify(bands)
+
+
+
+
+
+
+
+
+
+
+
+@bp.context_processor
 def inject_ga_tag_id():
     load_dotenv()
     # Get the Google Analytics tag ID from the environment variable
     ga_tag_id = os.getenv('GA_TAG_ID', '')
     return dict(ga_tag_id=ga_tag_id)
 
-@app.route('/default-genome', methods=['GET'])
-def get_default_genome():
-    return jsonify({"genome": current_app.genome})
 
-@app.route('/select', methods=["GET"])
+@bp.route('/select', methods=["GET"])
 def select():
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
@@ -61,12 +74,12 @@ def select():
 
     return resultDict, 200
 
-@app.route('/samples', methods=["GET"])
+@bp.route('/samples', methods=["GET"])
 def get_samples():
     samples = None #query_samples()    
     return samples, 200
 
-@app.route('/genes', methods=["GET"])
+@bp.route('/genes', methods=["GET"])
 def genes():
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
@@ -87,7 +100,7 @@ def genes():
 
     return resultDict, 200
 
-@app.route('/subgraph', methods=["GET"])
+@bp.route('/subgraph', methods=["GET"])
 def subgraph():
     uuid = request.args.get("uuid")
     genome = request.args.get("genome")
@@ -103,20 +116,9 @@ def subgraph():
     resultDict = [] #get_subgraph(uuid, genome, chrom, start, end)
     return resultDict, 200
 
-@app.route('/chromosomes', methods=["GET"])
-def chromosomes():
-    genome = request.args.get("genome")
 
-    canonical = cytoband.get_canonical()
-    noncanonicalOnly = request.args.get('noncanonical', 'false').lower() == 'true'
 
-    chromosomes = [] #query_all_chromosomes()
-    if noncanonicalOnly:
-        chromosomes = [chrom for chrom in chromosomes if chrom.split("#")[-1] not in canonical]
-        
-    return chromosomes, 200
-
-@app.route('/search')
+@bp.route('/search')
 def search():
     type = request.args.get('type')
     query = request.args.get('query')
@@ -131,14 +133,9 @@ def search():
     return jsonify(results)
 
 
-@app.route('/cytoband', methods=["GET"])
-def cytobands():
-    chromosome = request.args.get("chromosome")
 
-    resultDict = cytoband.get_cytoband(chromosome)
-    return resultDict, 200
 
-@app.route('/gfa', methods=["GET"])
+@bp.route('/gfa', methods=["GET"])
 def gfa():
     genome = request.args.get("genome")
     chromosome = request.args.get("chromosome")
@@ -169,7 +166,7 @@ def gfa():
     response.headers['Content-Disposition'] = 'attachment; filename=graph.gfa'
     return response
 
-@app.route('/')
+@bp.route('/')
 def index():
     content = dict()
     response = make_response(render_template("index.html", **content ))
