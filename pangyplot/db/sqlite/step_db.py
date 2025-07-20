@@ -35,21 +35,22 @@ def write_step_index(segments, genome, path, dir):
     conn.commit()
     conn.close()
 
-def load_steps(cur, genome):
+def load_steps(dir, genome):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT step, seg_id, start, end FROM step_index WHERE genome = ? ORDER BY step", (genome,))
     return cur.fetchall()
 
-def get_step(cur, step, genome):
+def get_step(dir, step, genome):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM step_index WHERE genome = ? AND step = ?", (genome, step))
     return cur.fetchone()
 
-def get_segment_steps(cur, seg_id, genome):
+def get_segment_steps(dir, seg_id, genome):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT step FROM step_index WHERE genome = ? AND seg_id = ? ORDER BY step", (genome, seg_id))
     return [row["step"] for row in cur.fetchall()]
 
-def get_genomes(chr_dir):
-    conn = utils.get_connection(chr_dir, DB_NAME)
-    cur = conn.cursor()
-
+def get_genomes(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT DISTINCT genome FROM step_index")
     return [row["genome"] for row in cur.fetchall()]

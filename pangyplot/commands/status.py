@@ -1,20 +1,21 @@
 import os
-from pathlib import Path
 from pangyplot.db.sqlite.step_db import get_genomes
 from pangyplot.db.sqlite.segment_db import count_segments
 from pangyplot.db.sqlite.link_db import count_links
 from pangyplot.db.sqlite.bubble_db import count_bubbles
 
 def pangyplot_status(args):
-    db_root = Path(args.dir).resolve()
 
-    if not db_root.exists():
-        print(f"[ERROR] Directory not found: {db_root}")
+    if not os.path.exists(args.dir):
+        print(f"[ERROR] Directory not found: {args.dir}")
         return
 
-    for db_name in sorted(os.listdir(db_root)):
-        db_path = db_root / db_name
-        if not db_path.is_dir():
+    graph_path = os.path.join(args.dir, "graphs")
+
+    for db_name in sorted(os.listdir(graph_path)):
+        db_path = os.path.join(graph_path, db_name)
+
+        if not os.path.isdir(db_path):
             continue
 
         print("-" * 40)
@@ -26,8 +27,8 @@ def pangyplot_status(args):
         total_bubbles = 0
 
         for chr_name in sorted(os.listdir(db_path)):
-            chr_dir = db_path / chr_name
-            if not chr_dir.is_dir():
+            chr_dir = os.path.join(db_path, chr_name)
+            if not os.path.isdir(chr_dir):
                 continue
 
             try:

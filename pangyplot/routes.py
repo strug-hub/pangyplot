@@ -4,6 +4,19 @@ from dotenv import load_dotenv
 
 bp = Blueprint("routes", __name__)
 
+@bp.route('/')
+def index():
+    content = dict()
+    response = make_response(render_template("index.html", **content ))
+    return response
+
+@bp.context_processor
+def inject_ga_tag_id():
+    load_dotenv()
+    # Get the Google Analytics tag ID from the environment variable
+    ga_tag_id = os.getenv('GA_TAG_ID', '')
+    return dict(ga_tag_id=ga_tag_id)
+
 @bp.route('/default-genome', methods=['GET'])
 def get_default_genome():
     return jsonify({"genome": current_app.genome})
@@ -20,7 +33,6 @@ def chromosomes():
         result = current_app.cytoband["chromosomes"]
 
     return jsonify(result)
-
 
 @bp.route('/cytoband', methods=["GET"])
 def cytobands():
@@ -41,22 +53,52 @@ def cytobands():
 
     return jsonify(bands)
 
+@bp.route('/samples', methods=["GET"])
+def get_samples():
+    firstchrom = current_app.chromosomes[0] if current_app.chromosomes else None
+    if not firstchrom:
+        return jsonify({"error": "No data"}), 404
+    samples = current_app.gfa_index[firstchrom].get_samples()
+    return jsonify(samples)
+
+@bp.route('/genes', methods=["GET"])
+def genes():
+    genome = request.args.get("genome")
+    chrom = request.args.get("chromosome")
+    start = request.args.get("start")
+    end = request.args.get("end")
+    
+    start = int(start)
+    end = int(end)
+    
+    genes = current_app.annotation_index[genome].query_gene_range(chrom, start, end, type="gene")
+
+    print(f"Getting genes in: {genome}#{chrom}:{start}-{end}")
+    print(f"   Genes: {len(genes)}")
+
+    return jsonify({"genes": [gene.serialize() for gene in genes]}), 200
+
+@bp.route('/search')
+def search():
+    type = request.args.get('type')
+    query_string = request.args.get('query')
+    
+    results = []
+    genome = current_app.genome
+    if type == "gene":
+        annotations = current_app.annotation_index[genome].gene_search(query_string)
+        results = [gene.serialize() for gene in annotations]
+        print(results)
+        for gene in results:
+            gene["name"] = gene["gene_name"]
+
+    return jsonify(results)
 
 
 
 
 
 
-
-
-
-
-@bp.context_processor
-def inject_ga_tag_id():
-    load_dotenv()
-    # Get the Google Analytics tag ID from the environment variable
-    ga_tag_id = os.getenv('GA_TAG_ID', '')
-    return dict(ga_tag_id=ga_tag_id)
 
 
 @bp.route('/select', methods=["GET"])
@@ -74,31 +116,9 @@ def select():
 
     return resultDict, 200
 
-@bp.route('/samples', methods=["GET"])
-def get_samples():
-    samples = None #query_samples()    
-    return samples, 200
 
-@bp.route('/genes', methods=["GET"])
-def genes():
-    genome = request.args.get("genome")
-    chrom = request.args.get("chromosome")
-    start = request.args.get("start")
-    end = request.args.get("end")
-    
-    start = int(start)
-    end = int(end)
-    
-    resultDict = {}
-    genes = [] #query_gene_range(genome, chrom, start, end)
 
-    print(f"Getting genes in: {genome}#{chrom}:{start}-{end}")
-    print(f"   Genes: {len(genes)}")
 
-    resultDict["genes"] = genes
-    resultDict["annotations"] = []
-
-    return resultDict, 200
 
 @bp.route('/subgraph', methods=["GET"])
 def subgraph():
@@ -118,19 +138,7 @@ def subgraph():
 
 
 
-@bp.route('/search')
-def search():
-    type = request.args.get('type')
-    query = request.args.get('query')
-    
-    results = []
 
-    if type == "gene":
-        results = [] #text_search_gene(query)
-        for gene in results:
-            gene["name"] = gene["gene"]
-
-    return jsonify(results)
 
 
 
@@ -166,8 +174,3 @@ def gfa():
     response.headers['Content-Disposition'] = 'attachment; filename=graph.gfa'
     return response
 
-@bp.route('/')
-def index():
-    content = dict()
-    response = make_response(render_template("index.html", **content ))
-    return response

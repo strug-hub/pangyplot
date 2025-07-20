@@ -3,8 +3,8 @@ from pangyplot.objects.Link import Link
 
 DB_NAME = "links.db"
 
-def get_connection(chr_dir):
-    return utils.get_connection(chr_dir, DB_NAME)
+def get_connection(dir):
+    return utils.get_connection(dir, DB_NAME)
 
 def create_link_table(dir, sample_idx):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
@@ -55,11 +55,13 @@ def insert_link(cur, link):
         link.frequency
     ))
 
-def load_sample_index(cur):
+def load_sample_index(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT sample, idx FROM sample_index")
     return {row["sample"]: row["idx"] for row in cur.fetchall()}
 
-def load_links(cur):
+def load_links(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT from_id, to_id, from_strand, to_strand FROM links")
     return cur.fetchall()
 
@@ -74,16 +76,15 @@ def create_link(row):
     link.frequency = row["frequency"]
     return link
 
-def get_link(cur, key):
+def get_link(dir, key):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM links WHERE id = ?", (key,))
     row = cur.fetchone()
     if row:
         return create_link(row)
     return None
 
-def count_links(chr_dir):
-    conn = utils.get_connection(chr_dir, DB_NAME)
-    cur = conn.cursor()
-
+def count_links(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT COUNT(*) FROM links")
     return int(cur.fetchone()[0])

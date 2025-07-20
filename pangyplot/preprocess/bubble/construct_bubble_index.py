@@ -28,8 +28,8 @@ def construct_bubble_index(graph, chr_dir, ref, plot=False):
 
     utils.find_parent_children(bubbles)
 
-    conn = db.create_bubble_tables(chr_dir)
-    db.insert_bubbles(conn, bubbles)
+    db.create_bubble_tables(chr_dir)
+    db.insert_bubbles(chr_dir, bubbles)
 
     if plot:
         plot_path = os.path.join(chr_dir, "bubbles.plot.svg")

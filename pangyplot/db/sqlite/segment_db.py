@@ -42,7 +42,8 @@ def insert_segment(cur, segment):
         segment.seq
     ))
 
-def load_segments(cur):
+def load_segments(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT id, length, x1, y1, x2, y2 FROM segments")
     return cur.fetchall()
 
@@ -59,22 +60,22 @@ def create_segment(row):
     segment.seq = row["seq"]
     return segment
 
-def get_segment(cur, seg_id):
+def get_segment(dir, seg_id):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM segments WHERE id = ?", (seg_id,))
     row = cur.fetchone()
     if row:
         return create_segment(row)
     return None
 
-def get_segment_range(cur, start_id, end_id):
+def get_segment_range(dir, start_id, end_id):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM segments WHERE id BETWEEN ? AND ?", (start_id, end_id))
     rows = cur.fetchall()
     return [create_segment(row) for row in rows]
 
-def count_segments(chr_dir):
-    conn = utils.get_connection(chr_dir, DB_NAME)
-    cur = conn.cursor()
-
+def count_segments(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT COUNT(*) FROM segments")
     return int(cur.fetchone()[0])
 

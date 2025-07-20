@@ -28,6 +28,7 @@ def parse_args():
     parser_run.add_argument('--ref', help='Reference name', default=None, required=True)
     parser_run.add_argument('--port', help='Port to run the app on', default=DEFAULT_PORT, type=int, required=False)
     parser_run.add_argument('--dir', help='Directory where the database files are', default=DEFAULT_DB_FOLDER)
+    parser_run.add_argument('--annotations', help='Name of annotations to use', default=None, required=False)
 
     parser_add = subparsers.add_parser('add', help='Add a dataset.')
     parser_add.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
@@ -40,8 +41,12 @@ def parse_args():
     parser_add.add_argument('--force', help='Overwrite existing files', action='store_true')
 
     parser_annotate = subparsers.add_parser('annotate', help='Add annotation dataset.')
-    parser_annotate.add_argument('--ref', help='Reference path name (or substring)', default=None, required=True)
-    parser_annotate.add_argument('--gff3', help='Path to the GFF3 file', default=None, required=True)
+    parser_annotate.add_argument('--ref', help='Reference genome name', default=None, required=True)
+    parser_annotate.add_argument('--gff3', help='Path to a GFF3 file', default=None, required=False)
+    parser_annotate.add_argument('--bed', help='Path to a BED file (NOT YET SUPPORTED)', default=None, required=False)
+
+    parser_annotate.add_argument('--name', help='Name for the annotation set', default=None, required=True)
+    parser_annotate.add_argument('--dir', help='Directory to store database files', default=DEFAULT_DB_FOLDER)
 
     parser_example = subparsers.add_parser('example', help='Adds example DRB1 data.')
     #parser_example.add_argument('--chrM', help='Use HPRC chrM data', action='store_true')

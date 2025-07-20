@@ -5,7 +5,7 @@ import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 
 def pangyplot_add(args):
 
-    datastore_path = args.dir
+    datastore_path = os.path.join(args.dir, "graphs")
     datastore_path = os.path.join(datastore_path, args.db)
 
     if not args.force and os.path.exists(datastore_path):

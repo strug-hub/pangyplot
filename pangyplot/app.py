@@ -5,19 +5,19 @@ from flask import Flask
 from dotenv import load_dotenv
 from pangyplot.routes import bp as routes_bp
 
-from pangyplot.db.indexes.SegmentIndex import SegmentIndex
-from pangyplot.db.indexes.LinkIndex import LinkIndex
+from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
+from pangyplot.db.indexes.AnnotationIndex import AnnotationIndex
 
 import pangyplot.parser.parse_cytoband as cytoband_parser
 
-def create_app(db_path, ref, port, development=True):
+def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
 
     app = Flask(__name__)
 
     setup_cytoband(app)
-    load_indexes(app, db_path, ref)
+    load_indexes(app, data_dir, db_name, annotation_name, ref)
 
     app.register_blueprint(routes_bp)
 
@@ -27,26 +27,29 @@ def create_app(db_path, ref, port, development=True):
 
     return app
 
-def load_indexes(app, db_path, ref):
-    app.segment_index = dict()
-    app.link_index = dict()
+def load_indexes(app, data_dir, db_name, annotation_name, ref):
+    app.gfa_index = dict()
     app.step_index = dict()
     app.bubble_index = dict()
-
+    app.annotation_index = dict()
+    
     app.genome = ref
     app.chromosomes = []
 
-    for chr in os.listdir(db_path):
+    annotation_path = os.path.join(data_dir, "annotations", ref, annotation_name)
+    if annotation_path:
+        app.annotation_index[ref] = AnnotationIndex(annotation_name, annotation_path)
+        print(f"annotation_index size: {asizeof(app.annotation_index[ref]) / 1024**2:.2f} MB")
+
+    graph_path = os.path.join(data_dir, "graphs", db_name)
+    for chr in os.listdir(graph_path):
         app.chromosomes.append(chr)
 
         print(f"Loading: {chr}")
-        chr_dir = os.path.join(db_path, chr)
+        chr_dir = os.path.join(graph_path, chr)
 
-        app.segment_index[chr] = SegmentIndex(chr_dir)
-        print(f"segment_index size:      {asizeof(app.segment_index[chr]) / 1024**2:.2f} MB")
-
-        app.link_index[chr] = LinkIndex(chr_dir)
-        print(f"link_index size:      {asizeof(app.link_index[chr]) / 1024**2:.2f} MB")
+        app.gfa_index[chr] = GFAIndex(chr_dir)
+        print(f"gfa_index size:      {asizeof(app.gfa_index[chr]) / 1024**2:.2f} MB")
 
         app.step_index[chr] = StepIndex(chr_dir, ref)
         print(f"step_index size:      {asizeof(app.step_index[chr]) / 1024**2:.2f} MB")
@@ -54,11 +57,9 @@ def load_indexes(app, db_path, ref):
         app.bubble_index[chr] = BubbleIndex(chr_dir)
         print(f"bubble_index size:      {asizeof(app.bubble_index[chr]) / 1024**2:.2f} MB")
 
-    print(f"segment_index size total:      {asizeof(app.segment_index) / 1024**2:.2f} MB")
-    print(f"link_index size total:      {asizeof(app.link_index) / 1024**2:.2f} MB")
+    print(f"gfa_index size total:      {asizeof(app.gfa_index) / 1024**2:.2f} MB")
     print(f"step_index size total:      {asizeof(app.step_index) / 1024**2:.2f} MB")
     print(f"bubble_index size total:      {asizeof(app.bubble_index) / 1024**2:.2f} MB")
-
 
 def setup_cytoband(app):
     load_dotenv()

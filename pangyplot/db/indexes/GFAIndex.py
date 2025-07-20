@@ -16,6 +16,9 @@ class GFAIndex:
     def get_links(self, seg_id):
         return self.link_index[seg_id]
 
+    def get_samples(self):
+        return self.link_index.get_samples()
+    
     def get_neighbors(self, seg_id, direction=None):
         neighbors = []
 

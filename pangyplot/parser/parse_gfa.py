@@ -24,7 +24,7 @@ def verify_reference(ref_path, matching_refs):
     print(f"   🎯 Found reference path {matching_refs[0]}.")
 
 def parse_gfa(gfa_file, ref, path, layout_coords, dir):
-    print(f"➡️ Parsing GFA file: {gfa_file}.")
+    print(f"→ Parsing GFA file: {gfa_file}.")
     
     if path:
         print(f"   🔍 Looking for path: {ref} (reference genome = {ref})")

@@ -5,8 +5,8 @@ import pangyplot.db.sqlite.db_utils as utils
 
 DB_NAME = "bubbles.db"
 
-def get_connection(chr_dir):
-    return utils.get_connection(chr_dir, DB_NAME)
+def get_connection(dir):
+    return utils.get_connection(dir, DB_NAME)
 
 def create_bubble_tables(dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
@@ -38,6 +38,7 @@ def create_bubble_tables(dir):
     return conn
 
 def insert_bubble(cur, bubble):
+
     cur.execute("""
         INSERT INTO bubbles (
             id, chain, chain_step, subtype, parent,
@@ -66,7 +67,8 @@ def insert_bubble(cur, bubble):
         bubble.n_counts
     ))
 
-def insert_bubbles(conn, bubbles):
+def insert_bubbles(dir, bubbles):
+    conn = get_connection(dir)
     cur = conn.cursor()
     for bubble in bubbles:
         insert_bubble(cur, bubble)
@@ -93,11 +95,14 @@ def create_bubble(row):
     bubble.n_counts = row["n_counts"]
     return bubble
 
-def load_parentless_bubbles(cur):
+def load_parentless_bubbles(dir):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM bubbles WHERE parent IS NULL")
-    return [create_bubble(row) for row in cur.fetchall()]
+    rows = cur.fetchall()
+    return [create_bubble(row) for row in rows]
 
-def get_bubble(cur, bubble_id):
+def get_bubble(dir, bubble_id):
+    cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM bubbles WHERE id = ?", (bubble_id,))
     row = cur.fetchone()
     if row is None:
@@ -105,8 +110,6 @@ def get_bubble(cur, bubble_id):
     return create_bubble(row)
 
 def count_bubbles(chr_dir):
-    conn = utils.get_connection(chr_dir, DB_NAME)
-    cur = conn.cursor()
-
+    cur = get_connection(chr_dir).cursor()
     cur.execute("SELECT COUNT(*) FROM bubbles")
     return int(cur.fetchone()[0])

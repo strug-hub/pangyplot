@@ -5,9 +5,8 @@ from array import array
 import pangyplot.db.sqlite.bubble_db as db
 
 class BubbleIndex:
-    def __init__(self, chr_dir, cache_size=1000):
-        self.conn = db.get_connection(chr_dir)
-        self.cur = self.conn.cursor()
+    def __init__(self, dir, cache_size=1000):
+        self.dir = dir
         
         self.cache_size = cache_size
         self.cached_bubbles = dict()  # bubble_id -> BubbleData
@@ -16,7 +15,7 @@ class BubbleIndex:
         self.ends = array('I')
         self.ids = array('I')
 
-        bubbles = db.load_parentless_bubbles(self.cur)
+        bubbles = db.load_parentless_bubbles(self.dir)
 
         ranges = []
         for bubble in bubbles:
@@ -32,8 +31,8 @@ class BubbleIndex:
     def __getitem__(self, bubble_id):
         if bubble_id in self.cached_bubbles:
             return self.cached_bubbles[bubble_id]
-        
-        bubble = db.get_bubble(self.cur, bubble_id)
+
+        bubble = db.get_bubble(self.dir, bubble_id)
         self._cache_bubble(bubble_id, bubble)
         return bubble
     

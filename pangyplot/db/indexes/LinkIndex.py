@@ -6,11 +6,10 @@ import pangyplot.db.sqlite.link_db as db
 from pangyplot.objects.Link import Link
 
 class LinkIndex:
-    def __init__(self, db_dir):
-        self.conn = db.get_connection(db_dir)
-        self.cur = self.conn.cursor()
+    def __init__(self, dir):
+        self.dir = dir
 
-        self.sample_idx = db.load_sample_index(self.cur)
+        self.sample_idx = db.load_sample_index(self.dir)
         
         self.from_ids = array('I')
         self.to_ids = array('I')
@@ -25,10 +24,13 @@ class LinkIndex:
         self.rev_strand_map = {1: '+', 0: '-'}
         self._load_links()
 
+    def get_samples(self):
+        return [sample for sample in self.sample_idx]
+
     def _load_links(self):
         time_start = time.time()
 
-        rows = db.load_links(self.cur)
+        rows = db.load_links(self.dir)
 
         tmp = defaultdict(list)
         max_seg_id = -1
@@ -80,8 +82,8 @@ class LinkIndex:
 
     def get_link_by_index(self, i, full=False):
         if full:
-            return db.get_link(self.cur, self._get_link_id(i))
-        
+            return db.get_link(self.dir, self._get_link_id(i))
+
         link = Link()
         link.from_id = self.from_ids[i]
         link.from_strand = self.rev_strand_map[self.from_strands[i]]
