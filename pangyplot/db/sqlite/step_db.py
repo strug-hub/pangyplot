@@ -46,3 +46,10 @@ def get_step(cur, step, genome):
 def get_segment_steps(cur, seg_id, genome):
     cur.execute("SELECT step FROM step_index WHERE genome = ? AND seg_id = ? ORDER BY step", (genome, seg_id))
     return [row["step"] for row in cur.fetchall()]
+
+def get_genomes(chr_dir):
+    conn = utils.get_connection(chr_dir, DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("SELECT DISTINCT genome FROM step_index")
+    return [row["genome"] for row in cur.fetchall()]

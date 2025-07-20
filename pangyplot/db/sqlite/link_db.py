@@ -80,3 +80,10 @@ def get_link(cur, key):
     if row:
         return create_link(row)
     return None
+
+def count_links(chr_dir):
+    conn = utils.get_connection(chr_dir, DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM links")
+    return int(cur.fetchone()[0])

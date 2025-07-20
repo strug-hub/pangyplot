@@ -19,7 +19,9 @@ def parse_args():
     subparsers = parser.add_subparsers(dest='command', help='Available commands', required=True)
 
     parser_setup = subparsers.add_parser('setup', help='Setup the environment for database connection.')
+    
     parser_status = subparsers.add_parser('status', help='Check the database status.')
+    parser_status.add_argument('--dir', help='Directory where the database files are', default=DEFAULT_DB_FOLDER)
 
     parser_run = subparsers.add_parser('run', help='Launch the software (development mode).')
     parser_run.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)

@@ -70,3 +70,11 @@ def get_segment_range(cur, start_id, end_id):
     cur.execute("SELECT * FROM segments WHERE id BETWEEN ? AND ?", (start_id, end_id))
     rows = cur.fetchall()
     return [create_segment(row) for row in rows]
+
+def count_segments(chr_dir):
+    conn = utils.get_connection(chr_dir, DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM segments")
+    return int(cur.fetchone()[0])
+

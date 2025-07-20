@@ -103,3 +103,10 @@ def get_bubble(cur, bubble_id):
     if row is None:
         return None
     return create_bubble(row)
+
+def count_bubbles(chr_dir):
+    conn = utils.get_connection(chr_dir, DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM bubbles")
+    return int(cur.fetchone()[0])
