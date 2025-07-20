@@ -4,25 +4,31 @@ from bitarray import bitarray
 import time
 import pangyplot.db.sqlite.link_db as db
 from pangyplot.objects.Link import Link
+import pangyplot.db.sqlite.db_utils as utils
+
+QUICK_INDEX = "links.quickindex.json"
 
 class LinkIndex:
     def __init__(self, dir):
         self.dir = dir
 
         self.sample_idx = db.load_sample_index(self.dir)
-        
-        self.from_ids = array('I')
-        self.to_ids = array('I')
-        self.from_strands = bitarray()
-        self.to_strands = bitarray()
 
-        self.seg_index_offsets = array('I')   # start index into self.seg_index_flat
-        self.seg_index_counts  = array('B')   # max 255 links per segment
-        self.seg_index_flat    = array('I')   # flattened list of link indices
+        if not self.load_quick_index():
 
-        self.strand_map = {'+': 1, '-': 0}
-        self.rev_strand_map = {1: '+', 0: '-'}
-        self._load_links()
+            self.from_ids = array('I')
+            self.to_ids = array('I')
+            self.from_strands = bitarray()
+            self.to_strands = bitarray()
+
+            self.seg_index_offsets = array('I')   # start index into self.seg_index_flat
+            self.seg_index_counts  = array('B')   # max 255 links per segment
+            self.seg_index_flat    = array('I')   # flattened list of link indices
+
+            self.strand_map = {'+': 1, '-': 0}
+            self.rev_strand_map = {1: '+', 0: '-'}
+            self._load_links()
+            self.save_quick_index()
 
     def get_samples(self):
         return [sample for sample in self.sample_idx]
@@ -57,6 +63,34 @@ class LinkIndex:
         time_end = time.time()
         print(f"Loaded {len(rows)} links in {round(time_end - time_start, 2)} seconds.")
 
+    def serialize(self):
+        return {
+            "from_ids": self.from_ids.tolist(),
+            "to_ids": self.to_ids.tolist(),
+            "from_strands": self.from_strands.tolist(),
+            "to_strands": self.to_strands.tolist(),
+            "seg_index_offsets": self.seg_index_offsets.tolist(),
+            "seg_index_counts": self.seg_index_counts.tolist(),
+            "seg_index_flat": self.seg_index_flat.tolist()
+        }
+    
+    def save_quick_index(self):
+        utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")
+
+    def load_quick_index(self):
+        quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
+        if quick_index is None:
+            return False
+        
+        self.from_ids = array('I', quick_index["from_ids"])
+        self.to_ids = array('I', quick_index["to_ids"])
+        self.from_strands = bitarray(quick_index["from_strands"])
+        self.to_strands = bitarray(quick_index["to_strands"])
+        self.seg_index_offsets = array('I', quick_index["seg_index_offsets"])
+        self.seg_index_counts = array('B', quick_index["seg_index_counts"])
+        self.seg_index_flat = array('I', quick_index["seg_index_flat"])
+        return True
+    
     def __getitem__(self, key):
         if isinstance(key, tuple) and len(key) == 2:
             from_id, to_id = key

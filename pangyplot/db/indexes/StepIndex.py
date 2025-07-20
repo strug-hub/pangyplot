@@ -2,27 +2,51 @@ import bisect
 from collections import defaultdict
 from array import array
 import pangyplot.db.sqlite.step_db as db
+import pangyplot.db.sqlite.db_utils as utils
+
+QUICK_INDEX = "steps.quickindex.json"
 
 class StepIndex:
     def __init__(self, dir, genome):
         self.dir = dir
         self.genome = genome
 
-        # step i = index i
-        self.starts = array('I')
-        self.ends = array('I')
-        self.segments = array('I')
+        if not self.load_quick_index():
+            self.starts = array('I')
+            self.ends = array('I')
+            self.segments = array('I')
 
-        for row in db.load_steps(self.dir, genome):
-            self.segments.append(row["seg_id"])
-            self.starts.append(row["start"])
-            self.ends.append(row["end"])
+            for row in db.load_steps(self.dir, genome):
+                self.segments.append(row["seg_id"])
+                self.starts.append(row["start"])
+                self.ends.append(row["end"])
+
+            self.save_quick_index()
 
     def __getitem__(self, step):
         if step < 0 or step >= len(self.segments):
             return None
         return self.segments[step]
 
+    def serialize(self):
+        return {
+            "starts": self.starts.tolist(),
+            "ends": self.ends.tolist(),
+            "segments": self.segments.tolist()
+        }
+    def save_quick_index(self):
+        utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")
+
+    def load_quick_index(self):
+        quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
+        if quick_index is None:
+            return False
+        
+        self.starts = array('I', quick_index["starts"])
+        self.ends = array('I', quick_index["ends"])
+        self.segments = array('I', quick_index["segments"])
+        return True
+    
     def query_segment(self, seg_id):
         return db.get_segment_steps(self.dir, seg_id)
 

@@ -1,19 +1,6 @@
 from collections import defaultdict
 from pangyplot.objects.Bubble import Bubble
 
-def find_siblings(bubbles):
-    sib_dict = defaultdict(set)
-    
-    for bubble in bubbles:
-        for sid in bubble.get_sibling_segments():
-            sib_dict[sid].add(bubble)
-
-    for bubble in bubbles:
-        for sid in bubble.get_sibling_segments():
-            for sibling in sib_dict[sid]:
-                if sibling.id != bubble.id:
-                    bubble.add_sibling(sibling.id, sid)
-
 def find_parent_children(bubbles):
     bubble_dict = {bubble.id: bubble for bubble in bubbles}
 
@@ -25,6 +12,7 @@ def find_parent_children(bubbles):
 def find_siblings(bubbles):
     segment_to_bubbles = defaultdict(set)
     shared_segments = defaultdict(set)
+    bubble_dict = {bubble.id: bubble for bubble in bubbles}
 
     for bubble in bubbles:
         for sid in bubble.get_sibling_segments():
@@ -38,9 +26,9 @@ def find_siblings(bubbles):
                     shared_segments[key].add(sid)
 
     # Apply sibling relationships
-    for (bid, sid), shared_sids in shared_segments.items():
-        b1 = next(b for b in bubbles if b.id == bid)
-        b1.add_sibling(sid, list(shared_sids))
+    for (bid, sib_id), shared_sids in shared_segments.items():
+        bubble_dict[bid].add_sibling(sib_id, list(shared_sids))
+        bubble_dict[sib_id].add_sibling(bid, list(shared_sids))
 
 def find_parent_children(bubbles):
     bubble_dict = {bubble.id: bubble for bubble in bubbles}

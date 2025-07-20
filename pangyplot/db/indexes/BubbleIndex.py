@@ -3,6 +3,9 @@ import math
 from bisect import bisect_right
 from array import array
 import pangyplot.db.sqlite.bubble_db as db
+import pangyplot.db.sqlite.db_utils as utils
+
+QUICK_INDEX = "bubbles.quickindex.json"
 
 class BubbleIndex:
     def __init__(self, dir, cache_size=1000):
@@ -11,22 +14,26 @@ class BubbleIndex:
         self.cache_size = cache_size
         self.cached_bubbles = dict()  # bubble_id -> BubbleData
 
-        self.starts = array('I')
-        self.ends = array('I')
-        self.ids = array('I')
+        if not self.load_quick_index():
 
-        bubbles = db.load_parentless_bubbles(self.dir)
+            self.starts = array('I')
+            self.ends = array('I')
+            self.ids = array('I')
 
-        ranges = []
-        for bubble in bubbles:
-            for start, end in bubble.get_ranges(exclusive=False):
-                ranges.append((start, end, bubble.id))
-        
-        ranges.sort()
-        for start, end, bid in ranges:
-            self.starts.append(start)
-            self.ends.append(end)
-            self.ids.append(bid)
+            bubbles = db.load_parentless_bubbles(self.dir)
+
+            ranges = []
+            for bubble in bubbles:
+                for start, end in bubble.get_ranges(exclusive=False):
+                    ranges.append((start, end, bubble.id))
+            
+            ranges.sort()
+            for start, end, bid in ranges:
+                self.starts.append(start)
+                self.ends.append(end)
+                self.ids.append(bid)
+
+            self.save_quick_index()
 
     def __getitem__(self, bubble_id):
         if bubble_id in self.cached_bubbles:
@@ -40,6 +47,26 @@ class BubbleIndex:
         if len(self.cached_bubbles) >= self.cache_size:
             self.cached_bubbles.pop(next(iter(self.cached_bubbles)))  # Simple FIFO
         self.cached_bubbles[bubble_id] = bubble_obj
+
+    def serialize(self):
+        return {
+            "starts": self.starts.tolist(),
+            "ends": self.ends.tolist(),
+            "ids": self.ids.tolist()
+        }
+    
+    def save_quick_index(self):
+        utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")  
+
+    def load_quick_index(self):
+        quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
+        if quick_index is None:
+            return False
+        
+        self.starts = array('I', quick_index["starts"])
+        self.ends = array('I', quick_index["ends"])
+        self.ids = array('I', quick_index["ids"])
+        return True
 
     def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
         results = []

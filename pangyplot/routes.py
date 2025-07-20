@@ -116,10 +116,6 @@ def select():
 
     return resultDict, 200
 
-
-
-
-
 @bp.route('/subgraph', methods=["GET"])
 def subgraph():
     uuid = request.args.get("uuid")
@@ -135,11 +131,6 @@ def subgraph():
 
     resultDict = [] #get_subgraph(uuid, genome, chrom, start, end)
     return resultDict, 200
-
-
-
-
-
 
 
 
