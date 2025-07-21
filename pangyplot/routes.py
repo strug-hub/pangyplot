@@ -106,30 +106,19 @@ def select():
 
     return jsonify(graph)
 
-
-
-
-
-
-
-
-
 @bp.route('/subgraph', methods=["GET"])
 def subgraph():
-    uuid = request.args.get("uuid")
+    nodeid = request.args.get("nodeid")
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
-    start = request.args.get("start")
-    end = request.args.get("end")
+    #start = int(request.args.get("start"))
+    #end = int(request.args.get("end"))
 
-    start = int(start)
-    end = int(end)
+    print(f"Getting subgraph for node {nodeid} in {genome}#{chrom}...")
 
-    print(f"Getting subgraph for {uuid}...")
-
-    resultDict = [] #get_subgraph(uuid, genome, chrom, start, end)
-    return resultDict, 200
-
+    subgraph = query.pop_bubble(current_app, nodeid, genome, chrom)
+    
+    return jsonify(subgraph)
 
 
 @bp.route('/gfa', methods=["GET"])

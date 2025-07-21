@@ -13,3 +13,16 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
 
     graph = {"nodes": nodes, "links": links}
     return graph
+
+def pop_bubble(indexes, nodeid, genome, chrom):
+    graph = {"nodes": [], "links": []}
+    if nodeid.startswith("s"):
+        return graph
+    
+    bubbleidx = indexes.bubble_index[chrom]
+    gfaidx = indexes.gfa_index[chrom]
+    
+    nodeid = int(nodeid.replace("b", ""))
+    print(nodeid)
+
+    return graph

@@ -176,13 +176,12 @@ function deleteNode(graphData, nodeid){
 
 function fetchSubgraph(originNode, forceGraph) {
     const nodeid = originNode.nodeid;
-    const uuid = originNode.uuid;
 
     if (! queueSubgraph(nodeid)){ return }
 
     // graph.js getGraphCoordinates()
     const params = {
-        uuid,
+        nodeid,
         ...getGraphCoordinates()
     };
 
