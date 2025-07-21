@@ -70,9 +70,10 @@ class StepIndex:
         res2 = self.query_bp(end, exact=exact)
 
         if exact:
-            print(f"""[DEBUG] Position query results {start}-{end}. 
-                  START: step={res1} 
-                  END:   step={res2}""")
+            if debug:
+                print(f"""[DEBUG] Position query results {start}-{end}. 
+                      START: step={res1} 
+                      END:   step={res2}""")
 
             return (res1, res2)
         
