@@ -1,4 +1,4 @@
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 from pangyplot.objects.Annotation import Annotation
 
 DB_NAME = "annotations.db"
@@ -81,9 +81,12 @@ def get_genes(dir):
     cur.execute("SELECT DISTINCT gene_name FROM annotations WHERE gene_name IS NOT NULL ORDER BY gene_name;")
     return [row["gene_name"] for row in cur.fetchall()]
 
-def get_gene_by_name(dir, gene_name):
+def get_by_gene_name(dir, gene_name, type=None):
     cur = get_connection(dir).cursor()
-    cur.execute("SELECT * FROM annotations WHERE gene_name = ? AND type = 'gene'", (gene_name,))
+    if type:
+        cur.execute("SELECT * FROM annotations WHERE gene_name = ? AND type = ?", (gene_name, type))
+    else:
+        cur.execute("SELECT * FROM annotations WHERE gene_name = ?", (gene_name,))
     return [annotation_from_row(row) for row in cur.fetchall()]
 
 def get_by_range(dir, chrom, start, end, type=None):

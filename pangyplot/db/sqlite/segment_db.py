@@ -1,4 +1,4 @@
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 from pangyplot.objects.Segment import Segment
 
 DB_NAME="segments.db"

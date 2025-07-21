@@ -1,4 +1,4 @@
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 from pangyplot.objects.Link import Link
 
 DB_NAME = "links.db"

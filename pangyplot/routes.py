@@ -1,6 +1,7 @@
 import os
 from flask import Blueprint, current_app, render_template, request, jsonify, make_response
 from dotenv import load_dotenv
+import pangyplot.db.query as query
 
 bp = Blueprint("routes", __name__)
 
@@ -71,9 +72,8 @@ def genes():
     start = int(start)
     end = int(end)
     
-    genes = current_app.annotation_index[genome].query_gene_range(chrom, start, end, type="gene")
-
     print(f"Getting genes in: {genome}#{chrom}:{start}-{end}")
+    genes = current_app.annotation_index[genome].query_gene_range(chrom, start, end)
     print(f"   Genes: {len(genes)}")
 
     return jsonify({"genes": [gene.serialize() for gene in genes]}), 200
@@ -89,17 +89,8 @@ def search():
         annotations = current_app.annotation_index[genome].gene_search(query_string)
         results = [gene.serialize() for gene in annotations]
         print(results)
-        for gene in results:
-            gene["name"] = gene["gene_name"]
 
     return jsonify(results)
-
-
-
-
-
-
-
 
 @bp.route('/select', methods=["GET"])
 def select():
@@ -111,10 +102,20 @@ def select():
     start = int(start)
     end = int(end)
     resultDict = dict()
-    
+
     print(f"Making graph for {genome}#{chrom}:{start}-{end}...")
 
-    return resultDict, 200
+    graph = query.get_top_level_data(current_app, genome, chrom, start, end)
+
+    return jsonify(graph)
+
+
+
+
+
+
+
+
 
 @bp.route('/subgraph', methods=["GET"])
 def subgraph():

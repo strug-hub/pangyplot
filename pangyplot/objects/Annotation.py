@@ -13,6 +13,8 @@ class Annotation:
         self.tag = ""
         self.ensembl_canonical = False
         self.mane_select = False
+        self.exons = []
+        self.transcripts = []
 
     def serialize(self):
         return {
@@ -23,12 +25,14 @@ class Annotation:
             "end": self.end,
             "strand": self.strand,
             "source": self.source,
-            "gene_name": self.gene_name,
+            "gene": self.gene_name,
             "exon_number": self.exon_number,
             "parent": self.parent,
             "tag": self.tag,
             "ensembl_canonical": self.ensembl_canonical,
             "mane_select": self.mane_select,
+            "exons": [exon.serialize() for exon in self.exons],
+            "transcripts": [transcript.serialize() for transcript in self.transcripts]
         }
 
     def __str__(self):

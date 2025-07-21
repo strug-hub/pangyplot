@@ -2,7 +2,7 @@ import bisect
 from collections import defaultdict
 from array import array
 import pangyplot.db.sqlite.step_db as db
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 
 QUICK_INDEX = "steps.quickindex.json"
 

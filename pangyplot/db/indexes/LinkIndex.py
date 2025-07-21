@@ -4,7 +4,7 @@ from bitarray import bitarray
 import time
 import pangyplot.db.sqlite.link_db as db
 from pangyplot.objects.Link import Link
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 
 QUICK_INDEX = "links.quickindex.json"
 

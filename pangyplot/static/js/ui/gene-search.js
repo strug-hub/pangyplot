@@ -45,7 +45,7 @@ function processSearchItemTemplate(template, data) {
             chrom: chrom,
             start: gene.start,
             end: gene.end,
-            name: gene.name,
+            name: gene.gene,
             id: gene.id,
             type: type
         };

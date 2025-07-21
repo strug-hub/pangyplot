@@ -1,4 +1,4 @@
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 
 DB_NAME = "step_index.db"
 

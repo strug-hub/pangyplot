@@ -13,6 +13,7 @@ class Segment:
     def serialize(self):
         return {
             "id": self.id,
+            "nodeid": f"s{self.id}",
             "x1": self.x1,
             "y1": self.y1,
             "x2": self.x2,
@@ -20,7 +21,8 @@ class Segment:
             "seq": self.seq,
             "gc_count": self.gc_count,
             "n_count": self.n_count,
-            "length": self.length
+            "length": self.length,
+            "type": "segment"
         }
 
     def __str__(self):

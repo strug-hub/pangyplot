@@ -1,9 +1,9 @@
 from collections import defaultdict
 import math
-from bisect import bisect_right
+from bisect import bisect_left
 from array import array
 import pangyplot.db.sqlite.bubble_db as db
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 
 QUICK_INDEX = "bubbles.quickindex.json"
 
@@ -12,7 +12,7 @@ class BubbleIndex:
         self.dir = dir
         
         self.cache_size = cache_size
-        self.cached_bubbles = dict()  # bubble_id -> BubbleData
+        self.cached_bubbles = dict()  # bubble_id -> Bubble
 
         if not self.load_quick_index():
 
@@ -71,11 +71,11 @@ class BubbleIndex:
     def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
         results = []
         
-        i = bisect_right(self.starts, max_step)
-        for j in range(i - 1, -1, -1):
-            if self.ends[j] < min_step:
-                break
-            bubble_id = self.ids[j]
+        start_index = bisect_left(self.ends, min_step)
+        for i in range(start_index, len(self.starts)):
+            if self.starts[i] > max_step:
+                break  # No more possible overlaps
+            bubble_id = self.ids[i]
             bubble = self[bubble_id]
             result = self._traverse_descendants(bubble, min_step, max_step)
             results.extend(result)

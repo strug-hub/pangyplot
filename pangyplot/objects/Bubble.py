@@ -27,7 +27,8 @@ class Bubble:
 
     def serialize(self):
         return {
-            "id": f"b{self.id}",
+            "id": self.id,
+            "nodeid": f"b{self.id}",
             "chain": self.chain,
             "type": "bubble",
             "subtype": self.subtype,

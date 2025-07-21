@@ -1,4 +1,5 @@
 import os
+from pympler.asizeof import asizeof
 
 from flask import Flask
 from dotenv import load_dotenv
@@ -50,8 +51,8 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
         app.gfa_index[chr] = GFAIndex(chr_dir)
         print(f"gfa_index size:      {asizeof(app.gfa_index[chr]) / 1024**2:.2f} MB")
 
-        app.step_index[chr] = StepIndex(chr_dir, ref)
-        print(f"step_index size:      {asizeof(app.step_index[chr]) / 1024**2:.2f} MB")
+        app.step_index[(chr,ref)] = StepIndex(chr_dir, ref)
+        print(f"step_index size:      {asizeof(app.step_index[(chr,ref)]) / 1024**2:.2f} MB")
 
         app.bubble_index[chr] = BubbleIndex(chr_dir)
         print(f"bubble_index size:      {asizeof(app.bubble_index[chr]) / 1024**2:.2f} MB")

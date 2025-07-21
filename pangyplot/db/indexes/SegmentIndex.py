@@ -1,6 +1,6 @@
 from array import array
 import pangyplot.db.sqlite.segment_db as db
-import pangyplot.db.sqlite.db_utils as utils
+import pangyplot.db.db_utils as utils
 
 QUICK_INDEX = "segments.quickindex.json"
 

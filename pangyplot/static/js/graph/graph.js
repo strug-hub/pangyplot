@@ -33,7 +33,7 @@ function getCanvasHeight(){
 }
 
 function renderGraph(graph){
-
+    console.log("Rendering graph with data:", graph);
     const canvasElement = document.getElementById("graph");
 
     // Update the graph data without reinitializing the graph
@@ -194,9 +194,8 @@ function processGraphData(rawGraph){
 function fetchGraph(genome, chromosome, start, end) {
     const url = buildUrl('/select', { genome, chromosome, start, end });
     fetchData(url, 'graph').then(fetchedData => {
-        if (fetchedData["detailed"]){
-            processGraphData(fetchedData);
-        }      
+        console.log("Fetched graph data:", fetchedData);
+        processGraphData(fetchedData);
     });
 }
 function fetchAndConstructGraph(genome, chrom, start, end){
