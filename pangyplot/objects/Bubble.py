@@ -68,24 +68,122 @@ class Bubble:
         return list({sib_id for sib_id, _ in self._siblings})
     def get_sibling_segments(self, get_compacted_nodes=True):
         return self.get_source(get_compacted_nodes) + self.get_sink(get_compacted_nodes)
-
-    def next_sibling_link(self, sib_filter=None):
+    def get_sink_sibling(self):
         for sib_id, seg_ids in self._siblings:
-            if sib_filter and sib_id not in sib_filter:
-                continue
-            if self._sink and self._sink in seg_ids:
-                    link = Link()
-                    link.from_id = self.id
-                    link.to_id = sib_id
-                    link.from_strand = "+"
-                    link.to_strand = "+"
-                    link.make_chain_link(seg_ids)
-                    #todo: 
-                    #link.haplotype
-                    #link.reverse
-                    #link.frequency
-                    return link
+            if self._sink in seg_ids:
+                return sib_id
         return None
+    def get_source_sibling(self):
+        for sib_id, seg_ids in self._siblings:
+            if self._source in seg_ids:
+                return sib_id
+        return None
+
+    def end_links(self, gfa_index):
+        #gfa_index needed to correct for link directionality
+
+        source_seg_links = gfa_index.get_links(self._source)
+
+        direction = 0
+        for source_seg_link in source_seg_links:
+            for inside_id in self.inside:
+                if source_seg_link.contains(inside_id):
+                    if inside_id == source_seg_link.to_id:
+                        direction += 1
+                    else:
+                        direction -= 1
+
+        source_link = Link()
+        source_link.from_id = self._source if direction >= 0 else self.id
+        source_link.to_id = self.id if direction >= 0 else self._source
+        source_link.from_strand = "+"
+        source_link.to_strand = "+"
+        if direction >= 0:
+            source_link.make_segment_to_bubble()
+        else:
+            source_link.make_bubble_to_segment()
+
+        sink_seg_links = gfa_index.get_links(self._sink)
+
+        direction = 0
+        for sink_seg_link in sink_seg_links:
+            for inside_id in self.inside:
+                if sink_seg_link.contains(inside_id):
+                    if inside_id == sink_seg_link.from_id:
+                        direction += 1
+                    else:
+                        direction -= 1
+
+        sink_link = Link()
+        sink_link.from_id = self.id if direction >= 0 else self._sink
+        sink_link.to_id = self._sink if direction >= 0 else self.id
+        sink_link.from_strand = "+"
+        sink_link.to_strand = "+"
+        if direction > 0:
+            sink_link.make_bubble_to_segment()
+        else:
+            sink_link.make_segment_to_bubble()
+
+        return (source_link, sink_link)
+
+    def ends(self, get_compacted=True, as_list=False):
+        sources = [self._source]
+        sinks = [self._sink]
+
+        if get_compacted:
+            sources += self._compacted_source
+            sinks += self._compacted_sink        
+        if as_list:
+            return sources + sinks
+        return (sources, sinks)
+    
+    def next_sibling_link(self, sib_filter=None):
+        sib_id = self.get_sink_sibling()
+        if sib_filter and sib_id not in sib_filter:
+            return None
+        link = Link()
+        link.from_id = self.id
+        link.to_id = sib_id
+        link.from_strand = "+"
+        link.to_strand = "+"
+        link.make_chain_link()
+        #todo: 
+        #link.haplotype
+        #link.reverse
+        #link.frequency
+        return link
+    
+    def source_link(self):
+        sib_id = self.get_source_sibling()
+        if sib_id is None:
+            return None
+        link = Link()
+        link.from_id = sib_id
+        link.to_id = self._source
+        link.from_strand = "+"
+        link.to_strand = "+"
+        link.make_bubble_to_segment()
+        #todo: 
+        #link.haplotype
+        #link.reverse
+        #link.frequency
+        return link
+
+    def sink_link(self):
+        sib_id = self.get_sink_sibling()
+        if sib_id is None:
+            return None
+        link = Link()
+        link.from_id = self._sink 
+        link.to_id = sib_id
+        link.from_strand = "+"
+        link.to_strand = "+"
+        link.make_segment_to_bubble()
+        #todo: 
+        #link.haplotype
+        #link.reverse
+        #link.frequency
+        return link
 
     def get_source(self, get_compacted_nodes=True):
         if not get_compacted_nodes:
@@ -99,17 +197,6 @@ class Bubble:
         
         return [self._sink] + self._compacted_sink
 
-    def ends(self, get_compacted=True, as_list=False):
-        sources = [self._source]
-        sinks = [self._sink]
-
-        if get_compacted:
-            sources += self._compacted_source
-            sinks += self._compacted_sink        
-        if as_list:
-            return sources + sinks
-        return (sources, sinks)
-    
     def has_range(self, exclusive=True):
         if exclusive:
             return len(self._range_exclusive) > 0

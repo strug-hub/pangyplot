@@ -19,8 +19,8 @@ def write_step_index(segments, genome, path, dir):
             PRIMARY KEY (genome, step)
         );
     """)
-    cur.execute("CREATE INDEX idx_seg_id ON step_index(seg_id);")
-    cur.execute("CREATE INDEX idx_genome ON step_index(genome);")
+    cur.execute("CREATE INDEX idx_seg_id ON step_index(genome, seg_id);")
+    cur.execute("CREATE INDEX idx_genome ON step_index(genome, step);")
 
     pos = 1
     for i, step in enumerate(path["path"]):
@@ -47,7 +47,7 @@ def get_step(dir, step, genome):
 
 def get_segment_steps(dir, seg_id, genome):
     cur = get_connection(dir).cursor()
-    cur.execute("SELECT step FROM step_index WHERE genome = ? AND seg_id = ? ORDER BY step", (genome, seg_id))
+    cur.execute("SELECT step FROM step_index WHERE genome = ? AND seg_id = ?", (genome, seg_id))
     return [row["step"] for row in cur.fetchall()]
 
 def get_genomes(dir):

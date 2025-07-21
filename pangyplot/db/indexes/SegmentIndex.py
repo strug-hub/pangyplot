@@ -7,7 +7,7 @@ QUICK_INDEX = "segments.quickindex.json"
 class SegmentIndex:
     def __init__(self, dir):
         self.dir = dir
-
+        
         if not self.load_quick_index():
             rows = db.load_segments(self.dir)
             max_id = max(row["id"] for row in rows) if rows else 0
@@ -58,9 +58,9 @@ class SegmentIndex:
         self.y2 = array('f', quick_index["y2"])
         return True
 
-    def get_by_ids(self, seg_ids):
-        return [db.get_segment(self.dir, seg_id) for seg_id in seg_ids if seg_id < len(self.id)]
+    def get_by_ids(self, seg_ids, step_index=None):
+        return [db.get_segment(self.dir, seg_id, step_index) for seg_id in seg_ids if seg_id < len(self.id)]
 
-    def get_between(self, start_id, end_id):
-        return db.get_segment_range(self.dir, start_id, end_id)
+    def get_between(self, start_id, end_id, step_index=None):
+        return db.get_segment_range(self.dir, start_id, end_id, step_index)
 

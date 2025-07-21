@@ -117,3 +117,17 @@ class GFAIndex:
         
         return visited
 
+    def get_subgraph(self, seg_ids, step_index):
+        segments = self.segment_index.get_by_ids(seg_ids, step_index)
+        
+        links = []
+        link_ids = set()
+        for sid in seg_ids:
+            seg_links = self.get_links(sid)
+            for link in seg_links:
+                lid = link.id()
+                if lid not in link_ids:
+                    links.append(link)
+                    link_ids.add(lid)
+
+        return (segments, links)

@@ -4,7 +4,7 @@ var GRAPH_CHROM=null;
 var GRAPH_START_POS=null;
 var GRAPH_END_POS=null;
 
-var GLOBAL_MULTIPLIER=1
+var GLOBAL_MULTIPLIER=3
 
 let forceGraph = null;
 

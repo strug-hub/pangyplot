@@ -48,7 +48,7 @@ class StepIndex:
         return True
     
     def query_segment(self, seg_id):
-        return db.get_segment_steps(self.dir, seg_id)
+        return db.get_segment_steps(self.dir, seg_id, self.genome)
 
     def query_bp(self, bp_position, exact=False):
         i = bisect.bisect_right(self.starts, bp_position) - 1

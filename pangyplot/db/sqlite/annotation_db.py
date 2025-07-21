@@ -70,7 +70,7 @@ def annotation_from_row(row, step_index=None):
     a.mane_select = bool(row["mane_select"])
 
     if step_index:
-        a.get_step(step_index)
+        a.add_step(step_index)
 
     return a
 

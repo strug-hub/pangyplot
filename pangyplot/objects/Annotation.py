@@ -37,7 +37,7 @@ class Annotation:
             "transcripts": [transcript.serialize() for transcript in self.transcripts]
         }
 
-    def get_step(self, step_index):
+    def add_step(self, step_index):
         if self.start is None or self.end is None:
             return
         self.range = step_index.query_coordinates(self.start, self.end, exact=True)

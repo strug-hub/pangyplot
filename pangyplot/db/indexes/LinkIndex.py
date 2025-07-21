@@ -12,6 +12,8 @@ class LinkIndex:
         self.dir = dir
 
         self.sample_idx = db.load_sample_index(self.dir)
+        self.strand_map = {'+': 1, '-': 0}
+        self.rev_strand_map = {1: '+', 0: '-'}
 
         if not self.load_quick_index():
 
@@ -24,8 +26,6 @@ class LinkIndex:
             self.seg_index_counts  = array('B')   # max 255 links per segment
             self.seg_index_flat    = array('I')   # flattened list of link indices
 
-            self.strand_map = {'+': 1, '-': 0}
-            self.rev_strand_map = {1: '+', 0: '-'}
             self._load_links()
             self.save_quick_index()
 

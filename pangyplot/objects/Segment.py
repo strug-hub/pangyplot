@@ -9,6 +9,7 @@ class Segment:
         self.x2 = None
         self.y2 = None
         self.seq = None
+        self.step = []
 
     def serialize(self):
         return {
@@ -22,8 +23,13 @@ class Segment:
             "gc_count": self.gc_count,
             "n_count": self.n_count,
             "length": self.length,
+            "range_inclusive": [[step, step] for step in self.step],
+            "range_exclusive": [[step, step] for step in self.step],
             "type": "segment"
         }
+
+    def add_step(self, step_index):
+        self.step = step_index.query_segment(self.id)
 
     def __str__(self):
         seq = self.seq if len(self.seq) <= 10 else self.seq[:10] + "..."

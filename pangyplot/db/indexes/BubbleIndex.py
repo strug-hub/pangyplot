@@ -207,18 +207,34 @@ class BubbleIndex:
 
         return merged
 
-    def to_bubble_graph(self, start_step, end_step):
+    def to_bubble_graph(self, start_step, end_step, gfa_index):
         chain_dict = self.get_top_level_bubbles(start_step, end_step, as_chains=True)
         
         bubble_nodes = []
         bubble_links = []
+        segment_ids = set()
 
         for _, bubbles in chain_dict.items():
-            bubble_ids = {bubble.id for bubble in bubbles}
             for bubble in bubbles:
                 bubble_nodes.append(bubble)
-                link = bubble.next_sibling_link(sib_filter=bubble_ids)
-                if link is not None:
-                    bubble_links.append(link)
+                bubble_links.extend(bubble.end_links(gfa_index))
+                ends = set(bubble.ends(as_list=True))
+                segment_ids.update(ends)
 
-        return bubble_nodes, bubble_links
+        return bubble_nodes, bubble_links, segment_ids
+    
+    def get_subgraph(self, bubble_id, gfa_index):
+        bubble = self[bubble_id]
+        if bubble is None:
+            return [],[],[]
+
+        bubble_links = []
+        bubble_nodes = [self[child_id] for child_id in bubble.children]
+        segment_ids = set()
+        for child in bubble_nodes:
+            bubble_links.extend(child.end_links(gfa_index))
+            ends = set(child.ends(as_list=True))
+            segment_ids.update(ends)
+
+        segment_ids.update(bubble.inside)
+        return bubble_nodes, bubble_links, segment_ids

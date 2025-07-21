@@ -9,7 +9,6 @@ class Link:
         self.frequency = 0
         self.from_type = "s"
         self.to_type = "s"
-        self.segments = []
 
     def serialize(self):
         return {
@@ -25,11 +24,21 @@ class Link:
             "source": f"{self.from_type}{self.from_id}",
             "target": f"{self.to_type}{self.to_id}"
         }
+
+    def contains(self, id):
+        return self.from_id == id or self.to_id == id
     
-    def make_chain_link(self, contained_segments=[]):
+    def make_chain_link(self):
         self.from_type = "b"
         self.to_type = "b"
-        self.segments = contained_segments
+
+    def make_segment_to_bubble(self):   
+        self.from_type = "s"
+        self.to_type = "b"
+
+    def make_bubble_to_segment(self):
+        self.from_type = "b"
+        self.to_type = "s"
 
     def id(self):
         return f"{self.from_id}{self.from_strand}{self.to_id}{self.to_strand}"
