@@ -6,6 +6,7 @@ from pangyplot.commands import run
 from pangyplot.commands import setup
 from pangyplot.commands import status
 from pangyplot.commands import annotate
+from pangyplot.commands import reindex
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_DB_FOLDER = os.path.join(script_dir, "datastore")
@@ -48,6 +49,10 @@ def parse_args():
     parser_annotate.add_argument('--name', help='Name for the annotation set', default=None, required=True)
     parser_annotate.add_argument('--dir', help='Directory to store database files', default=DEFAULT_DB_FOLDER)
 
+    #TODO: create metadata file and use to reindex 
+    #parser_run = subparsers.add_parser('reindex', help='Reindex all GFA files.')
+    #parser_run.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
+
     parser_example = subparsers.add_parser('example', help='Adds example DRB1 data.')
     #parser_example.add_argument('--chrM', help='Use HPRC chrM data', action='store_true')
     #parser_example.add_argument('--gencode', help='Add genocode annotations', action='store_true')
@@ -63,6 +68,9 @@ def parse_args():
 
     if args.command == "add":
         add.pangyplot_add(args)
+
+    if args.command == "reindex":
+        reindex.pangyplot_reindex(args)
 
     if args.command == 'run':
         run.pangyplot_run(args)
