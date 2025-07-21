@@ -80,22 +80,22 @@ class Bubble:
         return None
 
     def end_links(self, gfa_index):
-        #gfa_index needed to correct for link directionality
-
-        source_seg_links = gfa_index.get_links(self._source)
+        # gfa_index needed to correct for link directionality
 
         direction = 0
-        for source_seg_link in source_seg_links:
-            for inside_id in self.inside:
-                if source_seg_link.contains(inside_id):
-                    if inside_id == source_seg_link.to_id:
-                        direction += 1
-                    else:
-                        direction -= 1
+        source_id = self._source
+        # consider compacted nodes as well
+        for sid in self.get_source():
+            for link in gfa_index.get_links(sid):
+                for inside_id in self.inside:
+                    if link.contains(inside_id):
+                        direction += 1 if link.to_id == inside_id else -1
+                        source_id = link.other_id(inside_id)
+                        break
 
         source_link = Link()
-        source_link.from_id = self._source if direction >= 0 else self.id
-        source_link.to_id = self.id if direction >= 0 else self._source
+        source_link.from_id = source_id if direction >= 0 else self.id
+        source_link.to_id = self.id if direction >= 0 else source_id
         source_link.from_strand = "+"
         source_link.to_strand = "+"
         if direction >= 0:
@@ -103,20 +103,20 @@ class Bubble:
         else:
             source_link.make_bubble_to_segment()
 
-        sink_seg_links = gfa_index.get_links(self._sink)
-
         direction = 0
-        for sink_seg_link in sink_seg_links:
-            for inside_id in self.inside:
-                if sink_seg_link.contains(inside_id):
-                    if inside_id == sink_seg_link.from_id:
-                        direction += 1
-                    else:
-                        direction -= 1
+        sink_id = self._sink
+        # consider compacted nodes as well
+        for sid in self.get_sink():
+            for link in gfa_index.get_links(sid):
+                for inside_id in self.inside:
+                    if link.contains(inside_id):
+                        direction += -1 if link.to_id == inside_id else 1
+                        sink_id = link.other_id(inside_id)
+                        break
 
         sink_link = Link()
-        sink_link.from_id = self.id if direction >= 0 else self._sink
-        sink_link.to_id = self._sink if direction >= 0 else self.id
+        sink_link.from_id = self.id if direction >= 0 else sink_id
+        sink_link.to_id = sink_id if direction >= 0 else self.id
         sink_link.from_strand = "+"
         sink_link.to_strand = "+"
         if direction > 0:
@@ -153,38 +153,6 @@ class Bubble:
         #link.frequency
         return link
     
-    def source_link(self):
-        sib_id = self.get_source_sibling()
-        if sib_id is None:
-            return None
-        link = Link()
-        link.from_id = sib_id
-        link.to_id = self._source
-        link.from_strand = "+"
-        link.to_strand = "+"
-        link.make_bubble_to_segment()
-        #todo: 
-        #link.haplotype
-        #link.reverse
-        #link.frequency
-        return link
-
-    def sink_link(self):
-        sib_id = self.get_sink_sibling()
-        if sib_id is None:
-            return None
-        link = Link()
-        link.from_id = self._sink 
-        link.to_id = sib_id
-        link.from_strand = "+"
-        link.to_strand = "+"
-        link.make_segment_to_bubble()
-        #todo: 
-        #link.haplotype
-        #link.reverse
-        #link.frequency
-        return link
-
     def get_source(self, get_compacted_nodes=True):
         if not get_compacted_nodes:
             return [self._source]

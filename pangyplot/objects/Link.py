@@ -27,7 +27,13 @@ class Link:
 
     def contains(self, id):
         return self.from_id == id or self.to_id == id
-    
+    def other_id(self, id):
+        if self.from_id == id:
+            return self.to_id
+        elif self.to_id == id:
+            return self.from_id
+        return None
+
     def make_chain_link(self):
         self.from_type = "b"
         self.to_type = "b"
