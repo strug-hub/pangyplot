@@ -7,10 +7,14 @@ class AnnotationIndex:
     def __init__(self, name, ann_dir):
         self.dir = ann_dir
         self.name = name
+        self.step_index = None
 
         if not self.load_quick_index():
             self.genes = db.get_genes(self.dir)
             self.save_quick_index()
+
+    def set_step_index(self, step_index):
+        self.step_index = step_index
 
     def serialize(self):
         return { "genes": self.genes }
@@ -49,19 +53,19 @@ class AnnotationIndex:
         return [gene for _,gene in genes.items()]
 
     def __getitem__(self, gene_name):
-        annotations = db.get_by_gene_name(self.dir, gene_name)
+        annotations = db.get_by_gene_name(self.dir, gene_name, self.step_index, type="gene")
         gene_annotations = self.construct_genes(annotations)
         if len(gene_annotations) == 0:
             return None
         return gene_annotations[0]
 
     def query_gene_range(self, chrom, start, end, type=None):
-        annotations = db.get_by_range(self.dir, chrom, start, end, type)
+        annotations = db.get_by_range(self.dir, chrom, start, end, self.step_index, type=type)
         return self.construct_genes(annotations)
 
     def gene_search(self, query, max_results=20):
         results = []
         for gene in self.genes:
             if query.lower() in gene.lower():
-                results.extend(db.get_by_gene_name(self.dir, gene, type="gene"))
+                results.extend(db.get_by_gene_name(self.dir, gene, step_index=None, type="gene"))
         return results[:max_results]

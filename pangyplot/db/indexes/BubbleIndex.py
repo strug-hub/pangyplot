@@ -2,6 +2,8 @@ from collections import defaultdict
 import math
 from bisect import bisect_left
 from array import array
+
+from networkx import nodes
 import pangyplot.db.sqlite.bubble_db as db
 import pangyplot.db.db_utils as utils
 
@@ -80,14 +82,22 @@ class BubbleIndex:
             result = self._traverse_descendants(bubble, min_step, max_step)
             results.extend(result)
 
-        results.extend(self._collect_non_ref(results))
+        #results.extend(self._collect_non_ref(results))
 
         if as_chains:
-            chain_results = defaultdict(list)
+            chain_found = defaultdict(list)
+            chain_results = dict()
             for bubble in results:
-                chain_results[bubble.chain].append(bubble)
-            return chain_results
+                chain_found[bubble.chain].append(bubble)
 
+            for chain_id, bubbles in chain_found.items():
+                chain_step_min = min(bubble.chain_step for bubble in bubbles)
+                chain_step_max = max(bubble.chain_step for bubble in bubbles)
+                bubble_ids = db.get_bubble_ids_from_chain(self.dir, bubble.chain, chain_step_min, chain_step_max)
+                chain_results[chain_id] = [self[bubble_id] for bubble_id in bubble_ids]
+            
+            return chain_results
+        
         return results
 
     def _traverse_descendants(self, bubble, min_step, max_step):
@@ -197,13 +207,18 @@ class BubbleIndex:
 
         return merged
 
-    def to_bubble_graph(self, bubbles):
-        bubble_graph = {"nodes": [], "links": []}
-        bids = {bubble.id for bubble in bubbles}
+    def to_bubble_graph(self, start_step, end_step):
+        chain_dict = self.get_top_level_bubbles(start_step, end_step, as_chains=True)
         
-        for bubble in bubbles:
-            bubble_graph["nodes"].append(bubble.serialize())
-            for rel in bubble.serialize_sibling_source(sib_filter=bids):
-                bubble_graph["links"].append(rel)
+        bubble_nodes = []
+        bubble_links = []
 
-        return bubble_graph
+        for _, bubbles in chain_dict.items():
+            bubble_ids = {bubble.id for bubble in bubbles}
+            for bubble in bubbles:
+                bubble_nodes.append(bubble)
+                link = bubble.next_sibling_link(sib_filter=bubble_ids)
+                if link is not None:
+                    bubble_links.append(link)
+
+        return bubble_nodes, bubble_links

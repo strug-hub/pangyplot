@@ -1,7 +1,6 @@
 from array import array
 from collections import defaultdict
 from bitarray import bitarray
-import time
 import pangyplot.db.sqlite.link_db as db
 from pangyplot.objects.Link import Link
 import pangyplot.db.db_utils as utils
@@ -34,8 +33,6 @@ class LinkIndex:
         return [sample for sample in self.sample_idx]
 
     def _load_links(self):
-        time_start = time.time()
-
         rows = db.load_links(self.dir)
 
         tmp = defaultdict(list)
@@ -60,9 +57,6 @@ class LinkIndex:
             self.seg_index_counts.append(len(links))
             self.seg_index_flat.extend(links)
         
-        time_end = time.time()
-        print(f"Loaded {len(rows)} links in {round(time_end - time_start, 2)} seconds.")
-
     def serialize(self):
         return {
             "from_ids": self.from_ids.tolist(),

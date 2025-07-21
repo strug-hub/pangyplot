@@ -1,4 +1,5 @@
 import sys
+import time
 import gzip
 from pangyplot.db.sqlite.step_db import write_step_index
 from pangyplot.parser.gfa.parse_segments import parse_segments
@@ -33,24 +34,33 @@ def parse_gfa(gfa_file, ref, path, layout_coords, dir):
         print(f"   🔎 Looking for reference genome: {ref}")
         ref_path = ref
 
+
     # ==== PATHS ====
     print("   🧵 Gathering paths from GFA...", end="", flush=True)
+    start_time = time.time()
     path_info, reference_info = parse_paths(get_reader(gfa_file), ref_path)
     sample_idx, path_dict = path_info
     reference_path, matching_refs = reference_info
-    print(" Done.")
+    end_time = time.time()
+    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
     verify_reference(ref_path, matching_refs)
 
     # ==== SEGMENTS ====
     print("   🍡 Gathering segments from GFA...", end="", flush=True)
+    start_time = time.time()
     segment_dict = parse_segments(get_reader(gfa_file), layout_coords, dir)
-    print(" Done.")
-    
     write_step_index(segment_dict, ref, reference_path, dir)
+
+    end_time = time.time()
+    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
+    print(f"      {len(segment_dict)} segments total.")
 
     # ==== LINKS ====
     print("   🧷 Gathering links from GFA...", end="", flush=True)
+    start_time = time.time()
     link_dict = parse_links(get_reader(gfa_file), sample_idx, path_dict, dir)
-    print(" Done.")
+    end_time = time.time()
+    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
+    print(f"      {len(link_dict)} links total.")
 
     return segment_dict, link_dict

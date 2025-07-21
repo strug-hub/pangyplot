@@ -73,7 +73,9 @@ def genes():
     end = int(end)
     
     print(f"Getting genes in: {genome}#{chrom}:{start}-{end}")
-    genes = current_app.annotation_index[genome].query_gene_range(chrom, start, end)
+    annidx = current_app.annotation_index[genome]
+    annidx.set_step_index(current_app.step_index[(chrom, genome)])
+    genes = annidx.query_gene_range(chrom, start, end)
     print(f"   Genes: {len(genes)}")
 
     return jsonify({"genes": [gene.serialize() for gene in genes]}), 200
@@ -96,16 +98,11 @@ def search():
 def select():
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
-    start = request.args.get("start")
-    end = request.args.get("end")
-    
-    start = int(start)
-    end = int(end)
-    resultDict = dict()
+    start = int(request.args.get("start"))
+    end = int(request.args.get("end"))
 
     print(f"Making graph for {genome}#{chrom}:{start}-{end}...")
-
-    graph = query.get_top_level_data(current_app, genome, chrom, start, end)
+    graph = query.get_bubble_graph(current_app, genome, chrom, start, end)
 
     return jsonify(graph)
 

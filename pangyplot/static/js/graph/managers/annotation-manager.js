@@ -52,7 +52,7 @@ function annotationManagerGetNodeAnnotations(node) {
     Object.keys(annotations).forEach(geneId => {
         const annotation = annotations[geneId];
         const gene = GENE_ANNOTATIONS[geneId];
-        
+
         if (!gene.is_visible) {
             return;
         } if (gene.show_exons && !annotation.exon_number) {
@@ -109,13 +109,22 @@ function annotationManagerGetLinkAnnotations(link) {
 
 
 function annotationOverlap(annotation, node) {
-    // TODO: check for chromosome name??
-    if (node.start == null){ return false }
+    if (node.range == null){ return false }
 
-    if (node.start <= annotation.end && node.end >= annotation.start){
-        let pointPosition = calculateEffectiveNodePosition(node);
-        return pointPosition >= annotation.start && pointPosition <= annotation.end;
+    const annotationStart = annotation.range[0];
+    const annotationEnd = annotation.range[1];
+
+    for (const [rangeStart, rangeEnd] of node.range_inclusive) {
+        const overlaps = rangeStart <= annotationEnd && rangeEnd >= annotationStart;
+        if (overlaps) {
+            const point = calculateEffectiveNodeStep(node, rangeStart);
+            if (point >= annotationStart && point <= annotationEnd) {
+                return true;
+            }
+        }
     }
+
+    return false;
 }
 
 function annotationManagerUpdateGeneTable() {
@@ -168,13 +177,12 @@ function annotateTranscript(graphData, gene, transcriptIndex = 0) {
         }
 
         const transcript = gene.transcripts[transcriptIndex];
-
         if (annotationOverlap(transcript, node)) {
             let exonNumber = null;
 
             transcript.exons.forEach((exon, index) => {
                 if (annotationOverlap(exon, node)) {
-                    exonNumber = exon.exon;
+                    exonNumber = exon.exon_number;
                 }
             });
 
@@ -226,8 +234,9 @@ function annotationManagerFetch(genome, chromosome, start, end) {
 
     annotationManagerClear();
     fetchData(url, 'genes').then(fetchedData => {
+        console.log("Fetched annotations:", fetchedData);
         fetchedData.genes.forEach(gene => {
-
+            
             gene.is_visible = GENE_VISIBLE_BY_DEFAULT;
             gene.show_exons = false;
             gene.color = rgbStringToHex(stringToColor(gene.gene));

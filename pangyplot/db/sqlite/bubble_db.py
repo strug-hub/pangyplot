@@ -30,9 +30,15 @@ def create_bubble_tables(dir):
             range_inclusive TEXT,
             length INTEGER,
             gc_count INTEGER,
-            n_counts INTEGER
+            n_counts INTEGER,
+            x1 FLOAT,
+            x2 FLOAT,
+            y1 FLOAT,
+            y2 FLOAT
         );
     """)
+
+    cur.execute("CREATE INDEX idx_bubble_chain ON bubbles(chain, chain_step)")
 
     conn.commit()
     return conn
@@ -45,8 +51,8 @@ def insert_bubble(cur, bubble):
             children, siblings,
             source, compacted_source, sink, compacted_sink,
             inside, range_exclusive, range_inclusive,
-            length, gc_count, n_counts
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            length, gc_count, n_counts, x1, x2, y1, y2
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         bubble.id,
         bubble.chain,
@@ -64,7 +70,11 @@ def insert_bubble(cur, bubble):
         json.dumps(bubble._range_inclusive),
         bubble.length,
         bubble.gc_count,
-        bubble.n_counts
+        bubble.n_counts,
+        bubble.x1,
+        bubble.x2,
+        bubble.y1,
+        bubble.y2
     ))
 
 def insert_bubbles(dir, bubbles):
@@ -93,6 +103,10 @@ def create_bubble(row):
     bubble.length = row["length"]
     bubble.gc_count = row["gc_count"]
     bubble.n_counts = row["n_counts"]
+    bubble.x1 = row["x1"]
+    bubble.x2 = row["x2"]
+    bubble.y1 = row["y1"]
+    bubble.y2 = row["y2"]
     return bubble
 
 def load_parentless_bubbles(dir):
@@ -108,6 +122,12 @@ def get_bubble(dir, bubble_id):
     if row is None:
         return None
     return create_bubble(row)
+
+def get_bubble_ids_from_chain(dir, chain_id, start_step, end_step):
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT id FROM bubbles WHERE chain = ? AND chain_step BETWEEN ? AND ?", (chain_id, start_step, end_step))
+    rows = cur.fetchall()
+    return [row["id"] for row in rows]
 
 def count_bubbles(chr_dir):
     cur = get_connection(chr_dir).cursor()

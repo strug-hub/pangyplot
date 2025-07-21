@@ -20,6 +20,10 @@ def to_bubblegun_obj(segments, links):
         info = {
             "gc_count": segment.gc_count,
             "n_count": segment.n_count,
+            "x1": segment.x1,
+            "x2": segment.x2,
+            "y1": segment.y1,
+            "y2": segment.y2,
             "compacted": []
         }
         node.optional_info = info
@@ -58,20 +62,22 @@ def shoot(segments, links, chr_path, ref):
 
     graph = BubbleGunGraph.Graph()
 
-    print("   🔫 Loading BubbleGun...", end="")
+    print("   🔫 Loading BubbleGun...", end="", flush=True)
     start_time = time.time()
     graph.nodes = to_bubblegun_obj(segments, links)
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    print(f"      {len(graph.nodes)} segments total.")
 
-    print("   🗜️ Compacting graph...")
+    print("   🗜️ Compacting graph...", end="", flush=True)
+    start_time = time.time()
     before = len(graph.nodes)
     compacter.compact_graph(graph)
     after = len(graph.nodes)
+    end_time = time.time()
+    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
     print(f"      {before - after} segments were compacted.")
 
-    print("   ⛓️  Finding bubbles and chains...", end="")
+    print("   ⛓️  Finding bubbles and chains...", end="", flush=True)
     start_time = time.time()
     BubbleGunFindBubbles.find_bubbles(graph)
     BubbleGunConnectBubbles.connect_bubbles(graph)
@@ -82,7 +88,7 @@ def shoot(segments, links, chr_path, ref):
     bubbleCount = graph.bubble_number()
     print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
 
-    print("   💾  Indexing bubbles...", end="")
+    print("   💾  Indexing bubbles...", end="", flush=True)
     indexer.construct_bubble_index(graph, chr_path, ref)
     print(f" Done.")
 

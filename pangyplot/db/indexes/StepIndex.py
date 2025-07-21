@@ -50,15 +50,32 @@ class StepIndex:
     def query_segment(self, seg_id):
         return db.get_segment_steps(self.dir, seg_id)
 
-    def query_bp(self, bp_position):
+    def query_bp(self, bp_position, exact=False):
         i = bisect.bisect_right(self.starts, bp_position) - 1
         i = max(i, 0)
-        return (i, self.starts[i], self.ends[i])
+        start = self.starts[i]
+        end = self.ends[i]
+        if exact:
+            if end == start:
+                step = float(i)
+            else:
+                fraction = (bp_position - start) / (end - start)
+                step = i + fraction
+            return step
 
-    def query_coordinates(self, start, end, debug=False):
-        res1 = self.query_bp(start)
-        res2 = self.query_bp(end)
+        return (i, start, end)
 
+    def query_coordinates(self, start, end, exact=False, debug=False):
+        res1 = self.query_bp(start, exact=exact)
+        res2 = self.query_bp(end, exact=exact)
+
+        if exact:
+            print(f"""[DEBUG] Position query results {start}-{end}. 
+                  START: step={res1} 
+                  END:   step={res2}""")
+
+            return (res1, res2)
+        
         if res1 is None or res2 is None:
             raise ValueError("Step not found for the given bp position")
 

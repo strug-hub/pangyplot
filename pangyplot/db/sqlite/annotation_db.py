@@ -53,7 +53,7 @@ def insert_annotation(cur, annotation):
         annotation.mane_select
     ))
 
-def annotation_from_row(row):
+def annotation_from_row(row, step_index=None):
     a = Annotation()
     a.id = row["id"]
     a.type = row["type"]
@@ -68,33 +68,31 @@ def annotation_from_row(row):
     a.tag = row["tag"]
     a.ensembl_canonical = bool(row["ensembl_canonical"])
     a.mane_select = bool(row["mane_select"])
+
+    if step_index:
+        a.get_step(step_index)
+
     return a
-
-
-def get_annotation(dir, ann_id):
-    cur = get_connection(dir).cursor()
-    cur.execute("SELECT * FROM annotations WHERE id = ?", (ann_id,))
-    return annotation_from_row(cur.fetchone())
 
 def get_genes(dir):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT DISTINCT gene_name FROM annotations WHERE gene_name IS NOT NULL ORDER BY gene_name;")
     return [row["gene_name"] for row in cur.fetchall()]
 
-def get_by_gene_name(dir, gene_name, type=None):
+def get_by_gene_name(dir, gene_name, step_index=None, type=None):
     cur = get_connection(dir).cursor()
     if type:
         cur.execute("SELECT * FROM annotations WHERE gene_name = ? AND type = ?", (gene_name, type))
     else:
         cur.execute("SELECT * FROM annotations WHERE gene_name = ?", (gene_name,))
-    return [annotation_from_row(row) for row in cur.fetchall()]
+    return [annotation_from_row(row, step_index) for row in cur.fetchall()]
 
-def get_by_range(dir, chrom, start, end, type=None):
+def get_by_range(dir, chrom, start, end, step_index=None, type=None):
     cur = get_connection(dir).cursor()
     if type:
         cur.execute("SELECT * FROM annotations WHERE chrom = ? AND start >= ? AND end <= ? AND type = ?", (chrom, start, end, type))
     else:
         cur.execute("SELECT * FROM annotations WHERE chrom = ? AND start >= ? AND end <= ?", (chrom, start, end))
     rows = cur.fetchall()
-    return [annotation_from_row(row) for row in rows]
+    return [annotation_from_row(row, step_index) for row in rows]
 

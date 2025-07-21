@@ -15,6 +15,7 @@ class Annotation:
         self.mane_select = False
         self.exons = []
         self.transcripts = []
+        self.range = None
 
     def serialize(self):
         return {
@@ -29,11 +30,17 @@ class Annotation:
             "exon_number": self.exon_number,
             "parent": self.parent,
             "tag": self.tag,
+            "range": self.range,
             "ensembl_canonical": self.ensembl_canonical,
             "mane_select": self.mane_select,
             "exons": [exon.serialize() for exon in self.exons],
             "transcripts": [transcript.serialize() for transcript in self.transcripts]
         }
+
+    def get_step(self, step_index):
+        if self.start is None or self.end is None:
+            return
+        self.range = step_index.query_coordinates(self.start, self.end, exact=True)
 
     def __str__(self):
         tp = self.type

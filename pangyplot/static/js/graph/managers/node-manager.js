@@ -91,6 +91,36 @@ function calculateEffectiveNodePosition(node){
     return (start + i*(end-start)/(n-1));
 }
 
+function calculateEffectiveNodeStep(node, step){
+    if (!node.hasOwnProperty("range")){
+        return null;
+    }
+    let matchedRange = null;
+    for (const [rangeStart, rangeEnd] of node.range_inclusive) {
+        if (step >= rangeStart && step <= rangeEnd) {
+            matchedRange = [rangeStart, rangeEnd];
+            break;
+        }
+    }
+
+    if (!matchedRange) {
+        return null;  // No matching range found
+    }
+
+    const [start, end] = matchedRange;
+    const n = countNodeKinks(node.nodeid);
+    const i = node.__nodeidx;
+
+    if (n === 1) {
+        return (start + end) / 2;
+    }
+    if (i === n - 1) {
+        return end;
+    }
+
+    return start + (i * (end - start)) / (n - 1);
+}
+
 function getCoordinates(node, n=1, i=0){
     let x, y;
 
@@ -148,6 +178,8 @@ function createNewNode(node, nodeid, idx, totalKinks) {
         initX: coords.x,
         initY: coords.y,
         type: node.type,
+        range: node.range_exclusive ?? null,
+        range_inclusive: node.range_inclusive ?? null,
         seqLen: seqLength,
         isHighlight: false,
         isSelected: false,

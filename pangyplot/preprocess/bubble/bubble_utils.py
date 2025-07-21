@@ -110,4 +110,25 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     bubble.gc_count = sum(n.optional_info.get("gc_count", 0) for n in nodes)
     bubble.n_counts = sum(n.optional_info.get("n_count", 0) for n in nodes)
 
+    # Bounding box logic (x1/x2/y1/y2)
+    x1s, x2s, y1s, y2s = [], [], [], []
+    for node in nodes:
+        info = node.optional_info
+        if all(k in info for k in ("x1", "x2", "y1", "y2")):
+            x1s.append(info["x1"])
+            x2s.append(info["x2"])
+            y1s.append(info["y1"])
+            y2s.append(info["y2"])
+
+    if x1s and x2s and y1s and y2s:
+        avgX1 = sum(x1s) / len(x1s)
+        avgX2 = sum(x2s) / len(x2s)
+        avgY1 = sum(y1s) / len(y1s)
+        avgY2 = sum(y2s) / len(y2s)
+
+        bubble.x1 = min(x1s) if avgX1 < avgX2 else max(x1s)
+        bubble.x2 = max(x2s) if avgX1 < avgX2 else min(x2s)
+        bubble.y1 = min(y1s) if avgY1 < avgY2 else max(y1s)
+        bubble.y2 = max(y2s) if avgY1 < avgY2 else min(y2s)
+
     return bubble

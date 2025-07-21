@@ -7,10 +7,13 @@ class Link:
         self.haplotype = 0
         self.reverse = 0
         self.frequency = 0
+        self.from_type = "s"
+        self.to_type = "s"
+        self.segments = []
 
     def serialize(self):
         return {
-            "id": self.id,
+            "id": self.id(),
             "from_id": self.from_id,
             "to_id": self.to_id,
             "from_strand": self.from_strand,
@@ -19,10 +22,15 @@ class Link:
             "reverse": self.reverse,
             "frequency": self.frequency,
             "class": "edge",
-            "source": f"s{self.from_id}",
-            "target": f"s{self.to_id}"
+            "source": f"{self.from_type}{self.from_id}",
+            "target": f"{self.to_type}{self.to_id}"
         }
     
+    def make_chain_link(self, contained_segments=[]):
+        self.from_type = "b"
+        self.to_type = "b"
+        self.segments = contained_segments
+
     def id(self):
         return f"{self.from_id}{self.from_strand}{self.to_id}{self.to_strand}"
     

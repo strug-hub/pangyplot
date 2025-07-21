@@ -1,8 +1,10 @@
+from pangyplot.objects.Link import Link
+
 class Bubble:
     def __init__(self):
         self.id = None
         self.chain = None
-        self.chain_step = -1
+        self.chain_step = None
 
         self.subtype = "simple"
         self.parent = None
@@ -25,6 +27,11 @@ class Bubble:
         self._height = None
         self._depth = None
 
+        self.x1 = 0
+        self.x2 = 0
+        self.y1 = 0
+        self.y2 = 0
+
     def serialize(self):
         return {
             "id": self.id,
@@ -35,7 +42,13 @@ class Bubble:
             "size": len(self.inside),
             "length": self.length,
             "gc_count": self.gc_count,
-            "n_counts": self.n_counts
+            "n_counts": self.n_counts,
+            "range_exclusive": self._range_exclusive,
+            "range_inclusive": self._range_inclusive,
+            "x1": self.x1,
+            "x2": self.x2,
+            "y1": self.y1,
+            "y2": self.y2
         }
     
     def add_sibling(self, sibling_id, seg_ids):
@@ -56,20 +69,24 @@ class Bubble:
     def get_sibling_segments(self, get_compacted_nodes=True):
         return self.get_source(get_compacted_nodes) + self.get_sink(get_compacted_nodes)
 
-    def serialize_sibling_source(self, sib_filter=None):
-        data = []
+    def next_sibling_link(self, sib_filter=None):
         for sib_id, seg_ids in self._siblings:
             if sib_filter and sib_id not in sib_filter:
                 continue
             if self._sink and self._sink in seg_ids:
-                data.append({"from_id": f"b{self.id}", 
-                             "to_id": f"b{sib_id}", 
-                             "from_strand": "+",
-                             "to_strand": "+",
-                             "segments": seg_ids
-                })
-        return data
-    
+                    link = Link()
+                    link.from_id = self.id
+                    link.to_id = sib_id
+                    link.from_strand = "+"
+                    link.to_strand = "+"
+                    link.make_chain_link(seg_ids)
+                    #todo: 
+                    #link.haplotype
+                    #link.reverse
+                    #link.frequency
+                    return link
+        return None
+
     def get_source(self, get_compacted_nodes=True):
         if not get_compacted_nodes:
             return [self._source]
