@@ -3,7 +3,6 @@ import math
 from bisect import bisect_left
 from array import array
 
-from networkx import nodes
 import pangyplot.db.sqlite.bubble_db as db
 import pangyplot.db.db_utils as utils
 

@@ -178,8 +178,8 @@ function createNewNode(node, nodeid, idx, totalKinks) {
         initX: coords.x,
         initY: coords.y,
         type: node.type,
-        range: node.range_exclusive ?? null,
-        range_inclusive: node.range_inclusive ?? null,
+        range: node.range_exclusive ?? [],
+        range_inclusive: node.range_inclusive ?? [],
         seqLen: seqLength,
         isHighlight: false,
         isSelected: false,
@@ -189,7 +189,7 @@ function createNewNode(node, nodeid, idx, totalKinks) {
         children: node.children ?? null,
         largestChild: largestChild,
         isSingleton: totalKinks === 1,
-        isRef: node.ref,
+        isRef: node.range_exclusive.length > 0,
         gcCount: node.gc_count,
         annotations: []
     };
@@ -220,7 +220,7 @@ function createNewNodeLink(node, nodeid, idx, totalKinks, nodeLength) {
         type: node["type"],
         width: NODE_WIDTH,
         length: Math.min(nodeLength / totalKinks, 1000),
-        isRef: node.isRef,
+        isRef: node.range.length > 0,
         annotations: []
     };
 }

@@ -62,6 +62,7 @@ function colorManagerLinkColor(link){
 }
 
 function colorManagerNodeColor(node){
+    //colorByExtrema(node); 
     switch (COLOR_STYLE) {
         case "node_type":
             return colorByType(node.type);
@@ -76,7 +77,7 @@ function colorManagerNodeColor(node){
         case "position":
             return colorByPosition(node.start, node.end, node);
         case "solid":
-                return colorByExtrema(node); //NODE_COLOR1;    
+                return NODE_COLOR1; 
         default:
             return colorByType(node.type);
     }

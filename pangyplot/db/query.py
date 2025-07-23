@@ -18,7 +18,6 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
     graph = {"nodes": [node.serialize() for node in all_nodes], 
              "links": [link.serialize() for link in all_links]}
     
-    
     return graph
 
 def pop_bubble(indexes, nodeid, genome, chrom):

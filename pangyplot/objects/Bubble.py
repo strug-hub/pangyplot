@@ -80,50 +80,73 @@ class Bubble:
         return None
 
     def end_links(self, gfa_index):
-        # gfa_index needed to correct for link directionality
-
+        # gfa_index is needed to get correct strand orientation from GFA
         direction = 0
         source_id = self._source
-        # consider compacted nodes as well
+        source_orientation = "+"
+        
+        # Determine source connection and its strand
         for sid in self.get_source():
             for link in gfa_index.get_links(sid):
                 for inside_id in self.inside:
                     if link.contains(inside_id):
                         direction += 1 if link.to_id == inside_id else -1
                         source_id = link.other_id(inside_id)
+                        # Strand of external source relative to bubble
+                        source_orientation = (
+                            link.from_strand if link.from_id == source_id else link.to_strand
+                        )
                         break
 
         source_link = Link()
-        source_link.from_id = source_id if direction >= 0 else self.id
-        source_link.to_id = self.id if direction >= 0 else source_id
-        source_link.from_strand = "+"
-        source_link.to_strand = "+"
         if direction >= 0:
+            source_link.from_id = source_id
+            source_link.to_id = self.id
+            source_link.from_strand = source_orientation
+            source_link.to_strand = "+"
             source_link.make_segment_to_bubble()
         else:
+            source_link.from_id = self.id
+            source_link.to_id = source_id
+            source_link.from_strand = "+"
+            source_link.to_strand = source_orientation
             source_link.make_bubble_to_segment()
 
+        # Reset for sink
         direction = 0
         sink_id = self._sink
-        # consider compacted nodes as well
+        sink_orientation = "+"
+        
+        # Determine sink connection and its strand
         for sid in self.get_sink():
             for link in gfa_index.get_links(sid):
                 for inside_id in self.inside:
                     if link.contains(inside_id):
                         direction += -1 if link.to_id == inside_id else 1
                         sink_id = link.other_id(inside_id)
+                        # Strand of external sink relative to bubble
+                        sink_orientation = (
+                            link.from_strand if link.from_id == sink_id else link.to_strand
+                        )
                         break
 
         sink_link = Link()
-        sink_link.from_id = self.id if direction >= 0 else sink_id
-        sink_link.to_id = sink_id if direction >= 0 else self.id
-        sink_link.from_strand = "+"
-        sink_link.to_strand = "+"
-        if direction > 0:
+        if direction >= 0:
+            sink_link.from_id = self.id
+            sink_link.to_id = sink_id
+            sink_link.from_strand = "+"
+            sink_link.to_strand = sink_orientation
             sink_link.make_bubble_to_segment()
         else:
+            sink_link.from_id = sink_id
+            sink_link.to_id = self.id
+            sink_link.from_strand = sink_orientation
+            sink_link.to_strand = "+"
             sink_link.make_segment_to_bubble()
 
+        print(
+            f"Bubble {self.id} source link: {source_link.serialize()}, sink link: {sink_link.serialize()}"
+        )
         return (source_link, sink_link)
 
     def ends(self, get_compacted=True, as_list=False):

@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
     //data = {genome: "GRCh38", chrom:"chr7", start:1, end:1427745640, genome: "GRCh38"};
 
     //BRCA2
-    data = {genome: "GRCh38", chrom:"chr13", start:32315086-1000, end:32400268+1000};
+    //data = {genome: "GRCh38", chrom:"chr13", start:32315086-1000, end:32400268+1000};
 
     //document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
     document.dispatchEvent(new CustomEvent("constructGraph", { detail: data }));
