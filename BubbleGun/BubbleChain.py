@@ -1,3 +1,6 @@
+import logging
+import sys
+import pdb
 from collections import Counter
 
 
@@ -100,59 +103,16 @@ class BubbleChain:
         """
         self.ends = [k for k, v in Counter([b.source.id for b in self.bubbles] + [b.sink.id for b in self.bubbles]).items() if v == 1]
 
-    def sort_slow(self):
-        """
-        sorts the bubbles in the chain
-        """
-        # finding ends
-        all_ends = dict()
-        for b in self.bubbles:
-            source = str(b.source.id)
-            sink = str(b.sink.id)
-            if source > sink:
-                all_ends[(source, sink)] = b
-            else:
-                all_ends[(sink, source)] = b
-
-            # looks at all the sources, sinks of the bubbles in the chain
-            # only the ends of the chain should have a count of 1
-            # the rest are counted twice as two adjacent bubbles will share
-            # the same node as sink for one and source for the other
-        # if len(self.ends) == 0:
-        #     self.ends = [k for k, v in Counter([n for sublist in all_ends.keys() for n in sublist]).items() if v == 1]
-        # try:
-        #     assert len(self.ends) == 2
-        # except AssertionError:
-        #     pdb.set_trace()
-        # I couldn't sort the set of bubbles (overload a "bigger than" function
-        # in Bubble to use for the python sort function) because the sorting
-        # here is based on the chain and the ends of the chain
-        # I don't know before hand which bubble is "bigger" or "smaller" than
-        # the other bubble until I have the complete chain
-        # for example, if I start traversing from the middle of the chain
-        # looking "left" or "right" I still don't know who's is "bigger"
-        # until I finish the whole chain.
-        # pdb.set_trace()
-        start = self.ends[0]  # randomly choosing one end of the chain as start
-        all_keys = list(all_ends.keys())
-        while len(self.sorted) < len(self.bubbles):
-            for idx, key in enumerate(all_keys):
-                if start in key:
-                    rm_key = idx
-                    start = key[1 - key.index(start)]
-                    self.sorted.append(all_ends[key])
-                    break
-            del all_keys[rm_key]
-
     def sort(self):
         """
         sorts the bubbles in the chain
-        """
 
+        Note: This function is an improvement on the last one and done by ScottMastro in Issue 8
+        """
+    
         # Step 1: Build a mapping from each node ID to its connected bubbles
         node_to_bubbles = dict()
         for b in self.bubbles:
-            
             for node_id in [str(b.source.id), str(b.sink.id)]:
                 if node_id not in node_to_bubbles:
                     node_to_bubbles[node_id] = []
@@ -161,7 +121,6 @@ class BubbleChain:
         # Step 2: Start at one end of the chain
         current_node = self.ends[0]
         visited_bubbles = set()
-        self.sorted = []
 
         # Step 3: Traverse the chain using bubble adjacency
         while True:
@@ -173,9 +132,9 @@ class BubbleChain:
                     next_bubble = b
                     break
 
-            if next_bubble is None: #shouldn't happen in a valid chain
-                print("No unvisited bubble found: break in bubble chain. Stopping traversal.")
-                break
+            if next_bubble is None:   #shouldn't happen in a valid chain
+                logging.error("No unvisited bubble found: break in bubble chain. Stopping traversal.")
+                sys.exit(1)
 
             self.sorted.append(next_bubble)
             visited_bubbles.add(next_bubble)
@@ -185,6 +144,5 @@ class BubbleChain:
                 current_node = str(next_bubble.sink.id)
             else:
                 current_node = str(next_bubble.source.id)
-
             if len(self.sorted) == len(self.bubbles):
                 break

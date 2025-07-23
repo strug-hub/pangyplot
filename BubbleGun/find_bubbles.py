@@ -45,10 +45,6 @@ def find_sb_alg(graph, s, direction, only_simple=False, only_super=False):
         visited.add(v[0].id)
 
         nodes_inside.append(v[0])
-        #if len(nodes_inside) % 1000 == 0:
-        #    print(len(nodes_inside))
-        if (len(nodes_inside) > 300000):
-            return None
 
         # it's visited so it's not in the seen list anymore
         seen.remove((v[0].id, v[1]))
@@ -84,17 +80,16 @@ def find_sb_alg(graph, s, direction, only_simple=False, only_super=False):
                 seen.add((u[0], 1))
             else:
                 seen.add((u[0], 0))
+
+            if u[0] in visited:
+                continue
+            
             # if all u_parents are visited then we push it into S
             if all(graph.nodes[i].id in visited for i in u_parents):
                 S.add((graph.nodes[u[0]], u_child_direction))
 
         # checking if we finished
         if (len(S) == 1) and (len(seen) == 1):
-            
-            size = len(nodes_inside) + 2
-            if size > 10000:
-                return None
-
             t = S.pop()
             nodes_inside.append(t[0])
 
@@ -196,12 +191,12 @@ def find_bubbles(graph, only_simple=False, only_super=False, list_of_nodes=None)
     if list_of_nodes is None:
         list_of_nodes = graph.nodes.values()
 
-    #print("we are here and going into the loop")
-    counter = 0
+    # print("we are here and going into the loop")
+    # counter = 0
     for n in list_of_nodes:
-        #print(n.id)
+        # print(n.id)
         # chain = BubbleChain()
-        counter += 1
+        # counter += 1
         # if (counter % 10000) == 0:
             # print(f"Process {counter} nodes for finding bubbles already")
         if not n.visited:
