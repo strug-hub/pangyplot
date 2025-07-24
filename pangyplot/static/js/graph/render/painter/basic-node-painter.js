@@ -2,6 +2,7 @@ import { getNodeColor } from '../color/color-style.js';
 import { drawCircle } from './painter-utils.js';
 
 export default function basicNodePainter(ctx, node, svg=false) {
+    if (! node.isVisible || !node.isDrawn) return;
 
     const zoomFactor = ctx.canvas.__zoom["k"];
     const color = getNodeColor(node);

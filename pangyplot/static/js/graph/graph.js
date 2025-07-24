@@ -7,6 +7,8 @@ import setUpRenderManager from './render/render-manager.js';
 import { setCanvasSize } from './render/canvas-size.js';
 import { annotationManagerFetch, annotationManagerAnnotateGraph } from './managers/annotation-manager.js';
 
+import { normalizeGraph } from './utils/node-utils.js';
+
 // global
 var GRAPH_GENOME=null;
 var GRAPH_CHROM=null;

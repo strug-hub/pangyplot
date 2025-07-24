@@ -2,6 +2,7 @@ import { getLinkColor } from '../color/color-style.js';
 import { drawLine, drawRotatedCross } from './painter-utils.js';
 
 export default function basicLinkPainter(ctx, link, svg=false){
+    if (! link.isVisible || !link.isDrawn) return;
 
     const color = getLinkColor(link);
     const zoomFactor = ctx.canvas.__zoom["k"];
