@@ -3,12 +3,12 @@ const EMPTY_FLANKING = "flankingregion";
 
 document.getElementById("go-button").addEventListener("click", function () {
   const goBox = document.getElementById("go-chrom-start-end");
-  let chrom = document.getElementById("go-chrom").textContent;
+  let chromosome = document.getElementById("go-chrom").textContent;
   let start = document.getElementById("go-start").textContent;
   let end = document.getElementById("go-end").textContent;
 
   if (
-    chrom == null || chrom == EMPTY ||
+    chromosome == null || chromosome == EMPTY ||
     start == null || start == EMPTY ||
     end == null || end == EMPTY
   ) {
@@ -30,7 +30,7 @@ document.getElementById("go-button").addEventListener("click", function () {
     //todo: get genome
     const data = {
       genome: document.getElementById('go-genome').textContent,
-      chrom: chrom,
+      chromosome: chrom,
       start: start,
       end: end,
     };

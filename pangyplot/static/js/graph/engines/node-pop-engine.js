@@ -155,7 +155,6 @@ function processSubgraphData(subgraph, originNode, forceGraph){
     annotationManagerAnnotateGraph(forceGraph.graphData());
     searchSequenceEngineRerun();
     
-    document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: forceGraph.graphData() } }));
 }
 
 function deleteNode(graphData, nodeId){

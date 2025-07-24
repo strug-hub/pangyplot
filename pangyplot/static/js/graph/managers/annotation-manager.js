@@ -230,9 +230,10 @@ function annotationManagerClear() {
     Object.keys(GENE_ANNOTATIONS).forEach(key => delete GENE_ANNOTATIONS[key]);
     Object.keys(NODE_ANNOTATION_DATA).forEach(key => delete NODE_ANNOTATION_DATA[key]);
 }
+import { fetchData, buildUrl } from '../utils/network-utils.js';
 
-export function annotationManagerFetch(genome, chromosome, start, end) {
-    const url = buildUrl('/genes', { genome, chromosome, start, end });
+export function annotationManagerFetch(coordinates) {
+    const url = buildUrl('/genes', coordinates);
 
     annotationManagerClear();
     fetchData(url, 'genes').then(fetchedData => {

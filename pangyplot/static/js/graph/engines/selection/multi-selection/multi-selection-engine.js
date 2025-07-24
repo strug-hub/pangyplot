@@ -59,6 +59,12 @@ export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {
     eventBus.subscribe('drag:node', () => {
         destroySelectionBox();
     });
+    eventBus.subscribe('navigation:pan-zoom', () => {
+        selectionAllowed = false;
+    });
+    eventBus.subscribe('navigation:selection', () => {
+        selectionAllowed = true;
+    });
 
     canvasElement.addEventListener('pointerdown', e => {
         if (e.button !== 0) return; // Only left click

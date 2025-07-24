@@ -7,6 +7,4 @@ export default function setUpSelectionEngine(forceGraph, canvasElement) {
         forceGraph.onEngineTick(() => {
             updateSelectionState(forceGraph.graphData().nodes);
         })
-
-
 }

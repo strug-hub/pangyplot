@@ -1,12 +1,4 @@
-function xAxisStraighteningForce(strength = 0.05) {
-    return () => {
-        return function straightenForce(alpha) {
-            for (const node of forceGraph.graphData().nodes) {
-                node.vy += (-node.y * strength) * alpha;  // pull toward y=0
-            }
-        };
-    };
-}
+import { computeNodeCentroid } from "../utils/node-utils.js";
 
 function groupNodesByBubble(nodes) {
     const bubbleGroups = {};
@@ -48,7 +40,7 @@ function computeStableRadius(group, centroid, tolerance = 500) {
 }
 
 
-function bubbleCircularForce(forceGraph, strength = 0.01) {
+export default function bubbleCircularForce(forceGraph, strength = 0.01) {
     return function circularForce(alpha) {
         const nodes = forceGraph.graphData().nodes;
         const bubbleGroups = groupNodesByBubble(nodes);
@@ -90,23 +82,3 @@ function bubbleCircularForce(forceGraph, strength = 0.01) {
 }
 
 
-function yAxisDampeningForce(strength = 0.02) {
-    return () => {
-        return function dampenForce(alpha) {
-            const links = forceGraph.graphData().links;
-
-            for (const link of links) {
-                const src = link.source;
-                const tgt = link.target;
-
-                if (Math.abs(src.x - tgt.x) > Math.abs(src.y - tgt.y)) {
-                    // more horizontal link => try to align y-values
-                    const dy = (src.y - tgt.y) * 0.5;
-
-                    src.vy -= dy * strength * alpha;
-                    tgt.vy += dy * strength * alpha;
-                }
-            }
-        };
-    };
-}

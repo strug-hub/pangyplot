@@ -81,6 +81,5 @@ def parse_args():
 
     exit(0)
 
-
 if __name__ == '__main__':
     parse_args()

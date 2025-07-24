@@ -1,3 +1,7 @@
+#tabs-container{
+    display: none;
+}
+
 .tab-header{
     font-size: large;
 }

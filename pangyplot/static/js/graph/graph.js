@@ -1,37 +1,35 @@
 import buildGraphData from './graph-data/graph-data.js';
 import delLinkForce from './forces/del-link-force.js';
+import bubbleCircularForce from './forces/bubble-circular-force.js';
 import setUpRenderManager from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import { setCanvasSize } from './render/canvas-size.js';
 import { annotationManagerFetch, annotationManagerAnnotateGraph } from './managers/annotation-manager.js';
 import { anchorEndpointNodes } from './utils/node-utils.js';
 
-// global
-var GRAPH_GENOME=null;
-var GRAPH_CHROM=null;
-var GRAPH_START_POS=null;
-var GRAPH_END_POS=null;
+import { setGraphCoordinates, equalCoordinates}  from './graph-state.js';
 
 var GLOBAL_MULTIPLIER=1
 
 let forceGraph = null;
 
-
 const DEBUG=true
 
 
-function getGraphCoordinates(){
-    return {genome: GRAPH_GENOME,
-            chromosome:GRAPH_CHROM,
-            start:GRAPH_START_POS,
-            end:GRAPH_END_POS};
-}
 
 // todo https://github.com/vasturiano/d3-force-registry
 
 
-function renderGraph(graph){
-    console.log("Rendering graph with data:", graph);
+function createForceGraph(graph){
+    console.log("Creating force graph with data:", graph);
+
+    const graphContainer = document.getElementById('graph-container')    
+    const tabContainer = document.getElementById("tabs-container");
+    
+    graphContainer.classList.remove("graph-container-empty");
+    graphContainer.scrollIntoView({ behavior: 'smooth' });
+    tabContainer.style.display = "block";
+
     const canvasElement = document.getElementById("graph");
 
     // Update the graph data without reinitializing the graph
@@ -64,8 +62,8 @@ function renderGraph(graph){
         setUpEngineManager(forceGraph, canvasElement);
         setUpRenderManager(forceGraph);
 
-        pathManagerInitialize();
-        inputManagerSetupInputListeners(forceGraph, canvasElement);
+        // todo: pathManagerInitialize();
+        //inputManagerSetupInputListeners(forceGraph, canvasElement);
         annotationManagerAnnotateGraph(forceGraph.graphData())
 
         console.log("forceGraph:", forceGraph);
@@ -114,13 +112,8 @@ function renderGraph(graph){
             .strength(-500)
             .distanceMax(1000*GLOBAL_MULTIPLIER);  // CONTROLS WAVEYNESS
 
-
-        //forceGraph.d3Force('expansion', expansionForce(0.1));
-
-
         // Custom force to repel from deleted links
         forceGraph.d3Force('delLinkForce', delLinkForce);
-
         forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
 
         //canvasElement.addEventListener("click", evt => {
@@ -154,9 +147,28 @@ function renderGraph(graph){
 
 }
 
+function showLoader() {
+    document.querySelector('.loader').style.display = 'block';
+    //document.querySelector('.loader-filter').style.display = 'block';
+}
 
-function fetchGraph(genome, chromosome, start, end) {
-    const url = buildUrl('/select', { genome, chromosome, start, end });
+function hideLoader() {
+    document.querySelector('.loader').style.display = 'none';
+    document.querySelector('.loader-filter').style.display = 'none';
+}
+hideLoader()
+
+function fetchGraph(coordinates) {
+
+}
+
+import { fetchData, buildUrl } from './utils/network-utils.js';
+function fetchAndConstructGraph(coordinates){
+    if (equalCoordinates(coordinates)) return;
+
+    annotationManagerFetch(coordinates);
+
+    const url = buildUrl('/select', coordinates);
     fetchData(url, 'graph').then(rawGraph => {
         
         console.log("Fetched graph data:", rawGraph);
@@ -164,35 +176,18 @@ function fetchGraph(genome, chromosome, start, end) {
         const graphData = buildGraphData(rawGraph);
         anchorEndpointNodes(graphData.nodes, graphData.links);
 
-        renderGraph(graphData);
-        document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: graphData } }));
+        createForceGraph(graphData);
 
 
     });
-}
-function fetchAndConstructGraph(genome, chrom, start, end){
-    if (genome === GRAPH_GENOME && 
-        chrom === GRAPH_CHROM &&
-        start === GRAPH_START_POS &&
-        end === GRAPH_END_POS){
-        return;
-    }
 
-    GRAPH_GENOME = genome;
-    GRAPH_CHROM = chrom;
-    GRAPH_START_POS = start;
-    GRAPH_END_POS = end;
-    
-    annotationManagerFetch(genome, chrom, start, end);
-    fetchGraph(genome, chrom, start, end);
+    fetchGraph(coordinates);
 }
 
 document.addEventListener('constructGraph', function(event) {
-    const graphElement = document.getElementById('graph-container')    
-    graphElement.classList.remove("graph-container-empty");
-    graphElement.scrollIntoView({ behavior: 'smooth' });
-
-    fetchAndConstructGraph(event.detail.genome, event.detail.chrom, event.detail.start, event.detail.end);
+    const { genome, chromosome, start, end } = event.detail;
+    const coordinates = { genome, chromosome, start, end };
+    fetchAndConstructGraph(coordinates);
 });
 
 
@@ -217,22 +212,22 @@ document.addEventListener('DOMContentLoaded', function () {
     
 
     // SERPINB5
-    let data = {genome: "GRCh38", chrom:"chr18", start:63466958, end:63515085, genome: "GRCh38"};
+    let data = {genome: "GRCh38", chromosome:"chr18", start:63466958, end:63515085, genome: "GRCh38"};
 
     // PRSS1-PRSS2 chr7:142745398-142775564
-    data = {genome: "GRCh38", chrom:"chr7", start:142760398-15000, end:142774564+1000, genome: "GRCh38"};
-    
+    data = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000, genome: "GRCh38"};
+
     // SLC9A3
-    //data = {genome: "GRCh38", chrom:"chr5", start:470456, end:524449, genome: "GRCh38"};
+    //data = {genome: "GRCh38", chromosome:"chr5", start:470456, end:524449, genome: "GRCh38"};
 
     //full chr7
-    //data = {genome: "GRCh38", chrom:"chr7", start:1, end:1427745640, genome: "GRCh38"};
+    //data = {genome: "GRCh38", chromosome:"chr7", start:1, end:1427745640, genome: "GRCh38"};
 
     //BRCA2
-    //data = {genome: "GRCh38", chrom:"chr13", start:32315086-1000, end:32400268+1000};
-    
+    //data = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
+
     //KDM5D
-    data = {genome: "GRCh38", chrom:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
+    data = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
 
     //document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
     document.dispatchEvent(new CustomEvent("constructGraph", { detail: data }));

@@ -1,3 +1,5 @@
+import { fetchData, buildUrl } from '../utils/network-utils.js';
+
 PATH_SELECTER="path-selector";
 CURRENTLY_SELECTED_PATH = null;
 var pathData = null;

@@ -66,43 +66,8 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
         rightClickManager.hideMenu();
       });
 
-    canvasElement.addEventListener('wheel', (event) => {
-        if (!forceGraph){ return; }
-        event.preventDefault();
-
-    });
-
-    canvasElement.addEventListener('pointermove', (event) => {
-        if (!forceGraph){ return; }
-        const inputState = graphInputStateUpdate(event, forceGraph, canvasElement);
-        const canvas = getCanvasBox(canvasElement);
-        const coordinates = getCoordinates(canvasElement, event);
-
-        if (INPUT_STATE === PAN_ZOOM_MODE){
-            canvasElement.style.cursor = "grabbing";
-        }
-        showCoordinates(coordinates);
 
 
-    });
-
-    canvasElement.addEventListener('pointerdown', (event) => {
-        if (!forceGraph){ return; }
-        if (event.button !== 0) return;  // left-click only
-        const inputState = graphInputStateUpdate(event, forceGraph, canvasElement);
-        const canvas = getCanvasBox(canvasElement);
-        const coordinates = getCoordinates(canvasElement, event);
-
-    });
-    
-    document.addEventListener('pointerup', (event) => {
-        if (!forceGraph){ return; }
-        if (event.button !== 0) return;  // left-click only
-        const inputState = graphInputStateUpdate(event, forceGraph, canvasElement);
-        const canvas = getCanvasBox(canvasElement);
-        const coordinates = getCoordinates(canvasElement, event);
-        
-    });
 
     canvasElement.addEventListener('click', (event) => {
         if (!forceGraph){ return; }
@@ -117,6 +82,3 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
 
 }
 
-function inputManagerNodeClicked(node, event, forceGraph){
-
-}

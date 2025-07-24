@@ -1,8 +1,8 @@
-function buildUrl(base, params) {
+export function buildUrl(base, params) {
     return `${base}?${Object.entries(params).map(([key, value]) => `${key}=${value}`).join('&')}`;
 }
 
-function fetchData(url, logLabel = '') {
+export function fetchData(url, logLabel = '') {
     return fetch(url)
         .then(response => {
             if (!response.ok) {
@@ -18,13 +18,3 @@ function fetchData(url, logLabel = '') {
         });
 }
 
-function showLoader() {
-    document.querySelector('.loader').style.display = 'block';
-    //document.querySelector('.loader-filter').style.display = 'block';
-}
-
-function hideLoader() {
-    document.querySelector('.loader').style.display = 'none';
-    document.querySelector('.loader-filter').style.display = 'none';
-}
-hideLoader()

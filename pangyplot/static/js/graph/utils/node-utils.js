@@ -39,8 +39,6 @@ export function anchorEndpointNodes(nodes, links) {
             anchoredCount++;
         }
     }
-
-    console.log(`Anchored ${anchoredCount} endpoint nodes`);
 }
 
 export function resetGraphPositions(graph){
@@ -49,7 +47,6 @@ export function resetGraphPositions(graph){
         node.y = node.initY;
     });
 }
-
 
 export function findNodeBoundsInit(nodes) {
     let bounds = {
