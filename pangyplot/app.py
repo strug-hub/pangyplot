@@ -36,8 +36,8 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
     app.genome = ref
     app.chromosomes = []
 
-    annotation_path = os.path.join(data_dir, "annotations", ref, annotation_name)
-    if annotation_path:
+    if annotation_name:
+        annotation_path = os.path.join(data_dir, "annotations", ref, annotation_name)
         app.annotation_index[ref] = AnnotationIndex(annotation_name, annotation_path)
         print(f"annotation_index size: {asizeof(app.annotation_index[ref]) / 1024**2:.2f} MB")
 

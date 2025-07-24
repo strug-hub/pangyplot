@@ -233,6 +233,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     //BRCA2
     //data = {genome: "GRCh38", chrom:"chr13", start:32315086-1000, end:32400268+1000};
+    
+    //KDM5D
+    data = {genome: "GRCh38", chrom:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
 
     //document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
     document.dispatchEvent(new CustomEvent("constructGraph", { detail: data }));

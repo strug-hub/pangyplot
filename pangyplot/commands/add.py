@@ -12,17 +12,15 @@ from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 
 def pangyplot_add(args):
 
-    datastore_path = os.path.join(args.dir, "graphs")
-    datastore_path = os.path.join(datastore_path, args.db)
-
+    datastore_path = os.path.join(args.dir, "graphs", args.db)
+    
     if not args.force and os.path.exists(datastore_path):
         response = input(f"Do you want to add to database '{args.db}'? [y/N]: ").strip().lower()
         if response != 'y':
             print("Aborting.")
             exit(1)
     
-    if not os.path.exists(datastore_path):
-        os.mkdir(datastore_path)
+    os.makedirs(datastore_path, exist_ok=True)
 
     chr_path = os.path.join(datastore_path, args.chr)
     if not args.force and os.path.exists(chr_path):

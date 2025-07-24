@@ -37,7 +37,8 @@ def pangyplot_status(args):
                 n_link = count_links(chr_dir)
                 n_bubble = count_bubbles(chr_dir)
 
-                print(f"  🧬 {chr_name} (refs: {", ".join(refs)})")
+                ref_list = ", ".join(refs)
+                print(f"  🧬 {chr_name} (refs: {ref_list})")
                 print(f"    → Segments: {n_seg}")
                 print(f"    → Links:    {n_link}")
                 print(f"    → Bubbles:  {n_bubble}")
