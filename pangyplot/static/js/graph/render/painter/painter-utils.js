@@ -1,16 +1,15 @@
-
-function outlineNode(node, ctx, shift, size, color) {
+export function outlineNode(node, ctx, shift, size, color) {
     drawCircle(ctx, node.x+shift, node.y+shift, size, color)
 }
 
-function outlineLink(link, ctx, shift, width, color) {
+export function outlineLink(link, ctx, shift, width, color) {
     drawLine(ctx, 
         link.source.x+shift, link.source.y+shift,
         link.target.x+shift, link.target.y+shift, width, color
     );
 }
 
-function drawLine(ctx, x1, y1, x2, y2, width, color){
+export function drawLine(ctx, x1, y1, x2, y2, width, color){
     const previousLineWidth = ctx.lineWidth;
     const previousLineCap = ctx.lineCap;
     const previousStrokeStyle = ctx.strokeStyle;
@@ -29,8 +28,7 @@ function drawLine(ctx, x1, y1, x2, y2, width, color){
     ctx.strokeStyle = previousStrokeStyle;
 }
 
-
-function drawCircle(ctx, x, y, size, color){
+export function drawCircle(ctx, x, y, size, color){
     const previousFillStyle = ctx.fillStyle;
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -39,7 +37,7 @@ function drawCircle(ctx, x, y, size, color){
     ctx.fillStyle = previousFillStyle;
 }
 
-function drawCircleOutline(ctx, x, y, size, color, lineWidth=3, fill=BACKGROUND_COLOR){
+export function drawCircleOutline(ctx, x, y, size, color, lineWidth=3, fill=BACKGROUND_COLOR){
     ctx.save();
     ctx.strokeStyle = color;
     ctx.fillStyle = fill;
@@ -50,7 +48,7 @@ function drawCircleOutline(ctx, x, y, size, color, lineWidth=3, fill=BACKGROUND_
     ctx.restore();
 }
 
-function drawPath(ctx, path, width, color) {
+export function drawPath(ctx, path, width, color) {
     ctx.save();
 
     if (path.length < 2) return;
@@ -69,14 +67,14 @@ function drawPath(ctx, path, width, color) {
 
 }
 
-function drawSquare(ctx, x, y, size, color){
+export function drawSquare(ctx, x, y, size, color){
     ctx.save();
     ctx.fillStyle = color;
     ctx.fillRect(x - size/2, y - size/2, size, size);
     ctx.restore();
 }
 
-function drawRectangleOutline(ctx, x, y, width, height, color, lineWidth=3) {
+export function drawRectangleOutline(ctx, x, y, width, height, color, lineWidth=3) {
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
@@ -88,7 +86,7 @@ function drawRectangleOutline(ctx, x, y, width, height, color, lineWidth=3) {
     ctx.restore();
 }
 
-function drawTriangle(ctx, x, y, size, color){
+export function drawTriangle(ctx, x, y, size, color){
     ctx.save();
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -99,19 +97,7 @@ function drawTriangle(ctx, x, y, size, color){
     ctx.restore();
 }
 
-function drawCross(ctx, x, y, size, color){
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.beginPath(); 
-    ctx.moveTo(x - size, y - size);
-    ctx.lineTo(x + size, y + size);
-    ctx.moveTo(x + size, y - size);
-    ctx.lineTo(x - size, y + size);
-    ctx.stroke();
-    ctx.restore();
-}
-
-function drawCross(ctx, x, y, size, width, color){
+export function drawCross(ctx, x, y, size, width, color){
     ctx.save(); 
     ctx.beginPath();
     ctx.strokeStyle = color;
@@ -125,7 +111,7 @@ function drawCross(ctx, x, y, size, width, color){
     ctx.stroke();
     ctx.restore();
 }
-function drawRotatedCross(ctx, x, y, size, width, color, angle) {
+export function drawRotatedCross(ctx, x, y, size, width, color, angle) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -143,9 +129,7 @@ function drawRotatedCross(ctx, x, y, size, width, color, angle) {
     ctx.restore(); 
 }
 
-
-
-function drawText(text, ctx, x, y, size, color, outlineColor=null, outlineWidth=4, align="center", baseline="middle") {
+export function drawText(text, ctx, x, y, size, color, outlineColor=null, outlineWidth=4, align="center", baseline="middle") {
     ctx.save();
     
     ctx.textAlign = align;

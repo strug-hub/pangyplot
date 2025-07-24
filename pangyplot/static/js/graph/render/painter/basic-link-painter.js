@@ -1,28 +1,9 @@
+import { getLinkColor } from '../color/color-style.js';
+import { drawLine, drawRotatedCross } from './painter-utils.js';
 
-function basicRenderPaintNode(ctx, node, svg=false) {
+export default function basicLinkPainter(ctx, link, svg=false){
 
-    const zoomFactor = ctx.canvas.__zoom["k"];
-    const color = colorManagerNodeColor(node);
-    const nodesize = node.width + 3/zoomFactor;
-    if (svg) {
-        return {
-            cx: node.x,
-            cy: node.y,
-            size: nodesize,
-            fill: color
-        };
-    } else {
-        drawCircle(ctx, node.x, node.y, nodesize, color);
-    }
-    
-    //drawSquare(ctx, x, y, size, color);
-    //drawCross(ctx, x, y, size, color);
-    //drawTriangle(ctx, x, y, size, color);
-}
-
-function basicRenderPaintLink(ctx, link, svg=false){
-
-    const color = colorManagerLinkColor(link);
+    const color = getLinkColor(link);
     const zoomFactor = ctx.canvas.__zoom["k"];
 
     let zoomAdjust = 0;

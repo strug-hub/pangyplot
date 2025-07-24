@@ -62,14 +62,6 @@ function graphSettingEngineSetup(forceGraph){
     });
 
 
-    //document.getElementById('spread-slider').addEventListener('input', function() {
-    //    const newValue = parseFloat(this.value);
-    //    GRAPH_SPREAD_X_FORCE=newValue;
-    //    forceGraph.d3ReheatSimulation()
-    //    console.log("spread", newValue)
-    //});
-
-
     document.getElementById('pull-slider').addEventListener('input', function() {
                 
         const newValue = parseFloat(this.value);

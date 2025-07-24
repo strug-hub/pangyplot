@@ -50,8 +50,8 @@ function pointerUp(event, forceGraph) {
             const hitNodes = nodesInBox(forceGraph, bounds);
             hitNodes.forEach(node => node.isSelected = true);
         }
-        destroySelectionBox();
     }
+    destroySelectionBox();
 }
 
 export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {

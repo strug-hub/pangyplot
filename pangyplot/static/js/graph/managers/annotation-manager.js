@@ -1,3 +1,5 @@
+import { rgbStringToHex, stringToColor } from "../render/color/color-utils.js";
+
 const GENE_ANNOTATIONS = {};
 const NODE_ANNOTATION_DATA = {};
 
@@ -194,7 +196,7 @@ function annotateTranscript(graphData, gene, transcriptIndex = 0) {
     });
 }
 
-function annotationManagerAnnotateGraph(graphData) {
+export function annotationManagerAnnotateGraph(graphData) {
 
     Object.values(GENE_ANNOTATIONS).forEach(gene => {
 
@@ -229,7 +231,7 @@ function annotationManagerClear() {
     Object.keys(NODE_ANNOTATION_DATA).forEach(key => delete NODE_ANNOTATION_DATA[key]);
 }
 
-function annotationManagerFetch(genome, chromosome, start, end) {
+export function annotationManagerFetch(genome, chromosome, start, end) {
     const url = buildUrl('/genes', { genome, chromosome, start, end });
 
     annotationManagerClear();
@@ -247,7 +249,7 @@ function annotationManagerFetch(genome, chromosome, start, end) {
     });
 }
 
-ANNOTATION_UPDATE_FRAME=0;
+var ANNOTATION_UPDATE_FRAME=0;
 
 function annotationManagerUpdate(ctx, forceGraph){
     //todo?

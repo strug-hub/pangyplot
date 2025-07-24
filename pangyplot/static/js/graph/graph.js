@@ -1,7 +1,11 @@
 import buildGraphData from './graph-data/graph-data.js';
 import delLinkForce from './forces/del-link-force.js';
-import setUpDragManager from './engines/drag/drag-manager.js';
+import setUpDragEngine from './engines/drag/drag-engine.js';
+import dragInfluenceForce from './engines/drag/drag-force.js';
 import setUpSelectionEngine from './engines/multi-selection/multi-selection-engine.js';
+import setUpRenderManager from './render/render-manager.js';
+import { setCanvasSize } from './render/canvas-size.js';
+import { annotationManagerFetch, annotationManagerAnnotateGraph } from './managers/annotation-manager.js';
 
 // global
 var GRAPH_GENOME=null;
@@ -13,13 +17,9 @@ var GLOBAL_MULTIPLIER=1
 
 let forceGraph = null;
 
-const FORCE_GRAPH_HEIGHT_PROPORTION = 0.8;
-const FORCE_GRAPH_WIDTH_PROPORTION = 0.8;
 
 const DEBUG=true
 
-
-var GRAPH_SPREAD_X_FORCE=0
 
 function getGraphCoordinates(){
     return {genome: GRAPH_GENOME,
@@ -30,12 +30,6 @@ function getGraphCoordinates(){
 
 // todo https://github.com/vasturiano/d3-force-registry
 
-function getCanvasWidth(){
-    return window.innerWidth*FORCE_GRAPH_WIDTH_PROPORTION;
-}
-function getCanvasHeight(){
-    return window.innerHeight*FORCE_GRAPH_HEIGHT_PROPORTION;
-}
 
 function renderGraph(graph){
     console.log("Rendering graph with data:", graph);
@@ -53,9 +47,6 @@ function renderGraph(graph){
         forceGraph = ForceGraph()(canvasElement)
             .graphData(graph)
             .nodeId("nodeid")
-            .height(getCanvasHeight())
-            .width(getCanvasWidth())
-            .nodeRelSize(HOVER_PRECISION)
             .nodeVal(node => node.width ?? 1)
             .autoPauseRedraw(false) // keep drawing after engine has stopped
             .d3VelocityDecay(0.1)
@@ -64,8 +55,6 @@ function renderGraph(graph){
             .onNodeDrag((node, translate) => dragManagerNodeDragged(node, translate, forceGraph))
             .onNodeDragEnd(node => dragManagerNodeDragEnd(node, forceGraph))
             .d3AlphaDecay(0.0228)
-            .nodeCanvasObject((node, ctx) => renderManagerPaintNode(ctx, node)) 
-            .linkCanvasObject((link, ctx) => renderManagerPaintLink(ctx, link)) 
             .nodeLabel("nodeid")
             .onNodeClick((node, event) => inputManagerNodeClicked(node, event, forceGraph))
             .minZoom(1e-6) //default = 0.01
@@ -73,8 +62,13 @@ function renderGraph(graph){
             .warmupTicks(4)
             //.linkDirectionalParticles(4)
 
-        setUpDragManager(forceGraph);
+        setCanvasSize(forceGraph);
+
+        setUpDragEngine(forceGraph, canvasElement);
         setUpSelectionEngine(forceGraph, canvasElement);
+
+
+        setUpRenderManager(forceGraph)
 
         pathManagerInitialize();
         inputManagerSetupInputListeners(forceGraph, canvasElement);
@@ -89,12 +83,8 @@ function renderGraph(graph){
         console.log("forceGraph:", forceGraph);
 
         forceGraph.onEngineTick(() => {
-            forceGraph.backgroundColor(colorManagerBackgroundColor());
             debugInformationUpdate(forceGraph.graphData());
         })
-
-        forceGraph.onRenderFramePre((ctx) => { renderManagerPreRender(ctx, forceGraph, getCanvasWidth(), getCanvasHeight()); })
-        forceGraph.onRenderFramePost((ctx) => { renderManagerPostRender(ctx, forceGraph, getCanvasWidth(), getCanvasHeight()); })
         
         // --- FORCES ---
 
@@ -142,11 +132,8 @@ function renderGraph(graph){
 
         // Custom force to repel from deleted links
         forceGraph.d3Force('delLinkForce', delLinkForce);
+        forceGraph.d3Force('dragInfluence', dragInfluenceForce(forceGraph));
 
-        forceGraph.d3Force('dragRipple', pullNeighborsWhenDragging);
-
-        //forceGraph.d3Force('straightenX', xAxisStraighteningForce(0.02));
-        //forceGraph.d3Force('flattenY', yAxisDampeningForce(0.02));
         forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
 
         //canvasElement.addEventListener("click", evt => {
@@ -178,7 +165,6 @@ function renderGraph(graph){
     }, 500); // wait 0.5 seconds 
     
 
-    colorUpdateLegend();
 }
 
 
