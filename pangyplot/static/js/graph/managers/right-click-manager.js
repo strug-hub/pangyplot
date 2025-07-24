@@ -107,8 +107,8 @@ function rightClickManagerSetup(forceGraph){
       const nchar= 25;
       
       nodes.forEach(node => {
-          let nodeInfo = getNodeInformation(node.nodeid);
-          let fullSequence = nodeInfo.sequence;
+          let nodeData = node.data;
+          let fullSequence = nodeData.sequence;
           let truncatedSequence = fullSequence.slice(0, nchar);
           let seq = truncatedSequence + (fullSequence.length > nchar ? '...' : '');
           node.label = seq || "";

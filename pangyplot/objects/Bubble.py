@@ -34,17 +34,16 @@ class Bubble:
 
     def serialize(self):
         return {
-            "id": self.id,
-            "nodeid": f"b{self.id}",
-            "chain": self.chain,
+            "id": f"b{self.id}",
             "type": "bubble",
+            "chain": self.chain,
+            "chain_step": self.chain_step,
             "subtype": self.subtype,
             "size": len(self.inside),
             "length": self.length,
             "gc_count": self.gc_count,
             "n_counts": self.n_counts,
-            "range_exclusive": self._range_exclusive,
-            "range_inclusive": self._range_inclusive,
+            "ranges": self._range_inclusive,
             "x1": self.x1,
             "x2": self.x2,
             "y1": self.y1,
@@ -79,75 +78,73 @@ class Bubble:
                 return sib_id
         return None
 
+    def get_source_links(self, gfa_index):
+        links = []
+        source_ids = self.get_source()
+        for source_id in source_ids:
+            for link in gfa_index.get_links(source_id):
+                if link.other_id(source_id) in source_ids:
+                    continue
+                link.update_to_bubble(source_id, self.id)
+                links.append(link)
+        return links
+
+    def get_sink_links(self, gfa_index):
+        links = []
+        sink_ids = self.get_sink()
+        for sink_id in sink_ids:
+            for link in gfa_index.get_links(sink_id):
+                if link.other_id(sink_id) in sink_ids:
+                    continue
+                link.update_to_bubble(sink_id, self.id)
+                links.append(link)
+        return links
+        
     def end_links(self, gfa_index):
-        # gfa_index is needed to get correct strand orientation from GFA
-        direction = 0
-        source_id = self._source
-        source_orientation = "+"
-        
-        # Determine source connection and its strand
-        for sid in self.get_source():
-            for link in gfa_index.get_links(sid):
-                for inside_id in self.inside:
-                    if link.contains(inside_id):
-                        direction += 1 if link.to_id == inside_id else -1
-                        source_id = link.other_id(inside_id)
-                        # Strand of external source relative to bubble
-                        source_orientation = (
-                            link.from_strand if link.from_id == source_id else link.to_strand
-                        )
-                        break
+        """
+        Returns two links for the bubble: one connecting to its START (-) and one to its END (+).
+        Normalizes orientation if needed.
+        """
 
-        source_link = Link()
-        if direction >= 0:
-            source_link.from_id = source_id
-            source_link.to_id = self.id
-            source_link.from_strand = source_orientation
-            source_link.to_strand = "+"
-            source_link.make_segment_to_bubble()
-        else:
-            source_link.from_id = self.id
-            source_link.to_id = source_id
-            source_link.from_strand = "+"
-            source_link.to_strand = source_orientation
-            source_link.make_bubble_to_segment()
+        def get_external_links(node_ids, internal_ids):
+            external = []
+            for node_id in node_ids:
+                for link in gfa_index.get_links(node_id):
+                    if link.other_id(node_id) in internal_ids:
+                        external.append((node_id, link))
+            return external
 
-        # Reset for sink
-        direction = 0
-        sink_id = self._sink
-        sink_orientation = "+"
-        
-        # Determine sink connection and its strand
-        for sid in self.get_sink():
-            for link in gfa_index.get_links(sid):
-                for inside_id in self.inside:
-                    if link.contains(inside_id):
-                        direction += -1 if link.to_id == inside_id else 1
-                        sink_id = link.other_id(inside_id)
-                        # Strand of external sink relative to bubble
-                        sink_orientation = (
-                            link.from_strand if link.from_id == sink_id else link.to_strand
-                        )
-                        break
+        left_candidates = get_external_links(self.get_source(), self.inside)
+        right_candidates = get_external_links(self.get_sink(), self.inside)
 
-        sink_link = Link()
-        if direction >= 0:
-            sink_link.from_id = self.id
-            sink_link.to_id = sink_id
-            sink_link.from_strand = "+"
-            sink_link.to_strand = sink_orientation
-            sink_link.make_bubble_to_segment()
-        else:
-            sink_link.from_id = sink_id
-            sink_link.to_id = self.id
-            sink_link.from_strand = sink_orientation
-            sink_link.to_strand = "+"
-            sink_link.make_segment_to_bubble()
+        def clone_and_replace(candidates):
+            outside_id, link = candidates[0]
+            new_link = Link()
+            new_link.from_id = link.from_id
+            new_link.to_id = link.to_id
+            new_link.from_strand = link.from_strand
+            new_link.to_strand = link.to_strand
 
-        print(
-            f"Bubble {self.id} source link: {source_link.serialize()}, sink link: {sink_link.serialize()}"
-        )
-        return (source_link, sink_link)
+            if new_link.from_id == outside_id:
+                new_link.to_id = self.id
+                new_link.make_segment_to_bubble()  # adjusts orientation
+            else:
+                new_link.from_id = self.id
+                new_link.make_bubble_to_segment()
+
+            return new_link
+
+        # Convert selected links into new links with bubble node replacing inside
+        result_links = []
+        left = clone_and_replace(left_candidates)
+        right = clone_and_replace(right_candidates)
+
+        # Normalize: ensure bubble appears as "-" on first and "+" on second
+        #left.to_strand = "-" if left.to_id == self.id else left.from_strand
+        #right.to_strand = "+" if right.to_id == self.id else right.from_strand
+
+        print(f"Bubble {self.id} start link: {left.serialize()}, end link: {right.serialize()}")
+        return (left, right)
 
     def ends(self, get_compacted=True, as_list=False):
         sources = [self._source]
@@ -159,23 +156,7 @@ class Bubble:
         if as_list:
             return sources + sinks
         return (sources, sinks)
-    
-    def next_sibling_link(self, sib_filter=None):
-        sib_id = self.get_sink_sibling()
-        if sib_filter and sib_id not in sib_filter:
-            return None
-        link = Link()
-        link.from_id = self.id
-        link.to_id = sib_id
-        link.from_strand = "+"
-        link.to_strand = "+"
-        link.make_chain_link()
-        #todo: 
-        #link.haplotype
-        #link.reverse
-        #link.frequency
-        return link
-    
+        
     def get_source(self, get_compacted_nodes=True):
         if not get_compacted_nodes:
             return [self._source]

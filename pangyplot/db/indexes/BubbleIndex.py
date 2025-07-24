@@ -5,6 +5,7 @@ from array import array
 
 import pangyplot.db.sqlite.bubble_db as db
 import pangyplot.db.db_utils as utils
+from pangyplot.objects.Chain import Chain
 
 QUICK_INDEX = "bubbles.quickindex.json"
 
@@ -84,19 +85,17 @@ class BubbleIndex:
         #results.extend(self._collect_non_ref(results))
 
         if as_chains:
-            chain_found = defaultdict(list)
-            chain_results = dict()
+            chain_results = defaultdict(list)
             for bubble in results:
-                chain_found[bubble.chain].append(bubble)
+                chain_results[bubble.chain].append(bubble)
 
-            for chain_id, bubbles in chain_found.items():
-                chain_step_min = min(bubble.chain_step for bubble in bubbles)
-                chain_step_max = max(bubble.chain_step for bubble in bubbles)
-                bubble_ids = db.get_bubble_ids_from_chain(self.dir, bubble.chain, chain_step_min, chain_step_max)
-                chain_results[chain_id] = [self[bubble_id] for bubble_id in bubble_ids]
-            
-            return chain_results
-        
+            chains = []
+            for chain_id in chain_results:
+                chain = Chain(chain_id, chain_results[chain_id])
+                chain.fill_chain(self.dir)
+                chains.append(chain)
+            return chains
+
         return results
 
     def _traverse_descendants(self, bubble, min_step, max_step):
@@ -134,6 +133,7 @@ class BubbleIndex:
         traverse(bubble)
         return descendants
 
+    #TODO: remove?
     def _collect_non_ref(self, results, debug=False):
         result_bubbles = set(results)
         visited = set(result_bubbles)
@@ -206,22 +206,6 @@ class BubbleIndex:
 
         return merged
 
-    def to_bubble_graph(self, start_step, end_step, gfa_index):
-        chain_dict = self.get_top_level_bubbles(start_step, end_step, as_chains=True)
-        
-        bubble_nodes = []
-        bubble_links = []
-        segment_ids = set()
-
-        for _, bubbles in chain_dict.items():
-            for bubble in bubbles:
-                bubble_nodes.append(bubble)
-                bubble_links.extend(bubble.end_links(gfa_index))
-                ends = set(bubble.ends(as_list=True))
-                segment_ids.update(ends)
-
-        return bubble_nodes, bubble_links, segment_ids
-    
     def get_subgraph(self, bubble_id, gfa_index):
         bubble = self[bubble_id]
         if bubble is None:

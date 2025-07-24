@@ -60,7 +60,7 @@ function renderManagerPreRender(ctx, forceGraph, canvasWidth, canvasHeight){
     ctx.save();
     
     geneRenderEngineDraw(ctx, forceGraph.graphData());
-    selectionEngineDraw(ctx, forceGraph.graphData());
+    //selectionEngineDraw(ctx, forceGraph.graphData());
 
     ctx.restore();
 }

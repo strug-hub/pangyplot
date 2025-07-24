@@ -72,9 +72,6 @@ function explodeSubgraph(originNode, nodeResult, forceGraph) {
                 node.x += normX * shift;
                 node.y += normY * shift;
             }
-            //LERP nodes to make space for subgraph
-            // it may be overkill but I left the implementation in
-            //addLerp(node, normX * shift, normY * shift, 20);
         });
 
     }
@@ -156,8 +153,6 @@ function processSubgraphData(subgraph, originNode, forceGraph){
     //forceGraph = simplifyGraph(forceGraph, 1);
     //forceGraph = shrinkGraph(forceGraph, 1000); 
     
-    calculateExtrema(forceGraph.graphData())
-
     annotationManagerAnnotateGraph(forceGraph.graphData());
     searchSequenceEngineRerun();
     

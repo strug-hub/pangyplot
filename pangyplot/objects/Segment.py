@@ -13,8 +13,8 @@ class Segment:
 
     def serialize(self):
         return {
-            "id": self.id,
-            "nodeid": f"s{self.id}",
+            "id": f"s{self.id}",
+            "type": "segment",
             "x1": self.x1,
             "y1": self.y1,
             "x2": self.x2,
@@ -23,10 +23,8 @@ class Segment:
             "gc_count": self.gc_count,
             "n_count": self.n_count,
             "length": self.length,
-            "range_inclusive": [[step, step] for step in self.step],
-            "range_exclusive": [[step, step] for step in self.step],
-            "type": "segment"
-        }
+            "ranges": [[step, step] for step in self.step]
+       }
 
     def add_step(self, step_index):
         self.step = step_index.query_segment(self.id)

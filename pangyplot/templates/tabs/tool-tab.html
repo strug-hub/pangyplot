@@ -1,11 +1,11 @@
-<script src="{{ url_for('static', filename='js/ui/tabs/tool-tab.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/ui/tabs/tool-tab.js') }}"></script>
 
 <div class="tab-header">Tools</div>
 <hr>
 
 <div>
     <label class="flex-row">
-        <input type="checkbox" id="anchorToggle" onchange="toolHandleAnchorToggle(this.checked)" checked=false>
+        <input type="checkbox" id="anchorToggle">
         <i class="fa fa-anchor"></i>
         Anchor on drag
     </label>

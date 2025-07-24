@@ -86,7 +86,6 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
         }
         showCoordinates(coordinates);
 
-        selectionEnginePointerMove(event, forceGraph, canvasElement, canvas, coordinates, inputState);
 
     });
 
@@ -97,9 +96,7 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
         const canvas = getCanvasBox(canvasElement);
         const coordinates = getCoordinates(canvasElement, event);
 
-        selectionEnginePointerDown(event, forceGraph, canvasElement, canvas, coordinates, inputState);
     });
-
     
     document.addEventListener('pointerup', (event) => {
         if (!forceGraph){ return; }
@@ -108,7 +105,6 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
         const canvas = getCanvasBox(canvasElement);
         const coordinates = getCoordinates(canvasElement, event);
         
-        selectionEnginePointerUp(event, forceGraph, canvasElement, canvas, coordinates, inputState);        
     });
 
     canvasElement.addEventListener('click', (event) => {
@@ -118,7 +114,6 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
         const canvas = getCanvasBox(canvasElement);
         const coordinates = getCoordinates(canvasElement, event);
 
-        selectionEngineMouseClick(event, forceGraph, canvasElement, canvas, coordinates, inputState);
         popNodeEngineMouseClick(event, forceGraph, canvasElement, canvas, coordinates, inputState);
 
     });

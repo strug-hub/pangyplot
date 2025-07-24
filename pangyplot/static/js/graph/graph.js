@@ -1,17 +1,22 @@
+import buildGraphData from './graph-data/graph-data.js';
+import delLinkForce from './forces/del-link-force.js';
+import setUpDragManager from './engines/drag/drag-manager.js';
+import setUpSelectionEngine from './engines/multi-selection/multi-selection-engine.js';
+
 // global
 var GRAPH_GENOME=null;
 var GRAPH_CHROM=null;
 var GRAPH_START_POS=null;
 var GRAPH_END_POS=null;
 
-var GLOBAL_MULTIPLIER=3
+var GLOBAL_MULTIPLIER=1
 
 let forceGraph = null;
 
 const FORCE_GRAPH_HEIGHT_PROPORTION = 0.8;
 const FORCE_GRAPH_WIDTH_PROPORTION = 0.8;
 
-DEBUG=true
+const DEBUG=true
 
 
 var GRAPH_SPREAD_X_FORCE=0
@@ -47,26 +52,29 @@ function renderGraph(graph){
 
         forceGraph = ForceGraph()(canvasElement)
             .graphData(graph)
-            .nodeId("__nodeid")
+            .nodeId("nodeid")
             .height(getCanvasHeight())
             .width(getCanvasWidth())
             .nodeRelSize(HOVER_PRECISION)
-            .nodeVal(NODE_WIDTH)
+            .nodeVal(node => node.width ?? 1)
             .autoPauseRedraw(false) // keep drawing after engine has stopped
             .d3VelocityDecay(0.1)
             .cooldownTicks(Infinity)
             .cooldownTime(Infinity)
+            .onNodeDrag((node, translate) => dragManagerNodeDragged(node, translate, forceGraph))
             .onNodeDragEnd(node => dragManagerNodeDragEnd(node, forceGraph))
             .d3AlphaDecay(0.0228)
             .nodeCanvasObject((node, ctx) => renderManagerPaintNode(ctx, node)) 
             .linkCanvasObject((link, ctx) => renderManagerPaintLink(ctx, link)) 
-            .nodeLabel("__nodeid")
-            .onNodeDrag((node, translate) => dragManagerNodeDragged(node, translate, forceGraph))
+            .nodeLabel("nodeid")
             .onNodeClick((node, event) => inputManagerNodeClicked(node, event, forceGraph))
             .minZoom(1e-6) //default = 0.01
             .maxZoom(1000) //default = 1000
             .warmupTicks(4)
             //.linkDirectionalParticles(4)
+
+        setUpDragManager(forceGraph);
+        setUpSelectionEngine(forceGraph, canvasElement);
 
         pathManagerInitialize();
         inputManagerSetupInputListeners(forceGraph, canvasElement);
@@ -82,7 +90,6 @@ function renderGraph(graph){
 
         forceGraph.onEngineTick(() => {
             forceGraph.backgroundColor(colorManagerBackgroundColor());
-            applyNodeLerps(forceGraph.graphData().nodes);
             debugInformationUpdate(forceGraph.graphData());
         })
 
@@ -129,14 +136,12 @@ function renderGraph(graph){
             .strength(-500)
             .distanceMax(1000*GLOBAL_MULTIPLIER);  // CONTROLS WAVEYNESS
 
-        calculateExtrema(forceGraph.graphData())
 
-        //forceGraph.d3Force('stress', stressForce(1));
         //forceGraph.d3Force('expansion', expansionForce(0.1));
 
 
         // Custom force to repel from deleted links
-        forceGraph.d3Force('repelFromDeletedLinks', repelFromDelLinksDegree);
+        forceGraph.d3Force('delLinkForce', delLinkForce);
 
         forceGraph.d3Force('dragRipple', pullNeighborsWhenDragging);
 
@@ -176,26 +181,20 @@ function renderGraph(graph){
     colorUpdateLegend();
 }
 
-function processGraphData(rawGraph){
-
-    const nodeResult = processNodes(rawGraph.nodes);
-    const links = processLinks(rawGraph.links);
-
-    //anchorEndpointNodes(nodeResult.nodes, links)
-
-    let graph = {"nodes": nodeResult.nodes, "links": links.concat(nodeResult.nodeLinks)}
-
-    const normalizedGraph = normalizeGraph(graph);
-
-    renderGraph(normalizedGraph);
-    document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: normalizedGraph } }));
-}
 
 function fetchGraph(genome, chromosome, start, end) {
     const url = buildUrl('/select', { genome, chromosome, start, end });
-    fetchData(url, 'graph').then(fetchedData => {
-        console.log("Fetched graph data:", fetchedData);
-        processGraphData(fetchedData);
+    fetchData(url, 'graph').then(rawGraph => {
+        
+        console.log("Fetched graph data:", rawGraph);
+
+        const graphData = buildGraphData(rawGraph);
+        const normalizedGraph = normalizeGraph(graphData);
+
+        renderGraph(normalizedGraph);
+        document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: normalizedGraph } }));
+
+
     });
 }
 function fetchAndConstructGraph(genome, chrom, start, end){

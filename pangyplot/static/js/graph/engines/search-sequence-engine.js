@@ -68,8 +68,8 @@ function searchSequenceEngineRun(searchString) {
 
     // Iterate through nodes
     nodes.forEach(node => {
-        const nodeInfo = getNodeInformation(node.nodeid);
-        const nodeSequence = nodeInfo.sequence;
+        const nodeData = node.data;
+        const nodeSequence = nodeData.seq;
 
         if (!nodeSequence || nodeSequence.length < searchString.length) {
             return;
@@ -106,6 +106,7 @@ function searchSequenceEngineRun(searchString) {
 
 
 function searchSequenceEngineUpdate(ctx, forceGraph, svg=false) {
+    return false; //TODO
     const graphData = forceGraph.graphData();
     const nodes = graphData.nodes;
     const svgData = []
@@ -113,7 +114,7 @@ function searchSequenceEngineUpdate(ctx, forceGraph, svg=false) {
     const segments = {};
     nodes.forEach(node => {
         if (!segments[node.nodeid]) {
-            const totalKinks = countNodeKinks(node.nodeid);
+            const totalKinks = node.data.kinks;
             segments[node.nodeid] = new Array(totalKinks).fill(null);
         }
         segments[node.nodeid][node.__nodeidx] = node;
@@ -127,8 +128,8 @@ function searchSequenceEngineUpdate(ctx, forceGraph, svg=false) {
 
             if (!segmentNodes) continue;
 
-            const totalKinks = countNodeKinks(segmentNodes[0].nodeid);
-            const totalLen = segmentNodes[0].seqLen;
+            const totalKinks = segmentNodes[0].data.kinks;
+            const totalLen = segmentNodes[0].data.seqLen;
 
             // Special case: single-kink segment
             if (totalKinks === 1) {

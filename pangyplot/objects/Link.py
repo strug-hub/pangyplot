@@ -47,8 +47,20 @@ class Link:
         self.to_type = "s"
 
     def id(self):
-        return f"{self.from_id}{self.from_strand}{self.to_id}{self.to_strand}"
+        return f"{self.from_type}{self.from_id}{self.from_strand}{self.to_type}{self.to_id}{self.to_strand}"
     
+    def update_to_bubble(self, current_id, bubble_id, orientation=None):
+        if self.from_id == current_id:
+            self.from_id = bubble_id
+            self.from_type = "b"
+            if orientation is not None:
+                self.from_strand = orientation
+        elif self.to_id == current_id:
+            self.to_id = bubble_id
+            self.to_type = "b"
+            if orientation is not None:
+                self.to_strand = orientation
+
     def get_haplotype_presence(self, sample_idx):
         #todo: test and verify
         hap_int = int(self.haplotype, 16)

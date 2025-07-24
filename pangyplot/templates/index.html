@@ -57,22 +57,22 @@
 </div>
 
 
+<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
+
+<script src="{{url_for('static', filename='js/graph/todo.js')}}"></script>
+
 <script src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
 
 <script src="{{url_for('static', filename='js/d3/d3.js')}}"></script>
 <script src="{{url_for('static', filename='js/d3/d3-annotation.min.js')}}"></script>
 <script src="{{url_for('static', filename='js/d3/force-graph.min.js')}}"></script>
 
-<script src="{{url_for('static', filename='js/graph/graph.js')}}"></script>
+
 <script src="{{url_for('static', filename='js/graph/graph-legend.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/graph-input-state.js')}}"></script>
 
-<script src="{{url_for('static', filename='js/graph/forces/del-link-force.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/forces/etc-graph-forces.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/forces/node-drag-force.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/forces/explosive-force.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/forces/stress-force.js')}}"></script>
-
 <script src="{{url_for('static', filename='js/graph/forces/experimental-force.js')}}"></script>
 
 <script src="{{url_for('static', filename='js/graph/managers/input-manager.js')}}"></script>
@@ -81,12 +81,8 @@
 
 <script src="{{url_for('static', filename='js/graph/managers/render-manager.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/managers/color-manager.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/managers/node-manager.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/managers/link-manager.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/managers/path-manager.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/managers/annotation-manager.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/managers/drag-manager.js')}}"></script>
-
 
 <script src="{{url_for('static', filename='js/graph/engines/basic-render-engine.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/engines/label-engine.js')}}"></script>
@@ -94,14 +90,14 @@
 <script src="{{url_for('static', filename='js/graph/engines/gene-render-engine.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/engines/collapse-engine.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/engines/shrink-engine.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/engines/selection-engine.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/engines/node-pop-engine.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/engines/graph-setting-engine.js')}}"></script>
+<script src="{{url_for('static', filename='js/graph/engines/drag/node-drag-force.js')}}"></script>
 
 
 <script src="{{url_for('static', filename='js/graph/utils/color-utils.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/utils/draw-utils.js')}}"></script>
-<script src="{{url_for('static', filename='js/graph/utils/node-utils.js')}}"></script>
+<script src="{{url_for('static', filename='js/graph/utils/node-utils-todo.js')}}"></script>
 <script src="{{url_for('static', filename='js/graph/utils/network-utils.js')}}"></script>
 
 

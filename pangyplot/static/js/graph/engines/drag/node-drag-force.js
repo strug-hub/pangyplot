@@ -46,7 +46,7 @@ function cacheDragSelectedForce(forceGraph, draggedNode) {
 
 
 function pullNeighborsWhenDragging(alpha) {
-
+    return; //todo
     if (!dragManagerIsDragging()) {
         PREVIOUS_DRAGGED_POS_FORCE.x = null;
         PREVIOUS_DRAGGED_POS_FORCE.y = null;
@@ -92,6 +92,8 @@ document.addEventListener('wheel', (e) => {
 
 
 function renderDragInfluenceCircle(ctx, viewport) {
+    return; //todo
+
     if (!dragManagerIsDragging()) {
         return;
     }

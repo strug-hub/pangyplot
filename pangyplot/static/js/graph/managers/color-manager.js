@@ -37,7 +37,7 @@ function colorManagerLinkColor(link){
         return HIGHLIGHT_LINK_COLOR;
     }
 
-    if (link.class != "node"){
+    if (link.type === "link"){
         return LINK_COLOR;
     }
 
