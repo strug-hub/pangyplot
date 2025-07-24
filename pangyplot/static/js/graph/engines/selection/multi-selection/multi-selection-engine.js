@@ -1,16 +1,16 @@
-import eventBus from '../../../input/event-bus.js';
-import MultiSelectionState from './multi-selection-state.js';
-import { createOverlay, updateOverlay, removeOverlay } from './multi-selection-overlay.js';
-import { nodesInBox } from '../../utils/node-utils.js';
+import eventBus from '../../../../input/event-bus.js';
+import { nodesInBox } from '../../../utils/node-utils.js';
 
-const selectionState = new MultiSelectionState();
+import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';
+
+const selectionBox = new MultiSelectionBox();
 let overlayElement = null;
 let selectionAllowed = true;
 
 function pointerDown(event) {
     if (!selectionAllowed) return;
 
-    selectionState.beginBox(event.offsetX, event.offsetY);
+    selectionBox.beginBox(event.offsetX, event.offsetY);
 }
 
 function destroySelectionBox() {
@@ -18,13 +18,13 @@ function destroySelectionBox() {
         removeOverlay(overlayElement);
         overlayElement = null;
     }
-    selectionState.clearBox();
+    selectionBox.clearBox();
 }
 
 function pointerMove(event, canvasElement, forceGraph) {
     if (!selectionAllowed) return;
 
-    const bounds = selectionState.updateBox(event.offsetX, event.offsetY);
+    const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
 
     if (bounds) {
         if (!overlayElement) overlayElement = createOverlay(canvasElement);
@@ -42,7 +42,7 @@ function pointerMove(event, canvasElement, forceGraph) {
 
 function pointerUp(event, forceGraph) {
     if (overlayElement) {
-        const bounds = selectionState.getBoxBounds();
+        const bounds = selectionBox.getBoxBounds();
 
         if (bounds) {
 

@@ -59,6 +59,7 @@ function forceGraphNodes(element) {
             isSelected: false,
             isVisible: true,
             isDrawn: true,
+            isFixed: false,
             width: NODE_WIDTH,
             annotations: []
         });

@@ -1,9 +1,7 @@
 import buildGraphData from './graph-data/graph-data.js';
 import delLinkForce from './forces/del-link-force.js';
-import setUpDragEngine from './engines/drag/drag-engine.js';
-import dragInfluenceForce from './engines/drag/drag-force.js';
-import setUpSelectionEngine from './engines/multi-selection/multi-selection-engine.js';
 import setUpRenderManager from './render/render-manager.js';
+import setUpEngineManager from './engines/engine-manager.js';
 import { setCanvasSize } from './render/canvas-size.js';
 import { annotationManagerFetch, annotationManagerAnnotateGraph } from './managers/annotation-manager.js';
 
@@ -66,27 +64,18 @@ function renderGraph(graph){
 
         setCanvasSize(forceGraph);
 
-        setUpDragEngine(forceGraph, canvasElement);
-        setUpSelectionEngine(forceGraph, canvasElement);
-
-
-        setUpRenderManager(forceGraph)
+        setUpEngineManager(forceGraph, canvasElement);
+        setUpRenderManager(forceGraph);
 
         pathManagerInitialize();
         inputManagerSetupInputListeners(forceGraph, canvasElement);
         annotationManagerAnnotateGraph(forceGraph.graphData())
 
-        window.addEventListener('resize', () => {
-            forceGraph
-                .height(getCanvasHeight())
-                .width(getCanvasWidth());
-        });
-
         console.log("forceGraph:", forceGraph);
 
-        forceGraph.onEngineTick(() => {
-            debugInformationUpdate(forceGraph.graphData());
-        })
+        //forceGraph.onEngineTick(() => {
+        //    debugInformationUpdate(forceGraph.graphData());
+        //})
         
         // --- FORCES ---
 
@@ -134,7 +123,6 @@ function renderGraph(graph){
 
         // Custom force to repel from deleted links
         forceGraph.d3Force('delLinkForce', delLinkForce);
-        forceGraph.d3Force('dragInfluence', dragInfluenceForce(forceGraph));
 
         forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
 

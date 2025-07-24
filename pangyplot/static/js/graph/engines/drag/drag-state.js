@@ -7,9 +7,11 @@ export const dragState = {
 };
 
 export function setDraggedNode(node) {
-  dragState.draggedNode = node;
-  dragState.previousPos = { x: null, y: null };
-  dragState.cache = null;
+  if (dragState.draggedNode !== node) {
+    dragState.draggedNode = node;
+    dragState.previousPos = { x: node.x, y: node.y };
+    dragState.cache = null;
+  }
 }
 
 export function clearDraggedNode() {

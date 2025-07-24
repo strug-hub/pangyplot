@@ -1,9 +1,14 @@
 export const colorState = {
-    background: "#373737",
+    highlightNode: "#FAB3AE",
+    selectedNode: "#F44336",
     highlightLink: "#FF0000",
-    nullColor: "#3C5E81",
+    background: "#373737",
+
     nodeColors: ["#0762E5", "#F2DC0F", "#FF6700"],
     linkColor: "#969696",
+
+    nullColor: "#3C5E81",
+
     style: "node_type"
 };
 
@@ -21,4 +26,12 @@ export function setBackgroundColor(color) {
 
 export function setColorStyle(style) {
     colorState.style = style;
+}
+
+export function setHighlightNodeColor(color) {
+    colorState.highlightNode = color;
+}
+
+export function setSelectedNodeColor(color) {
+    colorState.selectedNode = color;
 }

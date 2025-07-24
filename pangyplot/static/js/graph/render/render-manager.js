@@ -5,6 +5,7 @@ import basicLinkPainter from './painter/basic-link-painter.js';
 import basicNodePainter from './painter/basic-node-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
+import { highlightSelection } from '../engines/selection/select-render.js';
 
 const HOVER_PRECISION = 2;
 
@@ -12,6 +13,8 @@ function renderPreFrame(ctx, forceGraph) {
     //const viewport = getViewport(forceGraph);
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
+
+    highlightSelection(ctx, forceGraph.graphData());
     
     //TODO: this goes somewhere else
     const zoomFactor = ctx.canvas.__zoom.k;

@@ -79,9 +79,9 @@ function colorBySize(size){
 
 function colorByGC(count, total){
     if (count == null || isNaN(count) || count < 0) {
-        return NULL_COLOR;
+        return colorState.nullColor;
     } if (total == null || isNaN(total) || total <= 0) {
-        return NULL_COLOR;
+        return colorState.nullColor;
     }
 
     const pcGC = count/total;

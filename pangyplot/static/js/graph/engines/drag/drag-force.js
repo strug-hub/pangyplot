@@ -1,3 +1,4 @@
+import eventBus from '../../../input/event-bus.js';
 import { dragState } from './drag-state.js';
 
 function buildDragCache(forceGraph, draggedNode) {
@@ -43,6 +44,12 @@ function buildDragCache(forceGraph, draggedNode) {
 }
 
 export default function dragInfluenceForce(forceGraph) {
+
+    eventBus.subscribe('selection:changed', () => {
+      dragState.cache = null;
+      console.log('Drag cache cleared due to selection change');
+    });
+
   return function force(alpha) {
     if (!dragState.draggedNode) return;
 
@@ -52,7 +59,7 @@ export default function dragInfluenceForce(forceGraph) {
 
     const { x: prevX, y: prevY } = dragState.previousPos;
     dragState.previousPos = { x: dragState.draggedNode.x, y: dragState.draggedNode.y };
-
+    
     if (prevX === null || prevY === null) return;
 
     const dx = dragState.draggedNode.x - prevX;
@@ -64,9 +71,14 @@ export default function dragInfluenceForce(forceGraph) {
       const strength = depth === 0
         ? 1
         : Math.max(0, 1 - dragState.decay * depth);
-
+      
       node.x += dx * strength;
       node.y += dy * strength;
+
+      if (node.isSelected && node.isFixed) {
+        node.fx += dx;
+        node.fy += dy;
+      }
     }
   };
 }
