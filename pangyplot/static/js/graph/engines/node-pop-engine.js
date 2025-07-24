@@ -1,16 +1,16 @@
 var GETTING_SUBGRAPH = new Set();
 const pointerup_CLICK_RANGE = 0.05;
 
-function queueSubgraph(nodeid) {
-    if (GETTING_SUBGRAPH.has(nodeid)){
+function queueSubgraph(nodeId) {
+    if (GETTING_SUBGRAPH.has(nodeId)){
         return false;
     }
-    GETTING_SUBGRAPH.add(nodeid);
+    GETTING_SUBGRAPH.add(nodeId);
     showLoader();
     return true;
 }
-function dequeueSubgraph(nodeid) {
-    GETTING_SUBGRAPH.delete(nodeid);
+function dequeueSubgraph(nodeId) {
+    GETTING_SUBGRAPH.delete(nodeId);
     if (GETTING_SUBGRAPH.size === 0) {
         hideLoader();
     }
@@ -20,7 +20,7 @@ function explodeSubgraph(originNode, nodeResult, forceGraph) {
     forceGraph.d3ReheatSimulation();
 
     const graphNodes = forceGraph.graphData().nodes;
-    const originNodes = graphNodes.filter(n => n.nodeid === originNode.nodeid);
+    const originNodes = graphNodes.filter(n => n.nodeId === originNode.nodeId);
 
     const nodeBox = findNodeBounds(originNodes);
     const subgraphBox = findNodeBounds(nodeResult.nodes);
@@ -132,16 +132,16 @@ function processSubgraphData(subgraph, originNode, forceGraph){
         nodeResult.nodes.forEach(node => { node.isSelected = true });
     }
 
-    graphData = deleteNode(graphData, originNode.nodeid);
+    graphData = deleteNode(graphData, originNode.nodeId);
 
-    const existingIds = new Set(graphData.nodes.map(n => n.nodeid));
-    nodeResult.nodes = nodeResult.nodes.filter(n => !existingIds.has(n.nodeid));
+    const existingIds = new Set(graphData.nodes.map(n => n.nodeId));
+    nodeResult.nodes = nodeResult.nodes.filter(n => !existingIds.has(n.nodeId));
 
     graphData.nodes = graphData.nodes.concat(nodeResult.nodes);
 
     links = processLinks(subgraph.links);
 
-    const currentNodeIds = new Set(graphData.nodes.map(node => node.__nodeid));
+    const currentNodeIds = new Set(graphData.nodes.map(node => node.nodeId));
     links = links.filter(link => 
         currentNodeIds.has(link.source) && currentNodeIds.has(link.target)
     );
@@ -151,7 +151,6 @@ function processSubgraphData(subgraph, originNode, forceGraph){
 
     //todo: take number as input
     //forceGraph = simplifyGraph(forceGraph, 1);
-    //forceGraph = shrinkGraph(forceGraph, 1000); 
     
     annotationManagerAnnotateGraph(forceGraph.graphData());
     searchSequenceEngineRerun();
@@ -159,31 +158,31 @@ function processSubgraphData(subgraph, originNode, forceGraph){
     document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: forceGraph.graphData() } }));
 }
 
-function deleteNode(graphData, nodeid){
-    graphData.nodes = graphData.nodes.filter(node => node.nodeid != nodeid);
+function deleteNode(graphData, nodeId){
+    graphData.nodes = graphData.nodes.filter(node => node.nodeId != nodeId);
     graphData.links = graphData.links.filter(link => 
-        (link.class == "node" && link.nodeid != nodeid) ||
-        (link.class == "edge" && link.sourceid != nodeid && link.targetid != nodeid));
+        (link.class == "node" && link.nodeId != nodeId) ||
+        (link.class == "edge" && link.sourceId != nodeId && link.targetId != nodeId));
 
-    delete NODEIDS[nodeid];
+    delete NODEIDS[nodeId];
     return graphData
 }
 
 function fetchSubgraph(originNode, forceGraph) {
-    const nodeid = originNode.nodeid;
+    const nodeId = originNode.nodeId;
 
-    if (! queueSubgraph(nodeid)){ return }
+    if (! queueSubgraph(nodeId)){ return }
 
     // graph.js getGraphCoordinates()
     const params = {
-        nodeid,
+        nodeId,
         ...getGraphCoordinates()
     };
 
     const url = buildUrl('/subgraph', params);
     fetchData(url, 'subgraph').then(fetchedData => {
         processSubgraphData(fetchedData, originNode, forceGraph)
-        dequeueSubgraph(nodeid);
+        dequeueSubgraph(nodeId);
     });
 }
 

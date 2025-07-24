@@ -10,10 +10,10 @@ export function numberSelected() {
 }
 
 export function isSelected(node) {
-  return selectionState.selected.has(node.nodeid);
+  return selectionState.selected.has(node.nodeId);
 }
 export function isHighlighted(node) {
-  return selectionState.highlighted.has(node.nodeid);
+  return selectionState.highlighted.has(node.nodeId);
 }
 
 function setsEqual(a, b) {
@@ -33,8 +33,8 @@ export function updateSelectionState(nodes) {
 
   // Rebuild new state
   for (const node of nodes) {
-    if (node.isHighlighted) selectionState.highlighted.add(node.nodeid);
-    if (node.isSelected) selectionState.selected.add(node.nodeid);
+    if (node.isHighlighted) selectionState.highlighted.add(node.nodeId);
+    if (node.isSelected) selectionState.selected.add(node.nodeId);
   }
 
   // Detect changes

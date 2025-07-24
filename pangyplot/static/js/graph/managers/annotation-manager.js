@@ -46,7 +46,7 @@ function annotationManagerIsGeneVisible(geneId) {
 }
 
 function annotationManagerGetNodeAnnotations(node) {
-    const annotations = NODE_ANNOTATION_DATA[node.__nodeid];
+    const annotations = NODE_ANNOTATION_DATA[node.nodeId];
 
     if (!annotations) return [];
     const result = [];
@@ -73,8 +73,8 @@ function annotationManagerGetNodeAnnotations(node) {
 
 //todo: speedup by saving link data like we do with node?
 function annotationManagerGetLinkAnnotations(link) {
-    const sourceAnnotations = NODE_ANNOTATION_DATA[link.source.__nodeid];
-    const targetAnnotations = NODE_ANNOTATION_DATA[link.target.__nodeid];
+    const sourceAnnotations = NODE_ANNOTATION_DATA[link.source.nodeId];
+    const targetAnnotations = NODE_ANNOTATION_DATA[link.target.nodeId];
 
     if (!sourceAnnotations || !targetAnnotations) return [];
     const result = [];
@@ -171,11 +171,11 @@ function annotationManagerUpdatedExonFromTable(geneId, status) {
 function annotateTranscript(graphData, gene, transcriptIndex = 0) {
     graphData.nodes.forEach(node => {
 
-        if (!NODE_ANNOTATION_DATA[node.__nodeid]){
-            NODE_ANNOTATION_DATA[node.__nodeid] = {};
+        if (!NODE_ANNOTATION_DATA[node.nodeId]){
+            NODE_ANNOTATION_DATA[node.nodeId] = {};
         }
-        if (NODE_ANNOTATION_DATA[node.__nodeid][gene.id]) {
-            delete NODE_ANNOTATION_DATA[node.__nodeid][gene.id];
+        if (NODE_ANNOTATION_DATA[node.nodeId][gene.id]) {
+            delete NODE_ANNOTATION_DATA[node.nodeId][gene.id];
         }
 
         const transcript = gene.transcripts[transcriptIndex];
@@ -188,7 +188,7 @@ function annotateTranscript(graphData, gene, transcriptIndex = 0) {
                 }
             });
 
-            NODE_ANNOTATION_DATA[node.__nodeid][gene.id] = {
+            NODE_ANNOTATION_DATA[node.nodeId][gene.id] = {
                 gene_id: gene.id,
                 exon_number: exonNumber
             };

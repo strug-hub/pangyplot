@@ -4,8 +4,7 @@ import setUpRenderManager from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import { setCanvasSize } from './render/canvas-size.js';
 import { annotationManagerFetch, annotationManagerAnnotateGraph } from './managers/annotation-manager.js';
-
-import { normalizeGraph } from './utils/node-utils.js';
+import { anchorEndpointNodes } from './utils/node-utils.js';
 
 // global
 var GRAPH_GENOME=null;
@@ -46,16 +45,14 @@ function renderGraph(graph){
 
         forceGraph = ForceGraph()(canvasElement)
             .graphData(graph)
-            .nodeId("nodeid")
+            .nodeId("nodeId")
+            .nodeLabel("nodeId")
             .nodeVal(node => node.width ?? 1)
             .autoPauseRedraw(false) // keep drawing after engine has stopped
             .d3VelocityDecay(0.1)
             .cooldownTicks(Infinity)
             .cooldownTime(Infinity)
-            .onNodeDrag((node, translate) => dragManagerNodeDragged(node, translate, forceGraph))
-            .onNodeDragEnd(node => dragManagerNodeDragEnd(node, forceGraph))
             .d3AlphaDecay(0.0228)
-            .nodeLabel("nodeid")
             .onNodeClick((node, event) => inputManagerNodeClicked(node, event, forceGraph))
             .minZoom(1e-6) //default = 0.01
             .maxZoom(1000) //default = 1000
@@ -165,10 +162,10 @@ function fetchGraph(genome, chromosome, start, end) {
         console.log("Fetched graph data:", rawGraph);
 
         const graphData = buildGraphData(rawGraph);
-        const normalizedGraph = normalizeGraph(graphData);
+        anchorEndpointNodes(graphData.nodes, graphData.links);
 
-        renderGraph(normalizedGraph);
-        document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: normalizedGraph } }));
+        renderGraph(graphData);
+        document.dispatchEvent(new CustomEvent("updatedGraphData", { detail: { graph: graphData } }));
 
 
     });

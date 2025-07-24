@@ -18,6 +18,31 @@ export function nodesInBox(forceGraph, bounds) {
     return containedNodes;
 }
 
+export function anchorEndpointNodes(nodes, links) {
+    const outgoing = new Set();
+    const incoming = new Set();
+
+    for (const link of links) {
+        outgoing.add(link.source);
+        incoming.add(link.target);
+    }
+
+    let anchoredCount = 0;
+    for (const node of nodes) {
+        const hasOutgoing = outgoing.has(node.nodeId);
+        const hasIncoming = incoming.has(node.nodeId);
+
+        if (!hasIncoming || !hasOutgoing) {
+            node.isFixed = true;
+            node.fx = node.x;
+            node.fy = node.y;
+            anchoredCount++;
+        }
+    }
+
+    console.log(`Anchored ${anchoredCount} endpoint nodes`);
+}
+
 export function resetGraphPositions(graph){
     graph.nodes.forEach(node => {
         node.x = node.initX;
@@ -25,25 +50,6 @@ export function resetGraphPositions(graph){
     });
 }
 
-export function normalizeGraph(graph) {
-
-    resetGraphPositions(graph)
-    
-    const bounds = findNodeBounds(graph.nodes);
-    
-    const shiftX = bounds.x;
-    const shiftY = bounds.y;
-
-    graph.nodes.forEach(node => {
-        node.x = (node.x - shiftX);
-        node.y = (node.y - shiftY);
-        if (node.fx){ node.fx = node.x; }
-        if (node.fy){ node.fy = node.y; }
-
-    });
-
-    return graph;
-}
 
 export function findNodeBoundsInit(nodes) {
     let bounds = {

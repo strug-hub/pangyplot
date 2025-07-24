@@ -1,7 +1,7 @@
 function makeExplosionForce(graphNodes, protectedIds, centerX, centerY, strength) {
         return function explosionForce(alpha) {
             for (const node of graphNodes) {
-                if (protectedIds.has(node.__nodeid)) continue;
+                if (protectedIds.has(node.nodeId)) continue;
 
                 const dx = node.x - centerX;
                 const dy = node.y - centerY;
@@ -35,7 +35,7 @@ function triggerExplosionForce(forceGraph, protectedNodes, centerX, centerY, str
         return;
     }
 
-    const protectedIds = new Set(protectedNodes.map(n => n.__nodeid));
+    const protectedIds = new Set(protectedNodes.map(n => n.nodeId));
 
     const forceName = uuid();
     const graphNodes = forceGraph.graphData().nodes;

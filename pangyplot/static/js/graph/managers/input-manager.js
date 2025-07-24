@@ -46,9 +46,6 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
                 forceGraph.centerAt(box.x + box.width/2, box.y + box.height/2, 1000);
             }
         }
-        if (event.code === 'ArrowDown') {
-            normalizeGraph(forceGraph.graphData());
-        }
 
         graphInputStateUpdate(event, forceGraph, canvasElement);
     });

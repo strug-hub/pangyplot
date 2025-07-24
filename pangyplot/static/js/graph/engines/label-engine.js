@@ -9,17 +9,17 @@ function labelEngineUpdate(ctx, forceGraph, svg=false){
 
     forceGraph.graphData().nodes.forEach(node => {
         if (node.label && node.isVisible && node.isDrawn) {
-            if (!labelGroups[node.nodeid]) {
-            labelGroups[node.nodeid] = { label: node.label, nodes: [] };
+            if (!labelGroups[node.nodeId]) {
+            labelGroups[node.nodeId] = { label: node.label, nodes: [] };
           }
 
-          labelGroups[node.nodeid].nodes.push(node);
+          labelGroups[node.nodeId].nodes.push(node);
         }
       });
 
       const properties = []
-      Object.keys(labelGroups).forEach(nodeid => {
-        const group = labelGroups[nodeid];
+      Object.keys(labelGroups).forEach(nodeId => {
+        const group = labelGroups[nodeId];
         const { label, nodes } = group;
     
         const bounds = findNodeBounds(nodes);

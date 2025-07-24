@@ -105,11 +105,6 @@ function goToNeo4jBrowser(nodetype, id) {
   const encodedQuery = encodeURIComponent(query);
   const neo4jUrl = `http://localhost:7474/browser/?cmd=edit&arg=${encodedQuery}`;
 
-  const button = document.getElementById('info-neo4j-link');
-  if (!button) {
-    return;
-  }
-
   button.onclick = () => {
     window.open(neo4jUrl, '_blank');
   };

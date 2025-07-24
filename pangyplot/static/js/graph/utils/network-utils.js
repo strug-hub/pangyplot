@@ -18,7 +18,6 @@ function fetchData(url, logLabel = '') {
         });
 }
 
-
 function showLoader() {
     document.querySelector('.loader').style.display = 'block';
     //document.querySelector('.loader-filter').style.display = 'block';

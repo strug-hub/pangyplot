@@ -46,10 +46,10 @@ function forceGraphNodes(element) {
             id: element.id,
             element: element,
             type: element.type,
-            nodeid: `${element.id}#${i}`,
+            nodeId: `${element.id}#${i}`,
             head: () => `${element.id}#0`,
             tail: () => `${element.id}#${kinks - 1}`,
-            nodeidx: i,
+            nodeIdx: i,
             x, y,
             initX: x,
             initY: y,
@@ -110,7 +110,6 @@ function forceGraphLinks(element, headDict, tailDict) {
         width: isChainLink ? CHAIN_WIDTH : LINK_WIDTH,
         annotations: []
     };
-
 }
 
 export default function buildGraphData(rawGraph) {
