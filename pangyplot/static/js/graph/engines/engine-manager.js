@@ -3,6 +3,7 @@ import setUpSelectionEngine from './selection/selection-engine.js';
 import setUpPanZoomEngine from './navigate/pan-zoom-engine.js';
 import setUpRecenterEngine from './navigate/recenter-engine.js';
 import setupRightClickMenu from './right-click/right-click-engine.js';
+import setupBubblePopEngine from './bubble-pop/bubble-pop-engine.js';
 
 export default function setUpEngineManager(forceGraph, canvasElement) {
     setUpDragEngine(forceGraph, canvasElement);
@@ -10,4 +11,5 @@ export default function setUpEngineManager(forceGraph, canvasElement) {
     setUpPanZoomEngine(forceGraph, canvasElement);
     setUpRecenterEngine(forceGraph, canvasElement);
     setupRightClickMenu(forceGraph, canvasElement);
+    setupBubblePopEngine(forceGraph, canvasElement);
 }

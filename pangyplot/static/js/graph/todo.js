@@ -48,4 +48,3 @@ function createNewTextNode(node) {
 
     return newNode;
 }
-

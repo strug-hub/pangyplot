@@ -108,16 +108,16 @@ def select():
 
 @bp.route('/subgraph', methods=["GET"])
 def subgraph():
-    nodeid = request.args.get("nodeid")
+    id = request.args.get("id")
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
     #start = int(request.args.get("start"))
     #end = int(request.args.get("end"))
 
-    print(f"Getting subgraph for node {nodeid} in {genome}#{chrom}...")
+    print(f"Getting subgraph for node {id} in {genome}#{chrom}...")
 
-    subgraph = query.pop_bubble(current_app, nodeid, genome, chrom)
-    
+    subgraph = query.pop_bubble(current_app, id, genome, chrom)
+
     return jsonify(subgraph)
 
 
