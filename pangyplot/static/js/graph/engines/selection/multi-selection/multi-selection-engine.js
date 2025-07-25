@@ -7,13 +7,15 @@ const selectionBox = new MultiSelectionBox();
 let overlayElement = null;
 let selectionAllowed = true;
 
+export let multiSelectInProgress = false;
+
 function pointerDown(event) {
     if (!selectionAllowed) return;
-
     selectionBox.beginBox(event.offsetX, event.offsetY);
 }
 
 function destroySelectionBox() {
+
     if (overlayElement) {
         removeOverlay(overlayElement);
         overlayElement = null;
@@ -27,6 +29,7 @@ function pointerMove(event, canvasElement, forceGraph) {
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
 
     if (bounds) {
+        multiSelectInProgress = true;
         if (!overlayElement) overlayElement = createOverlay(canvasElement);
         updateOverlay(overlayElement, bounds);
 
@@ -52,6 +55,7 @@ function pointerUp(event, forceGraph) {
         }
     }
     destroySelectionBox();
+    setTimeout(() => multiSelectInProgress = false, 0);
 }
 
 export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {

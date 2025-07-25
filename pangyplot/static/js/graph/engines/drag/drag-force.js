@@ -47,7 +47,6 @@ export default function dragInfluenceForce(forceGraph) {
 
     eventBus.subscribe('selection:changed', () => {
       dragState.cache = null;
-      console.log('Drag cache cleared due to selection change');
     });
 
   return function force(alpha) {

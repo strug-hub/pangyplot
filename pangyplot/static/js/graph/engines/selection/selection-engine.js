@@ -1,57 +1,67 @@
 import setUpMultiSelectionEngine from './multi-selection/multi-selection-engine.js';
 import { updateSelectionState } from './selection-state.js';
-import { findNearestNode, findNormalizedDistance } from '../../utils/node-utils.js';
+import { findNearestNode, euclideanDist } from '../../utils/node-utils.js';
 import { isDebugMode } from '../../graph-state.js';
+import { multiSelectInProgress } from './multi-selection/multi-selection-engine.js';
 
-function selectionEngineMouseClick(event, forceGraph, canvasElement, canvas, coordinates, inputState){
-    if (!BOX_SELECT && inputState==SELECTION_MODE && ! BLOCK_SINGLE_SELECTION){
-        const nearestNode = findNearestNode(forceGraph.graphData().nodes, coordinates);
-        if (nearestNode == null || nearestNode["type"] == "null"){ return }
-        const normDist = findNormalizedDistance(nearestNode, coordinates, canvas);
-    
-        forceGraph.graphData().nodes.forEach(node => node.isSelected = false);
-        if (normDist < CAN_CLICK_RANGE){
-            destroySelectionBox();
-            nearestNode.isSelected = true;
-            console.log("clicked:", nearestNode);
+let hoverNode = null;
+const MAX_HOVER_DISTANCE = 40;
+const MAX_SELECT_DISTANCE = 25;
 
-            const connectedEdges = forceGraph.graphData().links.filter(link => 
-                link.source === nearestNode || link.target === nearestNode
-            );
-            console.log("connected edges:", connectedEdges);
-        }
-    }
+function hoverPreview(event, forceGraph) {
+    hoverNode = null;
+    if (multiSelectInProgress) return;
+
+    const coords = { x: event.offsetX, y: event.offsetY };
+    const graphCoords = forceGraph.screen2GraphCoords(coords.x, coords.y);
+    const nodes = forceGraph.graphData().nodes;
+    nodes.forEach(node => node.isHighlighted = false);
+
+    const nearestNode = findNearestNode(nodes, graphCoords);
+    if (!nearestNode) return;
+
+    const screenPos = forceGraph.graph2ScreenCoords(nearestNode.x, nearestNode.y);
+    const distPx = euclideanDist(coords, screenPos);
+
+    if (distPx > MAX_HOVER_DISTANCE) return;
+    console.log("Pixel distance:", distPx);
+
+    hoverNode = nearestNode;
+    nearestNode.isHighlighted = true;
 }
 
-function checkMouseClick(event, forceGraph) {
-    if (event.button !== 0) return; // Only left click
+export function attemptSelection(event, forceGraph) {
+    if (event.button !== 0 || multiSelectInProgress) return; // Only left click
 
-    const coordinates = { x: event.offsetX, y: event.offsetY };
-    const nodes = forceGraph.graphData().nodes;
-    const nearestNode = findNearestNode(nodes, coordinates, forceGraph);
-    if (!nearestNode || nearestNode.class !== "node") return;
+    forceGraph.graphData().nodes.forEach(node => node.isSelected = false);
+    if (hoverNode == null) return;
 
-    const screenPos = forceGraph.graph2ScreenCoords(node.x, node.y);
-    const normDist = Math.sqrt((coords.x - screenPos.x) ** 2 + (coords.y - screenPos.y) ** 2);
-    console.log("Normalized distance:", normDist);
+    const coords = { x: event.offsetX, y: event.offsetY };
+    const screenPos = forceGraph.graph2ScreenCoords(hoverNode.x, hoverNode.y);
+    const distPx = euclideanDist(coords, screenPos);
 
-    nodes.forEach(node => node.isSelected = false);
-    
-    nearestNode.isSelected = true;
+    if (distPx > MAX_SELECT_DISTANCE) return;
 
-    if (isDebugMode() && false) {
-        console.log("clicked:", nearestNode);
+    if (isDebugMode()) {
+        console.log("clicked:", hoverNode);
         const connectedEdges = forceGraph.graphData().links.filter(link => 
-            link.source === nearestNode || link.target === nearestNode
+            link.source === hoverNode || link.target === hoverNode
         );
         console.log("connected edges:", connectedEdges);
     }
+
+    hoverNode.isHighlighted = false;
+    hoverNode.isSelected = true;
+    hoverNode = null
 }
 
 export default function setUpSelectionEngine(forceGraph, canvasElement) {
 
+    canvasElement.addEventListener('pointermove', (event) => {
+        hoverPreview(event, forceGraph);
+    });
     canvasElement.addEventListener('click', (event) => {
-        checkMouseClick(event, forceGraph);
+        attemptSelection(event, forceGraph);
     });
 
     setUpMultiSelectionEngine(forceGraph, canvasElement);
