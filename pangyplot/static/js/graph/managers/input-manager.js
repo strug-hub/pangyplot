@@ -20,39 +20,6 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
 
     // keyboard
 
-    canvasElement.addEventListener('keydown', (event) => {
-        if (!forceGraph){ return; }
-        event.preventDefault();
-
-        if (event.code === 'Space' || event.key === ' ') {
-            forceGraph.zoomToFit(200, 10, node => true); //todo: selected only?
-        }
-        if (event.code === 'Delete') {
-            //console.log("dle")
-            //deleteHighlighted(forceGraph);
-        }
-
-        if (event.code === 'KeyZ') {
-            BUBBLE_MODE = !BUBBLE_MODE
-            console.log(BUBBLE_MODE)
-
-        }
-        if (event.code === 'ArrowUp') {
-
-            const nodes = forceGraph.graphData().nodes;
-    
-            if (nodes.length > 0) {
-                const box = findNodeBounds([nodes[0]]);
-                forceGraph.centerAt(box.x + box.width/2, box.y + box.height/2, 1000);
-            }
-        }
-
-        graphInputStateUpdate(event, forceGraph, canvasElement);
-    });
-
-
-    // mouse
-
     rightClickManager = rightClickManagerSetup(forceGraph);
 
     canvasElement.addEventListener('contextmenu', (e) => {
