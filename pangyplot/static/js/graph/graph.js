@@ -13,12 +13,7 @@ var GLOBAL_MULTIPLIER=1
 
 let forceGraph = null;
 
-const DEBUG=true
-
-
-
 // todo https://github.com/vasturiano/d3-force-registry
-
 
 function createForceGraph(graph){
     console.log("Creating force graph with data:", graph);
@@ -158,30 +153,20 @@ function hideLoader() {
 }
 hideLoader()
 
-function fetchGraph(coordinates) {
-
-}
-
 import { fetchData, buildUrl } from './utils/network-utils.js';
 function fetchAndConstructGraph(coordinates){
     if (equalCoordinates(coordinates)) return;
+    setGraphCoordinates(coordinates);
 
     annotationManagerFetch(coordinates);
 
     const url = buildUrl('/select', coordinates);
     fetchData(url, 'graph').then(rawGraph => {
-        
         console.log("Fetched graph data:", rawGraph);
-
         const graphData = buildGraphData(rawGraph);
         anchorEndpointNodes(graphData.nodes, graphData.links);
-
         createForceGraph(graphData);
-
-
     });
-
-    fetchGraph(coordinates);
 }
 
 document.addEventListener('constructGraph', function(event) {
@@ -211,24 +196,12 @@ document.addEventListener('DOMContentLoaded', function () {
     end=198692934
     
 
-    // SERPINB5
-    let data = {genome: "GRCh38", chromosome:"chr18", start:63466958, end:63515085, genome: "GRCh38"};
+    const SERPINB5 = {genome: "GRCh38", chromosome:"chr18", start:63466958, end:63515085, genome: "GRCh38"};
+    const PRSS2 = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000, genome: "GRCh38"};
+    const SLC9A3 = {genome: "GRCh38", chromosome:"chr5", start:470456, end:524449, genome: "GRCh38"};
+    const FULL_CHR7 = {genome: "GRCh38", chromosome:"chr7", start:1, end:1427745640, genome: "GRCh38"};
+    const BRCA2 = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
+    const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
 
-    // PRSS1-PRSS2 chr7:142745398-142775564
-    data = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000, genome: "GRCh38"};
-
-    // SLC9A3
-    //data = {genome: "GRCh38", chromosome:"chr5", start:470456, end:524449, genome: "GRCh38"};
-
-    //full chr7
-    //data = {genome: "GRCh38", chromosome:"chr7", start:1, end:1427745640, genome: "GRCh38"};
-
-    //BRCA2
-    //data = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
-
-    //KDM5D
-    //data = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
-
-    //document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
-    document.dispatchEvent(new CustomEvent("constructGraph", { detail: data }));
+    document.dispatchEvent(new CustomEvent("constructGraph", { detail: PRSS2 }));
 });

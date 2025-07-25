@@ -9,6 +9,9 @@ export const colorState = {
 
     nullColor: "#3C5E81",
 
+    textFill: "#FFFFFF",
+    textOutline: "#000000",
+
     style: "node_type"
 };
 

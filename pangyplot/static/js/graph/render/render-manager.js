@@ -3,6 +3,7 @@ import { updateVisibility } from './viewport.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-render.js';
 import basicLinkPainter from './painter/basic-link-painter.js';
 import basicNodePainter from './painter/basic-node-painter.js';
+import labelPainter from './painter/label-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
 import { highlightSelection } from '../engines/selection/select-render.js';
@@ -27,8 +28,8 @@ function renderPostFrame(ctx, forceGraph) {
     const viewport = getViewport(forceGraph);
 
     //drawGeneName(ctx, forceGraph.graphData(), viewport);
-    //labelEngineUpdate(ctx, forceGraph);
     //searchSequenceEngineUpdate(ctx, forceGraph);
+    labelPainter(ctx, forceGraph);
     renderDragInfluenceCircle(ctx, viewport);
 }
 

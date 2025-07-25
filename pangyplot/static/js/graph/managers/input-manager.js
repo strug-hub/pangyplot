@@ -34,8 +34,6 @@ function inputManagerSetupInputListeners(forceGraph, canvasElement){
       });
 
 
-
-
     canvasElement.addEventListener('click', (event) => {
         if (!forceGraph){ return; }
         if (event.button !== 0) return;  // left-click only
