@@ -6,7 +6,7 @@ import setUpEngineManager from './engines/engine-manager.js';
 import { setCanvasSize } from './render/canvas-size.js';
 import { annotationManagerFetch, annotationManagerAnnotateGraph } from './managers/annotation-manager.js';
 import { anchorEndpointNodes } from './utils/node-utils.js';
-
+import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import { setGraphCoordinates, equalCoordinates}  from './graph-state.js';
 
 var GLOBAL_MULTIPLIER=1
@@ -45,13 +45,13 @@ function createForceGraph(graph){
             .graphData(graph)
             .nodeId("nodeId")
             .nodeLabel("nodeId")
-            .nodeVal(node => node.width ?? 1)
+            .nodeVal(node => node.width)
+            .nodeRelSize(10)
             .autoPauseRedraw(false) // keep drawing after engine has stopped
             .d3VelocityDecay(0.1)
             .cooldownTicks(Infinity)
             .cooldownTime(Infinity)
             .d3AlphaDecay(0.0228)
-            .onNodeClick((node, event) => inputManagerNodeClicked(node, event, forceGraph))
             .minZoom(1e-6) //default = 0.01
             .maxZoom(1000) //default = 1000
             .warmupTicks(4)
@@ -67,9 +67,10 @@ function createForceGraph(graph){
         annotationManagerAnnotateGraph(forceGraph.graphData())
 
 
-        //forceGraph.onEngineTick(() => {
-        //    debugInformationUpdate(forceGraph.graphData());
-        //})
+        forceGraph.onEngineTick(() => {
+            //debugInformationUpdate(forceGraph.graphData());
+            zoomScaleUpdate(forceGraph);
+        })
         
         // --- FORCES ---
 

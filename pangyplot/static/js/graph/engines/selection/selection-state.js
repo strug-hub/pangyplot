@@ -9,13 +9,6 @@ export function numberSelected() {
   return selectionState.selected.size;
 }
 
-export function isSelected(node) {
-  return selectionState.selected.has(node.nodeId);
-}
-export function isHighlighted(node) {
-  return selectionState.highlighted.has(node.nodeId);
-}
-
 function setsEqual(a, b) {
   if (a.size !== b.size) return false;
   for (const item of a) if (!b.has(item)) return false;

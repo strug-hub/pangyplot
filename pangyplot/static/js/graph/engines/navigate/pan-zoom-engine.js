@@ -1,11 +1,15 @@
 import eventBus from '../../../input/event-bus.js';
-import { getZoomFactor } from '../../graph-state.js';
-
 
 const InputModes = Object.freeze({
     SELECTION: 'selection',
     PAN_ZOOM: 'pan-zoom',
 });
+
+let currentMode = InputModes.SELECTION;
+
+export function isPanZoomMode() {
+    return currentMode === InputModes.PAN_ZOOM;
+}
 
 const modeConfig = {
     [InputModes.SELECTION]: {
@@ -21,7 +25,6 @@ const modeConfig = {
 };
 
 export default function setUpPanZoomEngine(forceGraph, canvasElement) {
-    let currentMode = InputModes.SELECTION;
     forceGraph.enableZoomPanInteraction(false);
 
     const setMode = (mode) => {

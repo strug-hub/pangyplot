@@ -1,3 +1,5 @@
+import { colorState } from '../color/color-state.js';
+
 export function outlineNode(node, ctx, shift, size, color) {
     drawCircle(ctx, node.x+shift, node.y+shift, size, color)
 }
@@ -37,7 +39,7 @@ export function drawCircle(ctx, x, y, size, color){
     ctx.fillStyle = previousFillStyle;
 }
 
-export function drawCircleOutline(ctx, x, y, size, color, lineWidth=3, fill=BACKGROUND_COLOR){
+export function drawCircleOutline(ctx, x, y, size, color, lineWidth=3, fill=colorState.background){
     ctx.save();
     ctx.strokeStyle = color;
     ctx.fillStyle = fill;

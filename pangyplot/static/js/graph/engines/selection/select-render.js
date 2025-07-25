@@ -1,5 +1,4 @@
 import { colorState } from "../../render/color/color-state.js";
-import { isSelected, isHighlighted } from "./selection-state.js";
 import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
 
 export function highlightSelection(ctx, graphData) {
@@ -9,12 +8,13 @@ export function highlightSelection(ctx, graphData) {
   const highlightWidth = 50 + 10 / zoomFactor;
 
   graphData.nodes.forEach(node => {
+    
     if (node.isSingleton) {
       const hsize = node.width + highlightWidth;
-    
-      if (isSelected(node)) {
+
+      if (node.isSelected) {
         outlineNode(node, ctx, 0, hsize, colorState.selectedNode);
-      } else if (isHighlighted(node)) {
+      } else if (node.isHighlighted) {
         outlineNode(node, ctx, 0, hsize, colorState.highlightNode);
       } 
     }
@@ -24,9 +24,9 @@ export function highlightSelection(ctx, graphData) {
     if (!link.class === "node") {
       const hsize = link.width + highlightWidth;
 
-      if (isSelected(link)) {
+      if (link.isSelected) {
         outlineLink(link, ctx, 0, hsize, colorState.selectedNode);
-      } else if (isHighlighted(link)) {
+      } else if (link.isHighlighted) {
         outlineLink(link, ctx, 0, hsize, colorState.highlightNode);
       } 
     }
