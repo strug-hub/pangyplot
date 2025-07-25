@@ -6,10 +6,12 @@ import basicNodePainter from './painter/basic-node-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
 import { highlightSelection } from '../engines/selection/select-render.js';
-
-const HOVER_PRECISION = 2;
+import { setZoomFactor } from '../graph-state.js';
 
 function renderPreFrame(ctx, forceGraph) {
+    const zoomFactor = ctx.canvas.__zoom.k;
+    setZoomFactor(zoomFactor);
+
     //const viewport = getViewport(forceGraph);
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
@@ -17,9 +19,6 @@ function renderPreFrame(ctx, forceGraph) {
     highlightSelection(ctx, forceGraph.graphData());
     
     //TODO: this goes somewhere else
-    const zoomFactor = ctx.canvas.__zoom.k;
-    forceGraph.nodeRelSize(Math.max(10, HOVER_PRECISION / zoomFactor));
-
     //annotationManagerUpdate(ctx, forceGraph);
     //geneRenderEngineDraw(ctx, forceGraph.graphData());
 }

@@ -91,24 +91,13 @@ export function findNodeBounds(nodes) {
         height: bounds.maxY - bounds.minY };
 }
 
-export function findNormalizedDistance(a, b, canvas) {
-    const normX = canvas.max.x - canvas.min.x;
-    const normY = canvas.max.y - canvas.min.y
-
-    const normDistX = (b.x - canvas.min.x)/normX - (a.x - canvas.min.x)/normX
-    const normDistY = (b.y - canvas.min.y)/normY - (a.y - canvas.min.y)/normY
-
-    //in units relative to the size of the canvas
-    return Math.sqrt((normDistX) ** 2 + (normDistY) ** 2);
-}
-
 export function euclideanDist(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-function findNearestNode(nodes, coordinates) {
+export function findNearestNode(nodes, coordinates) {
     let nearestNode = null;
     let minDistance = Infinity;
     

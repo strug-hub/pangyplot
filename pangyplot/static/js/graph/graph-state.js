@@ -2,7 +2,10 @@ let state = {
     genome: null,
     chromosome: null,
     start: null,
-    end: null
+    end: null,
+
+    zoomFactor: 1,
+    debug: true
 };
 
 export function getGraphCoordinates() {
@@ -27,3 +30,14 @@ export function resetGraphCoordinates() {
     state = { genome: null, chromosome: null, start: null, end: null };
 }
 
+export function setZoomFactor(zoomFactor) {
+    state.zoomFactor = zoomFactor;
+}
+
+export function getZoomFactor() {
+    return state.zoomFactor;
+}
+
+export function isDebugMode() {
+    return state.debug;
+}

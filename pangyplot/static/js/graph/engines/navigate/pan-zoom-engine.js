@@ -1,4 +1,6 @@
 import eventBus from '../../../input/event-bus.js';
+import { getZoomFactor } from '../../graph-state.js';
+
 
 const InputModes = Object.freeze({
     SELECTION: 'selection',
@@ -42,9 +44,11 @@ export default function setUpPanZoomEngine(forceGraph, canvasElement) {
 
     canvasElement.addEventListener('keydown', handleKeyChange);
     canvasElement.addEventListener('keyup', handleKeyChange);
+    canvasElement.addEventListener('mousemove', handleKeyChange);
 
     canvasElement.addEventListener('wheel', (event) => {
         if (!forceGraph) return;
         event.preventDefault();
+
     });
 }

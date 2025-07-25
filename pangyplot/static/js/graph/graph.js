@@ -60,13 +60,12 @@ function createForceGraph(graph){
         setCanvasSize(forceGraph);
 
         setUpEngineManager(forceGraph, canvasElement);
-        setUpRenderManager(forceGraph);
+        setUpRenderManager(forceGraph, canvasElement);
 
         // todo: pathManagerInitialize();
         //inputManagerSetupInputListeners(forceGraph, canvasElement);
         annotationManagerAnnotateGraph(forceGraph.graphData())
 
-        console.log("forceGraph:", forceGraph);
 
         //forceGraph.onEngineTick(() => {
         //    debugInformationUpdate(forceGraph.graphData());
@@ -227,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
     //data = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
 
     //KDM5D
-    data = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
+    //data = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
 
     //document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
     document.dispatchEvent(new CustomEvent("constructGraph", { detail: data }));
