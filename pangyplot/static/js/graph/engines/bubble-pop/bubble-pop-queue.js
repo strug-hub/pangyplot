@@ -1,15 +1,14 @@
 export const subgraphQueue = new Set();
 
-export function queueSubgraph(node) {
-    if (subgraphQueue.has(node.id)) {
+export function queueSubgraph(id) {
+
+    if (subgraphQueue.has(id)) {
         return false;
     }
-    subgraphQueue.add(node.id);
+    subgraphQueue.add(id);
     //TODO: showLoader();
-    console.log(subgraphQueue);
-
+    
     return true;
-
 }
 
 export function dequeueSubgraph(id) {

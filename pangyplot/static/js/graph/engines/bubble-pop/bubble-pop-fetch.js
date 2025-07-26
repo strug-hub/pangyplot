@@ -6,8 +6,8 @@ import buildGraphData from '../../graph-data/graph-data.js';
 
 export function fetchSubgraph(originNode, forceGraph) {
     const id = originNode.id;
-    const previouslyAdded = queueSubgraph(id);
-    if (!previouslyAdded) return;
+    const wasAdded = queueSubgraph(id);
+    if (!wasAdded) return;
 
     const params = {id, ...getGraphCoordinates()};
 

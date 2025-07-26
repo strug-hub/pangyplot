@@ -73,6 +73,10 @@ def genes():
     end = int(end)
     
     print(f"Getting genes in: {genome}#{chrom}:{start}-{end}")
+
+    if genome not in current_app.annotation_index:
+        return jsonify({"error": f"Genome '{genome}' not found"}), 404
+
     annidx = current_app.annotation_index[genome]
     annidx.set_step_index(current_app.step_index[(chrom, genome)])
     genes = annidx.query_gene_range(chrom, start, end)
