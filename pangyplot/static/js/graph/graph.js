@@ -8,6 +8,7 @@ import { annotationManagerFetch, annotationManagerAnnotateGraph } from './manage
 import { anchorEndpointNodes } from './utils/node-utils.js';
 import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import { setGraphCoordinates, equalCoordinates}  from './graph-state.js';
+import setUpForceSettings from './forces/force-setttings/force-settings.js';
 
 var GLOBAL_MULTIPLIER=1
 
@@ -41,7 +42,6 @@ function createForceGraph(graph){
             .nodeId("nodeId")
             .nodeLabel("nodeId")
             .nodeVal(node => node.width)
-            .nodeRelSize(10)
             .autoPauseRedraw(false) // keep drawing after engine has stopped
             .d3VelocityDecay(0.1)
             .cooldownTicks(Infinity)
@@ -56,10 +56,12 @@ function createForceGraph(graph){
 
         setUpEngineManager(forceGraph, canvasElement);
         setUpRenderManager(forceGraph, canvasElement);
+        setUpForceSettings(forceGraph);
 
         // todo: pathManagerInitialize();
         //inputManagerSetupInputListeners(forceGraph, canvasElement);
         annotationManagerAnnotateGraph(forceGraph.graphData())
+
 
 
         forceGraph.onEngineTick(() => {
@@ -131,8 +133,6 @@ function createForceGraph(graph){
             forceGraph.d3Force('collide', null);
             forceGraph.d3Force('center', null);
         }
-        graphSettingEngineSetup(forceGraph);
-        searchSequenceEngineInitialize(forceGraph);
     }
 
     setTimeout(() => {

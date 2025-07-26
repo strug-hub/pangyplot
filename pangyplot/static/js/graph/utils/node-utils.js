@@ -117,7 +117,6 @@ export function findNearestNode(nodes, coordinates) {
     return nearestNode;
 }
 
-
 export function computeNodeCentroid(nodes) {
     const sum = nodes.reduce((acc, n) => {
         acc.x += n.x;

@@ -3,6 +3,7 @@ import { getGraphCoordinates } from '../../graph-state.js';
 import { buildUrl, fetchData } from '../../utils/network-utils.js';
 import { explodeSubgraph } from './bubble-pop-force.js';
 import buildGraphData from '../../graph-data/graph-data.js';
+import eventBus from '../../../input/event-bus.js';
 
 export function fetchSubgraph(originNode, forceGraph) {
     const id = originNode.id;
@@ -22,8 +23,8 @@ export function fetchSubgraph(originNode, forceGraph) {
 export function deleteNode(graphData, id) {
     graphData.nodes = graphData.nodes.filter(node => node.id !== id);
     graphData.links = graphData.links.filter(link =>
-        (link.class === "node" && link.nodeId !== id) ||
-        (link.class === "link" && link.sourceId !== id && link.targetId !== id)
+        (link.class === "node" && link.id !== id) ||
+        (link.class === "link" && link.source.id !== id && link.target.id !== id)
     );
 }
 
@@ -52,8 +53,5 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     graphData.links = graphData.links.concat(subgraph.links);
     forceGraph.graphData(graphData);
 
-
-    //TODO:
-    //annotationManagerAnnotateGraph(forceGraph.graphData());
-    //searchSequenceEngineRerun();
+    eventBus.publish("bubble-pop:graph-updated", true);
 }

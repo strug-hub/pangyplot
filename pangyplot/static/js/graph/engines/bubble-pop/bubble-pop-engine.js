@@ -30,7 +30,6 @@ function attemptBubblePop(event, forceGraph){
         const nodes = forceGraph.graphData().nodes;
         
         const nearestNode = findNearestNode(nodes, graphCoords);
-        console.log("Bubble pop attempt on node:", nearestNode);
         if (!nearestNode || nearestNode.type != "bubble"){ 
             return;
         }
