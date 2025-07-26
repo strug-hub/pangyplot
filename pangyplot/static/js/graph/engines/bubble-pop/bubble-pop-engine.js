@@ -1,15 +1,10 @@
 import { fetchSubgraph } from './bubble-pop-fetch.js';
+import { findNearestNode, euclideanDist } from '../../utils/node-utils.js';
 
 var bubblePopMode = false;
-var wasBubbleModeOnDown = false;
+const BUBBLE_POP_RANGE = 25;
 
-export function attemptBubblePop(node, forceGraph) {
-    if (bubblePopMode && node.type == "bubble") {
-        fetchSubgraph(node, forceGraph);
-    }
-}
-
-export function popNodeEnginePopAll(nodes, forceGraph) {
+export function popGroupOfBubbles(nodes, forceGraph) {
     nodes.forEach(node => {
         if (node.type == "bubble") {
             fetchSubgraph(node, forceGraph);
@@ -17,46 +12,61 @@ export function popNodeEnginePopAll(nodes, forceGraph) {
     });
 }
 
-function popNodeEngineMouseClick(event, forceGraph, canvasElement, canvas, coordinates, inputState){
-    if (inputState===NODE_POP_MODE){
+function updateKeyChange(event, canvasElement){
+    bubblePopMode = false;
+    canvasElement.style.cursor = "default";
 
-        const nearestNode = findNearestNode(forceGraph.graphData().nodes, coordinates);
-        if (nearestNode.type == "null" || nearestNode.type == "segment" || nearestNode.type == "collapse"){ 
+    if (event.ctrlKey || event.metaKey) {
+        bubblePopMode = true;
+        canvasElement.style.cursor = "pointer";
+    }
+}
+
+function attemptBubblePop(event, forceGraph){
+    if (bubblePopMode){
+
+        const coords = { x: event.offsetX, y: event.offsetY };
+        const graphCoords = forceGraph.screen2GraphCoords(coords.x, coords.y);
+        const nodes = forceGraph.graphData().nodes;
+        
+        const nearestNode = findNearestNode(nodes, graphCoords);
+        console.log("Bubble pop attempt on node:", nearestNode);
+        if (!nearestNode || nearestNode.type != "bubble"){ 
             return;
         }
-        const normDist = findNormalizedDistance(nearestNode, coordinates, canvas);
-    
-        if (normDist < CAN_CLICK_RANGE){
-            fetchSubgraph(nearestNode, forceGraph);
-        }
+        const screenPos = forceGraph.graph2ScreenCoords(nearestNode.x, nearestNode.y);
+        const distPx = euclideanDist(coords, screenPos);
+
+        if (distPx > BUBBLE_POP_RANGE) return;
+        fetchSubgraph(nearestNode, forceGraph);
     }
+}
+
+function keyDown(event, forceGraph, canvasElement) {
+    updateKeyChange(event, canvasElement);
+}
+
+function keyUp(event, forceGraph, canvasElement) {
+    if (bubblePopMode) {
+        bubblePopMode = false;
+        canvasElement.style.cursor = "pointer";
+    }
+}
+
+function pointerMove(event, forceGraph, canvasElement) {
+    updateKeyChange(event, canvasElement);
+}
+
+function pointerUp(event, forceGraph, canvasElement) {
+    attemptBubblePop(event, forceGraph);
 }
 
 export default function setUpBubblePopEngine(forceGraph, canvasElement) {
 
-    forceGraph.onNodeClick(node => attemptBubblePop(node, forceGraph));
-
-    const handleKeyChange = (event) => {
-
-        bubblePopMode = false;
-        canvasElement.style.cursor = "default";
-
-        if (event.ctrlKey || event.metaKey) {
-
-            bubblePopMode = true;
-            canvasElement.style.cursor = "pointer";
-
-            if (event.type === 'keydown') {
-                wasBubbleModeOnDown = true;
-            }
-        }
-    };
-
-    canvasElement.addEventListener('keydown', handleKeyChange);
-    canvasElement.addEventListener('keyup', handleKeyChange);
-    canvasElement.addEventListener('mousemove', handleKeyChange);
-
-
+    canvasElement.addEventListener('keydown', event => keyDown(event, forceGraph, canvasElement));
+    canvasElement.addEventListener('keyup', event => keyUp(event, forceGraph, canvasElement));
+    canvasElement.addEventListener('pointermove', event => pointerMove(event, forceGraph, canvasElement));
+    canvasElement.addEventListener('pointerup', event => pointerUp(event, forceGraph, canvasElement));
 
 }
 

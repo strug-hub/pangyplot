@@ -5,7 +5,6 @@ export function explodeSubgraph(originNode, subgraph, forceGraph) {
 
     const graphNodes = forceGraph.graphData().nodes;
     const originNodes = graphNodes.filter(n => n.id === originNode.id);
-    console.log(originNode, originNodes)
     const nodeBox = findNodeBounds(originNodes);
     const subgraphBox = findNodeBounds(subgraph.nodes);
 
