@@ -4,7 +4,7 @@ import { getGradientColor } from './color-utils.js';
 export function getLinkColor(link){
 
     if (link.type === "link"){
-        return LINK_COLOR;
+        return colorState.linkColor;
     }
 
     switch (colorState.style) {

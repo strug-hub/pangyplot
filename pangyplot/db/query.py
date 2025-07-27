@@ -20,45 +20,6 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
 
     return graph
 
-'''
-
-    def to_bubble_graph(self, start_step, end_step, gfa_index):
-        chain_dict = self.get_top_level_bubbles(start_step, end_step, as_chains=True)
-        
-        bubble_nodes = []
-        bubble_links = []
-        segment_ids = set()
-
-        for _, bubbles in chain_dict.items():
-            for bubble in bubbles:
-                bubble_nodes.append(bubble)
-                bubble_link = bubble.next_sibling_link()
-                if bubble_link is not None:
-                    bubble_links.extend(bubble_link)
-                ends = set(bubble.ends(as_list=True))
-                segment_ids.update(ends)
-
-        return bubble_nodes, bubble_links, segment_ids
-    
-
-
-    graph_parts = bubbleidx.to_bubble_graph(start_step, end_step, gfaidx)
-
-    bubble_nodes, bubble_links, segment_ids = graph_parts
-
-    all_nodes = bubble_nodes
-    all_links = bubble_links
-
-    segments, segment_links = gfaidx.get_subgraph(segment_ids, stepidx)
-    all_nodes.extend(segments)
-    all_links.extend(segment_links)
-
-    graph = {"nodes": [node.serialize() for node in all_nodes], 
-             "links": [link.serialize() for link in all_links]}
-    
-    return graph
-
-'''
 
 def pop_bubble(indexes, nodeid, genome, chrom):
     stepidx = indexes.step_index[(chrom, genome)]
@@ -71,7 +32,9 @@ def pop_bubble(indexes, nodeid, genome, chrom):
         return {"nodes": all_nodes, "links": all_links}
     nodeid = int(nodeid.replace("b", ""))
 
-    bubble_nodes, bubble_links, segment_ids = bubbleidx.get_subgraph(nodeid, gfaidx)
+    bubble, bubble_nodes, bubble_links, segment_ids = bubbleidx.get_subgraph(nodeid, gfaidx)
+    #todo: get node -> bubble links
+    
     all_nodes.extend(bubble_nodes)
     all_links.extend(bubble_links)
 

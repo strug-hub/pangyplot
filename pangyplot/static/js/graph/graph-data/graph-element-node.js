@@ -27,6 +27,7 @@ class Bubble extends GraphElementNode {
 class Segment extends GraphElementNode {
     constructor(rawSegment) {
         super(rawSegment, "segment");
+        this.insideBubble = rawSegment.inside_bubble;
     }
 }
 

@@ -121,6 +121,7 @@ export default function buildGraphData(rawGraph) {
     const elementDict = Object.fromEntries(nodeElements.map(e => [e.id, e]));
 
     const validRawLinks = rawGraph.links.filter(l => (l.source in elementDict) && (l.target in elementDict));
+    console.log(validRawLinks)
     const linkElements = deserializeLinks(validRawLinks, elementDict);
 
     const headDict = Object.fromEntries(nodes.map(e => [e.id, e.head()]));

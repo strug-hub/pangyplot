@@ -46,8 +46,9 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     graphData.nodes = graphData.nodes.concat(subgraph.nodes);
 
     const currentNodeIds = new Set(graphData.nodes.map(node => node.id));
+
     subgraph.links = subgraph.links.filter(link =>
-        currentNodeIds.has(link.source) && currentNodeIds.has(link.target)
+        currentNodeIds.has(link.sourceId) && currentNodeIds.has(link.targetId)
     );
 
     graphData.links = graphData.links.concat(subgraph.links);

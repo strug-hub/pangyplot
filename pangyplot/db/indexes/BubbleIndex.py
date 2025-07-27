@@ -220,4 +220,5 @@ class BubbleIndex:
             segment_ids.update(ends)
 
         segment_ids.update(bubble.inside)
-        return bubble_nodes, bubble_links, segment_ids
+        segment_ids.update(set(bubble.ends(as_list=True)))
+        return bubble, bubble_nodes, bubble_links, segment_ids

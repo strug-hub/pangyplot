@@ -67,7 +67,7 @@ class Link:
         return ((hap_int >> sample_idx) & 1) == 1
 
     def __str__(self):
-        return f"Link(id={self.id}, from={self.from_id}{self.from_strand}, to={self.to_id}{self.to_strand})"
+        return f"Link(id={self.id()}, from={self.from_id}{self.from_strand}, to={self.to_id}{self.to_strand})"
 
     def __repr__(self):
-        return f"Link({self.id})"
+        return f"Link({self.id()})"
