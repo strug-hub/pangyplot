@@ -29,29 +29,18 @@ export function deleteNode(graphData, id) {
 }
 
 export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
-    let graphData = forceGraph.graphData();
-
+    const graphData = forceGraph.graphData();
     const existingIds = new Set(graphData.nodes.map(n => n.id));
-        
-    Object.keys(rawSubgraph["end_data"]).forEach(bubble_id =>{
 
-        if(!existingIds.has(bubble_id)){
-            const end_graph = rawSubgraph["end_data"][bubble_id]
-            
-            rawSubgraph["nodes"] = [ 
-                ...rawSubgraph["nodes"], 
-                ...end_graph["nodes"] ];
-            rawSubgraph["links"] = [ 
-                ...rawSubgraph["links"], 
-                ...end_graph["links"] ];
-            console.log(bubble_id)
-            console.log(end_graph)
+    // Merge end_data
+    Object.entries(rawSubgraph.end_data).forEach(([bubble_id, end_graph]) => {
+        if (!existingIds.has(bubble_id)) {
+            rawSubgraph.nodes.push(...end_graph.nodes);
+            rawSubgraph.links.push(...end_graph.links);
         }
     });
 
     const subgraph = buildGraphData(rawSubgraph, graphData);
-
-    console.log("Processed subgraph data:", subgraph.links);
 
     explodeSubgraph(originNode, subgraph, forceGraph);
 
@@ -61,19 +50,18 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
 
     deleteNode(graphData, originNode.id);
 
-    const existingIds2 = new Set(graphData.nodes.map(n => n.id));
-    subgraph.nodes = subgraph.nodes.filter(n => !existingIds2.has(n.id));
+    // Filter out nodes already present
+    const updatedIds = new Set(graphData.nodes.map(n => n.id));
+    subgraph.nodes = subgraph.nodes.filter(n => !updatedIds.has(n.id));
+    graphData.nodes.push(...subgraph.nodes);
 
-    graphData.nodes = graphData.nodes.concat(subgraph.nodes);
-
-    const currentNodeIds = new Set(graphData.nodes.map(node => node.nodeId));
-
+    // Filter links to only those with valid source/target
+    const nodeIds = new Set(graphData.nodes.map(n => n.nodeId));
     subgraph.links = subgraph.links.filter(link =>
-        currentNodeIds.has(link.source) && currentNodeIds.has(link.target)
+        nodeIds.has(link.source) && nodeIds.has(link.target)
     );
+    graphData.links.push(...subgraph.links);
 
-    graphData.links = graphData.links.concat(subgraph.links);
     forceGraph.graphData(graphData);
-
     eventBus.publish("bubble-pop:graph-updated", true);
 }

@@ -66,7 +66,9 @@ class Bubble:
         self.children.append(child.id)
         self._clean_inside(child.inside, bubble_dict)
 
-    def get_siblings(self):
+    def get_siblings(self, with_segments=False):
+        if with_segments:
+            return self._siblings
         return list({sib_id for sib_id, _ in self._siblings})
     def get_sibling_segments(self, get_compacted_nodes=True):
         return self.get_source(get_compacted_nodes) + self.get_sink(get_compacted_nodes)
@@ -75,6 +77,7 @@ class Bubble:
             if self._sink in seg_ids:
                 return sib_id
         return None
+
     def get_source_sibling(self):
         for sib_id, seg_ids in self._siblings:
             if self._source in seg_ids:
@@ -160,17 +163,19 @@ class Bubble:
             return sources + sinks
         return (sources, sinks)
         
-    def get_source(self, get_compacted_nodes=True):
+    def get_source(self, get_compacted_nodes=True, as_set=False):
         if not get_compacted_nodes:
-            return [self._source]
+            result = [self._source]
+        else:
+            result = [self._source] + self._compacted_source
+        return set(result) if as_set else result
 
-        return [self._source] + self._compacted_source
-    
-    def get_sink(self, get_compacted_nodes=True):
+    def get_sink(self, get_compacted_nodes=True, as_set=False):
         if not get_compacted_nodes:
-            return [self._sink]
-        
-        return [self._sink] + self._compacted_sink
+            result = [self._sink]
+        else:
+            result = [self._sink] + self._compacted_sink
+        return set(result) if as_set else result
 
     def has_range(self, exclusive=True):
         if exclusive:
