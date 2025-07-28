@@ -123,7 +123,7 @@ export default function buildGraphData(rawGraph, existingGraph=null) {
             elementDict[node.id] = node.element;
         });
     }
-
+    console.log("linkys,", rawGraph.links)
     const validRawLinks = rawGraph.links.filter(l => (l.source in elementDict) && (l.target in elementDict));
     const linkElements = deserializeLinks(validRawLinks, elementDict);
 

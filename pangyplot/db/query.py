@@ -56,8 +56,6 @@ def pop_bubble(indexes, nodeid, genome, chrom):
                 print(f"Link {link.from_id} -> {link.to_id} adjusted to bubble {sibling.id}")
                 print(link.serialize())
 
-            break
-
     all_nodes.extend(segments)
     all_links.extend(segment_links)
 
