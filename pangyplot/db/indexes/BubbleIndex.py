@@ -206,19 +206,57 @@ class BubbleIndex:
 
         return merged
 
-    def get_subgraph(self, bubble_id, gfa_index):
+    def get_subgraph(self, bubble_id, gfa_index, step_index):
         bubble = self[bubble_id]
         if bubble is None:
             return [],[],[]
 
-        bubble_links = []
-        bubble_nodes = [self[child_id] for child_id in bubble.children]
-        #segment_ids = set()
-        for child in bubble_nodes:
-            bubble_links.extend(child.end_links(gfa_index))
-            #ends = set(child.ends(as_list=True))
-            #segment_ids.update(ends)
+        bubble_ends = set(bubble.ends(as_list=True))
 
-        #segment_ids.update(bubble.inside)
-        #segment_ids.update(set(bubble.ends(as_list=True)))
-        return bubble, bubble_nodes, bubble_links #, segment_ids
+        all_nodes = []
+        all_links = []
+
+        # [bubble]-[bubble] get child bubbles and links between them
+        for child_id in bubble.children:
+            child = self[child_id]
+            all_nodes.append(child)
+            all_links.extend(child.end_links(gfa_index))
+
+        # [segment]-[segment] get inside segments and all links they have
+        inside_segments, inside_segment_links = gfa_index.get_subgraph(bubble.inside, step_index)
+        all_nodes.extend(inside_segments)
+        all_links.extend(inside_segment_links)
+
+        # [bubble]-[segment] get links from inside segments to sibling bubbles
+        # used when sibling bubble is still unpopped
+        def sib_links(seg_ids, sib_id):
+            for seg_id in seg_ids:
+                for link in gfa_index.get_links(seg_id):
+                    other_id = link.other_id(seg_id)
+                    if other_id in bubble.inside:
+                        link_copy = link.clone()
+                        if link.from_id == seg_id:
+                            link_copy.from_id = sib_id
+                            link_copy.make_bubble_to_segment()
+                        elif link.to_id == seg_id:
+                            link_copy.to_id = sib_id
+                            link_copy.make_segment_to_bubble()
+                        all_links.append(link_copy)
+
+        sib_links(bubble.get_source(), bubble.get_source_sibling())
+        sib_links(bubble.get_sink(), bubble.get_sink_sibling())
+
+        # [segment]-[segment] include ends if bubble and sibling are popped
+        end_data = dict()
+        current_links = {link.id() for link in all_links}
+        siblings = [self[sid] for sid in bubble.get_siblings()]
+
+        for sibling in siblings:
+            sib_id = sibling.get_serialized_id()
+            end_ids = {seg_id for seg_id in sibling.ends(as_list=True) if seg_id in bubble_ends}
+
+            end_segments, all_end_links = gfa_index.get_subgraph(end_ids, step_index)
+            end_links = [link for link in all_end_links if link.id() not in current_links]
+            end_data[sib_id] = {"nodes": end_segments, "links": end_links}
+
+        return {"nodes": all_nodes, "links": all_links, "end_data": end_data} 

@@ -32,12 +32,12 @@ class Bubble:
         self.y1 = 0
         self.y2 = 0
         
-    def get_id(self):
+    def get_serialized_id(self):
         return f"b{self.id}"
 
     def serialize(self):
         return {
-            "id": self.get_id(),
+            "id": self.get_serialized_id(),
             "type": "bubble",
             "chain": self.chain,
             "chain_step": self.chain_step,
