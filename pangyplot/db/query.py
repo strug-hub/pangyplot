@@ -22,7 +22,6 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
 
 
 def pop_bubble(indexes, nodeid, genome, chrom):
-
     if nodeid.startswith("s"):
         return {"nodes": [], "links": [], "end_data": dict()}
 
@@ -36,7 +35,7 @@ def pop_bubble(indexes, nodeid, genome, chrom):
     all_links = []
     end_data = dict()
 
-    bubble, bubble_nodes, bubble_links = bubbleidx.get_subgraph(nodeid, gfaidx)    
+    bubble, bubble_nodes, bubble_links = bubbleidx.get_subgraph(nodeid, gfaidx)
     segments, segment_links = gfaidx.get_subgraph(bubble.inside, stepidx)
 
     all_nodes.extend(bubble_nodes)
@@ -44,78 +43,38 @@ def pop_bubble(indexes, nodeid, genome, chrom):
     all_links.extend(bubble_links)
     all_links.extend(segment_links)
 
-    bubble_segs = set(bubble.ends(as_list=True))
-    bubble_segs.update(bubble.inside)
-    
-    for seg_id in bubble.get_source():
-        sib_id = bubble.get_source_sibling()
-        for link in gfaidx.get_links(seg_id):
-            other_id = link.other_id(seg_id)
-            if other_id in bubble.inside:
-                link_copy = link.clone()
-                if link.from_id == seg_id:
-                    link_copy.from_id = sib_id
-                    link_copy.make_bubble_to_segment()
-                    print(f"Link {link.from_id} -> {link_copy.to_id} adjusted to bubble {sib_id}")
-                    print(link.serialize())
-                elif link.to_id == seg_id:
-                    link_copy.to_id = sib_id
-                    link_copy.make_segment_to_bubble()
-                    print(f"Link {link.from_id} -> {link_copy.to_id} adjusted to bubble {sib_id}")
-                    print(link_copy.serialize())
-                all_links.append(link_copy)
+    bubble_ends = set(bubble.ends(as_list=True))
+    bubble_segs = bubble_ends.union(bubble.inside)
 
-    for seg_id in bubble.get_sink():
-        sib_id = bubble.get_sink_sibling()
-        for link in gfaidx.get_links(seg_id):
-            other_id = link.other_id(seg_id)
-            if other_id in bubble.inside:
-                link_copy = link.clone()
-                if link.from_id == seg_id:
-                    link_copy.from_id = sib_id
-                    link_copy.make_bubble_to_segment()
-                    print(f"Link {link.from_id} -> {link_copy.to_id} adjusted to bubble {sib_id}")
-                    print(link.serialize())
-                elif link.to_id == seg_id:
-                    link_copy.to_id = sib_id
-                    link_copy.make_segment_to_bubble()
-                    print(f"Link {link.from_id} -> {link_copy.to_id} adjusted to bubble {sib_id}")
-                    print(link_copy.serialize())
-                all_links.append(link_copy)
-
-
-
-
-    for sib_id, seg_ids in bubble.get_siblings(with_segments=True):
+    def adjust_links(seg_ids, get_sibling, make_bubble_to_segment, make_segment_to_bubble):
         for seg_id in seg_ids:
+            sib_id = get_sibling()
             for link in gfaidx.get_links(seg_id):
                 other_id = link.other_id(seg_id)
-                if other_id not in bubble_segs:
+                if other_id in bubble.inside:
                     link_copy = link.clone()
-                    if link.from_id == other_id:
+                    if link.from_id == seg_id:
                         link_copy.from_id = sib_id
-                        link_copy.make_bubble_to_segment()
-                        print(f"Link {link.from_id} -> {link_copy.to_id} adjusted to bubble {sib_id}")
-                        print(link.serialize())
-                    elif link.to_id == other_id:
+                        make_bubble_to_segment(link_copy)
+                    elif link.to_id == seg_id:
                         link_copy.to_id = sib_id
-                        link_copy.make_segment_to_bubble()
-                        print(f"Link {link.from_id} -> {link_copy.to_id} adjusted to bubble {sib_id}")
-                        print(link_copy.serialize())
+                        make_segment_to_bubble(link_copy)
                     all_links.append(link_copy)
+
+    adjust_links(bubble.get_source(), bubble.get_source_sibling, lambda l: l.make_bubble_to_segment(), lambda l: l.make_segment_to_bubble())
+    adjust_links(bubble.get_sink(), bubble.get_sink_sibling, lambda l: l.make_bubble_to_segment(), lambda l: l.make_segment_to_bubble())
 
     siblings = [bubbleidx[sid] for sid in bubble.get_siblings()]
 
-    bubble_ends = set(bubble.ends(as_list=True))
-
     for sibling in siblings:
-        end_data[sibling.get_id()] =  {"nodes": [], "links": []}
-        all_sib_ends = bubble.ends(as_list=True)
+        sib_id = sibling.get_id()
+        end_data[sib_id] = {"nodes": [], "links": []}
+        all_sib_ends = sibling.ends(as_list=True)
         end_ids = {seg_id for seg_id in all_sib_ends if seg_id in bubble_ends}
 
         end_segments, end_links = gfaidx.get_subgraph(end_ids, stepidx)
-        end_data[sibling.get_id()]["nodes"] = [node.serialize() for node in end_segments]
-        end_data[sibling.get_id()]["links"] = [link.serialize() for link in end_links]
+        end_data[sib_id]["nodes"] = [node.serialize() for node in end_segments]
+        end_data[sib_id]["links"] = [link.serialize() for link in end_links]
 
         for link in end_links:
             if link.from_id in sibling.inside:
@@ -123,15 +82,11 @@ def pop_bubble(indexes, nodeid, genome, chrom):
                 link_copy.from_id = sibling.id
                 link_copy.make_bubble_to_segment()
                 all_links.append(link_copy)
-                print(f"Link {link.from_id} -> {link.to_id} adjusted to bubble {sibling.id}")
-                print(link.serialize())
             elif link.to_id in sibling.inside:
                 link_copy = link.clone()
                 link_copy.to_id = sibling.id
                 link_copy.make_segment_to_bubble()
                 all_links.append(link_copy)
-                print(f"Link {link.from_id} -> {link.to_id} adjusted to bubble {sibling.id}")
-                print(link.serialize())
 
     nodes = [node.serialize() for node in all_nodes]
     links = [link.serialize() for link in all_links]
