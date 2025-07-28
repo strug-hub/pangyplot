@@ -107,10 +107,6 @@ class Bubble:
         return links
 
     def end_links(self, gfa_index):
-        """
-        Returns two links for the bubble: one connecting to its START (-) and one to its END (+).
-        Normalizes orientation if needed.
-        """
 
         def get_external_links(node_ids, internal_ids):
             external = []
@@ -133,7 +129,7 @@ class Bubble:
 
             if new_link.from_id == outside_id:
                 new_link.to_id = self.id
-                new_link.make_segment_to_bubble()  # adjusts orientation
+                new_link.make_segment_to_bubble()
             else:
                 new_link.from_id = self.id
                 new_link.make_bubble_to_segment()

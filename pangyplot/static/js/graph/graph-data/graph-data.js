@@ -4,13 +4,13 @@ import deserializeLinks from './graph-element-link.js';
 //TODO: move responsibility for size to render engine
 const NODE_WIDTH=50;
 const NODE_LINK_WIDTH=60;
-const LINK_LENGTH = 10
-const LINK_WIDTH = 10
+const LINK_LENGTH = 10;
+const LINK_WIDTH = 10;
 const CHAIN_WIDTH = 35;
 
 
 const SINGLE_NODE_BP_THRESH = 6;
-const KINK_SIZE = 100;
+const KINK_SIZE = 1000;
 const MAX_KINKS = 10;
 
 function calculateNumberOfKinks(length) {
@@ -89,6 +89,7 @@ function forceGraphNodeLinks(element) {
 }
 
 function forceGraphLinks(element, headDict, tailDict) {
+
     const isChainLink = element.isChainLink;
     const sourceId = element.source.id;
     const targetId = element.target.id;
@@ -130,8 +131,8 @@ export default function buildGraphData(rawGraph, existingGraph=null) {
 
     if (existingGraph) {
         existingGraph.nodes.forEach(node => {
-            headDict[node.id] = node.head ? node.head() : headDict[node.id];
-            tailDict[node.id] = node.tail ? node.tail() : tailDict[node.id];
+            headDict[node.id] = node.head();
+            tailDict[node.id] = node.tail();
         });
     }
 

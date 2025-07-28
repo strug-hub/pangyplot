@@ -4,8 +4,8 @@ class GraphElementLink {
         this.type = "link";
         this.source = sourceElement;
         this.target = targetElement;
-        this.fromStrand = rawLink.to_strand;
-        this.toStrand = rawLink.from_strand;
+        this.fromStrand = rawLink.from_strand;
+        this.toStrand = rawLink.to_strand;
         this.haplotype = rawLink.haplotype;
 
         //TODO

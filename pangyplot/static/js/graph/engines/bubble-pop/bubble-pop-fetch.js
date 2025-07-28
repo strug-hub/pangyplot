@@ -35,7 +35,6 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     // Merge end_data
     Object.entries(rawSubgraph.end_data).forEach(([bubble_id, end_graph]) => {
         if (!existingIds.has(bubble_id)) {
-            console.log(`Adding end_graph for bubble_id: ${bubble_id}`);
             rawSubgraph.nodes.push(...end_graph.nodes);
             rawSubgraph.links.push(...end_graph.links);
         }

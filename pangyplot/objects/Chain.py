@@ -14,6 +14,9 @@ class Chain:
             "links": [link.serialize() for link in self.get_bubble_links()]
         }
     
+    def decompose(self):
+        return self.bubbles, self.get_bubble_links()
+    
     def source_bubble(self):
         if self.bubbles:
             return self.bubbles[0]
@@ -56,6 +59,16 @@ class Chain:
 
         return links
 
+
+    def internal_segments(self):
+        if len(self.bubbles) < 2:
+            return set()
+
+        segments = set(self.bubbles[0].get_sink())
+        for bubble in self.bubbles[1:-1]:
+            segments.update(bubble.ends(as_list=True))
+        segments.update(self.bubbles[-1].get_source())
+        return segments
 
     def __getitem__(self, i):
         return self.bubbles[i]
