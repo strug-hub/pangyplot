@@ -31,7 +31,10 @@ export function deleteNode(graphData, id) {
 export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     let graphData = forceGraph.graphData();
 
-    const subgraph = buildGraphData(rawSubgraph);
+    const subgraph = buildGraphData(rawSubgraph, graphData);
+
+    console.log("Processed subgraph data:", subgraph.links);
+
     explodeSubgraph(originNode, subgraph, forceGraph);
 
     if (originNode.isSelected) {

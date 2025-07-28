@@ -28,7 +28,6 @@ class GraphElementLink {
         }
         return bools;
     }
-
 }
 
 export default function deserializeLinks(rawLinks, nodeElementDict) {

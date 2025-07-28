@@ -99,7 +99,7 @@ class Bubble:
                 link.update_to_bubble(sink_id, self.id)
                 links.append(link)
         return links
-        
+
     def end_links(self, gfa_index):
         """
         Returns two links for the bubble: one connecting to its START (-) and one to its END (+).

@@ -94,7 +94,7 @@ function forceGraphLinks(element, headDict, tailDict) {
     const targetId = element.target.id;
     const sourceNodeId = element.fromStrand === "+" ? tailDict[sourceId] : headDict[sourceId];
     const targetNodeId = element.toStrand === "+" ? headDict[targetId] : tailDict[targetId];
-
+    
     return {
         class: "link",
         type: isChainLink ? "chain" : "link",
@@ -111,21 +111,31 @@ function forceGraphLinks(element, headDict, tailDict) {
         annotations: []
     };
 }
-
-export default function buildGraphData(rawGraph) {
+export default function buildGraphData(rawGraph, existingGraph=null) {
 
     const nodeElements = deserializeNodes(rawGraph.nodes);
     const nodes = nodeElements.flatMap(element => forceGraphNodes(element));
     const nodeLinks = nodeElements.flatMap(element => forceGraphNodeLinks(element));
 
     const elementDict = Object.fromEntries(nodeElements.map(e => [e.id, e]));
+    if (existingGraph) {
+        existingGraph.nodes.forEach(node => {
+            elementDict[node.id] = node.element;
+        });
+    }
 
     const validRawLinks = rawGraph.links.filter(l => (l.source in elementDict) && (l.target in elementDict));
-    console.log(validRawLinks)
     const linkElements = deserializeLinks(validRawLinks, elementDict);
 
     const headDict = Object.fromEntries(nodes.map(e => [e.id, e.head()]));
     const tailDict = Object.fromEntries(nodes.map(e => [e.id, e.tail()]));
+
+    if (existingGraph) {
+        existingGraph.nodes.forEach(node => {
+            headDict[node.id] = node.head ? node.head() : headDict[node.id];
+            tailDict[node.id] = node.tail ? node.tail() : tailDict[node.id];
+        });
+    }
 
     const links = [
         ...linkElements.map(link => forceGraphLinks(link, headDict, tailDict)),

@@ -39,6 +39,25 @@ def pop_bubble(indexes, nodeid, genome, chrom):
     all_links.extend(bubble_links)
 
     segments, segment_links = gfaidx.get_subgraph(segment_ids, stepidx)
+
+
+    siblings = [bubbleidx[sid] for sid in bubble.get_siblings()]
+
+    for link in segment_links:
+        for sibling in siblings:
+            if link.from_id in sibling.inside:
+                link.from_id = sibling.id
+                link.make_bubble_to_segment()
+                print(f"Link {link.from_id} -> {link.to_id} adjusted to bubble {sibling.id}")
+                print(link.serialize())
+            elif link.to_id in sibling.inside:
+                link.to_id = sibling.id
+                link.make_segment_to_bubble()
+                print(f"Link {link.from_id} -> {link.to_id} adjusted to bubble {sibling.id}")
+                print(link.serialize())
+
+            break
+
     all_nodes.extend(segments)
     all_links.extend(segment_links)
 

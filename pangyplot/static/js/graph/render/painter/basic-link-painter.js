@@ -3,7 +3,7 @@ import { drawLine, drawRotatedCross } from './painter-utils.js';
 
 export default function basicLinkPainter(ctx, link, svg=false){
     if (! link.isVisible || !link.isDrawn) return;
-
+    
     const color = getLinkColor(link);
     const zoomFactor = ctx.canvas.__zoom["k"];
 
@@ -13,6 +13,7 @@ export default function basicLinkPainter(ctx, link, svg=false){
         zoomAdjust = 3/zoomFactor;
     }
     const linkwidth = link.width+zoomAdjust;
+    //console.log(link, link.source, link.target)
     const x1 = link.source.x;
     const y1 = link.source.y;
     const x2 = link.target.x;
