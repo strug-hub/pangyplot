@@ -31,6 +31,24 @@ export function deleteNode(graphData, id) {
 export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     let graphData = forceGraph.graphData();
 
+    const existingIds = new Set(graphData.nodes.map(n => n.id));
+        
+    Object.keys(rawSubgraph["end_data"]).forEach(bubble_id =>{
+
+        if(!existingIds.has(bubble_id)){
+            const end_graph = rawSubgraph["end_data"][bubble_id]
+            
+            rawSubgraph["nodes"] = [ 
+                ...rawSubgraph["nodes"], 
+                ...end_graph["nodes"] ];
+            rawSubgraph["links"] = [ 
+                ...rawSubgraph["links"], 
+                ...end_graph["links"] ];
+            console.log(bubble_id)
+            console.log(end_graph)
+        }
+    });
+
     const subgraph = buildGraphData(rawSubgraph, graphData);
 
     console.log("Processed subgraph data:", subgraph.links);
@@ -43,15 +61,15 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
 
     deleteNode(graphData, originNode.id);
 
-    const existingIds = new Set(graphData.nodes.map(n => n.id));
-    subgraph.nodes = subgraph.nodes.filter(n => !existingIds.has(n.id));
+    const existingIds2 = new Set(graphData.nodes.map(n => n.id));
+    subgraph.nodes = subgraph.nodes.filter(n => !existingIds2.has(n.id));
 
     graphData.nodes = graphData.nodes.concat(subgraph.nodes);
 
-    const currentNodeIds = new Set(graphData.nodes.map(node => node.id));
+    const currentNodeIds = new Set(graphData.nodes.map(node => node.nodeId));
 
     subgraph.links = subgraph.links.filter(link =>
-        currentNodeIds.has(link.sourceId) && currentNodeIds.has(link.targetId)
+        currentNodeIds.has(link.source) && currentNodeIds.has(link.target)
     );
 
     graphData.links = graphData.links.concat(subgraph.links);

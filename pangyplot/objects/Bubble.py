@@ -31,10 +31,13 @@ class Bubble:
         self.x2 = 0
         self.y1 = 0
         self.y2 = 0
+        
+    def get_id(self):
+        return f"b{self.id}"
 
     def serialize(self):
         return {
-            "id": f"b{self.id}",
+            "id": self.get_id(),
             "type": "bubble",
             "chain": self.chain,
             "chain_step": self.chain_step,

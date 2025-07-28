@@ -213,12 +213,12 @@ class BubbleIndex:
 
         bubble_links = []
         bubble_nodes = [self[child_id] for child_id in bubble.children]
-        segment_ids = set()
+        #segment_ids = set()
         for child in bubble_nodes:
             bubble_links.extend(child.end_links(gfa_index))
-            ends = set(child.ends(as_list=True))
-            segment_ids.update(ends)
+            #ends = set(child.ends(as_list=True))
+            #segment_ids.update(ends)
 
-        segment_ids.update(bubble.inside)
-        segment_ids.update(set(bubble.ends(as_list=True)))
-        return bubble, bubble_nodes, bubble_links, segment_ids
+        #segment_ids.update(bubble.inside)
+        #segment_ids.update(set(bubble.ends(as_list=True)))
+        return bubble, bubble_nodes, bubble_links #, segment_ids

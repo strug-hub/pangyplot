@@ -116,14 +116,12 @@ export default function buildGraphData(rawGraph, existingGraph=null) {
     const nodeElements = deserializeNodes(rawGraph.nodes);
     const nodes = nodeElements.flatMap(element => forceGraphNodes(element));
     const nodeLinks = nodeElements.flatMap(element => forceGraphNodeLinks(element));
-
     const elementDict = Object.fromEntries(nodeElements.map(e => [e.id, e]));
     if (existingGraph) {
         existingGraph.nodes.forEach(node => {
             elementDict[node.id] = node.element;
         });
     }
-    console.log("linkys,", rawGraph.links)
     const validRawLinks = rawGraph.links.filter(l => (l.source in elementDict) && (l.target in elementDict));
     const linkElements = deserializeLinks(validRawLinks, elementDict);
 

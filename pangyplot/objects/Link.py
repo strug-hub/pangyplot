@@ -24,6 +24,19 @@ class Link:
             "source": f"{self.from_type}{self.from_id}",
             "target": f"{self.to_type}{self.to_id}"
         }
+    
+    def clone(self):
+        link = Link()
+        link.from_id = self.from_id
+        link.to_id = self.to_id
+        link.from_strand = self.from_strand
+        link.to_strand = self.to_strand
+        link.haplotype = self.haplotype
+        link.reverse = self.reverse
+        link.frequency = self.frequency
+        link.from_type = self.from_type
+        link.to_type = self.to_type
+        return link
 
     def contains(self, id):
         return self.from_id == id or self.to_id == id
