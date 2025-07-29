@@ -50,6 +50,7 @@ function forceGraphNodes(element) {
             head: () => `${element.id}#0`,
             tail: () => `${element.id}#${kinks - 1}`,
             nodeIdx: i,
+            kinks: kinks,
             x, y,
             initX: x,
             initY: y,

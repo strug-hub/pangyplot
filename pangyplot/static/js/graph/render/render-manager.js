@@ -1,6 +1,8 @@
 import { getViewport } from './viewport.js';
 import { updateVisibility } from './viewport.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-render.js';
+import { renderGenes} from '../engines/gene-annotation/gene-annotation-label-render.js';
+import { renderGeneLabels} from '../engines/gene-annotation/gene-annotation-label-render.js';
 import basicLinkPainter from './painter/basic-link-painter.js';
 import basicNodePainter from './painter/basic-node-painter.js';
 import labelPainter from './painter/label-painter.js';
@@ -19,7 +21,7 @@ function renderPreFrame(ctx, forceGraph) {
 
     highlightSelection(ctx, forceGraph.graphData());
     
-    //TODO: this goes somewhere else
+    renderGenes(ctx, forceGraph);
     //annotationManagerUpdate(ctx, forceGraph);
     //geneRenderEngineDraw(ctx, forceGraph.graphData());
 }
@@ -27,7 +29,7 @@ function renderPreFrame(ctx, forceGraph) {
 function renderPostFrame(ctx, forceGraph) {
     const viewport = getViewport(forceGraph);
 
-    //drawGeneName(ctx, forceGraph.graphData(), viewport);
+    renderGeneLabels(ctx, forceGraph, viewport);
     //searchSequenceEngineUpdate(ctx, forceGraph);
     labelPainter(ctx, forceGraph);
     renderDragInfluenceCircle(ctx, viewport);

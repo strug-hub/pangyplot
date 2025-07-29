@@ -1,3 +1,5 @@
+import { getTableData, setGeneVisibility, setGeneExonVisibility, setGeneColor } from "../../graph/engines/gene-annotation/gene-annotation-state.js";
+
 //example
 //const geneAnnotations = [
 //    { id: 1, name: "Gene 1", hasExon: true, color: "#ff0000", visible: true },
@@ -5,7 +7,10 @@
 //    { id: 3, name: "Gene 3", hasExon: true, color: "#0000ff", visible: true },
 //];
 
-function populateGeneAnnotationsTable(annotations) {
+export function populateGeneAnnotationsTable() {
+
+    const annotations = getTableData();
+
     const tableBody = document.getElementById("gene-annotations-body");
     tableBody.innerHTML = ""; // Clear previous content
 
@@ -67,24 +72,24 @@ function populateGeneAnnotationsTable(annotations) {
 function toggleGeneSelection(id, button) {
     button.classList.toggle("button-selected");
     const isSelected = button.classList.contains("button-selected");
-    annotationManagerUpdatedSelectionFromTable(id, isSelected);
+    setGeneVisibility(id, isSelected);
 }
 
 function toggleExonSelection(id, button) {
     button.classList.toggle("button-selected");
     const isSelected = button.classList.contains("button-selected");
-    annotationManagerUpdatedExonFromTable(id, isSelected);
+    setGeneExonVisibility(id, isSelected);
 }
 
 function handleColorChange(id, color) {
-    annotationManagerUpdatedColorFromTable(id, color);
+    setGeneColor(id, color);
 }
 
 function selectAllGenes() {
     document.querySelectorAll(".gene-toggle-annotation-row").forEach(button => {
         button.classList.add("button-selected");
         const id = button.dataset.id;
-        annotationManagerUpdatedSelectionFromTable(id, true);
+        setGeneVisibility(id, true);
     });
 }
 
@@ -92,7 +97,7 @@ function deselectAllGenes() {
     document.querySelectorAll(".gene-toggle-annotation-row").forEach(button => {
         button.classList.remove("button-selected");
         const id = button.dataset.id;
-        annotationManagerUpdatedSelectionFromTable(id, false);
+        setGeneVisibility(id, false);
     });
 }
 

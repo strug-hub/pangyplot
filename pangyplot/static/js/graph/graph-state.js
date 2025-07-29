@@ -1,3 +1,6 @@
+export const canvasElement = document.getElementById("graph");
+export const forceGraph = ForceGraph()(canvasElement);
+
 let state = {
     genome: null,
     chromosome: null,
@@ -9,7 +12,8 @@ let state = {
 };
 
 export function getGraphCoordinates() {
-    return { ...state }; // return a shallow copy
+    const { genome, chromosome, start, end } = state;
+    return { genome, chromosome, start, end };
 }
 
 export function equalCoordinates({ genome, chromosome, start, end }) {
@@ -25,6 +29,7 @@ export function setGraphCoordinates({ genome, chromosome, start, end }) {
     if (start !== undefined) state.start = start;
     if (end !== undefined) state.end = end;
 }
+
 
 export function resetGraphCoordinates() {
     state = { genome: null, chromosome: null, start: null, end: null };

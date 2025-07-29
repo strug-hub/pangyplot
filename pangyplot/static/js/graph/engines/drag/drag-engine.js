@@ -1,7 +1,6 @@
 import eventBus from '../../../input/event-bus.js';
 import { dragState, setDraggedNode, clearDraggedNode } from './drag-state.js';
 import dragInfluenceForce from './drag-force.js';
-import { isPanZoomMode } from '../navigate/pan-zoom-engine.js';
 
 function onNodeDrag(node) {
   setDraggedNode(node);
