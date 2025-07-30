@@ -1,23 +1,23 @@
 import { Gene } from "./gene.js";
 
-let genes = new Map();
+let genes = {};
 let nodeAnnotations = {};
 
 export function addGene(geneData) {
     const gene = new Gene(geneData);
-    genes.set(gene.id, gene);
+    genes[gene.id] = gene;
 }
 
 export function getGene(id) {
-    return genes.get(id) || null;
+    return genes[id] || null;
 }
 
 export function getAllGenes() {
-    return Array.from(genes.values());
+    return Object.values(genes);
 }
 
 export function clearAllGenes() {
-    genes.clear();
+    genes = {};
 }
 
 export function addNodeGeneAnnotation(nodeId, geneId) {
@@ -56,6 +56,13 @@ export function setGeneColor(geneId, newColor) {
     }
 }
 
+export function getGeneColor(geneId) {
+    if (genes[geneId]) {
+        return genes[geneId].color;
+    }
+    return null;
+}
+
 export function setGeneExonVisibility(geneId, visible) {
     if (genes[geneId]) {
         genes[geneId].setExons(visible);
@@ -64,7 +71,7 @@ export function setGeneExonVisibility(geneId, visible) {
 
 export function getTableData() {
     const tableData = [];
-    for (const gene of genes.values()) {
+    for (const gene of Object.values(genes)) {
 
         tableData.push({
             id: gene.id,

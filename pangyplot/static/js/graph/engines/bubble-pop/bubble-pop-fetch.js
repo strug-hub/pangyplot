@@ -63,5 +63,6 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     graphData.links.push(...subgraph.links);
 
     forceGraph.graphData(graphData);
+
     eventBus.publish("bubble-pop:graph-updated", true);
 }

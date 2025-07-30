@@ -6,7 +6,6 @@ export function fetchAnnotations(coordinates) {
 
     return fetchData(url, "genes").then(fetchedData => {
 
-        console.log("Fetched annotations:", fetchedData);
         clearAllGenes();
 
         if (fetchedData) {

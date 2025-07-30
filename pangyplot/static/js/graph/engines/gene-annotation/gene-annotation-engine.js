@@ -4,6 +4,7 @@ import { getAllGenes } from "./gene-annotation-state.js";
 import { addNodeGeneAnnotation, addNodeExonAnnotation, clearAllAnnotations, getAllNodeAnnotations } from "./gene-annotation-state.js";
 import { annotationOverlap } from "./gene-annotation-utils.js";
 import { populateGeneAnnotationsTable } from "../../../ui/tabs/graph-annotation.js";
+import eventBus from '../../../input/event-bus.js';
 
 function annotateTranscripts(forceGraph) {
     clearAllAnnotations();
@@ -28,11 +29,17 @@ function annotateTranscripts(forceGraph) {
     });
 }
 
-export default function updateGeneAnnotationEngine(forceGraph, canvasElement) {
+function updateAnnotations(forceGraph){
     const coordinates = getGraphCoordinates(forceGraph);
     fetchAnnotations(coordinates).then(result => {
         annotateTranscripts(forceGraph);
         populateGeneAnnotationsTable();
     });
+}
+export default function updateGeneAnnotationEngine(forceGraph, canvasElement) {
+    updateAnnotations(forceGraph);
 
+    eventBus.subscribe("bubble-pop:graph-updated", () => {
+        updateAnnotations(forceGraph);
+    });
 }

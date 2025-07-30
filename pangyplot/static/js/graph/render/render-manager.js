@@ -1,7 +1,7 @@
 import { getViewport } from './viewport.js';
 import { updateVisibility } from './viewport.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-render.js';
-import { renderGenes} from '../engines/gene-annotation/gene-annotation-label-render.js';
+import { renderGenes} from '../engines/gene-annotation/gene-annotation-gene-render.js';
 import { renderGeneLabels} from '../engines/gene-annotation/gene-annotation-label-render.js';
 import basicLinkPainter from './painter/basic-link-painter.js';
 import basicNodePainter from './painter/basic-node-painter.js';
@@ -15,15 +15,10 @@ function renderPreFrame(ctx, forceGraph) {
     const zoomFactor = ctx.canvas.__zoom.k;
     setZoomFactor(zoomFactor);
 
-    //const viewport = getViewport(forceGraph);
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
-
-    highlightSelection(ctx, forceGraph.graphData());
-    
     renderGenes(ctx, forceGraph);
-    //annotationManagerUpdate(ctx, forceGraph);
-    //geneRenderEngineDraw(ctx, forceGraph.graphData());
+    highlightSelection(ctx, forceGraph.graphData());
 }
 
 function renderPostFrame(ctx, forceGraph) {

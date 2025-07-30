@@ -182,5 +182,5 @@ document.addEventListener('DOMContentLoaded', function () {
     const BRCA2 = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
     const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
 
-    document.dispatchEvent(new CustomEvent("constructGraph", { detail: KDM5D }));
+    document.dispatchEvent(new CustomEvent("constructGraph", { detail: PRSS2 }));
 });

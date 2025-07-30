@@ -1,14 +1,102 @@
-import { splitScreenIntoGrid, placeNodesInGrid, findGroupCentroid, findBestLabelPosition, interpolate } from "./gene-annotation-utils.js";
+import { colorState } from '../../render/color/color-state.js';
+import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
+import { drawText } from "../../render/painter/painter-utils.js";
 
 export const FONT_SIZE = 180;
 export const LABEL_SPEED = 0.05;
 export const GRID_SIZE = 30;
 
+const labelCache = {};
 
+export const splitScreenIntoGrid = (viewport, N) => {
+    const grid = [];
+    const sectionWidth = (viewport.x2 - viewport.x1) / N;
+    const sectionHeight = (viewport.y2 - viewport.y1) / N;
 
-const LABEL_CACHE = {};
+    for (let i = 0; i < N; i++) {
+        grid[i] = [];
+        for (let j = 0; j < N; j++) {
+            grid[i][j] = {
+                nodes: [],
+                x1: viewport.x1 + i * sectionWidth,
+                y1: viewport.y1 + j * sectionHeight,
+                x2: viewport.x1 + (i + 1) * sectionWidth,
+                y2: viewport.y1 + (j + 1) * sectionHeight,
+                centerX: viewport.x1 + (i + 0.5) * sectionWidth,
+                centerY: viewport.y1 + (j + 0.5) * sectionHeight
+            };
+        }
+    }
+    return grid;
+};
 
-export function renderGeneLabels(ctx, forceGraph, viewport, svg = false){
+function placeNodesInGrid(nodes, grid, N) {
+    const sectionWidth = grid[0][0].x2 - grid[0][0].x1;
+    const sectionHeight = grid[0][0].y2 - grid[0][0].y1;
+
+    nodes.forEach(node => {
+        const gridX = Math.floor((node.x - grid[0][0].x1) / sectionWidth);
+        const gridY = Math.floor((node.y - grid[0][0].y1) / sectionHeight);
+
+        if (gridX >= 0 && gridX < N && gridY >= 0 && gridY < N) {
+            grid[gridX][gridY].nodes.push(node);
+        }
+    });
+};
+
+function findGroupCentroid(nodes) {
+    const sumX = nodes.reduce((acc, n) => acc + n.x, 0);
+    const sumY = nodes.reduce((acc, n) => acc + n.y, 0);
+    return { x: sumX / nodes.length, y: sumY / nodes.length };
+};
+
+function interpolate(current, target, speed) {
+    return current + (target - current) * speed;
+}
+
+/**
+ * Check if label overlaps any previously placed label
+ */
+function overlapsOtherLabels(x, y, width, height, placed) {
+    return placed.some(l => (
+        Math.abs(x - l.x) < (width + l.width) / 2 &&
+        Math.abs(y - l.y) < (height + l.height) / 2
+    ));
+}
+
+function overlapsNode(x, y, padding, nodes) {
+    return nodes.some(n => {
+        const dx = x - n.x;
+        const dy = y - n.y;
+        return dx * dx + dy * dy < (padding * padding);
+    });
+}
+
+/**
+ * Spiral placement: search outward from anchor until no overlap
+ */
+function findSpiralPosition(anchor, labelWidth, labelHeight, placedLabels, nodes, maxRadius = 300) {
+    let angle = 0;
+    let radius = 0;
+    const step = 5;
+    while (radius < maxRadius) {
+        const newX = anchor.x + radius * Math.cos(angle);
+        const newY = anchor.y + radius * Math.sin(angle);
+
+        if (
+            !overlapsOtherLabels(newX, newY, labelWidth, labelHeight, placedLabels) &&
+            !overlapsNode(newX, newY, 40, nodes)
+        ) {
+            return { x: newX, y: newY };
+        }
+
+        angle += 0.3;
+        radius += step * angle / (2 * Math.PI);
+    }
+    return anchor; // fallback if no space found
+}
+
+export function renderGeneLabels(ctx, forceGraph, viewport, svg = false) {
     const zoomFactor = ctx.canvas.__zoom.k;
     const visibleNodes = [];
     const annotationGroups = {};
@@ -17,58 +105,73 @@ export function renderGeneLabels(ctx, forceGraph, viewport, svg = false){
         if (!node.isVisible || !node.isDrawn) return;
         visibleNodes.push(node);
 
-        const annotations = getAnnotations(node);
-        annotations.forEach(ann => {
-            if (!annotationGroups[ann.id]) annotationGroups[ann.id] = [];
-            annotationGroups[ann.id].push({ node, exon_number: ann.exon_number });
+        const annotations = getNodeAnnotations(node.nodeId);
+        Object.entries(annotations).forEach(([geneId, annotation]) => {
+            if (!annotationGroups[geneId]) annotationGroups[geneId] = [];
+            annotation.forEach(exonNumber => {
+                annotationGroups[geneId].push({ node, exonNumber });
+            });
         });
     });
 
-    const grid = splitScreenIntoGrid(viewport, GRID_SIZE);
-    placeNodesInGrid(visibleNodes, grid, GRID_SIZE);
-
     const fontSize = Math.max(FONT_SIZE, FONT_SIZE / (zoomFactor * 10));
     const labels = [];
+    const placedLabels = [];
 
     Object.entries(annotationGroups).forEach(([geneId, groupNodes]) => {
-        const gene = getGeneInfo(geneId);
+        const gene = getGene(geneId);
         if (!gene) return;
 
         if (gene.showExons) {
             const exonGroups = {};
-            groupNodes.forEach(({ node, exon_number }) => {
-                if (exon_number) {
-                    if (!exonGroups[exon_number]) exonGroups[exon_number] = [];
-                    exonGroups[exon_number].push(node);
+            groupNodes.forEach(({ node, exonNumber }) => {
+                if (exonNumber) {
+                    if (!exonGroups[exonNumber]) exonGroups[exonNumber] = [];
+                    exonGroups[exonNumber].push(node);
                 }
             });
 
             Object.entries(exonGroups).forEach(([exon, nodes]) => {
                 const centroid = findGroupCentroid(nodes);
                 const key = `${geneId}#${exon}`;
-                const cached = LABEL_CACHE[key] || centroid;
+                const cached = labelCache[key] || centroid;
 
-                LABEL_CACHE[key] = {
+                labelCache[key] = {
                     x: interpolate(cached.x, centroid.x, LABEL_SPEED),
                     y: interpolate(cached.y, centroid.y, LABEL_SPEED)
                 };
 
-                labels.push({ text: `${gene.name}:exon${exon}`, ...LABEL_CACHE[key], color: gene.color, size: fontSize / 2 });
+                const width = (gene.name.length + 6) * (fontSize / 4); // rough width
+                const height = fontSize / 2;
+
+                const pos = findSpiralPosition(labelCache[key], width, height, placedLabels, visibleNodes);
+                placedLabels.push({ ...pos, width, height });
+
+                labels.push({ text: `${gene.name}:exon${exon}`, ...pos, color: gene.color, size: fontSize / 2 });
             });
         } else {
-            const centroid = findGroupCentroid(groupNodes.map(g => g.node));
-            const key = geneId;
-            const cached = LABEL_CACHE[key] || findBestLabelPosition(grid, centroid, cached);
-            LABEL_CACHE[key] = {
-                x: interpolate(cached.x, centroid.x, LABEL_SPEED),
-                y: interpolate(cached.y, centroid.y, LABEL_SPEED)
+            const nodesOnly = groupNodes.map(({ node }) => node);
+            const centroid = findGroupCentroid(nodesOnly);  // <-- current position of group
+            const cached = labelCache[geneId] || centroid;
+
+            const width = (gene.name.length + 2) * (fontSize / 2); // rough width
+            const height = fontSize;
+
+            // Spiral search around centroid, not cached
+            const targetPos = findSpiralPosition(centroid, width, height, placedLabels, visibleNodes);
+
+            // Smooth interpolation toward target spiral position
+            labelCache[geneId] = {
+                x: interpolate(cached.x, targetPos.x, LABEL_SPEED),
+                y: interpolate(cached.y, targetPos.y, LABEL_SPEED)
             };
 
-            labels.push({ text: gene.name, ...LABEL_CACHE[key], color: gene.color, size: fontSize });
-        }
-    });
+            placedLabels.push({ ...labelCache[geneId], width, height });
 
-    const bgColor = colorManager();
+            labels.push({ text: gene.name, ...labelCache[geneId], color: gene.color, size: fontSize });
+        }
+
+    });
 
     if (svg) {
         return labels.map(l => ({
@@ -77,12 +180,10 @@ export function renderGeneLabels(ctx, forceGraph, viewport, svg = false){
             y: l.y,
             color: l.color,
             fontSize: l.size,
-            stroke: bgColor,
+            stroke: colorState.textOutline,
             strokeWidth: l.size / 20
         }));
     } else {
-        labels.forEach(l => drawText(l.text, ctx, l.x, l.y, l.size, l.color, bgColor, l.size / 8));
+        labels.forEach(l => drawText(l.text, ctx, l.x, l.y, l.size, l.color, colorState.background, l.size / 8));
     }
 };
-
-

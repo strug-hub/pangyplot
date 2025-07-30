@@ -1,9 +1,0 @@
-import { getAllGenes } from "./gene-annotation-state.js";
-
-export function renderGenes(ctx, forceGraph){
-    return
-    const genes = getAllGenes();
-    genes.forEach(gene => {
-        // Render each gene
-    });
-}
