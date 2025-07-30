@@ -1,4 +1,4 @@
-import { fetchData, buildUrl } from '../utils/network-utils.js';
+import { fetchData, buildUrl } from '../../utils/network-utils.js';
 
 PATH_SELECTER="path-selector";
 CURRENTLY_SELECTED_PATH = null;
