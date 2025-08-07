@@ -9,6 +9,9 @@ class Link:
         self.frequency = 0
         self.from_type = "s"
         self.to_type = "s"
+        self.link_class = "edge"
+        self.contained = []
+        self.length = 0
 
     def serialize(self):
         return {
@@ -20,9 +23,11 @@ class Link:
             "haplotype": self.haplotype,
             "reverse": self.reverse,
             "frequency": self.frequency,
-            "class": "edge",
+            "class": self.link_class,
             "source": f"{self.from_type}{self.from_id}",
-            "target": f"{self.to_type}{self.to_id}"
+            "target": f"{self.to_type}{self.to_id}",
+            "contained": self.contained,
+            "length": self.length
         }
     
     def clone(self):
@@ -47,9 +52,15 @@ class Link:
             return self.from_id
         return None
 
-    def make_chain_link(self):
+    def make_chain_link(self, segments={}):
         self.from_type = "b"
         self.to_type = "b"
+        
+        for sid in segments:
+            segment_info = segments[sid]
+            self.contained.append(sid)
+            if "length" in segment_info:
+                self.length += segment_info["length"]
 
     def make_segment_to_bubble(self):   
         self.from_type = "s"

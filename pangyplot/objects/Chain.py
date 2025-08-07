@@ -8,6 +8,9 @@ class Chain:
         self.bubbles = bubbles if bubbles is not None else []
         self.sort_bubbles()
 
+        self.internal_sinks = None
+
+
     def serialize(self):
         return {
             "nodes": [bubble.serialize() for bubble in self.bubbles],
@@ -30,7 +33,7 @@ class Chain:
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else None
 
-    def fill_chain(self, db_dir):
+    def fill_chain(self, db_dir, gfaidx):
         min_step, max_step = self.chain_step_range()
         bubble_ids = db.get_bubble_ids_from_chain(db_dir, self.id, min_step, max_step)
         current_bids = {bubble.id for bubble in self.bubbles}
@@ -40,7 +43,10 @@ class Chain:
                 self.bubbles.append(missing_bubble)
         self.sort_bubbles()
 
+        self.internal_sinks = self._get_internal_sinks(gfaidx)
+
     def get_bubble_links(self):
+
         links = []
         for i, bubble in enumerate(self.bubbles[:-1]):
             next_bubble = self.bubbles[i + 1]
@@ -50,7 +56,11 @@ class Chain:
             link.to_id = next_bubble.id
             link.from_strand = "+"
             link.to_strand = "+"
-            link.make_chain_link()
+
+            if self.internal_sinks is not None:
+                link.make_chain_link(self.internal_sinks[bubble.id])
+            else:
+                link.make_chain_link()
             #todo: 
             #link.haplotype
             #link.reverse
@@ -58,17 +68,19 @@ class Chain:
             links.append(link)
 
         return links
-
-
-    def internal_segments(self):
+    
+    def _get_internal_sinks(self, gfaidx):
+        sink_dict = dict()
         if len(self.bubbles) < 2:
-            return set()
+            return sink_dict
 
-        segments = set(self.bubbles[0].get_sink())
-        for bubble in self.bubbles[1:-1]:
-            segments.update(bubble.ends(as_list=True))
-        segments.update(self.bubbles[-1].get_source())
-        return segments
+        for bubble in self.bubbles[:-1]:
+            sink_ids = bubble.get_sink()
+
+            sink_dict[bubble.id] = dict()
+            for sid in sink_ids:
+                sink_dict[bubble.id][sid] = {"length": gfaidx.segment_length(sid)}
+        return sink_dict
 
     def __getitem__(self, i):
         return self.bubbles[i]

@@ -12,7 +12,10 @@ class GFAIndex:
 
     def get_segments(self, seg_ids):
         return self.segment_index.get_by_ids(seg_ids)
-
+    
+    def segment_length(self, seg_id):
+        return self.segment_index.segment_length(seg_id)
+    
     def get_links(self, seg_id):
         return self.link_index[seg_id]
 

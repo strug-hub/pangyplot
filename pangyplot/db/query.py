@@ -5,7 +5,7 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
     gfaidx = indexes.gfa_index[chrom]
 
     start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
-    bubble_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
+    bubble_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, gfaidx, as_chains=True)
     
     graph = {"nodes": [], "links": []}
     for chain in bubble_chains:

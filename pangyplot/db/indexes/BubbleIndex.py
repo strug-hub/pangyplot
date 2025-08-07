@@ -70,7 +70,7 @@ class BubbleIndex:
         self.ids = array('I', quick_index["ids"])
         return True
 
-    def create_chains(self, bubbles):
+    def create_chains(self, bubbles, gfaidx):
         chain_dict = defaultdict(list)
         for bubble in bubbles:
             chain_dict[bubble.chain].append(bubble)
@@ -78,11 +78,11 @@ class BubbleIndex:
         chains = []
         for chain_id in chain_dict:
             chain = Chain(chain_id, chain_dict[chain_id])
-            chain.fill_chain(self.dir)
+            chain.fill_chain(self.dir, gfaidx)
             chains.append(chain)
         return chains
 
-    def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
+    def get_top_level_bubbles(self, min_step, max_step, gfaidx, as_chains=False):
         bubbles = []
         
         start_index = bisect_left(self.ends, min_step)
@@ -97,7 +97,7 @@ class BubbleIndex:
         #results.extend(self._collect_non_ref(results))
 
         if as_chains:
-            return self.create_chains(bubbles)
+            return self.create_chains(bubbles, gfaidx)
 
         return bubbles
 
@@ -227,7 +227,7 @@ class BubbleIndex:
                     links.append(link_copy)
         return links
         
-    def get_subgraph(self, bubble_id, gfa_index, step_index):
+    def get_subgraph(self, bubble_id, gfaidx, stepidx):
         bubble = self[bubble_id]
         if bubble is None:
             return [],[],[]
@@ -238,7 +238,7 @@ class BubbleIndex:
         all_links = []
 
         # [bubble]-[bubble] get child bubbles and links between them
-        chains = self.create_chains([self[bid] for bid in bubble.children])
+        chains = self.create_chains([self[bid] for bid in bubble.children], gfaidx)
         internal_chain_segments = set()
         for chain in chains:
             nodes, links = chain.decompose()
@@ -253,15 +253,15 @@ class BubbleIndex:
 
         # [segment]-[segment] get inside segments and all links they have
         exposed_segments = bubble.inside - internal_chain_segments
-        inside_segments, inside_segment_links = gfa_index.get_subgraph(exposed_segments, step_index)
+        inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)
         all_links.extend(inside_segment_links)
 
         # [bubble]-[segment] get links from inside segments to sibling bubbles
         # used when sibling bubble is still unpopped
-        source_links = self.link_segments_to_bubble(bubble.get_source(), bubble.get_source_sibling(), gfa_index, valid_ids=bubble.inside)
+        source_links = self.link_segments_to_bubble(bubble.get_source(), bubble.get_source_sibling(), gfaidx, valid_ids=bubble.inside)
         all_links.extend(source_links)
-        sink_links = self.link_segments_to_bubble(bubble.get_sink(), bubble.get_sink_sibling(), gfa_index, valid_ids=bubble.inside)
+        sink_links = self.link_segments_to_bubble(bubble.get_sink(), bubble.get_sink_sibling(), gfaidx, valid_ids=bubble.inside)
         all_links.extend(sink_links)
 
         # [segment]-[segment] include ends if bubble and sibling are popped
@@ -273,7 +273,7 @@ class BubbleIndex:
             sib_id = sibling.get_serialized_id()
             end_ids = {seg_id for seg_id in sibling.ends(as_list=True) if seg_id in bubble_ends}
 
-            end_segments, all_end_links = gfa_index.get_subgraph(end_ids, step_index)
+            end_segments, all_end_links = gfaidx.get_subgraph(end_ids, stepidx)
             end_links = [link for link in all_end_links if link.id() not in current_links]
             end_data[sib_id] = {"nodes": end_segments, "links": end_links}
 

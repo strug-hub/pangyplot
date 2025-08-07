@@ -96,7 +96,13 @@ function forceGraphLinks(element, headDict, tailDict) {
     const targetId = element.target.id;
     const sourceNodeId = element.fromStrand === "+" ? tailDict[sourceId] : headDict[sourceId];
     const targetNodeId = element.toStrand === "+" ? headDict[targetId] : tailDict[targetId];
-    
+
+    var length = LINK_LENGTH;
+    if (element.length > 0) {
+        length = length * element.length / 10;
+    }
+    //length: element.isDel ? element.length * LINK_LENGTH * 2 : element.length * LINK_LENGTH,
+
     return {
         class: "link",
         type: isChainLink ? "chain" : "link",
@@ -108,8 +114,9 @@ function forceGraphLinks(element, headDict, tailDict) {
         isDel: element.isDel,
         isVisible: true,
         isDrawn: true,
-        length: element.isDel ? LINK_LENGTH * 2 : LINK_LENGTH,
+        length: length,
         width: isChainLink ? CHAIN_WIDTH : LINK_WIDTH,
+        contained: element.contained || [],
         annotations: []
     };
 }

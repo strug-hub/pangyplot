@@ -31,6 +31,9 @@ class SegmentIndex:
 
     def __getitem__(self, seg_id):
         return db.get_segment(self.dir, seg_id)
+    
+    def segment_length(self, seg_id):
+        return self.length[seg_id] if seg_id < len(self.length) else 0
 
     def serialize(self):
         return {
