@@ -30,7 +30,7 @@ def create_bubble_tables(dir):
             range_inclusive TEXT,
             length INTEGER,
             gc_count INTEGER,
-            n_counts INTEGER,
+            n_count INTEGER,
             x1 FLOAT,
             x2 FLOAT,
             y1 FLOAT,
@@ -44,14 +44,16 @@ def create_bubble_tables(dir):
     return conn
 
 def insert_bubble(cur, bubble):
-
+    source_id, compacted_source = bubble.summarize_source_segments()
+    sink_id, compacted_sink = bubble.summarize_sink_segments()
+    
     cur.execute("""
         INSERT INTO bubbles (
             id, chain, chain_step, subtype, parent,
             children, siblings,
             source, compacted_source, sink, compacted_sink,
             inside, range_exclusive, range_inclusive,
-            length, gc_count, n_counts, x1, x2, y1, y2
+            length, gc_count, n_count, x1, x2, y1, y2
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         bubble.id,
@@ -60,17 +62,17 @@ def insert_bubble(cur, bubble):
         bubble.subtype,
         bubble.parent,
         json.dumps(bubble.children),
-        json.dumps(bubble._siblings),
-        bubble._source,
-        json.dumps(bubble._compacted_source),
-        bubble._sink,
-        json.dumps(bubble._compacted_sink),
+        json.dumps(bubble.summarize_ends()),
+        source_id,
+        json.dumps(compacted_source),
+        sink_id,
+        json.dumps(compacted_sink),
         json.dumps(sorted(bubble.inside)),  # Convert set to list
         json.dumps(bubble._range_exclusive),
         json.dumps(bubble._range_inclusive),
         bubble.length,
         bubble.gc_count,
-        bubble.n_counts,
+        bubble.n_count,
         bubble.x1,
         bubble.x2,
         bubble.y1,
@@ -92,21 +94,26 @@ def create_bubble(row):
     bubble.subtype = row["subtype"]
     bubble.parent = row["parent"]
     bubble.children = json.loads(row["children"])
-    bubble._siblings = json.loads(row["siblings"])
-    bubble._source = row["source"]
-    bubble._compacted_source = json.loads(row["compacted_source"])
-    bubble._sink = row["sink"]
-    bubble._compacted_sink = json.loads(row["compacted_sink"])
     bubble.inside = set(json.loads(row["inside"]))
     bubble._range_exclusive = json.loads(row["range_exclusive"])
     bubble._range_inclusive = json.loads(row["range_inclusive"])
     bubble.length = row["length"]
     bubble.gc_count = row["gc_count"]
-    bubble.n_counts = row["n_counts"]
+    bubble.n_count = row["n_count"]
     bubble.x1 = row["x1"]
     bubble.x2 = row["x2"]
     bubble.y1 = row["y1"]
     bubble.y2 = row["y2"]
+
+    bubble.add_source(row["source"], json.loads(row["compacted_source"]))
+    bubble.add_sink(row["sink"], json.loads(row["compacted_sink"]))
+    
+    siblings = json.loads(row["siblings"])
+
+    for sibling in siblings:
+        bid, sids = sibling
+        bubble.add_sibling(bid, sids)
+
     return bubble
 
 def load_parentless_bubbles(dir):

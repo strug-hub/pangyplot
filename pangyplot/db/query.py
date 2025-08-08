@@ -22,7 +22,7 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
 
 def pop_bubble(indexes, nodeid, genome, chrom):
     if nodeid.startswith("s"):
-        return {"nodes": [], "links": [], "end_data": dict()}
+        return {"nodes": [], "links": []}
 
     nodeid = int(nodeid.replace("b", ""))
 
@@ -35,11 +35,7 @@ def pop_bubble(indexes, nodeid, genome, chrom):
     serialized_subgraph = dict()
     serialized_subgraph["nodes"] = [node.serialize() for node in subgraph["nodes"]]
     serialized_subgraph["links"] = [link.serialize() for link in subgraph["links"]]
-    serialized_subgraph["end_data"] = dict()
-    for bid, end_data in subgraph["end_data"].items():
-        serialized_subgraph["end_data"][bid] = {
-            "nodes": [node.serialize() for node in end_data["nodes"]],
-            "links": [link.serialize() for link in end_data["links"]]
-        }
 
+    print(serialized_subgraph)
+    
     return serialized_subgraph

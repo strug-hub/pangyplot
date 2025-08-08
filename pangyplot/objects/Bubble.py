@@ -1,20 +1,20 @@
 from pangyplot.objects.Link import Link
+from pangyplot.objects.BubbleEnd import BubbleEnd
 
 class Bubble:
     def __init__(self):
         self.id = None
-        self.chain = None
-        self.chain_step = None
 
         self.subtype = "simple"
         self.parent = None
         self.children = []
-        self._siblings = []
+        self.siblings = []
 
-        self._source = None
-        self._compacted_source = []
-        self._sink = None
-        self._compacted_sink = []
+        self.chain = None
+        self.chain_step = None
+
+        self.source = BubbleEnd(self, is_source=True)
+        self.sink = BubbleEnd(self, is_source=False)
 
         self.inside = set()
         self._range_exclusive = []
@@ -22,7 +22,7 @@ class Bubble:
 
         self.length = 0
         self.gc_count = 0
-        self.n_counts = 0
+        self.n_count = 0
 
         self._height = None
         self._depth = None
@@ -45,16 +45,30 @@ class Bubble:
             "size": len(self.inside),
             "length": self.length,
             "gc_count": self.gc_count,
-            "n_counts": self.n_counts,
+            "n_count": self.n_count,
             "ranges": self._range_inclusive,
             "x1": self.x1,
             "x2": self.x2,
             "y1": self.y1,
             "y2": self.y2
         }
-    
+
+    def add_source(self, source_id, compacted_nodes=[]):
+        seg_ids = [source_id]
+        seg_ids.extend(list(compacted_nodes))
+        self.source = BubbleEnd(self, seg_ids=seg_ids, is_source=True)
+
+    def add_sink(self, sink_id, compacted_nodes=[]):
+        seg_ids = [sink_id]
+        seg_ids.extend(list(compacted_nodes))
+        self.sink = BubbleEnd(self, seg_ids=seg_ids, is_source=False)
+
     def add_sibling(self, sibling_id, seg_ids):
-        self._siblings.append((sibling_id, seg_ids))
+        self.siblings.append(sibling_id)
+        if self.source.contains_any(seg_ids):
+            self.source.update_other_bubble(sibling_id)
+        elif self.sink.contains_any(seg_ids):
+            self.sink.update_other_bubble(sibling_id)
 
     def _clean_inside(self, inside_ids, bubble_dict):
         self.inside -= inside_ids
@@ -66,27 +80,27 @@ class Bubble:
         self.children.append(child.id)
         self._clean_inside(child.inside, bubble_dict)
 
-    def get_siblings(self, with_segments=False):
-        if with_segments:
-            return self._siblings
-        return list({sib_id for sib_id, _ in self._siblings})
-    def get_sibling_segments(self, get_compacted_nodes=True):
-        return self.get_source(get_compacted_nodes) + self.get_sink(get_compacted_nodes)
-    def get_sink_sibling(self):
-        for sib_id, seg_ids in self._siblings:
-            if self._sink in seg_ids:
-                return sib_id
-        return None
+    def get_siblings(self):
+        return self.siblings
 
-    def get_source_sibling(self):
-        for sib_id, seg_ids in self._siblings:
-            if self._source in seg_ids:
-                return sib_id
-        return None
+    def get_next_sibling(self):
+        return self.sink.get_next_bubble()
+
+    def get_previous_sibling(self):
+        return self.source.get_previous_bubble()
+
+    def get_source_segments(self):
+        return self.source.get_contained()
+
+    def get_sink_segments(self):
+        return self.sink.get_contained()
+
+    def get_end_segments(self):
+        return self.get_source_segments() + self.get_sink_segments()
 
     def get_source_links(self, gfa_index):
         links = []
-        source_ids = self.get_source()
+        source_ids = self.get_source_segments()
         for source_id in source_ids:
             for link in gfa_index.get_links(source_id):
                 if link.other_id(source_id) in source_ids:
@@ -97,7 +111,7 @@ class Bubble:
 
     def get_sink_links(self, gfa_index):
         links = []
-        sink_ids = self.get_sink()
+        sink_ids = self.get_sink_segments()
         for sink_id in sink_ids:
             for link in gfa_index.get_links(sink_id):
                 if link.other_id(sink_id) in sink_ids:
@@ -106,72 +120,8 @@ class Bubble:
                 links.append(link)
         return links
 
-    def end_links(self, gfa_index):
-
-        def get_external_links(node_ids, internal_ids):
-            external = []
-            for node_id in node_ids:
-                for link in gfa_index.get_links(node_id):
-                    if link.other_id(node_id) in internal_ids:
-                        external.append((node_id, link))
-            return external
-
-        left_candidates = get_external_links(self.get_source(), self.inside)
-        right_candidates = get_external_links(self.get_sink(), self.inside)
-
-        def clone_and_replace(candidates):
-            outside_id, link = candidates[0]
-            new_link = Link()
-            new_link.from_id = link.from_id
-            new_link.to_id = link.to_id
-            new_link.from_strand = link.from_strand
-            new_link.to_strand = link.to_strand
-
-            if new_link.from_id == outside_id:
-                new_link.to_id = self.id
-                new_link.make_segment_to_bubble()
-            else:
-                new_link.from_id = self.id
-                new_link.make_bubble_to_segment()
-
-            return new_link
-
-        # Convert selected links into new links with bubble node replacing inside
-        result_links = []
-        left = clone_and_replace(left_candidates)
-        right = clone_and_replace(right_candidates)
-
-        # Normalize: ensure bubble appears as "-" on first and "+" on second
-        #left.to_strand = "-" if left.to_id == self.id else left.from_strand
-        #right.to_strand = "+" if right.to_id == self.id else right.from_strand
-
-        print(f"Bubble {self.id} start link: {left.serialize()}, end link: {right.serialize()}")
-        return (left, right)
-
-    def ends(self, get_compacted=True, as_list=False):
-        sources = [self._source]
-        sinks = [self._sink]
-
-        if get_compacted:
-            sources += self._compacted_source
-            sinks += self._compacted_sink        
-        if as_list:
-            return sources + sinks
-        return (sources, sinks)
-        
-    def get_source(self, get_compacted_nodes=True, as_set=False):
-        if not get_compacted_nodes:
-            result = [self._source]
-        else:
-            result = [self._source] + self._compacted_source
-        return set(result) if as_set else result
-
-    def get_sink(self, get_compacted_nodes=True, as_set=False):
-        if not get_compacted_nodes:
-            result = [self._sink]
-        else:
-            result = [self._sink] + self._compacted_sink
-        return set(result) if as_set else result
+    def end_links(self, gfaidx):
+        return self.source.get_segment_links(gfaidx) + self.sink.get_segment_links(gfaidx)
 
     def has_range(self, exclusive=True):
         if exclusive:
@@ -220,8 +170,21 @@ class Bubble:
         
         return self._depth
 
+    def summarize_ends(self):
+        result = []
+        if not self.source.is_chain_end():
+            result.append(self.source.summarize())
+        if not self.sink.is_chain_end():
+            result.append(self.sink.summarize())
+        return result
+
+    def summarize_source_segments(self):
+        return self.source.get_contained(split_compacted=True)
+    def summarize_sink_segments(self):
+        return self.sink.get_contained(split_compacted=True)
+
     def __str__(self):
-        return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.get_siblings()}, inside={self.inside}, inclusive range={self._range_inclusive})"
+        return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, inside={self.inside}, inclusive range={self._range_inclusive})"
 
     def __repr__(self):
         return f"Bubble({self.id}, inclusive range={self._range_inclusive})"

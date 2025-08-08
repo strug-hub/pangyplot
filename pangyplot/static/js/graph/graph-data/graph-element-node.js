@@ -24,6 +24,15 @@ class Bubble extends GraphElementNode {
     }
 }
 
+class BubbleEnd extends GraphElementNode {
+    constructor(rawBubbleEnd) {
+        super(rawBubbleEnd, "bubble:end");
+        this.subtype = rawBubbleEnd.subtype;
+        this.chain = rawBubbleEnd.chain;
+        this.size = rawBubbleEnd.size;
+    }
+}
+
 class Segment extends GraphElementNode {
     constructor(rawSegment) {
         super(rawSegment, "segment");
@@ -38,6 +47,8 @@ export default function deserializeNodes(rawNodes) {
             elements.push(new Segment(rawNode));
         } else if (rawNode.type === "bubble") {
             elements.push(new Bubble(rawNode));
+        } else if (rawNode.type === "bubble:end") {
+            elements.push(new BubbleEnd(rawNode));
         }
     }
     return elements;

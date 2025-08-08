@@ -121,6 +121,8 @@ function forceGraphLinks(element, headDict, tailDict) {
     };
 }
 export default function buildGraphData(rawGraph, existingGraph=null) {
+    console.log(`Graph data: ${rawGraph.nodes.length} nodes, ${rawGraph.links.length} links`);
+    console.log(rawGraph.links)
 
     const nodeElements = deserializeNodes(rawGraph.nodes);
     const nodes = nodeElements.flatMap(element => forceGraphNodes(element));
@@ -148,6 +150,6 @@ export default function buildGraphData(rawGraph, existingGraph=null) {
         ...linkElements.map(link => forceGraphLinks(link, headDict, tailDict)),
         ...nodeLinks
     ];
-    
+
     return {nodes, links};
 }

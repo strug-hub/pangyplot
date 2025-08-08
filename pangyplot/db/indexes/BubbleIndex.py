@@ -74,7 +74,7 @@ class BubbleIndex:
         chain_dict = defaultdict(list)
         for bubble in bubbles:
             chain_dict[bubble.chain].append(bubble)
-
+            
         chains = []
         for chain_id in chain_dict:
             chain = Chain(chain_id, chain_dict[chain_id])
@@ -111,22 +111,22 @@ class BubbleIndex:
             results.extend(self._traverse_descendants(child, min_step, max_step))
         return results
 
-    def get_sibling_segments(self, bubbles, inside_only=False):
-        sibling_segments = defaultdict(int)
+    def get_end_segments(self, bubbles, inside_only=False):
+        end_segments = defaultdict(int)
         for bubble in bubbles:
-            for node_id in bubble.get_sibling_segments():
-                sibling_segments[node_id] += 1
-        
+            for node_id in bubble.get_end_segments():
+                end_segments[node_id] += 1
+
         if inside_only:
-            return {nid for nid, count in sibling_segments.items() if count > 1}
+            return {nid for nid, count in end_segments.items() if count > 1}
         else:
-            return {nid for nid, _ in sibling_segments.items()}
+            return {nid for nid, _ in end_segments.items()}
 
     def get_descendant_ids(self, bubble):
         descendants = set()
 
         def traverse(bubble):
-            for sid in bubble.ends(as_list=True):
+            for sid in bubble.get_end_segments():
                 descendants.add(sid)
             for sid in bubble.inside:
                 descendants.add(sid)
@@ -232,24 +232,20 @@ class BubbleIndex:
         if bubble is None:
             return [],[],[]
 
-        bubble_ends = set(bubble.ends(as_list=True))
+        bubble_ends = set(bubble.get_end_segments())
 
         all_nodes = []
         all_links = []
 
         # [bubble]-[bubble] get child bubbles and links between them
+        # create chains of children
         chains = self.create_chains([self[bid] for bid in bubble.children], gfaidx)
         internal_chain_segments = set()
         for chain in chains:
-            nodes, links = chain.decompose()
-            internal_chain_segments.update(chain.internal_segments())
-            all_nodes.extend(nodes)
+            bubbles, links = chain.decompose(gfaidx)
+            internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
+            all_nodes.extend(bubbles)
             all_links.extend(links)
-
-        #child = self[child_id]
-        #all_nodes.append(child)
-        #child_end_links = self.link_segments_to_bubble(child.ends(as_list=True), child_id, gfa_index)
-        #all_links.extend(child_end_links)
 
         # [segment]-[segment] get inside segments and all links they have
         exposed_segments = bubble.inside - internal_chain_segments
@@ -259,11 +255,15 @@ class BubbleIndex:
 
         # [bubble]-[segment] get links from inside segments to sibling bubbles
         # used when sibling bubble is still unpopped
-        source_links = self.link_segments_to_bubble(bubble.get_source(), bubble.get_source_sibling(), gfaidx, valid_ids=bubble.inside)
-        all_links.extend(source_links)
-        sink_links = self.link_segments_to_bubble(bubble.get_sink(), bubble.get_sink_sibling(), gfaidx, valid_ids=bubble.inside)
-        all_links.extend(sink_links)
+        #source_links = bubble.source.get_other_segment_links(gfaidx, self)
+        #sink_links = bubble.sink.get_other_segment_links(gfaidx, self)
+        #all_links.extend(source_links)
+        #all_links.extend(sink_links)
 
+        all_nodes.extend([bubble.source, bubble.sink])
+        all_links.extend(bubble.source.get_popped_links(gfaidx))
+        all_links.extend(bubble.sink.get_popped_links(gfaidx))
+        
         # [segment]-[segment] include ends if bubble and sibling are popped
         end_data = dict()
         current_links = {link.id() for link in all_links}
@@ -271,7 +271,7 @@ class BubbleIndex:
 
         for sibling in siblings:
             sib_id = sibling.get_serialized_id()
-            end_ids = {seg_id for seg_id in sibling.ends(as_list=True) if seg_id in bubble_ends}
+            end_ids = {seg_id for seg_id in sibling.get_end_segments() if seg_id in bubble_ends}
 
             end_segments, all_end_links = gfaidx.get_subgraph(end_ids, stepidx)
             end_links = [link for link in all_end_links if link.id() not in current_links]

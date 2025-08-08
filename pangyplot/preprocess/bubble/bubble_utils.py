@@ -15,11 +15,11 @@ def find_siblings(bubbles):
     bubble_dict = {bubble.id: bubble for bubble in bubbles}
 
     for bubble in bubbles:
-        for sid in bubble.get_sibling_segments():
+        for sid in bubble.get_end_segments():
             segment_to_bubbles[sid].add(bubble)
 
     for bubble in bubbles:
-        for sid in bubble.get_sibling_segments():
+        for sid in bubble.get_end_segments():
             for sibling in segment_to_bubbles[sid]:
                 if sibling.id != bubble.id:
                     key = (bubble.id, sibling.id)
@@ -54,14 +54,14 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
 
     # Source and sink
     source_node = raw_bubble.source
-    bubble._source = int(source_node.id)
-    compacted_source_nodes = list(source_node.optional_info.get("compacted", []))
-    bubble._compacted_source = [int(node.id) for node in compacted_source_nodes]
+    source_id = int(source_node.id)
+    source_compacted_ids = [int(n.id) for n in source_node.optional_info.get("compacted", [])]
+    bubble.add_source(source_id, source_compacted_ids)
 
     sink_node = raw_bubble.sink
-    bubble._sink = int(sink_node.id)
-    compacted_sink_nodes = list(sink_node.optional_info.get("compacted", []))
-    bubble._compacted_sink = [int(node.id) for node in compacted_sink_nodes]
+    sink_id = int(sink_node.id)
+    sink_compacted_ids = [int(n.id) for n in sink_node.optional_info.get("compacted", [])]
+    bubble.add_sink(sink_id, sink_compacted_ids)
 
     # Inside nodes + compacted
     nodes = raw_bubble.inside
@@ -81,8 +81,8 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
         return steps
 
     inside_steps = get_steps(bubble.inside)
-    source_steps = get_steps([int(n.id) for n in [source_node] + compacted_source_nodes])
-    sink_steps = get_steps([int(n.id) for n in [sink_node] + compacted_sink_nodes])
+    source_steps = get_steps([source_id] + source_compacted_ids)
+    sink_steps = get_steps([sink_id] + sink_compacted_ids)
 
     def collapse_ranges(steps):
         if not steps:
@@ -108,7 +108,7 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     # Length and base content
     bubble.length = sum(n.seq_len for n in nodes)
     bubble.gc_count = sum(n.optional_info.get("gc_count", 0) for n in nodes)
-    bubble.n_counts = sum(n.optional_info.get("n_count", 0) for n in nodes)
+    bubble.n_count = sum(n.optional_info.get("n_count", 0) for n in nodes)
 
     # Bounding box logic (x1/x2/y1/y2)
     x1s, x2s, y1s, y2s = [], [], [], []

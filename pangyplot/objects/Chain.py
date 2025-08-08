@@ -10,15 +10,14 @@ class Chain:
 
         self.internal_sinks = None
 
-
     def serialize(self):
         return {
             "nodes": [bubble.serialize() for bubble in self.bubbles],
-            "links": [link.serialize() for link in self.get_bubble_links()]
+            "links": [link.serialize() for link in self.get_chain_links()]
         }
     
     def decompose(self):
-        return self.bubbles, self.get_bubble_links()
+        return self.bubbles, self.get_chain_links()
     
     def source_bubble(self):
         if self.bubbles:
@@ -45,37 +44,27 @@ class Chain:
 
         self.internal_sinks = self._get_internal_sinks(gfaidx)
 
-    def get_bubble_links(self):
-
+    def get_chain_links(self):
         links = []
         for i, bubble in enumerate(self.bubbles[:-1]):
-            next_bubble = self.bubbles[i + 1]
-
-            link = Link()
-            link.from_id = bubble.id
-            link.to_id = next_bubble.id
-            link.from_strand = "+"
-            link.to_strand = "+"
-
-            if self.internal_sinks is not None:
-                link.make_chain_link(self.internal_sinks[bubble.id])
-            else:
-                link.make_chain_link()
-            #todo: 
-            #link.haplotype
-            #link.reverse
-            #link.frequency
-            links.append(link)
-
+            chain_link = bubble.sink.get_chain_link()
+            if chain_link is not None:
+                links.append(chain_link)
         return links
-    
+
+    def get_internal_segment_ids(self, as_set=False):
+        seg_ids = []
+        for i, bubble in enumerate(self.bubbles[:-1]):
+            seg_ids.extend(bubble.sink.get_contained())
+        return set(seg_ids) if as_set else seg_ids
+
     def _get_internal_sinks(self, gfaidx):
         sink_dict = dict()
         if len(self.bubbles) < 2:
             return sink_dict
 
         for bubble in self.bubbles[:-1]:
-            sink_ids = bubble.get_sink()
+            sink_ids = bubble.get_sink_segments()
 
             sink_dict[bubble.id] = dict()
             for sid in sink_ids:

@@ -30,15 +30,6 @@ export function deleteNode(graphData, id) {
 
 export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     const graphData = forceGraph.graphData();
-    const existingIds = new Set(graphData.nodes.map(n => n.id));
-
-    // Merge end_data
-    Object.entries(rawSubgraph.end_data).forEach(([bubble_id, end_graph]) => {
-        if (!existingIds.has(bubble_id)) {
-            rawSubgraph.nodes.push(...end_graph.nodes);
-            rawSubgraph.links.push(...end_graph.links);
-        }
-    });
 
     const subgraph = buildGraphData(rawSubgraph, graphData);
 

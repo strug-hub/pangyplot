@@ -52,15 +52,17 @@ class Link:
             return self.from_id
         return None
 
-    def make_chain_link(self, segments={}):
+    def make_chain_link(self, contained=[], length=0):
         self.from_type = "b"
         self.to_type = "b"
-        
-        for sid in segments:
-            segment_info = segments[sid]
-            self.contained.append(sid)
-            if "length" in segment_info:
-                self.length += segment_info["length"]
+        self.contained = contained
+        self.length = length
+
+    def set_from_type(self, x):
+        self.from_type = x
+    def set_to_type(self, x):
+        self.to_type = x
+
 
     def make_segment_to_bubble(self):   
         self.from_type = "s"
