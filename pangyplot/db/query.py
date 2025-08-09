@@ -30,12 +30,17 @@ def pop_bubble(indexes, nodeid, genome, chrom):
     bubbleidx = indexes.bubble_index[chrom]
     gfaidx = indexes.gfa_index[chrom]
 
-    subgraph = bubbleidx.get_subgraph(nodeid, gfaidx, stepidx)
+    subgraph = bubbleidx.get_popped_subgraph(nodeid, gfaidx, stepidx)
 
     serialized_subgraph = dict()
     serialized_subgraph["nodes"] = [node.serialize() for node in subgraph["nodes"]]
     serialized_subgraph["links"] = [link.serialize() for link in subgraph["links"]]
-
-    print(serialized_subgraph)
     
+    serialized_subgraph["update"] = subgraph["update"]
+    for update in serialized_subgraph["update"]:
+        update["replace"] = {
+            "nodes": [node.serialize() for node in update["replace"]["nodes"]],
+            "links": [link.serialize() for link in update["replace"]["links"]]
+        }
+
     return serialized_subgraph

@@ -10,9 +10,11 @@ from pangyplot.objects.Chain import Chain
 QUICK_INDEX = "bubbles.quickindex.json"
 
 class BubbleIndex:
-    def __init__(self, dir, cache_size=1000):
+    def __init__(self, dir, gfaidx, cache_size=1000):
         self.dir = dir
         
+        self.gfaidx = gfaidx
+
         self.cache_size = cache_size
         self.cached_bubbles = dict()  # bubble_id -> Bubble
 
@@ -22,7 +24,7 @@ class BubbleIndex:
             self.ends = array('I')
             self.ids = array('I')
 
-            bubbles = db.load_parentless_bubbles(self.dir)
+            bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
 
             ranges = []
             for bubble in bubbles:
@@ -41,7 +43,7 @@ class BubbleIndex:
         if bubble_id in self.cached_bubbles:
             return self.cached_bubbles[bubble_id]
 
-        bubble = db.get_bubble(self.dir, bubble_id)
+        bubble = db.get_bubble(self.dir, bubble_id, self.gfaidx)
         self._cache_bubble(bubble_id, bubble)
         return bubble
     
@@ -110,17 +112,6 @@ class BubbleIndex:
             child = self[child_id]
             results.extend(self._traverse_descendants(child, min_step, max_step))
         return results
-
-    def get_end_segments(self, bubbles, inside_only=False):
-        end_segments = defaultdict(int)
-        for bubble in bubbles:
-            for node_id in bubble.get_end_segments():
-                end_segments[node_id] += 1
-
-        if inside_only:
-            return {nid for nid, count in end_segments.items() if count > 1}
-        else:
-            return {nid for nid, _ in end_segments.items()}
 
     def get_descendant_ids(self, bubble):
         descendants = set()
@@ -209,72 +200,52 @@ class BubbleIndex:
 
         return merged
 
-    def link_segments_to_bubble(self, seg_ids, bubble_id, gfa_index, valid_ids=None):
-        if valid_ids is None:
-            valid_ids = self[bubble_id].inside
-        links = []
-        for seg_id in seg_ids:
-            for link in gfa_index.get_links(seg_id):
-                other_id = link.other_id(seg_id)
-                if other_id in valid_ids:
-                    link_copy = link.clone()
-                    if link.from_id == seg_id:
-                        link_copy.from_id = bubble_id
-                        link_copy.make_bubble_to_segment()
-                    elif link.to_id == seg_id:
-                        link_copy.to_id = bubble_id
-                        link_copy.make_segment_to_bubble()
-                    links.append(link_copy)
-        return links
-        
-    def get_subgraph(self, bubble_id, gfaidx, stepidx):
+    def get_popped_subgraph(self, bubble_id, gfaidx, stepidx):
         bubble = self[bubble_id]
-        if bubble is None:
-            return [],[],[]
-
-        bubble_ends = set(bubble.get_end_segments())
-
         all_nodes = []
         all_links = []
 
+        if bubble is None:
+            return {"nodes": all_nodes, "links": all_links} 
+
         # [bubble]-[bubble] get child bubbles and links between them
-        # create chains of children
         chains = self.create_chains([self[bid] for bid in bubble.children], gfaidx)
-        internal_chain_segments = set()
         for chain in chains:
             bubbles, links = chain.decompose(gfaidx)
-            internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
             all_nodes.extend(bubbles)
             all_links.extend(links)
 
         # [segment]-[segment] get inside segments and all links they have
+        internal_chain_segments = set()
+        for chain in chains:
+            internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
+
         exposed_segments = bubble.inside - internal_chain_segments
         inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)
         all_links.extend(inside_segment_links)
 
-        # [bubble]-[segment] get links from inside segments to sibling bubbles
-        # used when sibling bubble is still unpopped
-        #source_links = bubble.source.get_other_segment_links(gfaidx, self)
-        #sink_links = bubble.sink.get_other_segment_links(gfaidx, self)
-        #all_links.extend(source_links)
-        #all_links.extend(sink_links)
-
+        # [bubble:end]-[segment] get links to temp bubble end node
         all_nodes.extend([bubble.source, bubble.sink])
         all_links.extend(bubble.source.get_popped_links(gfaidx))
         all_links.extend(bubble.sink.get_popped_links(gfaidx))
         
-        # [segment]-[segment] include ends if bubble and sibling are popped
-        end_data = dict()
+        # [segment]-[segment] include end segments if bubble and sibling are both popped
+        update_data = []
+
+        source_update = {"check": [bubble.source.other_node_id()],
+                         "exclude": [bubble.source.node_id()],
+                         "replace": {"nodes": bubble.source.get_contained_segments(gfaidx),
+                                     "links": bubble.source.get_contained_links(gfaidx)}}
+        update_data.append(source_update)
+
+        sink_update = {"check": [bubble.sink.other_node_id()],
+                       "exclude": [bubble.sink.node_id()],
+                       "replace": {"nodes": bubble.sink.get_contained_segments(gfaidx),
+                                   "links": bubble.sink.get_contained_links(gfaidx)}}
+        update_data.append(sink_update)
+
         current_links = {link.id() for link in all_links}
         siblings = [self[sid] for sid in bubble.get_siblings()]
 
-        for sibling in siblings:
-            sib_id = sibling.get_serialized_id()
-            end_ids = {seg_id for seg_id in sibling.get_end_segments() if seg_id in bubble_ends}
-
-            end_segments, all_end_links = gfaidx.get_subgraph(end_ids, stepidx)
-            end_links = [link for link in all_end_links if link.id() not in current_links]
-            end_data[sib_id] = {"nodes": end_segments, "links": end_links}
-
-        return {"nodes": all_nodes, "links": all_links, "end_data": end_data} 
+        return {"nodes": all_nodes, "links": all_links, "update": update_data} 

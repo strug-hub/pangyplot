@@ -8,7 +8,6 @@ const LINK_LENGTH = 10;
 const LINK_WIDTH = 10;
 const CHAIN_WIDTH = 35;
 
-
 const SINGLE_NODE_BP_THRESH = 6;
 const KINK_SIZE = 1000;
 const MAX_KINKS = 10;
@@ -37,8 +36,10 @@ function getKinkCoordinates(coords, kinks, i=0){
 
 function forceGraphNodes(element) {
     let nodes = [];
-    const kinks = calculateNumberOfKinks(element.seqLength);
-
+    var kinks = 1;
+    if (element.type !== "bubble:end")
+        kinks = calculateNumberOfKinks(element.seqLength);
+    
     for (let i = 0; i < kinks; i++) {
         const { x, y } = getKinkCoordinates(element.coords, kinks, i);
         nodes.push({
@@ -98,8 +99,8 @@ function forceGraphLinks(element, headDict, tailDict) {
     const targetNodeId = element.toStrand === "+" ? headDict[targetId] : tailDict[targetId];
 
     var length = LINK_LENGTH;
-    if (element.length > 0) {
-        length = length * element.length / 10;
+    if (element.seqLength > 0) {
+        length = length * element.seqLength / 10;
     }
     //length: element.isDel ? element.length * LINK_LENGTH * 2 : element.length * LINK_LENGTH,
 
@@ -121,8 +122,6 @@ function forceGraphLinks(element, headDict, tailDict) {
     };
 }
 export default function buildGraphData(rawGraph, existingGraph=null) {
-    console.log(`Graph data: ${rawGraph.nodes.length} nodes, ${rawGraph.links.length} links`);
-    console.log(rawGraph.links)
 
     const nodeElements = deserializeNodes(rawGraph.nodes);
     const nodes = nodeElements.flatMap(element => forceGraphNodes(element));

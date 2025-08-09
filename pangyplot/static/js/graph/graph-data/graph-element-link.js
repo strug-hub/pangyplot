@@ -7,7 +7,7 @@ class GraphElementLink {
         this.fromStrand = rawLink.from_strand;
         this.toStrand = rawLink.to_strand;
         this.haplotype = rawLink.haplotype;
-        this.length = rawLink.length;
+        this.seqLength = rawLink.length;
         this.contained = rawLink.contained;
 
         //TODO

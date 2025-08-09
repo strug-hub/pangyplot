@@ -36,6 +36,11 @@ class BubbleEnd:
     def update_other_bubble(self, other_bubble_id):
         self.other_bubble_id = other_bubble_id
 
+    def calculate_properties(self, gfaidx):
+        self.length = sum([gfaidx.segment_length(sid) for sid in self.contained])
+        #self.gc_count = ... TODO
+        #self.n_count = ... TODO
+
     def is_chain_end(self):
         return self.other_bubble_id is None
 
@@ -55,6 +60,9 @@ class BubbleEnd:
                 return [None, []]
             return [self.contained[0], self.contained[1:]]
         return self.contained
+
+    def get_contained_segments(self, gfaidx):
+        return [gfaidx[seg_id] for seg_id in self.contained]
 
     def contains_any(self, seg_ids):
         for seg_id in seg_ids:
@@ -100,11 +108,7 @@ class BubbleEnd:
         for seg_id in self.contained:
             for link in gfaidx.get_links(seg_id):
                 if link.other_id(seg_id) in target_bubble.inside:
-                    new_link = Link()
-                    new_link.from_id = link.from_id
-                    new_link.to_id = link.to_id
-                    new_link.from_strand = link.from_strand
-                    new_link.to_strand = link.to_strand
+                    new_link = link.clone()
 
                     if new_link.to_id == seg_id:
                         new_link.to_id = target_bubble.id
@@ -117,34 +121,19 @@ class BubbleEnd:
 
         return links
 
-    def get_segment_links(self, gfaidx, target_bubble=None):
-        if target_bubble is None:
-            target_bubble = self.bubble
+    def get_contained_links(self, gfaidx):
         links = []
-
         for seg_id in self.contained:
-            for link in gfaidx.get_links(seg_id):
-                if link.other_id(seg_id) in target_bubble.inside:
-                    new_link = Link()
-                    new_link.from_id = link.from_id
-                    new_link.to_id = link.to_id
-                    new_link.from_strand = link.from_strand
-                    new_link.to_strand = link.to_strand
-
-                    if new_link.from_id == seg_id:
-                        new_link.to_id = target_bubble.id
-                        new_link.make_segment_to_bubble()
-                    else:
-                        new_link.from_id = target_bubble.id
-                        new_link.make_bubble_to_segment()
-
-                    links.append(new_link)
-
+            links.extend(gfaidx.get_links(seg_id))
         return links
 
-    def get_other_segment_links(self, gfaidx, bubbleidx):
-        target_bubble = bubbleidx[self.other_bubble_id]
-        return self.get_segment_links(gfaidx, target_bubble)
+    def node_id(self):
+        return f"b<{self.id}" if self.is_source else f"b>{self.id}"
+
+    def other_node_id(self):
+        if self.other_bubble_id is None:
+            return None
+        return f"b>{self.other_bubble_id}" if self.is_source else f"b<{self.other_bubble_id}"
 
     def summarize(self):
         return [self.other_bubble_id, self.contained]
@@ -152,4 +141,4 @@ class BubbleEnd:
     def __str__(self):
         return f"BubbleEnd(bubble={self.id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source}, is_sink={self.is_sink})"
     def __repr__(self):
-        return f"BubbleEnd({self.id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source}, is_sink={self.is_sink})"
+        return f"BubbleEnd({self.id}, {"source" if self.is_source else "sink"})"

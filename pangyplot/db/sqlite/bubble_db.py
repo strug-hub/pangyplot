@@ -86,7 +86,7 @@ def insert_bubbles(dir, bubbles):
         insert_bubble(cur, bubble)
     conn.commit()
 
-def create_bubble(row):
+def create_bubble(row, gfaidx):
     bubble = Bubble()
     bubble.id = row["id"]
     bubble.chain = row["chain"]
@@ -114,21 +114,23 @@ def create_bubble(row):
         bid, sids = sibling
         bubble.add_sibling(bid, sids)
 
+    bubble.calculate_properties(gfaidx)
+
     return bubble
 
-def load_parentless_bubbles(dir):
+def load_parentless_bubbles(dir, gfaidx):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM bubbles WHERE parent IS NULL")
     rows = cur.fetchall()
-    return [create_bubble(row) for row in rows]
+    return [create_bubble(row, gfaidx) for row in rows]
 
-def get_bubble(dir, bubble_id):
+def get_bubble(dir, bubble_id, gfaidx):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT * FROM bubbles WHERE id = ?", (bubble_id,))
     row = cur.fetchone()
     if row is None:
         return None
-    return create_bubble(row)
+    return create_bubble(row, gfaidx)
 
 def get_bubble_ids_from_chain(dir, chain_id, start_step, end_step):
     cur = get_connection(dir).cursor()

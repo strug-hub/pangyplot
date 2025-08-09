@@ -54,7 +54,7 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
         app.step_index[(chr,ref)] = StepIndex(chr_dir, ref)
         print(f"step_index size:      {asizeof(app.step_index[(chr,ref)]) / 1024**2:.2f} MB")
 
-        app.bubble_index[chr] = BubbleIndex(chr_dir)
+        app.bubble_index[chr] = BubbleIndex(chr_dir, app.gfa_index[chr])
         print(f"bubble_index size:      {asizeof(app.bubble_index[chr]) / 1024**2:.2f} MB")
 
     print(f"gfa_index size total:      {asizeof(app.gfa_index) / 1024**2:.2f} MB")

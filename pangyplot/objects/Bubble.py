@@ -80,6 +80,10 @@ class Bubble:
         self.children.append(child.id)
         self._clean_inside(child.inside, bubble_dict)
 
+    def calculate_properties(self, gfaidx):
+        self.source.calculate_properties(gfaidx)
+        self.sink.calculate_properties(gfaidx)
+
     def get_siblings(self):
         return self.siblings
 
@@ -119,9 +123,6 @@ class Bubble:
                 link.update_to_bubble(sink_id, self.id)
                 links.append(link)
         return links
-
-    def end_links(self, gfaidx):
-        return self.source.get_segment_links(gfaidx) + self.sink.get_segment_links(gfaidx)
 
     def has_range(self, exclusive=True):
         if exclusive:

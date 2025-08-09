@@ -38,7 +38,7 @@ class Chain:
         current_bids = {bubble.id for bubble in self.bubbles}
         for bubble_id in bubble_ids:
             if bubble_id not in current_bids:
-                missing_bubble = db.get_bubble(db_dir, bubble_id)
+                missing_bubble = db.get_bubble(db_dir, bubble_id, gfaidx)
                 self.bubbles.append(missing_bubble)
         self.sort_bubbles()
 

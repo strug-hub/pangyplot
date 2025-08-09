@@ -59,7 +59,6 @@ function createForceGraph(graph){
 
     function link_force_distance(link) {
         if (link.type === "chain") {
-            console.log(link.length)
             return link.length;
         }
 

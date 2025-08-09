@@ -31,6 +31,30 @@ export function deleteNode(graphData, id) {
 export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
     const graphData = forceGraph.graphData();
 
+    const currentNodeIds = new Set();
+    graphData.nodes.forEach(node => currentNodeIds.add(node.id));
+
+    // Some nodes and links are conditionally inluded based on the current graph state.
+    for (const update of rawSubgraph.update) {
+        // Check if all node ids in update.check are in graph
+        if (update.check && update.check.every(id => currentNodeIds.has(id))) {
+            // Delete all nodes from graphData whose id is in update.check
+            update.check.forEach(id => {
+                deleteNode(graphData, id);
+            });
+
+            // Remove nodes with id in update.exclude from rawSubgraph
+            if (update.exclude) {
+                rawSubgraph.nodes = rawSubgraph.nodes.filter(node => !update.exclude.includes(node.id));
+            }
+
+            if (update.replace) {
+                rawSubgraph.nodes.push(...update.replace.nodes);
+                rawSubgraph.links.push(...update.replace.links);
+            }
+        }
+    }
+
     const subgraph = buildGraphData(rawSubgraph, graphData);
 
     explodeSubgraph(originNode, subgraph, forceGraph);
