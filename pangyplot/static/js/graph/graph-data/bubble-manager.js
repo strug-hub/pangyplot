@@ -15,43 +15,34 @@ let applyDiffs = defaultApplyDiffs;
 
 export function initBubbleManager(forceGraph) {
     forceGraphRef = forceGraph;
-    indexFromGraph()
+    indexFromGraph();
 }
 
-/** Build/refresh bubble index from the graph */
 export function indexFromGraph() {
   const graphData = forceGraphRef.graphData();
-
   const prev = new Map(bubbles);
-
   const bubbleNodes = (graphData.nodes).filter(n => n.type === 'bubble');
 
-  // Pre-index incident links for quick lookup
-  const linkMap = new Map(); // nodeId -> Set<Link>
-  for (const link of (graphData.links)) {
-    const sid = link.source.id;
-    const tid = link.target.id;
-    if (!linkMap.has(sid)) linkMap.set(sid, new Set());
-    linkMap.get(sid).add(link);
-    if (!linkMap.has(tid)) linkMap.set(tid, new Set());
-    linkMap.get(tid).add(link);
+  const linkMap = {}; // nodeId -> Array<Link>
+  for (const link of graphData.links) {
+    const sid = link.sourceId;
+    const tid = link.targetId;
+    if (!linkMap[sid]) linkMap[sid] = [];
+    linkMap[sid].push(link);
+    if (!linkMap[tid]) linkMap[tid] = [];
+    linkMap[tid].push(link);
   }
 
-  // Build records
   for (const node of bubbleNodes) {
     const id = node.id;
-    const old = prev.get(id);
 
     const unpoppedNodes = [node];
-    const unpoppedLinks = linkMap.get(node.id) ?? []
+    const unpoppedLinks = linkMap[node.id] ?? [];
 
     const rec = {
       id,
       element: node,
-      popped: {
-        nodes: old?.popped?.nodes ?? new Set(),
-        links: old?.popped?.links ?? new Set()
-      },
+      popped: {},
       unpopped: {
         nodes: unpoppedNodes,
         links: unpoppedLinks
@@ -63,13 +54,19 @@ export function indexFromGraph() {
   return bubbles;
 }
 
-/** Provide the expanded (popped) contents for a bubble */
-export function setPoppedContents(bubbleId, { nodes = [], links = [], nestedBubbleIds = [] } = {}) {
+export function setPoppedContents(bubbleId, subgraph) {
   const rec = bubbles.get(bubbleId);
-  if (!rec) return;
-  rec.poppedNodes = new Set(nodes);
-  rec.poppedLinks = new Set(links);
-  rec.poppedBubbles = new Set(nestedBubbleIds);
+  rec.popped = subgraph;
+}
+
+export function getUnpoppedContents(bubbleId) {
+  const rec = bubbles.get(bubbleId);
+  return rec ? rec.unpopped : null;
+}
+
+export function getPoppedContents(bubbleId) {
+  const rec = bubbles.get(bubbleId);
+  return rec ? rec.popped : null;
 }
 
 /** Toggle a bubble between popped/unpopped */

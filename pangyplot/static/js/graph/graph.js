@@ -9,7 +9,7 @@ import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotatio
 import { anchorEndpointNodes } from './utils/node-utils.js';
 import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
-import { initBubbleManager} from './bubble-manager.js';
+import { initBubbleManager} from './graph-data/bubble-manager.js';
 
 // todo https://github.com/vasturiano/d3-force-registry
 

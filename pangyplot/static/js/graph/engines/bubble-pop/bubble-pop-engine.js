@@ -1,9 +1,18 @@
 import { fetchSubgraph } from './bubble-pop-fetch.js';
 import { findNearestNode, euclideanDist } from '../../utils/node-utils.js';
+import { undoBubblePop } from './bubble-pop-undo.js';
 
 var bubblePopMode = false;
+
 const BUBBLE_POP_RANGE = 25;
 
+export function deleteNode(graphData, id) {
+    graphData.nodes = graphData.nodes.filter(node => node.id !== id);
+    graphData.links = graphData.links.filter(link =>
+        (link.class === "node" && link.id !== id) ||
+        (link.class === "link" && link.source.id !== id && link.target.id !== id)
+    );
+}
 export function popGroupOfBubbles(nodes, forceGraph) {
     nodes.forEach(node => {
         if (node.type == "bubble") {
@@ -19,6 +28,13 @@ function updateKeyChange(event, canvasElement){
     if (event.ctrlKey || event.metaKey) {
         bubblePopMode = true;
         canvasElement.style.cursor = "pointer";
+    }
+}
+function checkUndo(event, forceGraph) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undoBubblePop(forceGraph);
+        return;
     }
 }
 
@@ -43,6 +59,7 @@ function attemptBubblePop(event, forceGraph){
 
 function keyDown(event, forceGraph, canvasElement) {
     updateKeyChange(event, canvasElement);
+    checkUndo(event, forceGraph);
 }
 
 function keyUp(event, forceGraph, canvasElement) {
