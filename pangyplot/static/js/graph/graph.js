@@ -39,7 +39,7 @@ function createForceGraph(graph){
 
     setCanvasSize(forceGraph);
 
-    //initBubbleManager(forceGraph);
+    initBubbleManager(forceGraph);
 
     setUpEngineManager(forceGraph, canvasElement);
     setUpRenderManager(forceGraph, canvasElement);

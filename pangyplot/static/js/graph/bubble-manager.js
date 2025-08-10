@@ -1,16 +1,12 @@
 let forceGraphRef = null;
 const bubbles = new Map();
 
-// State: bubbleId -> record
-// record = {
-//   id,
-//   bubble,               // metadata/object for this bubble
-//   isPopped: false,
-//   unpoppedNodes: Set<Node>,
-//   unpoppedLinks: Set<Link>,
-//   poppedNodes: Set<Node>,
-//   poppedLinks: Set<Link>,
-//   poppedBubbles: Set<string>, // optional nested bubbles
+// BubbleRecord:
+// {
+//   id: string,
+//   element: any,   // optional metadata
+//   popped:   { nodes: Set<Node>, links: Set<Link> },
+//   unpopped: { nodes: Set<Node>, links: Set<Link> }
 // }
 
 // Strategy hooks (can be overridden in init)
@@ -25,47 +21,45 @@ export function initBubbleManager(forceGraph) {
 /** Build/refresh bubble index from the graph */
 export function indexFromGraph() {
   const graphData = forceGraphRef.graphData();
-  
+
   const prev = new Map(bubbles);
-  bubbles.clear();
 
-  // Group nodes by bubble id
-  const nodeGroups = new Map();
-  for (const node of (graphData.nodes)) {
-    if (node.type !== 'bubble') continue;
+  const bubbleNodes = (graphData.nodes).filter(n => n.type === 'bubble');
 
-    const bid = node.id;
-    if (!nodeGroups.has(bid)) nodeGroups.set(bid, []);
-    nodeGroups.get(bid).push(node);
+  // Pre-index incident links for quick lookup
+  const linkMap = new Map(); // nodeId -> Set<Link>
+  for (const link of (graphData.links)) {
+    const sid = link.source.id;
+    const tid = link.target.id;
+    if (!linkMap.has(sid)) linkMap.set(sid, new Set());
+    linkMap.get(sid).add(link);
+    if (!linkMap.has(tid)) linkMap.set(tid, new Set());
+    linkMap.get(tid).add(link);
   }
 
-  // Recreate/merge records
-  for (const [bid, groupNodes] of nodeGroups) {
-    const old = prev.get(bid);
-    const rec = old ?? {
-      id: bid,
-      bubble: getBubbleObj(bid, groupNodes[0]),
-      isPopped: false,
-      unpoppedNodes: new Set(),
-      unpoppedLinks: new Set(),
-      poppedNodes: new Set(),
-      poppedLinks: new Set(),
-      poppedBubbles: new Set()
+  // Build records
+  for (const node of bubbleNodes) {
+    const id = node.id;
+    const old = prev.get(id);
+
+    const unpoppedNodes = [node];
+    const unpoppedLinks = linkMap.get(node.id) ?? []
+
+    const rec = {
+      id,
+      element: node,
+      popped: {
+        nodes: old?.popped?.nodes ?? new Set(),
+        links: old?.popped?.links ?? new Set()
+      },
+      unpopped: {
+        nodes: unpoppedNodes,
+        links: unpoppedLinks
+      }
     };
-    rec.unpoppedNodes = new Set(groupNodes);
-    rec.unpoppedLinks = new Set(); // filled below
-    bubbles.set(bid, rec);
+    bubbles.set(id, rec);
   }
-
-  // Attach links internal to each bubble
-  for (const link of (graphData.links ?? [])) {
-    const sBid = getBubbleIdForNode(link.source);
-    const tBid = getBubbleIdForNode(link.target);
-    if (sBid != null && sBid === tBid && bubbles.has(sBid)) {
-      bubbles.get(sBid).unpoppedLinks.add(link);
-    }
-  }
-
+  console.log("Indexed", bubbles);
   return bubbles;
 }
 
