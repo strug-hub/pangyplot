@@ -12,6 +12,7 @@ class Link:
         self.link_class = "edge"
         self.contained = []
         self.length = 0
+        self.is_deletion = False
 
     def serialize(self):
         return {
@@ -27,7 +28,8 @@ class Link:
             "source": f"{self.from_type}{self.from_id}",
             "target": f"{self.to_type}{self.to_id}",
             "contained": self.contained,
-            "length": self.length
+            "length": self.length,
+            "is_deletion": self.is_deletion
         }
     
     def clone(self):
@@ -41,6 +43,10 @@ class Link:
         link.frequency = self.frequency
         link.from_type = self.from_type
         link.to_type = self.to_type
+        link.is_deletion = self.is_deletion
+        link.link_class = self.link_class
+        link.contained = self.contained[:]
+        link.length = self.length
         return link
 
     def contains(self, id):
@@ -71,6 +77,9 @@ class Link:
     def make_bubble_to_segment(self):
         self.from_type = "b"
         self.to_type = "s"
+
+    def set_as_deletion(self):
+        self.is_deletion = True
 
     def id(self):
         return f"{self.from_type}{self.from_id}{self.from_strand}{self.to_type}{self.to_id}{self.to_strand}"

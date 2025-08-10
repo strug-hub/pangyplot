@@ -102,7 +102,9 @@ function forceGraphLinks(element, headDict, tailDict) {
     if (element.seqLength > 0) {
         length = length * element.seqLength / 10;
     }
-    //length: element.isDel ? element.length * LINK_LENGTH * 2 : element.length * LINK_LENGTH,
+    if (element.isDel) {
+        length = element.length * LINK_LENGTH * 2;
+    }
 
     return {
         class: "link",

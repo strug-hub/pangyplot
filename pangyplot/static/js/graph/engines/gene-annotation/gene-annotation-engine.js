@@ -39,7 +39,7 @@ function updateAnnotations(forceGraph){
 export default function updateGeneAnnotationEngine(forceGraph, canvasElement) {
     updateAnnotations(forceGraph);
 
-    eventBus.subscribe("bubble-pop:graph-updated", () => {
+    eventBus.subscribe("graph-updated", () => {
         updateAnnotations(forceGraph);
     });
 }

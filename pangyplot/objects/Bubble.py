@@ -149,6 +149,52 @@ class Bubble:
     def is_ref(self):
         return len(self._range_inclusive) > 0
     
+    def is_indel(self):
+        return self.subtype == "insertion"
+    
+    def get_deletion_links(self, gfaidx):
+        deletion_links = [] 
+        if not self.is_indel():
+            return deletion_links
+
+        for seg_id in self.source.contained:
+            for link in gfaidx.get_links(seg_id):
+                if link.other_id(seg_id) in self.sink.contained:
+                    del_link = link.clone()
+                    del_link.set_as_deletion()
+                    deletion_links.append(del_link)
+                    
+                    del_link2 = del_link.clone()
+                    if del_link2.to_id == seg_id:
+                        del_link2.set_to_type("b<")
+                        del_link2.to_id = self.id
+                    else:
+                        del_link2.set_from_type("b<")
+                        del_link2.from_id = self.id
+                    deletion_links.append(del_link2)
+
+                    del_link3 = del_link.clone()
+                    if del_link3.to_id == seg_id:
+                        del_link3.set_from_type("b>")
+                        del_link3.from_id = self.id
+                    else:
+                        del_link3.set_to_type("b>")
+                        del_link3.to_id = self.id
+                    deletion_links.append(del_link3)
+
+                    del_link4 = del_link.clone()
+                    del_link4.to_id = self.id
+                    del_link4.from_id = self.id
+                    if del_link4.to_id == seg_id:
+                        del_link4.set_to_type("b<")
+                        del_link4.set_from_type("b>")
+                    else:
+                        del_link4.set_to_type("b>")
+                        del_link4.set_from_type("b<")
+                    deletion_links.append(del_link4)
+        
+        return deletion_links
+
     def get_height(self):
         if self._height is not None:
             return self._height

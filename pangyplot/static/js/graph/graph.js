@@ -9,6 +9,7 @@ import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotatio
 import { anchorEndpointNodes } from './utils/node-utils.js';
 import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
+import { initBubbleManager} from './bubble-manager.js';
 
 // todo https://github.com/vasturiano/d3-force-registry
 
@@ -37,6 +38,8 @@ function createForceGraph(graph){
         //.linkDirectionalParticles(4)
 
     setCanvasSize(forceGraph);
+
+    //initBubbleManager(forceGraph);
 
     setUpEngineManager(forceGraph, canvasElement);
     setUpRenderManager(forceGraph, canvasElement);
@@ -98,7 +101,7 @@ function createForceGraph(graph){
         .distanceMax(1000*GLOBAL_MULTIPLIER);  // CONTROLS WAVEYNESS
 
     // Custom force to repel from deleted links
-    forceGraph.d3Force('delLinkForce', delLinkForce);
+    forceGraph.d3Force('delLinkForce', delLinkForce(forceGraph));
     forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
 
     //canvasElement.addEventListener("click", evt => {

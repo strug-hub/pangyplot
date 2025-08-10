@@ -230,6 +230,13 @@ class BubbleIndex:
         all_links.extend(bubble.source.get_popped_links(gfaidx))
         all_links.extend(bubble.sink.get_popped_links(gfaidx))
         
+        # check for indel links
+        all_links.extend(bubble.get_deletion_links(gfaidx))
+        # when a sib bubble has been popped, we need to update its deletion links too
+        for sibling in bubble.get_siblings():
+            sib_bubble = self[sibling]
+            all_links.extend(sib_bubble.get_deletion_links(gfaidx))
+
         # [segment]-[segment] include end segments if bubble and sibling are both popped
         update_data = []
 

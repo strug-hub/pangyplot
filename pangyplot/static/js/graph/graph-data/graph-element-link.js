@@ -9,13 +9,11 @@ class GraphElementLink {
         this.haplotype = rawLink.haplotype;
         this.seqLength = rawLink.length;
         this.contained = rawLink.contained;
-
-        //TODO
-        this.isDel = false;
+        this.isDel = rawLink.is_deletion || false;
     }
 
     get isChainLink() {
-        return this.source.id.startsWith("b") && this.target.id.startsWith("b");
+        return !this.isDel && this.source.id.startsWith("b") && this.target.id.startsWith("b");
     }
 
     decodeHaplotypeMask() {
