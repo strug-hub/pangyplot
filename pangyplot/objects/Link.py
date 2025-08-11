@@ -30,7 +30,7 @@ class Link:
             "contained": self.contained,
             "length": self.length,
             "is_deletion": self.deletionBubbleId is not None,
-            "bubble_id": f"b{self.deletionBubbleId}"
+            "bubble_id": f"b{self.deletionBubbleId}" if self.deletionBubbleId is not None else None
         }
     
     def clone(self):

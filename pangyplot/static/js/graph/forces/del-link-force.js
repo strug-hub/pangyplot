@@ -42,7 +42,7 @@ export default function delLinkForce() {
   function rebuildCache() {
     cache.clear();
     const delLinks = getActiveDeletionLinks();
-    console.log("delLinks", delLinks);
+
     for (const link of delLinks) {
       if (!link.bubbleId) continue;
       const bubbleId = link.bubbleId;

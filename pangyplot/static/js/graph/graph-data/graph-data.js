@@ -88,6 +88,8 @@ function forceGraphNodeLinks(element) {
             type: element.type,
             source: source,
             target: target,
+            sourceId: element.id,
+            targetId: element.id,
             sourceNodeId: source,
             targetNodeId: target,
             isDrawn: true,

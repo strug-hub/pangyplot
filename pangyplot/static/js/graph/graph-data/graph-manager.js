@@ -82,11 +82,14 @@ export function setPoppedContents(bubbleId, subgraph) {
 function getUnpoppedContents(bubbleId) {
   const bubble = nodeDict.get(bubbleId);
   const nodes = Array.from(bubble.elements);
-  const links = [];
+  const links = getLinkElements(bubbleId);
 
   for (const element of bubble.elements) {
     links.push(...getLinkElements(element.id));
   }
+
+
+
   return { nodes, links };
 }
 
