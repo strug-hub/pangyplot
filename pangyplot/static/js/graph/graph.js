@@ -9,7 +9,7 @@ import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotatio
 import { anchorEndpointNodes } from './utils/node-utils.js';
 import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
-import { initBubbleManager} from './graph-data/bubble-manager.js';
+import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
 
 // todo https://github.com/vasturiano/d3-force-registry
 
@@ -37,9 +37,8 @@ function createForceGraph(graph){
         .warmupTicks(4)
         //.linkDirectionalParticles(4)
 
+    setUpGraphManager(forceGraph);
     setCanvasSize(forceGraph);
-
-    initBubbleManager(forceGraph);
 
     setUpEngineManager(forceGraph, canvasElement);
     setUpRenderManager(forceGraph, canvasElement);
@@ -150,6 +149,8 @@ function fetchAndConstructGraph(coordinates){
     const url = buildUrl('/select', coordinates);
     fetchData(url, 'graph').then(rawGraph => {
         console.log("Fetched graph data:", rawGraph);
+        clearGraphManager();
+
         const graphData = buildGraphData(rawGraph);
         anchorEndpointNodes(graphData.nodes, graphData.links);
         createForceGraph(graphData);

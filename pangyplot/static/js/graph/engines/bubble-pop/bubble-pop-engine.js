@@ -6,13 +6,6 @@ var bubblePopMode = false;
 
 const BUBBLE_POP_RANGE = 25;
 
-export function deleteNode(graphData, id) {
-    graphData.nodes = graphData.nodes.filter(node => node.id !== id);
-    graphData.links = graphData.links.filter(link =>
-        (link.class === "node" && link.id !== id) ||
-        (link.class === "link" && link.source.id !== id && link.target.id !== id)
-    );
-}
 export function popGroupOfBubbles(nodes, forceGraph) {
     nodes.forEach(node => {
         if (node.type == "bubble") {

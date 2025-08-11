@@ -1,18 +1,16 @@
 import { popUndoStack } from './bubble-pop-queue.js';
-import { deleteNode } from './bubble-pop-engine.js';
-import { getUnpoppedContents, getPoppedContents } from '../../graph-data/bubble-manager.js';
+import { unpopBubble } from '../../graph-data/graph-manager.js';
 
 export function undoBubblePop(forceGraph) {
-    const graphData = forceGraph.graphData();
     const bubbleId = popUndoStack();
-
     if (!bubbleId) return;
 
+    unpopBubble(bubbleId);
+    /*
     const unpoppedContents = getUnpoppedContents(bubbleId);
-    if (!unpoppedContents) return;
-
-    const poppedContents = getPoppedContents(bubbleId);
-
+    const poppedContents = getPoppedContents(bubbleId, true);
+    console.log("Undoing bubble pop for:", bubbleId, unpoppedContents, poppedContents);
+    
     for (const node of poppedContents.nodes) {
         deleteNode(graphData, node.id);
     }
@@ -25,4 +23,5 @@ export function undoBubblePop(forceGraph) {
         nodeIds.has(link.sourceId) && nodeIds.has(link.targetId)
     );
     graphData.links.push(...validLinks);
+    */
 }

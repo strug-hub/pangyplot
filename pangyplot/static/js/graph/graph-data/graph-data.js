@@ -1,5 +1,6 @@
 import deserializeNodes from './graph-element-node.js';
 import deserializeLinks from './graph-element-link.js';
+import { addNodeRecord, addLinkRecord, getNodeElements } from './graph-manager.js';
 
 //TODO: move responsibility for size to render engine
 const NODE_WIDTH=50;
@@ -71,32 +72,45 @@ function forceGraphNodes(element) {
 
 function forceGraphNodeLinks(element) {
     let nodeLinks = [];
-    const kinks = calculateNumberOfKinks(element.seqLength);
+    var kinks = 1;
+    if (element.type !== "bubble:end")
+        kinks = calculateNumberOfKinks(element.seqLength);
+
     for (let i = 1; i < kinks; i++) {
+
+        const source = `${element.id}#${i - 1}`;
+        const target =  `${element.id}#${i}`;
+
         nodeLinks.push({
             class: "node",
             id: element.id,
             element: element,
             type: element.type,
-            source: `${element.id}#${i - 1}`,
-            target: `${element.id}#${i}`,
-            isVisible: true,
+            source: source,
+            target: target,
+            sourceNodeId: source,
+            targetNodeId: target,
             isDrawn: true,
             width: NODE_LINK_WIDTH,
             length: Math.min(element.seqLength / kinks, 1000),
-            annotations: []
+            annotations: [],
+            linkId: `${source}+${target}+`
         });
     }
     return nodeLinks;
 }
 
-function forceGraphLinks(element, headDict, tailDict) {
+function forceGraphLinks(element) {
 
     const isChainLink = element.isChainLink;
     const sourceId = element.source.id;
     const targetId = element.target.id;
-    const sourceNodeId = element.fromStrand === "+" ? tailDict[sourceId] : headDict[sourceId];
-    const targetNodeId = element.toStrand === "+" ? headDict[targetId] : tailDict[targetId];
+
+    const sourceElement = getNodeElements(sourceId)[0];
+    const targetElement = getNodeElements(targetId)[0];
+
+    const sourceNodeId = element.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
+    const targetNodeId = element.toStrand === "+" ? targetElement.head() : targetElement.tail();
 
     var length = LINK_LENGTH;
     if (element.seqLength > 0) {
@@ -113,44 +127,32 @@ function forceGraphLinks(element, headDict, tailDict) {
         target: targetNodeId,
         element: element,
         sourceId: sourceId,
+        sourceNodeId: sourceNodeId,
         targetId: targetId,
+        targetNodeId: targetNodeId,
         isDel: element.isDel,
         isVisible: true,
         isDrawn: true,
         length: length,
         width: isChainLink ? CHAIN_WIDTH : LINK_WIDTH,
         contained: element.contained || [],
-        annotations: []
+        annotations: [],
+        linkId: `${sourceNodeId}${element.fromStrand}${targetNodeId}${element.toStrand}`
     };
 }
-export default function buildGraphData(rawGraph, existingGraph=null) {
+export default function buildGraphData(rawGraph) {
 
     const nodeElements = deserializeNodes(rawGraph.nodes);
     const nodes = nodeElements.flatMap(element => forceGraphNodes(element));
+    nodes.forEach(addNodeRecord);
+
     const nodeLinks = nodeElements.flatMap(element => forceGraphNodeLinks(element));
-    const elementDict = Object.fromEntries(nodeElements.map(e => [e.id, e]));
-    if (existingGraph) {
-        existingGraph.nodes.forEach(node => {
-            elementDict[node.id] = node.element;
-        });
-    }
-    const validRawLinks = rawGraph.links.filter(l => (l.source in elementDict) && (l.target in elementDict));
-    const linkElements = deserializeLinks(validRawLinks, elementDict);
-
-    const headDict = Object.fromEntries(nodes.map(e => [e.id, e.head()]));
-    const tailDict = Object.fromEntries(nodes.map(e => [e.id, e.tail()]));
-
-    if (existingGraph) {
-        existingGraph.nodes.forEach(node => {
-            headDict[node.id] = node.head();
-            tailDict[node.id] = node.tail();
-        });
-    }
-
+    const linkElements = deserializeLinks(rawGraph.links);
     const links = [
-        ...linkElements.map(link => forceGraphLinks(link, headDict, tailDict)),
+        ...linkElements.map(link => forceGraphLinks(link)),
         ...nodeLinks
     ];
+    links.forEach(addLinkRecord);
 
     return {nodes, links};
 }

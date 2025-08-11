@@ -1,3 +1,5 @@
+import { getNodeElement } from './graph-manager.js';
+
 class GraphElementLink {
     constructor(rawLink, sourceElement, targetElement) {
         this.id = rawLink.id;
@@ -30,12 +32,14 @@ class GraphElementLink {
     }
 }
 
-export default function deserializeLinks(rawLinks, nodeElementDict) {
-
+export default function deserializeLinks(rawLinks) {
     const elements = [];
     for (const rawLink of rawLinks) {
-        const sourceElement = nodeElementDict[rawLink.source];
-        const targetElement = nodeElementDict[rawLink.target];
+        const sourceElement = getNodeElement(rawLink.source);
+        const targetElement = getNodeElement(rawLink.target);
+        if (!sourceElement || !targetElement) {
+            continue;
+        }
         elements.push(new GraphElementLink(rawLink, sourceElement, targetElement));
     }
     return elements;
