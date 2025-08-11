@@ -1,6 +1,6 @@
 import deserializeNodes from './graph-element-node.js';
 import deserializeLinks from './graph-element-link.js';
-import { addNodeRecord, addLinkRecord, getNodeElements } from './graph-manager.js';
+import { addNodeRecord, addLinkRecord, getNodeElements, getLinkElement } from './graph-manager.js';
 
 //TODO: move responsibility for size to render engine
 const NODE_WIDTH=50;
@@ -140,19 +140,62 @@ function forceGraphLinks(element) {
         linkId: `${sourceNodeId}${element.fromStrand}${targetNodeId}${element.toStrand}`
     };
 }
+
+function checkExistingNodeRecords(nodeElements) {
+    const existingNodes = [];
+    const newNodeElements = [];
+
+    for (const nodeElement of nodeElements) {
+        const nodes = getNodeElements(nodeElement.id);
+        if (nodes.length === 0) {
+            newNodeElements.push(nodeElement);
+        } else {
+            existingNodes.push(...nodes);
+        }
+    }
+    return { existingNodes, newNodeElements };
+}
+
+
+function checkExistingLinkRecords(linkElements) {
+    const existingLinks = [];
+    const newLinks = [];
+
+    for (const linkElement of linkElements) {
+        const link = getLinkElement(linkElement.linkId);
+        if (link === null) {
+            newLinks.push(linkElement);
+        } else {
+            existingLinks.push(link);
+        }
+    }
+    return { existingLinks, newLinks };
+}
+
 export default function buildGraphData(rawGraph) {
 
     const nodeElements = deserializeNodes(rawGraph.nodes);
-    const nodes = nodeElements.flatMap(element => forceGraphNodes(element));
-    nodes.forEach(addNodeRecord);
+    const { existingNodes, newNodeElements } = checkExistingNodeRecords(nodeElements);
+    const newNodes = newNodeElements.flatMap(forceGraphNodes);
+    newNodes.forEach(addNodeRecord);
+    const nodes = [...existingNodes, ...newNodes];
 
-    const nodeLinks = nodeElements.flatMap(element => forceGraphNodeLinks(element));
+    const nodeLinks = nodeElements.flatMap(forceGraphNodeLinks);
     const linkElements = deserializeLinks(rawGraph.links);
+    const edgeLinks = linkElements.map(forceGraphLinks);
+
+    const { existingLinks: existingNodeLinks, newLinks: newNodeLinks } = checkExistingLinkRecords(nodeLinks);
+    newNodeLinks.forEach(addLinkRecord);
+
+    const { existingLinks: existingEdgeLinks, newLinks: newEdgeLinks } = checkExistingLinkRecords(edgeLinks);
+    newEdgeLinks.forEach(addLinkRecord);
+    
     const links = [
-        ...linkElements.map(link => forceGraphLinks(link)),
-        ...nodeLinks
+        ...existingNodeLinks,
+        ...newNodeLinks,
+        ...existingEdgeLinks,
+        ...newEdgeLinks
     ];
-    links.forEach(addLinkRecord);
 
     return {nodes, links};
 }
