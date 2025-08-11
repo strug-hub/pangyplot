@@ -33,6 +33,10 @@ class BubbleEnd:
             "y2": self.bubble.y2
         }    
 
+    def flip_source_sink(self):
+        self.is_source = not self.is_source
+        self.is_sink = not self.is_sink
+
     def update_other_bubble(self, other_bubble_id):
         self.other_bubble_id = other_bubble_id
 

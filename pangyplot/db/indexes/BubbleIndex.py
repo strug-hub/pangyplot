@@ -210,8 +210,11 @@ class BubbleIndex:
 
         # [bubble]-[bubble] get child bubbles and links between them
         chains = self.create_chains([self[bid] for bid in bubble.children], gfaidx)
+        print("here are the chains", chains)
         for chain in chains:
             bubbles, links = chain.decompose()
+            for link in links:
+                print("here are the links", link)
             all_nodes.extend(bubbles)
             all_links.extend(links)
 

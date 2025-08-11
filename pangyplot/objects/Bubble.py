@@ -63,6 +63,26 @@ class Bubble:
         seg_ids.extend(list(compacted_nodes))
         self.sink = BubbleEnd(self, seg_ids=seg_ids, is_source=False)
 
+    def correct_source_sink(self, prevId=None, nextId=None):
+        def check_same(id1, id2):
+            if id1 is None and id2 is None:
+                return True
+            if id1 is None or id2 is None:
+                return False
+            return id1 == id2
+
+        flipSource = check_same(nextId, self.source.other_bubble_id)
+        flipSink = check_same(prevId, self.sink.other_bubble_id)
+
+        if flipSource and flipSink:
+            self.source.flip_source_sink()
+            self.sink.flip_source_sink()
+            temp = self.source
+            self.source = self.sink
+            self.sink = temp
+
+
+
     def add_sibling(self, sibling_id, seg_ids):
         self.siblings.append(sibling_id)
         if self.source.contains_any(seg_ids):

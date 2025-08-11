@@ -46,8 +46,15 @@ class Chain:
 
     def get_chain_links(self):
         links = []
+        print("getting chain link for bubble")
+
         for i, bubble in enumerate(self.bubbles[:-1]):
             chain_link = bubble.sink.get_chain_link()
+            print("bubble.source:", bubble.source)
+            print("bubble:", bubble)
+            print("bubble.sink:", bubble.sink)
+            print("---------------")
+
             if chain_link is not None:
                 links.append(chain_link)
         return links
@@ -75,8 +82,18 @@ class Chain:
         return self.bubbles[i]
 
     def sort_bubbles(self):
-        self.bubbles.sort(key=lambda bubble: bubble.chain_step)
+        if len(self.bubbles) < 2:
+            return
 
+        self.bubbles.sort(key=lambda bubble: bubble.chain_step)
+        chain_order = [None, *self.bubbles, None]
+
+        for i, bubble in enumerate(chain_order):
+            if bubble is None: continue
+            prevId = chain_order[i - 1].id if chain_order[i - 1] is not None else None
+            nextId = chain_order[i + 1].id if chain_order[i + 1] is not None else None
+            bubble.correct_source_sink(prevId, nextId)
+        
     def __len__(self):
         return len(self.bubbles)
 
