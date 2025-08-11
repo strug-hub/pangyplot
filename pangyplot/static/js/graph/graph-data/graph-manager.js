@@ -3,6 +3,7 @@ import { cleanGraph } from './graph-integrity.js';
 
 let forceGraphRef = null;
 
+// TODO: DON'T ADD DUPLICATES!
 const nodeDict = new Map();
 const nodeIdDict = new Map();
 const linkDict = new Map();
@@ -68,117 +69,152 @@ export function setUpGraphManager(forceGraph) {
 }
 
 export function setPoppedContents(bubbleId, subgraph) {
-    const bubble  = nodeDict.get(bubbleId);
-    for (const node of subgraph.nodes) {
-        addNodeRecord(node);
-        bubble.inside.push(node);
-    }
-    for (const link of subgraph.links) {
-        addLinkRecord(link);
-    }
+  const bubble = nodeDict.get(bubbleId);
+  for (const node of subgraph.nodes) {
+    addNodeRecord(node);
+    bubble.inside.push(node);
+  }
+  for (const link of subgraph.links) {
+    addLinkRecord(link);
+  }
 }
 
 function getUnpoppedContents(bubbleId) {
-    const bubble  = nodeDict.get(bubbleId);
-    const nodes = [];
-    const links = [];
+  const bubble = nodeDict.get(bubbleId);
+  const nodes = [];
+  const links = [];
 
-    nodes.push(...bubble.elements);
-    for (const element of bubble.elements) {
-      links.push(...linkDict.get(element.id) || []);
-    }
-
-    return { nodes, links };
+  nodes.push(...bubble.elements);
+  for (const element of bubble.elements) {
+    links.push(...linkDict.get(element.id) || []);
   }
 
+  return { nodes, links };
+}
+
 function getPoppedContents(bubbleId, recursive = false) {
-    const bubble  = nodeDict.get(bubbleId);
-    const nodes = [];
-    const links = [];
+  const bubble = nodeDict.get(bubbleId);
+  const nodes = [];
+  const links = [];
 
-    for (const element of bubble.inside) {
-        nodes.push(element);
-        links.push(...linkDict.get(element.id) || []);
+  for (const element of bubble.inside) {
+    nodes.push(element);
+    links.push(...linkDict.get(element.id) || []);
 
-        if (recursive) {
-          const insideContents = getPoppedContents(element.id, true);
-          nodes.push(...insideContents.nodes);
-          links.push(...insideContents.links);
-        }
+    if (recursive) {
+      const insideContents = getPoppedContents(element.id, true);
+      nodes.push(...insideContents.nodes);
+      links.push(...insideContents.links);
     }
+  }
 
-    return { nodes, links };
+  return { nodes, links };
 }
 
 export function unpopBubble(bubbleId) {
-    const graphData = forceGraphRef.graphData();
+  const graphData = forceGraphRef.graphData();
 
-    const poppedContents = getPoppedContents(bubbleId, true);
+  const poppedContents = getPoppedContents(bubbleId, true);
+  const unpoppedContents = getUnpoppedContents(bubbleId);
 
-    for (const node of poppedContents.nodes) {
-        removeNode(node.id, graphData);
+  const recoverData = { nodes: [], links: [] };
+
+  for (const link of unpoppedContents.links) {
+    const siblingIds = []
+
+    if (link.targetId === bubbleId) {
+      if (link.sourceId.startsWith("b>") || link.sourceId.startsWith("b<")) {
+        siblingIds.push(link.sourceId);
+      }
+    } if (link.sourceId === bubbleId) {
+      if (link.targetId.startsWith("b>") || link.targetId.startsWith("b<")) {
+        siblingIds.push(link.targetId);
+      }
     }
 
-    const unpoppedContents = getUnpoppedContents(bubbleId);
-    
-    unpoppedContents.nodes.forEach(node => node.isActive = true);
-    graphData.nodes.push(...unpoppedContents.nodes);
-    graphData.links.push(...unpoppedContents.links);
+    // check if the internal end segments are in the graph
+    for (const sibId of siblingIds) {
+      let flag = false;
 
-    updateForceGraph(graphData);
+      for (const elem of nodeDict.get(sibId).inside) {
+        if (nodeDict.get(elem.id).active) {
+          flag = true;
+          break;
+        }
+      }
+
+      if (flag) {
+        if (nodeDict.has(sibId)) {
+          recoverData.nodes.push(...nodeDict.get(sibId).elements);
+          recoverData.links.push(...linkDict.get(sibId) || []);
+        }
+      }
+    }
+  }
+
+  for (const node of poppedContents.nodes) {
+    removeNode(node.id, graphData);
+  }
+
+  console.log("recovery data:", recoverData);
+  unpoppedContents.nodes.forEach(node => node.isActive = true);
+  graphData.nodes.push(...unpoppedContents.nodes, ...recoverData.nodes);
+  graphData.links.push(...unpoppedContents.links, ...recoverData.links);
+
+  updateForceGraph(graphData);
 }
 
 export function removeNode(id, graphData) {
-    graphData.nodes = graphData.nodes.filter(node => node.id !== id);
-        
-    graphData.links = graphData.links.filter(link =>
-        (link.class === "node" && link.id !== id) ||
-        (link.class === "link" && link.source.id !== id && link.target.id !== id)
-    );
+  graphData.nodes = graphData.nodes.filter(node => node.id !== id);
+
+  graphData.links = graphData.links.filter(link =>
+    (link.class === "node" && link.id !== id) ||
+    (link.class === "link" && link.source.id !== id && link.target.id !== id)
+  );
 }
 
 function conditionalUpdate(updateData, subgraph) {
-    const graphData = forceGraphRef.graphData();
-    
-    const conditionalSubgraph = buildGraphData(updateData.replace);
+  const graphData = forceGraphRef.graphData();
 
-    // Check if all node ids in update.check are in graph
-    if (updateData.check.every(id => nodeDict.has(id) && nodeDict.get(id).active)) {
-        updateData.check.forEach(id => { removeNode(id, graphData); });
+  const conditionalSubgraph = buildGraphData(updateData.replace);
 
-        // Remove nodes with id in update.exclude from rawSubgraph
-        if (updateData.exclude) {
-            updateData.exclude.forEach(id => { removeNode(id, subgraph); });
-        }
+  // Check if all node ids in update.check are in graph
+  if (updateData.check.every(id => nodeDict.has(id) && nodeDict.get(id).active)) {
+    updateData.check.forEach(id => { removeNode(id, graphData); });
 
-        subgraph.nodes.push(...conditionalSubgraph.nodes);
-        subgraph.links.push(...conditionalSubgraph.links);
-
-        updateData.check.forEach(id => addToInsideNode(id, conditionalSubgraph.nodes));
-        updateData.exclude.forEach(id => addToInsideNode(id, conditionalSubgraph.nodes));
+    // Remove nodes with id in update.exclude from rawSubgraph
+    if (updateData.exclude) {
+      updateData.exclude.forEach(id => { removeNode(id, subgraph); });
     }
 
-    return subgraph;
+    subgraph.nodes.push(...conditionalSubgraph.nodes);
+    subgraph.links.push(...conditionalSubgraph.links);
+
+    updateData.check.forEach(id => addToInsideNode(id, conditionalSubgraph.nodes));
+    updateData.exclude.forEach(id => addToInsideNode(id, conditionalSubgraph.nodes));
+  }
+
+  return subgraph;
 }
 
 export function processPoppedSubgraph(bubbleId, rawSubgraph) {
-    const graphData = forceGraphRef.graphData();
+  const graphData = forceGraphRef.graphData();
 
-    const subgraph = buildGraphData(rawSubgraph);
-    setPoppedContents(bubbleId, subgraph);
+  const subgraph = buildGraphData(rawSubgraph);
+  setPoppedContents(bubbleId, subgraph);
 
-    removeNode(bubbleId, graphData);
+  removeNode(bubbleId, graphData);
 
-    // Some nodes and links are conditionally included based on the current graph state.
-    for (const updateData of rawSubgraph.update) {
-      conditionalUpdate(updateData, subgraph);
-    }
+  // Some nodes and links are conditionally included based on the current graph state.
+  for (const updateData of rawSubgraph.update) {
+    conditionalUpdate(updateData, subgraph);
+  }
 
-    graphData.nodes.push(...subgraph.nodes);
-    graphData.links.push(...subgraph.links);
+  graphData.nodes.push(...subgraph.nodes);
+  graphData.links.push(...subgraph.links);
 
-    updateForceGraph(graphData);
-    return subgraph;
+  updateForceGraph(graphData);
+  return subgraph;
 }
 
 /** Iterators & accessors */
@@ -190,30 +226,30 @@ export function bubbleCount() { return bubbles.size; }
 
 export function updateForceGraph(graphData) {
 
-    cleanGraph(graphData);
+  cleanGraph(graphData);
 
-    for (const node of nodeDict.values()) {
-        node.active = false;
-    }
-    graphData.nodes.forEach(node => {
-        nodeDict.get(node.id).active = true;
-    });
+  for (const node of nodeDict.values()) {
+    node.active = false;
+  }
+  graphData.nodes.forEach(node => {
+    nodeDict.get(node.id).active = true;
+  });
 
-    forceGraphRef.graphData(graphData);
+  forceGraphRef.graphData(graphData);
 }
 
 export function getNodeElement(nodeId) {
-    if (nodeIdDict.has(nodeId)) {
-        return nodeIdDict.get(nodeId);
-    } else {
-        return null;
-    }
+  if (nodeIdDict.has(nodeId)) {
+    return nodeIdDict.get(nodeId);
+  } else {
+    return null;
+  }
 }
 
 export function getNodeElements(id) {
-    if (nodeDict.has(id)) {
-        return nodeDict.get(id).elements;
-    } else {
-        return [];
-    }
+  if (nodeDict.has(id)) {
+    return nodeDict.get(id).elements;
+  } else {
+    return [];
+  }
 }

@@ -26,7 +26,7 @@ export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
 
     const subgraph = processPoppedSubgraph(originNode.id, rawSubgraph);
 
-    return;
+    return; // TODO
     explodeSubgraph(originNode, subgraph, forceGraph);
 
     if (originNode.isSelected) {
