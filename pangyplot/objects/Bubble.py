@@ -161,7 +161,7 @@ class Bubble:
             for link in gfaidx.get_links(seg_id):
                 if link.other_id(seg_id) in self.sink.contained:
                     del_link = link.clone()
-                    del_link.set_as_deletion()
+                    del_link.set_as_deletion(self.id)
                     deletion_links.append(del_link)
                     
                     del_link2 = del_link.clone()

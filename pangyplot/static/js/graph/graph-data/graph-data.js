@@ -117,7 +117,7 @@ function forceGraphLinks(element) {
         length = length * element.seqLength / 10;
     }
     if (element.isDel) {
-        length = element.length * LINK_LENGTH * 2;
+        length = length * 2;
     }
 
     return {
@@ -131,6 +131,7 @@ function forceGraphLinks(element) {
         targetId: targetId,
         targetNodeId: targetNodeId,
         isDel: element.isDel,
+        bubbleId: element.bubbleId, //currently only for del-links
         isVisible: true,
         isDrawn: true,
         length: length,
@@ -155,7 +156,6 @@ function checkExistingNodeRecords(nodeElements) {
     }
     return { existingNodes, newNodeElements };
 }
-
 
 function checkExistingLinkRecords(linkElements) {
     const existingLinks = [];

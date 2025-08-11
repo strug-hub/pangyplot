@@ -12,6 +12,7 @@ class GraphElementLink {
         this.seqLength = rawLink.length;
         this.contained = rawLink.contained;
         this.isDel = rawLink.is_deletion || false;
+        this.bubbleId = rawLink.bubble_id || null;
     }
 
     get isChainLink() {

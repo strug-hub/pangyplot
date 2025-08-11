@@ -1,5 +1,6 @@
 import buildGraphData from './graph-data.js';
 import { cleanGraph } from './graph-integrity.js';
+import eventBus from '../../input/event-bus.js';
 
 let forceGraphRef = null;
 
@@ -7,6 +8,7 @@ const nodeDict = new Map();
 const nodeIdDict = new Map();
 const linkDict = new Map();
 const linkIdDict = new Map();
+
 
 function initializeNodeRecord(id) {
   if (nodeDict.has(id)) return;
@@ -216,6 +218,19 @@ export function updateForceGraph(graphData) {
   });
 
   forceGraphRef.graphData(graphData);
+  eventBus.publish("graph-updated", true);
+}
+
+export function getActiveDeletionLinks() {
+  const graphData = forceGraphRef.graphData();
+
+  const links = [];
+  for (const link of graphData.links) {
+    if (link.isDel) {
+      links.push(link);
+    }
+  }
+  return links;
 }
 
 export function getNodeElement(nodeId) {
@@ -224,6 +239,9 @@ export function getNodeElement(nodeId) {
 
 export function getNodeElements(id) {
   return nodeDict.has(id) ? Array.from(nodeDict.get(id).elements) : [];
+}
+export function getInsideNodeElements(id) {
+  return nodeDict.has(id) ? Array.from(nodeDict.get(id).inside) : [];
 }
 
 export function getLinkElements(id) {

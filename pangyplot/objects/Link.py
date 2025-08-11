@@ -12,7 +12,7 @@ class Link:
         self.link_class = "edge"
         self.contained = []
         self.length = 0
-        self.is_deletion = False
+        self.deletionBubbleId = None
 
     def serialize(self):
         return {
@@ -29,7 +29,8 @@ class Link:
             "target": f"{self.to_type}{self.to_id}",
             "contained": self.contained,
             "length": self.length,
-            "is_deletion": self.is_deletion
+            "is_deletion": self.deletionBubbleId is not None,
+            "bubble_id": f"b{self.deletionBubbleId}"
         }
     
     def clone(self):
@@ -43,7 +44,7 @@ class Link:
         link.frequency = self.frequency
         link.from_type = self.from_type
         link.to_type = self.to_type
-        link.is_deletion = self.is_deletion
+        link.deletionBubbleId = self.deletionBubbleId
         link.link_class = self.link_class
         link.contained = self.contained[:]
         link.length = self.length
@@ -78,9 +79,11 @@ class Link:
         self.from_type = "b"
         self.to_type = "s"
 
-    def set_as_deletion(self):
-        self.is_deletion = True
-
+    def set_as_deletion(self, bubble_id):
+        self.deletionBubbleId = bubble_id
+    def is_deletion(self):
+        return self.deletionBubbleId is not None
+        
     def id(self):
         return f"{self.from_type}{self.from_id}{self.from_strand}{self.to_type}{self.to_id}{self.to_strand}"
     
