@@ -1,4 +1,4 @@
-from pangyplot.objects.ChainJunction import ChainJunction
+from pangyplot.objects.BubbleJunction import BubbleJunction
 from pangyplot.objects.Junction import Junction
 
 class Bubble:
@@ -144,8 +144,8 @@ class Bubble:
         return links
 
     def emit_chain_junctions(self, gfaidx):
-        source = ChainJunction(self, True, gfaidx)
-        sink = ChainJunction(self, False, gfaidx)
+        source = BubbleJunction(self, True, gfaidx)
+        sink = BubbleJunction(self, False, gfaidx)
         return [source, sink]
 
     def has_range(self, exclusive=True):

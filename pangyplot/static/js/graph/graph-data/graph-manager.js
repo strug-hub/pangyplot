@@ -184,7 +184,23 @@ function findFullBubbleEnds(graphData, subgraph) {
       results.push([otherId, id]);
     }
   }
+
+  //todo pull any existing links within this end
+
+
   return results;
+}
+
+function rescueBubbleEndLinks(subgraph) {
+  const newChainNodes = subgraph.nodes.filter(node => node.id.startsWith("c")).map(node => node.id);
+
+  for (const node of newChainNodes) {
+    if (link.source.id.startsWith("c") || link.target.id.startsWith("c")) {
+      rescueLinks.push(link);
+    }
+  }
+
+  return { nodes: rescueNodes, links: rescueLinks };
 }
 
 export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEndFn) {
@@ -193,6 +209,7 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
   const subgraph = buildGraphData(rawSubgraph);
   addInsideContents(bubbleId, subgraph);
 
+  
   // If both ends of a chain are present, fetch the segments inside
   const fetchPromises = [];
   for (const [graphId, subgraphId] of findFullBubbleEnds(graphData, subgraph)) {

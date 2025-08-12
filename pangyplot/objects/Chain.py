@@ -1,3 +1,5 @@
+from pangyplot.objects.BubbleJunction import BubbleJunction
+
 class Chain:
     def __init__(self, chain_id, bubbles=None, parent_bubble=None, gfaidx=None):
         self.id = chain_id

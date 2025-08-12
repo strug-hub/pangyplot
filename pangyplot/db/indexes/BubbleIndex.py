@@ -199,10 +199,14 @@ class BubbleIndex:
             return {"nodes": all_nodes, "links": all_links} 
 
         #[bubble:end]-[x]
-        for junction in bubble.emit_chain_junctions(gfaidx):
+        junctions = bubble.emit_chain_junctions(gfaidx)
+        for junction in junctions:
             all_nodes.append(junction)
             all_links.extend(junction.get_links())
 
+        # check for deletion links
+        del_links = junctions[0].shared_links(junctions[1])
+        all_links.extend(del_links)
         # [bubble]-[bubble]
         inside_bubbles = [self[bid] for bid in bubble.children]
         chains = self.create_chains(inside_bubbles, gfaidx, parent_bubble=bubble)
