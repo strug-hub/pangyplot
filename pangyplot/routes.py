@@ -119,11 +119,15 @@ def subgraph():
     #end = int(request.args.get("end"))
 
     print(f"Getting subgraph for node {id} in {genome}#{chrom}...")
-
-    subgraph = query.pop_bubble(current_app, id, genome, chrom)
+    
+    if id.startswith("s"):
+        subgraph = {"nodes": [], "links": []}
+    if id.startswith("b"):
+        subgraph = query.pop_bubble(current_app, id, genome, chrom)
+    if id.startswith("c"):
+        subgraph = query.get_bubble_end(current_app, id, genome, chrom)
 
     return jsonify(subgraph)
-
 
 @bp.route('/gfa', methods=["GET"])
 def gfa():

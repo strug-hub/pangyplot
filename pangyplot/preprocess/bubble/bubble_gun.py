@@ -68,7 +68,7 @@ def shoot(segments, links, chr_path, ref):
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
 
-    print("   🗜️ Compacting graph...", end="", flush=True)
+    print("   🗜️  Compacting graph...", end="", flush=True)
     start_time = time.time()
     before = len(graph.nodes)
     compacter.compact_graph(graph)
@@ -88,7 +88,7 @@ def shoot(segments, links, chr_path, ref):
     bubbleCount = graph.bubble_number()
     print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
 
-    print("   💾  Indexing bubbles...", end="", flush=True)
+    print("   💾 Indexing bubbles...", end="", flush=True)
     indexer.construct_bubble_index(graph, chr_path, ref)
     print(f" Done.")
 

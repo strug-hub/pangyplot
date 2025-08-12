@@ -62,6 +62,13 @@ class BubbleIndex:
     def get_chain_ends(self, chain_id):
         return db.get_chain_ends(self.dir, chain_id)
 
+    def get_bubble_by_chain(self, chain_id, chain_step):
+        result = db.get_bubble_ids_from_chain(self.dir, chain_id, chain_step, chain_step)
+        if result:
+            bubble_id = result[0]
+            return self[bubble_id]
+        return None
+    
     def save_quick_index(self):
         utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")  
 
@@ -186,56 +193,38 @@ class BubbleIndex:
 
     def get_popped_subgraph(self, bubble_id, gfaidx, stepidx):
         bubble = self[bubble_id]
-        all_nodes = []
-        all_links = []
+        all_nodes, all_links = [], []
 
         if bubble is None:
             return {"nodes": all_nodes, "links": all_links} 
 
-        # get popped bubble junctions
+        #[bubble:end]-[x]
         for junction in bubble.emit_chain_junctions(gfaidx):
             all_nodes.append(junction)
             all_links.extend(junction.get_links())
 
-        # get child bubble chains
+        # [bubble]-[bubble]
         inside_bubbles = [self[bid] for bid in bubble.children]
         chains = self.create_chains(inside_bubbles, gfaidx, parent_bubble=bubble)
-
-        # [bubble]-[bubble]
         for chain in chains:
             bubbles, links = chain.decompose()
             all_nodes.extend(bubbles)
             all_links.extend(links)
 
-        # get child segments
+        #[segment]-[segment]
         internal_chain_segments = set()
         for chain in chains:
             internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
         exposed_segments = bubble.inside - internal_chain_segments
-      
-        # [segment]-[segment]
+
         inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)
         all_links.extend(inside_segment_links)
 
-        # [bubble:end]-[segment] get links to temp bubble end node
-        if not bubble.source.connected_to_parent:
-            all_nodes.append(bubble.source)
-        if not bubble.sink.connected_to_parent:
-            all_nodes.append(bubble.sink)
-
-
         #todo:
         # - deletion links in chain junction
-        # - frontend check if both bubble and sibling are popped
-        # - remove "update" from returned dict, frontend code
-        # - backend route to fetch junction segments and links
         # - parent child bubble junction
     
-
-
-        #all_links.extend(bubble.source.get_popped_links(gfaidx))
-        #all_links.extend(bubble.sink.get_popped_links(gfaidx))
 
         # check for indel links
         all_links.extend(bubble.get_deletion_links(gfaidx))
@@ -245,30 +234,4 @@ class BubbleIndex:
             sib_bubble = self[sibling]
             all_links.extend(sib_bubble.get_deletion_links(gfaidx))
 
-        # [segment]-[segment] include end segments if bubble and sibling are both popped
-        update_data = []
-
-        if not bubble.source.connected_to_parent:
-            source_update = {"check": [bubble.source.other_node_id()],
-                            "exclude": [bubble.source.node_id()],
-                            "replace": {"nodes": bubble.source.get_contained_segments(gfaidx),
-                                        "links": bubble.source.get_contained_links(gfaidx)}}
-            update_data.append(source_update)
-        else:
-            all_nodes.extend(bubble.source.get_contained_segments(gfaidx))
-            all_links.extend(bubble.source.get_contained_links(gfaidx))
-
-        if not bubble.sink.connected_to_parent:
-            sink_update = {"check": [bubble.sink.other_node_id()],
-                        "exclude": [bubble.sink.node_id()],
-                        "replace": {"nodes": bubble.sink.get_contained_segments(gfaidx),
-                                    "links": bubble.sink.get_contained_links(gfaidx)}}
-            update_data.append(sink_update)
-        else:
-            all_nodes.extend(bubble.sink.get_contained_segments(gfaidx))
-            all_links.extend(bubble.sink.get_contained_links(gfaidx))
-
-        current_links = {link.id() for link in all_links}
-        siblings = [self[sid] for sid in bubble.get_siblings()]
-
-        return {"nodes": all_nodes, "links": all_links, "update": update_data} 
+        return {"nodes": all_nodes, "links": all_links}

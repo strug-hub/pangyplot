@@ -73,9 +73,9 @@ export function setUpGraphManager(forceGraph) {
   forceGraphRef = forceGraph;
 }
 
-export function setPoppedContents(bubbleId, subgraph) {
+export function addInsideContents(nid, subgraph) {
   subgraph.nodes.forEach(addNodeRecord);
-  addToInsideNode(bubbleId, subgraph.nodes);
+  addToInsideNode(nid, subgraph.nodes);
   subgraph.links.forEach(addLinkRecord);
 }
 
@@ -87,9 +87,7 @@ function getUnpoppedContents(bubbleId) {
   for (const element of bubble.elements) {
     links.push(...getLinkElements(element.id));
   }
-
-
-
+  
   return { nodes, links };
 }
 
@@ -122,15 +120,11 @@ export function unpopBubble(bubbleId) {
   for (const link of unpoppedContents.links) {
     const siblingIds = [];
 
-    if (link.targetId === bubbleId) {
-      if (link.sourceId.startsWith("b>") || link.sourceId.startsWith("b<")) {
+    if (link.targetId === bubbleId && link.sourceId.startsWith("c")) {
         siblingIds.push(link.sourceId);
-      }
     } 
-    if (link.sourceId === bubbleId) {
-      if (link.targetId.startsWith("b>") || link.targetId.startsWith("b<")) {
+    if (link.sourceId === bubbleId && link.targetId.startsWith("c")) {
         siblingIds.push(link.targetId);
-      }
     }
 
     for (const sibId of siblingIds) {
@@ -172,36 +166,57 @@ export function removeNode(id, graphData) {
   );
 }
 
-function conditionalUpdate(updateData, subgraph) {
-  const graphData = forceGraphRef.graphData();
-  const conditionalSubgraph = buildGraphData(updateData.replace);
+function findFullBubbleEnds(graphData, subgraph) {
 
-  if (updateData.check.every(id => nodeDict.has(id) && nodeDict.get(id).active)) {
-    updateData.check.forEach(id => { removeNode(id, graphData); });
+  const newChainNodes = subgraph.nodes.filter(node => node.id.startsWith("c")).map(node => node.id);
+  const chainNodes = graphData.nodes.filter(node => node.id.startsWith("c")).map(node => node.id);
+  const results = [];
 
-    if (updateData.exclude) {
-      updateData.exclude.forEach(id => { removeNode(id, subgraph); });
+  for (const id of newChainNodes) {
+    const parts = id.split(":");
+    const chainId = parts[0];
+    const chainStep = parseInt(parts[1]);
+    const side = parseInt(parts[2]);
+    const otherSide = side === 0 ? 1 : 0;
+
+    const otherId = `${chainId}:${chainStep}:${otherSide}`;
+    if (chainNodes.includes(otherId)) {
+      results.push([otherId, id]);
     }
-
-    subgraph.nodes.push(...conditionalSubgraph.nodes);
-    subgraph.links.push(...conditionalSubgraph.links);
-
-    updateData.check.forEach(id => addToInsideNode(id, conditionalSubgraph.nodes));
-    updateData.exclude.forEach(id => addToInsideNode(id, conditionalSubgraph.nodes));
   }
-  return subgraph;
+  return results;
 }
 
-export function processPoppedSubgraph(bubbleId, rawSubgraph) {
+export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEndFn) {
   const graphData = forceGraphRef.graphData();
 
   const subgraph = buildGraphData(rawSubgraph);
-  setPoppedContents(bubbleId, subgraph);
+  addInsideContents(bubbleId, subgraph);
+
+  // If both ends of a chain are present, fetch the segments inside
+  const fetchPromises = [];
+  for (const [graphId, subgraphId] of findFullBubbleEnds(graphData, subgraph)) {
+    fetchPromises.push(
+      fetchBubbleEndFn(subgraphId).then(endData => {
+        const endSubgraph = buildGraphData(endData);
+        subgraph.nodes.push(...endSubgraph.nodes);
+        subgraph.links.push(...endSubgraph.links);
+        addInsideContents(graphId, endData);
+        addInsideContents(subgraphId, endData);
+
+      })
+    );
+
+    removeNode(graphId, graphData);
+    removeNode(subgraphId, subgraph);
+  }
+  
+  // Wait for all bubble-end fetches
+  await Promise.all(fetchPromises);
+
   removeNode(bubbleId, graphData);
 
-  for (const updateData of rawSubgraph.update) {
-    conditionalUpdate(updateData, subgraph);
-  }
+  subgraph.nodes.forEach(node => node.isSelected = true);
 
   graphData.nodes.push(...subgraph.nodes);
   graphData.links.push(...subgraph.links);

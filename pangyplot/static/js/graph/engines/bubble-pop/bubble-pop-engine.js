@@ -6,10 +6,10 @@ var bubblePopMode = false;
 
 const BUBBLE_POP_RANGE = 25;
 
-export function popGroupOfBubbles(nodes, forceGraph) {
+export function popGroupOfBubbles(nodes) {
     nodes.forEach(node => {
         if (node.type == "bubble") {
-            fetchSubgraph(node, forceGraph);
+            fetchSubgraph(node);
         }
     });
 }
@@ -46,7 +46,7 @@ function attemptBubblePop(event, forceGraph){
         const distPx = euclideanDist(coords, screenPos);
 
         if (distPx > BUBBLE_POP_RANGE) return;
-        fetchSubgraph(nearestNode, forceGraph);
+        fetchSubgraph(nearestNode);
     }
 }
 

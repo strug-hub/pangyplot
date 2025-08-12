@@ -4,30 +4,38 @@ import { buildUrl, fetchData } from '../../utils/network-utils.js';
 import { explodeSubgraph } from './bubble-pop-force.js';
 import { processPoppedSubgraph } from '../../graph-data/graph-manager.js';
 
-export function fetchSubgraph(originNode, forceGraph) {
+let fetchChain = Promise.resolve();
+
+export function fetchSubgraph(originNode) {
     const id = originNode.id;
     const wasAdded = queueSubgraph(id);
     if (!wasAdded) return;
 
-    const params = {id, ...getGraphCoordinates()};
+    fetchChain = fetchChain.then(async () => {
+        try {
+            const params = { id, ...getGraphCoordinates() };
+            const url = buildUrl('/subgraph', params);
 
-    const url = buildUrl('/subgraph', params);
-    fetchData(url, 'subgraph')
-        .then(fetchedData => {
-            processSubgraphData(fetchedData, originNode, forceGraph);
+            const fetchedData = await fetchData(url, 'subgraph');
+            await processSubgraphData(fetchedData, originNode); // <-- wait for full build
+        } finally {
             dequeueSubgraph(id);
-        });
+        }
+    });
+
+    return fetchChain;
 }
 
-export function processSubgraphData(rawSubgraph, originNode, forceGraph) {
+export function fetchBubbleEnd(chainNodeId) {
+    const params = { id: chainNodeId, ...getGraphCoordinates() };
+    const url = buildUrl('/subgraph', params);
+    return fetchData(url, 'subgraph');
+}
+
+export async function processSubgraphData(rawSubgraph, originNode) {
     console.log("Fetched subgraph data:", rawSubgraph);
-    const subgraph = processPoppedSubgraph(originNode.id, rawSubgraph);
-    
-    //TODO
-    //explodeSubgraph(originNode, subgraph, forceGraph);
+    const subgraph = await processPoppedSubgraph(originNode.id, rawSubgraph, fetchBubbleEnd);
 
-    if (originNode.isSelected) {
-        subgraph.nodes.forEach(node => node.isSelected = true);
-    }
-
+    // Now it's safe to update UI
+    // explodeSubgraph(originNode, subgraph, forceGraph);
 }

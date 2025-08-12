@@ -11,7 +11,7 @@ export function populateOptions(forceGraph) {
 
     // Node-specific actions
     menu.addOption('burst', 'Pop nodes', 'node', nodes => {
-        popGroupOfBubbles(nodes, forceGraph);
+        popGroupOfBubbles(nodes);
     });
 
     menu.addOption('dna', 'Show Sequence', 'node', nodes => {

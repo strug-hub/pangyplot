@@ -31,7 +31,7 @@ function calculateEffectiveNodeStep(node, step){
 }
 
 export function annotationOverlap(annotation, node) {
-    if (!node.element.ranges) return false;
+    if (!node.element || !node.element.ranges) return false;
 
     const [annotationStart, annotationEnd] = annotation.range;
 
