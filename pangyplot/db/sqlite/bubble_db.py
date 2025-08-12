@@ -21,10 +21,8 @@ def create_bubble_tables(dir):
             parent INTEGER,
             children TEXT,
             siblings TEXT,
-            source INTEGER,
-            compacted_source TEXT,
-            sink INTEGER,
-            compacted_sink TEXT,
+            source TEXT,
+            sink TEXT,
             inside TEXT,
             range_exclusive TEXT,
             range_inclusive TEXT,
@@ -51,10 +49,10 @@ def insert_bubble(cur, bubble):
         INSERT INTO bubbles (
             id, chain, chain_step, subtype, parent,
             children, siblings,
-            source, compacted_source, sink, compacted_sink,
+            source, sink,
             inside, range_exclusive, range_inclusive,
             length, gc_count, n_count, x1, x2, y1, y2
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         bubble.id,
         bubble.chain,
@@ -63,10 +61,8 @@ def insert_bubble(cur, bubble):
         bubble.parent,
         json.dumps(bubble.children),
         json.dumps(bubble.siblings),
-        source_id,
-        json.dumps(compacted_source),
-        sink_id,
-        json.dumps(compacted_sink),
+        json.dumps(bubble.source_segments),
+        json.dumps(bubble.sink_segments),
         json.dumps(sorted(bubble.inside)),  # Convert set to list
         json.dumps(bubble.range_exclusive),
         json.dumps(bubble.range_inclusive),
@@ -106,8 +102,8 @@ def create_bubble(row, gfaidx):
     bubble.y1 = row["y1"]
     bubble.y2 = row["y2"]
 
-    bubble.add_source(row["source"], json.loads(row["compacted_source"]))
-    bubble.add_sink(row["sink"], json.loads(row["compacted_sink"]))
+    bubble.add_source(json.loads(row["source"]))
+    bubble.add_sink(json.loads(row["sink"]))
 
     bubble.calculate_properties(gfaidx)
 

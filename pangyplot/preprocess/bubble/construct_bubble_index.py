@@ -22,14 +22,14 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
 
     # Source and sink
     source_node = raw_bubble.source
-    source_id = int(source_node.id)
     source_compacted_ids = [int(n.id) for n in source_node.optional_info.get("compacted", [])]
-    bubble.add_source(source_id, source_compacted_ids)
+    source_ids = [int(source_node.id)] + source_compacted_ids
+    bubble.add_source(source_ids)
 
     sink_node = raw_bubble.sink
-    sink_id = int(sink_node.id)
     sink_compacted_ids = [int(n.id) for n in sink_node.optional_info.get("compacted", [])]
-    bubble.add_sink(sink_id, sink_compacted_ids)
+    sink_ids = [int(sink_node.id)] + sink_compacted_ids
+    bubble.add_sink(sink_ids)
 
     # Inside nodes + compacted
     nodes = raw_bubble.inside
@@ -49,8 +49,8 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
         return steps
 
     inside_steps = get_steps(bubble.inside)
-    source_steps = get_steps([source_id] + source_compacted_ids)
-    sink_steps = get_steps([sink_id] + sink_compacted_ids)
+    source_steps = get_steps(source_ids)
+    sink_steps = get_steps(sink_ids)
 
     def collapse_ranges(steps):
         if not steps:
@@ -70,8 +70,8 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
         ranges.append((start, prev))
         return ranges
 
-    bubble._range_exclusive = collapse_ranges(inside_steps)
-    bubble._range_inclusive = collapse_ranges(inside_steps.union(source_steps, sink_steps))
+    bubble.range_exclusive = collapse_ranges(inside_steps)
+    bubble.range_inclusive = collapse_ranges(inside_steps.union(source_steps, sink_steps))
 
     # Length and base content
     bubble.length = sum(n.seq_len for n in nodes)

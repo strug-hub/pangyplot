@@ -13,6 +13,9 @@ class Bubble:
         self.chain = None
         self.chain_step = None
 
+        self.source_segments = []
+        self.sink_segments = []
+
         self.source = Junction(self, is_source=True)
         self.sink = Junction(self, is_source=False)
 
@@ -50,14 +53,12 @@ class Bubble:
             "y2": self.y2
         }
 
-    def add_source(self, source_id, compacted_nodes=[]):
-        seg_ids = [source_id]
-        seg_ids.extend(list(compacted_nodes))
+    def add_source(self, seg_ids):
+        self.source_segments = seg_ids
         self.source = Junction(self, seg_ids=seg_ids, is_source=True)
 
-    def add_sink(self, sink_id, compacted_nodes=[]):
-        seg_ids = [sink_id]
-        seg_ids.extend(list(compacted_nodes))
+    def add_sink(self, seg_ids):
+        self.sink_segments = seg_ids
         self.sink = Junction(self, seg_ids=seg_ids, is_source=False)
 
     def correct_source_sink(self, prevId=None, nextId=None):

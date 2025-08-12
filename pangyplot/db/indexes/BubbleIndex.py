@@ -59,9 +59,6 @@ class BubbleIndex:
             "ids": self.ids.tolist()
         }
 
-    def get_bubble_ids_from_chain(self, chain_id, min_step, max_step):
-        return db.get_bubble_ids_from_chain(self.dir, chain_id, min_step, max_step)
-
     def get_chain_ends(self, chain_id):
         return db.get_chain_ends(self.dir, chain_id)
 
@@ -78,6 +75,17 @@ class BubbleIndex:
         self.ids = array('I', quick_index["ids"])
         return True
 
+    def fill_chain(self, chain):
+        min_step, max_step = chain.chain_step_range()
+        if min_step is None: return
+
+        bubble_ids = db.get_bubble_ids_from_chain(self.dir, chain.id, min_step, max_step)
+        current_bids = {bubble.id for bubble in chain.bubbles}
+        missing_bubbles = [self[bubble_id] for bubble_id in bubble_ids if bubble_id not in current_bids]
+        chain.add_bubbles(missing_bubbles)
+
+        chain.update_bubble_ends(self, self.gfaidx)
+
     def create_chains(self, bubbles, gfaidx, parent_bubble=None):
         chain_dict = defaultdict(list)
         for bubble in bubbles:
@@ -86,7 +94,7 @@ class BubbleIndex:
         chains = []
         for chain_id in chain_dict:
             chain = Chain(chain_id, chain_dict[chain_id], parent_bubble=parent_bubble)
-            chain.fill_chain(self, gfaidx)
+            self.fill_chain(chain)
             chains.append(chain)
         return chains
 
