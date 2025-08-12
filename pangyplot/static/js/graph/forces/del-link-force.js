@@ -3,7 +3,7 @@ import { computeNodeCentroid } from "../utils/node-utils.js";
 
 export default function delLinkForce() {
   const cache = new Map();
-  let strength = 10;
+  let strength = 1;
 
   function force(alpha) {
     for (const { link, nodes } of cache.values()) {

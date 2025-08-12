@@ -1,6 +1,6 @@
 from pangyplot.objects.Link import Link
 
-class BubbleEnd:
+class Junction:
     def __init__(self, bubble, seg_ids=[], is_source=True):
         self.id = bubble.id
 
@@ -240,6 +240,6 @@ class BubbleEnd:
         return [self.other_bubble_id, self.contained]
 
     def __str__(self):
-        return f"BubbleEnd(bubble={self.id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source}, is_sink={self.is_sink})"
+        return f"Junction(bubble={self.id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source}, is_sink={self.is_sink})"
     def __repr__(self):
-        return f"BubbleEnd({self.id}, {"source" if self.is_source else "sink"})"
+        return f"Junction({self.id}, {"source" if self.is_source else "sink"})"

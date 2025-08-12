@@ -15,7 +15,7 @@ def create_bubble_tables(dir):
     cur.execute("""
         CREATE TABLE bubbles (
             id INTEGER PRIMARY KEY,
-            chain TEXT,
+            chain INTEGER,
             chain_step INTEGER,
             subtype TEXT,
             parent INTEGER,
@@ -62,14 +62,14 @@ def insert_bubble(cur, bubble):
         bubble.subtype,
         bubble.parent,
         json.dumps(bubble.children),
-        json.dumps(bubble.summarize_ends()),
+        json.dumps(bubble.siblings),
         source_id,
         json.dumps(compacted_source),
         sink_id,
         json.dumps(compacted_sink),
         json.dumps(sorted(bubble.inside)),  # Convert set to list
-        json.dumps(bubble._range_exclusive),
-        json.dumps(bubble._range_inclusive),
+        json.dumps(bubble.range_exclusive),
+        json.dumps(bubble.range_inclusive),
         bubble.length,
         bubble.gc_count,
         bubble.n_count,
@@ -94,9 +94,10 @@ def create_bubble(row, gfaidx):
     bubble.subtype = row["subtype"]
     bubble.parent = row["parent"]
     bubble.children = json.loads(row["children"])
+    bubble.siblings = json.loads(row["siblings"])
     bubble.inside = set(json.loads(row["inside"]))
-    bubble._range_exclusive = json.loads(row["range_exclusive"])
-    bubble._range_inclusive = json.loads(row["range_inclusive"])
+    bubble.range_exclusive = json.loads(row["range_exclusive"])
+    bubble.range_inclusive = json.loads(row["range_inclusive"])
     bubble.length = row["length"]
     bubble.gc_count = row["gc_count"]
     bubble.n_count = row["n_count"]
@@ -107,12 +108,6 @@ def create_bubble(row, gfaidx):
 
     bubble.add_source(row["source"], json.loads(row["compacted_source"]))
     bubble.add_sink(row["sink"], json.loads(row["compacted_sink"]))
-    
-    siblings = json.loads(row["siblings"])
-
-    for sibling in siblings:
-        bid, sids = sibling
-        bubble.add_sibling(bid, sids)
 
     bubble.calculate_properties(gfaidx)
 
@@ -138,6 +133,16 @@ def get_bubble_ids_from_chain(dir, chain_id, start_step, end_step):
     rows = cur.fetchall()
     return [row["id"] for row in rows]
 
+def get_chain_ends(dir, chain_id):
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT id, chain_step FROM bubbles WHERE chain = ? ORDER BY chain_step ASC LIMIT 1", (chain_id,))
+    start_row = cur.fetchone()
+    cur.execute("SELECT id, chain_step FROM bubbles WHERE chain = ? ORDER BY chain_step DESC LIMIT 1", (chain_id,))
+    end_row = cur.fetchone()
+    if start_row is None or end_row is None:
+        return None
+    return (start_row["id"], start_row["chain_step"]), (end_row["id"], end_row["chain_step"])
+    
 def count_bubbles(chr_dir):
     cur = get_connection(chr_dir).cursor()
     cur.execute("SELECT COUNT(*) FROM bubbles")
