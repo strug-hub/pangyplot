@@ -224,6 +224,16 @@ class BubbleIndex:
         if not bubble.sink.connected_to_parent:
             all_nodes.append(bubble.sink)
 
+
+        #todo:
+        # - deletion links in chain junction
+        # - frontend check if both bubble and sibling are popped
+        # - remove "update" from returned dict, frontend code
+        # - backend route to fetch junction segments and links
+        # - parent child bubble junction
+    
+
+
         #all_links.extend(bubble.source.get_popped_links(gfaidx))
         #all_links.extend(bubble.sink.get_popped_links(gfaidx))
 
