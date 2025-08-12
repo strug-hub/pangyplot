@@ -2,14 +2,14 @@ class Link:
     def __init__(self):
         self.from_id = None
         self.to_id = None
-        self.from_strand = None
-        self.to_strand = None
+        self.from_strand = "+"
+        self.to_strand = "+"
         self.haplotype = 0
         self.reverse = 0
         self.frequency = 0
         self.from_type = "s"
         self.to_type = "s"
-        self.link_class = "edge"
+        self.link_type = "link"
         self.contained = []
         self.length = 0
         self.deletionBubbleId = None
@@ -17,6 +17,7 @@ class Link:
     def serialize(self):
         return {
             "id": self.id(),
+            "type": self.link_type,
             "from_id": self.from_id,
             "to_id": self.to_id,
             "from_strand": self.from_strand,
@@ -24,7 +25,6 @@ class Link:
             "haplotype": self.haplotype,
             "reverse": self.reverse,
             "frequency": self.frequency,
-            "class": self.link_class,
             "source": f"{self.from_type}{self.from_id}",
             "target": f"{self.to_type}{self.to_id}",
             "contained": self.contained,
@@ -45,7 +45,7 @@ class Link:
         link.from_type = self.from_type
         link.to_type = self.to_type
         link.deletionBubbleId = self.deletionBubbleId
-        link.link_class = self.link_class
+        link.link_type = self.link_type
         link.contained = self.contained[:]
         link.length = self.length
         return link
@@ -64,6 +64,7 @@ class Link:
         self.to_type = "b"
         self.contained = contained
         self.length = length
+        self.link_type = "chain"
 
     def set_from_type(self, x):
         self.from_type = x

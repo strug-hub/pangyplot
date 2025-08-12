@@ -84,7 +84,7 @@ class BubbleIndex:
         missing_bubbles = [self[bubble_id] for bubble_id in bubble_ids if bubble_id not in current_bids]
         chain.add_bubbles(missing_bubbles)
 
-        chain.update_bubble_ends(self, self.gfaidx)
+        chain.update_bubble_ends(self)
 
     def create_chains(self, bubbles, gfaidx, parent_bubble=None):
         chain_dict = defaultdict(list)
@@ -93,12 +93,12 @@ class BubbleIndex:
             
         chains = []
         for chain_id in chain_dict:
-            chain = Chain(chain_id, chain_dict[chain_id], parent_bubble=parent_bubble)
+            chain = Chain(chain_id, chain_dict[chain_id], parent_bubble=parent_bubble, gfaidx=gfaidx)
             self.fill_chain(chain)
             chains.append(chain)
         return chains
 
-    def get_top_level_bubbles(self, min_step, max_step, gfaidx, as_chains=False):
+    def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
         bubbles = []
         
         start_index = bisect_left(self.ends, min_step)
@@ -113,7 +113,7 @@ class BubbleIndex:
         #results.extend(self._collect_non_ref(results))
 
         if as_chains:
-            return self.create_chains(bubbles, gfaidx)
+            return self.create_chains(bubbles, self.gfaidx)
 
         return bubbles
 
@@ -184,36 +184,6 @@ class BubbleIndex:
         
         return list(collected)
 
-    def get_merged_intervals(self, bubbles, min_step=-1, max_step=math.inf):
-        bubble_intervals = []
-
-        for bubble in bubbles:
-            for lo, hi in bubble.get_ranges(exclusive=False):
-                if hi < min_step or lo > max_step:
-                    continue
-
-                lo = max(lo, min_step) if min_step != -1 else lo
-                hi = min(hi, max_step) if max_step != math.inf else hi
-
-                bubble_intervals.append((lo, hi))
-
-        bubble_intervals.sort(key=lambda x: x[0])
-        merged = []
-
-        for interval in bubble_intervals:
-            if not merged:
-                merged.append(interval)
-            else:
-                last_start, last_end = merged[-1]
-                curr_start, curr_end = interval
-
-                if curr_start <= last_end + 1:
-                    merged[-1] = (last_start, max(last_end, curr_end))
-                else:
-                    merged.append(interval)
-
-        return merged
-
     def get_popped_subgraph(self, bubble_id, gfaidx, stepidx):
         bubble = self[bubble_id]
         all_nodes = []
@@ -222,23 +192,30 @@ class BubbleIndex:
         if bubble is None:
             return {"nodes": all_nodes, "links": all_links} 
 
-        # [bubble]-[bubble] get child bubbles and links between them
-        chains = self.create_chains([self[bid] for bid in bubble.children], gfaidx, parent_bubble=bubble)
+        # get popped bubble junctions
+        for junction in bubble.emit_chain_junctions(gfaidx):
+            all_nodes.append(junction)
+            all_links.extend(junction.get_links())
+
+        # get child bubble chains
+        inside_bubbles = [self[bid] for bid in bubble.children]
+        chains = self.create_chains(inside_bubbles, gfaidx, parent_bubble=bubble)
+
+        # [bubble]-[bubble]
         for chain in chains:
             bubbles, links = chain.decompose()
             all_nodes.extend(bubbles)
             all_links.extend(links)
-            all_links.extend(chain.get_parent_segment_links(gfaidx))
 
-        # [segment]-[segment] get inside segments and all links they have
+        # get child segments
         internal_chain_segments = set()
         for chain in chains:
             internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
-
         exposed_segments = bubble.inside - internal_chain_segments
+      
+        # [segment]-[segment]
         inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)
-
         all_links.extend(inside_segment_links)
 
         # [bubble:end]-[segment] get links to temp bubble end node
@@ -247,8 +224,8 @@ class BubbleIndex:
         if not bubble.sink.connected_to_parent:
             all_nodes.append(bubble.sink)
 
-        all_links.extend(bubble.source.get_popped_links(gfaidx))
-        all_links.extend(bubble.sink.get_popped_links(gfaidx))
+        #all_links.extend(bubble.source.get_popped_links(gfaidx))
+        #all_links.extend(bubble.sink.get_popped_links(gfaidx))
 
         # check for indel links
         all_links.extend(bubble.get_deletion_links(gfaidx))

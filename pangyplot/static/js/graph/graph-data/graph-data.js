@@ -124,7 +124,7 @@ function forceGraphLinks(element) {
 
     return {
         class: "link",
-        type: isChainLink ? "chain" : "link",
+        type: element.type,
         source: sourceNodeId,
         target: targetNodeId,
         element: element,

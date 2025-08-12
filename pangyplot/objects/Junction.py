@@ -102,22 +102,6 @@ class Junction:
                 return True
         return False
 
-    def get_chain_link(self):
-        if self.other_bubble_id is None or self.connected_to_parent:
-            return None
-        link = Link()
-        link.from_id = self.id if self.is_sink else self.other_bubble_id
-        link.to_id = self.other_bubble_id if self.is_sink else self.id
-        link.from_strand = "+"
-        link.to_strand = "+"
-
-        link.make_chain_link(self.contained, self.length)
-
-        #link.haplotype
-        #link.reverse
-        #link.frequency
-
-        return link
 
     def get_parent_chain_link(self):
         if self.other_bubble_id is None or not self.connected_to_parent:
@@ -150,14 +134,12 @@ class Junction:
         links = []
         if self.connected_to_parent:
             chainlink = self.get_parent_chain_link()
-        else:
-            chainlink = self.get_chain_link()
             
-        if chainlink and self.is_source:
-            chainlink.set_to_type("b<")
-        elif chainlink and self.is_sink:
-            chainlink.set_from_type("b>")
-        links.append(chainlink)
+            if chainlink and self.is_source:
+                chainlink.set_to_type("b<")
+            elif chainlink and self.is_sink:
+                chainlink.set_from_type("b>")
+            links.append(chainlink)
 
         links.extend(self.get_inside_bubble_links(gfaidx))
 

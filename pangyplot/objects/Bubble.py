@@ -1,4 +1,4 @@
-from pangyplot.objects.Link import Link
+from pangyplot.objects.ChainJunction import ChainJunction
 from pangyplot.objects.Junction import Junction
 
 class Bubble:
@@ -73,11 +73,11 @@ class Bubble:
         flipSink = check_same(prevId, self.sink.other_bubble_id)
 
         if flipSource and flipSink:
+            self.siblings = self.siblings[::-1]
+            self.source_segments, self.sink_segments = self.sink_segments, self.source_segments
+            self.source, self.sink = self.sink, self.source
             self.source.flip_source_sink()
             self.sink.flip_source_sink()
-            temp = self.source
-            self.source = self.sink
-            self.sink = temp
 
     def add_source_sibling(self, sibling):
         if sibling is None: return
@@ -107,10 +107,10 @@ class Bubble:
         return self.siblings
 
     def get_next_sibling(self):
-        return self.sink.get_next_bubble()
+        return self.siblings[1]
 
     def get_previous_sibling(self):
-        return self.source.get_previous_bubble()
+        return self.siblings[0]
 
     def get_source_segments(self):
         return self.source.get_contained()
@@ -142,6 +142,11 @@ class Bubble:
                 link.update_to_bubble(sink_id, self.id)
                 links.append(link)
         return links
+
+    def emit_chain_junctions(self, gfaidx):
+        source = ChainJunction(self, True, gfaidx)
+        sink = ChainJunction(self, False, gfaidx)
+        return [source, sink]
 
     def has_range(self, exclusive=True):
         if exclusive:
@@ -208,12 +213,6 @@ class Bubble:
                     deletion_links.append(del_link4)
         
         return deletion_links
-
-
-    def summarize_source_segments(self):
-        return self.source.get_contained(split_compacted=True)
-    def summarize_sink_segments(self):
-        return self.sink.get_contained(split_compacted=True)
 
     def __str__(self):
         return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, inside={self.inside}, inclusive range={self._range_inclusive})"

@@ -41,10 +41,7 @@ def create_bubble_tables(dir):
     conn.commit()
     return conn
 
-def insert_bubble(cur, bubble):
-    source_id, compacted_source = bubble.summarize_source_segments()
-    sink_id, compacted_sink = bubble.summarize_sink_segments()
-    
+def insert_bubble(cur, bubble):    
     cur.execute("""
         INSERT INTO bubbles (
             id, chain, chain_step, subtype, parent,

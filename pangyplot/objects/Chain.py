@@ -1,8 +1,7 @@
-from pangyplot.objects.Link import Link
-
 class Chain:
-    def __init__(self, chain_id, bubbles=None, parent_bubble=None):
+    def __init__(self, chain_id, bubbles=None, parent_bubble=None, gfaidx=None):
         self.id = chain_id
+        self.gfaidx = gfaidx
 
         self.parent_bubble = parent_bubble # object not id
         self.bubbles = bubbles if bubbles is not None else []
@@ -28,8 +27,8 @@ class Chain:
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else (None, None)
 
-    def update_bubble_ends(self, bubbleidx, gfaidx):
-        if self.parent_bubble is None:
+    def update_bubble_ends(self, bubbleidx):
+        if self.gfaidx is None or self.parent_bubble is None:
             return
 
         result = bubbleidx.get_chain_ends(self.id)
@@ -46,21 +45,19 @@ class Chain:
                 bubble.sink.update_with_parent(self.parent_bubble, gfaidx)
 
     def get_chain_links(self):
-        source_chain_link = self.bubbles[0].source.get_parent_chain_link()
-        sink_chain_link = self.bubbles[-1].sink.get_parent_chain_link()
-        
-        links = [link for link in (source_chain_link, sink_chain_link) if link is not None]
+        if self.gfaidx is None:
+            return None
+        links = []
 
-        for i, bubble in enumerate(self.bubbles[:-1]):
-            chain_link = bubble.sink.get_chain_link()
-
-            if chain_link is not None:
-                links.append(chain_link)
+        for i, bubble in enumerate(self.bubbles[1:-1]):
+            junctions = bubble.emit_chain_junctions(self.gfaidx)
+            for junction in junctions:
+                links.extend(junction.get_chain_links())
         return links
 
-    def get_parent_segment_links(self, gfaidx):
-        links = self.bubbles[0].source.get_parent_segment_links(gfaidx)
-        links.extend(self.bubbles[-1].sink.get_parent_segment_links(gfaidx))
+    def get_parent_segment_links(self):
+        links = self.bubbles[0].source.get_parent_segment_links(self.gfaidx)
+        links.extend(self.bubbles[-1].sink.get_parent_segment_links(self.gfaidx))
         return links
 
     def get_internal_segment_ids(self, include_ends=True, as_set=False):

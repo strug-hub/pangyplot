@@ -109,7 +109,7 @@ def create_chain_object(raw_chain, step_dict):
     # note: raw_chain.ends not used (do we need to?)
 
     chain_bubbles = []
-    for chain_step, raw_bubble in enumerate(raw_chain.sorted):
+    for chain_step, raw_bubble in enumerate(raw_chain.sorted, start=1):
         bubble = create_bubble_object(raw_bubble, chain_id, chain_step, step_dict)
         chain_bubbles.append(bubble)
 

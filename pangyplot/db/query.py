@@ -5,19 +5,13 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
     gfaidx = indexes.gfa_index[chrom]
 
     start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
-    bubble_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, gfaidx, as_chains=True)
-    
-    graph = {"nodes": [], "links": []}
-    for chain in bubble_chains:
-        chain_data = chain.serialize()
-        graph["nodes"].extend(chain_data["nodes"])
-        graph["links"].extend(chain_data["links"])
+    bubble_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
 
-        source_links = chain.source_bubble().get_source_links(gfaidx)
-        sink_links = chain.sink_bubble().get_sink_links(gfaidx)
-        graph["links"].extend([link.serialize() for link in source_links])
-        graph["links"].extend([link.serialize() for link in sink_links])
-
+    serialized_chains = [chain.serialize() for chain in bubble_chains]
+    graph = {
+        "nodes": [node for chain in serialized_chains for node in chain["nodes"]],
+        "links": [link for chain in serialized_chains for link in chain["links"]],
+    }
     return graph
 
 def pop_bubble(indexes, nodeid, genome, chrom):

@@ -3,7 +3,7 @@ import { getNodeElement } from './graph-manager.js';
 class GraphElementLink {
     constructor(rawLink, sourceElement, targetElement) {
         this.id = rawLink.id;
-        this.type = "link";
+        this.type = rawLink.type || "link";
         this.source = sourceElement;
         this.target = targetElement;
         this.fromStrand = rawLink.from_strand;
@@ -16,7 +16,7 @@ class GraphElementLink {
     }
 
     get isChainLink() {
-        return !this.isDel && this.source.id.startsWith("b") && this.target.id.startsWith("b");
+        return this.type === "chain";
     }
 
     decodeHaplotypeMask() {
