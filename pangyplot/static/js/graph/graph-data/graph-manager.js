@@ -31,13 +31,13 @@ export function addNodeRecord(element) {
   nodeIdDict.set(id, element);
 }
 
-export function addToInsideNode(id, insideElements) {
+export function addInsideContents(id, subgraph) {
   if (!nodeDict.has(id)) {
     initializeNodeRecord(id);
   }
   const insideSet = nodeDict.get(id).inside;
-  for (const el of insideElements) {
-    insideSet.add(el);
+  for (const element of subgraph.nodes) {
+    insideSet.add(element);
   }
 }
 
@@ -73,12 +73,6 @@ export function setUpGraphManager(forceGraph) {
   forceGraphRef = forceGraph;
 }
 
-export function addInsideContents(nid, subgraph) {
-  subgraph.nodes.forEach(addNodeRecord);
-  addToInsideNode(nid, subgraph.nodes);
-  subgraph.links.forEach(addLinkRecord);
-}
-
 function getUnpoppedContents(bubbleId) {
   const bubble = nodeDict.get(bubbleId);
   const nodes = Array.from(bubble.elements);
@@ -107,6 +101,22 @@ function getPoppedContents(bubbleId, recursive = false) {
     }
   }
   return { nodes, links };
+}
+
+function rescueLinks(subgraph) {
+  const nodes = subgraph.nodes;
+  const linkIds = new Set(subgraph.links.map(link => link.linkId));
+  for (const node of nodes) {
+    for (const link of getLinkElements(node.id)) {
+      const linkId = link.linkId;
+      if (linkIds.has(linkId)) continue;
+
+      linkIds.add(linkId);
+      subgraph.links.push(link);
+    }
+  }
+
+  return subgraph;
 }
 
 export function unpopBubble(bubbleId) {
@@ -191,25 +201,13 @@ function findFullBubbleEnds(graphData, subgraph) {
   return results;
 }
 
-function rescueBubbleEndLinks(subgraph) {
-  const newChainNodes = subgraph.nodes.filter(node => node.id.startsWith("c")).map(node => node.id);
-
-  for (const node of newChainNodes) {
-    if (link.source.id.startsWith("c") || link.target.id.startsWith("c")) {
-      rescueLinks.push(link);
-    }
-  }
-
-  return { nodes: rescueNodes, links: rescueLinks };
-}
-
 export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEndFn) {
   const graphData = forceGraphRef.graphData();
 
   const subgraph = buildGraphData(rawSubgraph);
+
   addInsideContents(bubbleId, subgraph);
 
-  
   // If both ends of a chain are present, fetch the segments inside
   const fetchPromises = [];
   for (const [graphId, subgraphId] of findFullBubbleEnds(graphData, subgraph)) {
@@ -232,6 +230,8 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
   await Promise.all(fetchPromises);
 
   removeNode(bubbleId, graphData);
+
+  rescueLinks(subgraph);
 
   subgraph.nodes.forEach(node => node.isSelected = true);
 

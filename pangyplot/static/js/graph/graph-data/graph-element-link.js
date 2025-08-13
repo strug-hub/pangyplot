@@ -35,13 +35,15 @@ class GraphElementLink {
 
 export default function deserializeLinks(rawLinks) {
     const elements = [];
+    const failedLinks = [];
     for (const rawLink of rawLinks) {
         const sourceElement = getNodeElement(rawLink.source);
         const targetElement = getNodeElement(rawLink.target);
         if (!sourceElement || !targetElement) {
+            failedLinks.push(rawLink);
             continue;
         }
         elements.push(new GraphElementLink(rawLink, sourceElement, targetElement));
     }
-    return elements;
+    return [elements, failedLinks];
 }

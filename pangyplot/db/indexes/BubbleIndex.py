@@ -207,6 +207,7 @@ class BubbleIndex:
         # check for deletion links
         del_links = junctions[0].shared_links(junctions[1])
         all_links.extend(del_links)
+
         # [bubble]-[bubble]
         inside_bubbles = [self[bid] for bid in bubble.children]
         chains = self.create_chains(inside_bubbles, gfaidx, parent_bubble=bubble)
@@ -226,16 +227,9 @@ class BubbleIndex:
         all_links.extend(inside_segment_links)
 
         #todo:
-        # - deletion links in chain junction
         # - parent child bubble junction
-    
-
-        # check for indel links
-        all_links.extend(bubble.get_deletion_links(gfaidx))
-
-        # when a sib bubble has been popped, we need to update its deletion links too
-        for sibling in bubble.get_siblings():
-            sib_bubble = self[sibling]
-            all_links.extend(sib_bubble.get_deletion_links(gfaidx))
+        # - remove junction class 
+        
+        print({"nodes": all_nodes, "links": all_links})
 
         return {"nodes": all_nodes, "links": all_links}

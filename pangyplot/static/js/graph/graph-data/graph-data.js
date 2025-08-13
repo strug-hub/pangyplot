@@ -1,6 +1,6 @@
 import deserializeNodes from './graph-element-node.js';
 import deserializeLinks from './graph-element-link.js';
-import { addNodeRecord, addLinkRecord, getNodeElements, getLinkElement } from './graph-manager.js';
+import { addNodeRecord, addLinkRecord, getNodeElement, getNodeElements, getLinkElement } from './graph-manager.js';
 
 //TODO: move responsibility for size to render engine
 const NODE_WIDTH=50;
@@ -164,6 +164,9 @@ function checkExistingLinkRecords(linkElements) {
     const newLinks = [];
 
     for (const linkElement of linkElements) {
+        if (!linkElement.linkId) {
+            console.warn("Link element does not have a linkId:", linkElement);
+        }
         const link = getLinkElement(linkElement.linkId);
         if (link === null) {
             newLinks.push(linkElement);
@@ -174,6 +177,40 @@ function checkExistingLinkRecords(linkElements) {
     return { existingLinks, newLinks };
 }
 
+// A link may have a source or target that is not yet seen.
+// When new nodes are added, we try to recover those links.
+const linkRetryDict = new Map();
+function trackFailedLinks(failedLinks) {
+    for (const rawLink of failedLinks) {
+        const sourceElement = getNodeElement(rawLink.source);
+        //const targetElement = getNodeElement(rawLink.target);
+        const missingId = !sourceElement ? rawLink.source : rawLink.target;
+        if (!linkRetryDict.has(missingId)) {
+            linkRetryDict.set(missingId, new Map());
+        }
+        linkRetryDict.get(missingId).set(rawLink.id, rawLink);
+    }
+}
+
+function retryFailedLinks(newNodes) {
+    const allRefailedLinks = [];
+    for (const node of newNodes) {
+        if (!linkRetryDict.has(node.id)) continue;
+
+        const failedLinksMap = linkRetryDict.get(node.id);
+
+        const [linkElements, refailedLinks] = deserializeLinks([...failedLinksMap.values()]);
+        const links = linkElements.map(forceGraphLinks);
+        allRefailedLinks.push(...refailedLinks);
+
+        const { existingLinks, newLinks } = checkExistingLinkRecords(links);
+        
+        newLinks.forEach(addLinkRecord);
+        linkRetryDict.delete(node.id);
+    }
+    trackFailedLinks(allRefailedLinks)
+}
+
 export default function buildGraphData(rawGraph) {
 
     const nodeElements = deserializeNodes(rawGraph.nodes);
@@ -182,9 +219,14 @@ export default function buildGraphData(rawGraph) {
     newNodes.forEach(addNodeRecord);
     const nodes = [...existingNodes, ...newNodes];
 
+    retryFailedLinks(newNodes);
+
     const nodeLinks = nodeElements.flatMap(forceGraphNodeLinks);
-    const linkElements = deserializeLinks(rawGraph.links);
+    
+    const [linkElements, failedLinks] = deserializeLinks(rawGraph.links);
     const edgeLinks = linkElements.map(forceGraphLinks);
+    
+    trackFailedLinks(failedLinks);
 
     const { existingLinks: existingNodeLinks, newLinks: newNodeLinks } = checkExistingLinkRecords(nodeLinks);
     newNodeLinks.forEach(addLinkRecord);

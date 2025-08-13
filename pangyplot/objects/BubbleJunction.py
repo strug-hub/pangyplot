@@ -71,7 +71,6 @@ class BubbleJunction:
         #link.frequency
         return [link]
 
-
     def get_segment_links(self):
         links = []
         for link in self.links:
@@ -88,7 +87,7 @@ class BubbleJunction:
 
         return links
 
-    def shared_links(self, other, deletion=False):
+    def shared_links(self, other):
         is_deletion = self.bubble_id == other.bubble_id
         links = []
 
@@ -102,6 +101,9 @@ class BubbleJunction:
                 new_link.set_to_type("c")
             if is_deletion:
                 new_link.set_as_deletion(self.bubble_id)
+            
+            print(link.id(), "->", new_link.id())
+
             links.append(new_link)
 
         for link in self.links:
@@ -125,4 +127,4 @@ class BubbleJunction:
     def __str__(self):
         return f"BubbleJunction(bubble={self.bubble_id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source})"
     def __repr__(self):
-        return f"BubbleJunction({self.bubble_id}, {"source" if self.is_source else "sink"})"
+        return f"BubbleJunction({self.bubble_id}, {'source' if self.is_source else 'sink'})"

@@ -224,4 +224,4 @@ class Junction:
     def __str__(self):
         return f"Junction(bubble={self.id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source}, is_sink={self.is_sink})"
     def __repr__(self):
-        return f"Junction({self.id}, {"source" if self.is_source else "sink"})"
+        return f"Junction({self.id}, {'source' if self.is_source else 'sink'})"
