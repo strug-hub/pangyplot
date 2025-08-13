@@ -10,6 +10,8 @@ import { anchorEndpointNodes } from './utils/node-utils.js';
 import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
 import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
+import { fetchData, buildUrl } from '../utils/network-utils.js';
+import eventBus from '../utils/event-bus.js';
 
 // todo https://github.com/vasturiano/d3-force-registry
 
@@ -141,7 +143,6 @@ function hideLoader() {
 }
 hideLoader()
 
-import { fetchData, buildUrl } from '../utils/network-utils.js';
 function fetchAndConstructGraph(coordinates){
     if (equalCoordinates(coordinates)) return;
     setGraphCoordinates(coordinates);
@@ -157,8 +158,8 @@ function fetchAndConstructGraph(coordinates){
     });
 }
 
-document.addEventListener('constructGraph', function(event) {
-    const { genome, chromosome, start, end } = event.detail;
+eventBus.subscribe("ui:construct-graph", function (data) {
+    const { genome, chromosome, start, end } = data;
     const coordinates = { genome, chromosome, start, end };
     fetchAndConstructGraph(coordinates);
 });
@@ -189,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const FULL_CHR7 = {genome: "GRCh38", chromosome:"chr7", start:1, end:1427745640, genome: "GRCh38"};
     const BRCA2 = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
     const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
-
-    document.dispatchEvent(new CustomEvent("constructGraph", { detail: KDM5D }));
+    const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010, genome: "GRCh38"};
+    
+    eventBus.publish("ui:construct-graph", DAZ1);
 });

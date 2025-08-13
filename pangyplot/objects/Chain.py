@@ -40,11 +40,11 @@ class Chain:
         start_id, start_step = result[0]
         end_id, end_step = result[1]
 
-        for bubble in (self.bubbles[0], self.bubbles[-1]):
-            if bubble.id == start_id:
-                bubble.source.update_with_parent(self.parent_bubble, gfaidx)
-            if bubble.id == end_id:
-                bubble.sink.update_with_parent(self.parent_bubble, gfaidx)
+        #for bubble in (self.bubbles[0], self.bubbles[-1]):
+        #    if bubble.id == start_id:
+        #        bubble.source.update_with_parent(self.parent_bubble, gfaidx)
+        #    if bubble.id == end_id:
+        #        bubble.sink.update_with_parent(self.parent_bubble, gfaidx)
 
     def get_chain_links(self):
         if self.gfaidx is None:

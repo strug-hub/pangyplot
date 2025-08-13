@@ -215,7 +215,7 @@ class Bubble:
         return deletion_links
 
     def __str__(self):
-        return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, inside={self.inside}, inclusive range={self._range_inclusive})"
+        return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, inside={self.inside}, inclusive range={self.range_inclusive})"
 
     def __repr__(self):
-        return f"Bubble({self.id}, inclusive range={self._range_inclusive})"
+        return f"Bubble({self.id}, inclusive range={self.range_inclusive})"

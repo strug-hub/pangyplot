@@ -19,7 +19,6 @@ export function fetchAndDrawChromosomeData(chromosome, start, end) {
     updateChromosomeCytoband(cached_data[chromosome], chromosome, start, end);
     return Promise.resolve();
   }
-    console.log("Drawing chromosome cytoband for:", chromosome);
 
   // Include optional start/end if provided; otherwise only chromosome
   const params = { chromosome };

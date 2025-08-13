@@ -29,16 +29,14 @@ document.getElementById("go-button").addEventListener("click", function () {
       end = String(endInt+flanking);
     }
 
-    //todo: get genome
     const data = {
       genome: document.getElementById('go-genome').textContent,
-      chromosome: chromosome,
-      start: start,
-      end: end,
+      chromosome,
+      start,
+      end
     };
-    document.dispatchEvent(new CustomEvent("constructGraph", { detail: data }));
+    eventBus.publish("ui:construct-graph", data);
   }
-
 });
 
 function updateGoValues(chromValue = null, startValue = null, endValue = null) {
