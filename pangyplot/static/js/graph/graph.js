@@ -141,7 +141,7 @@ function hideLoader() {
 }
 hideLoader()
 
-import { fetchData, buildUrl } from './utils/network-utils.js';
+import { fetchData, buildUrl } from '../utils/network-utils.js';
 function fetchAndConstructGraph(coordinates){
     if (equalCoordinates(coordinates)) return;
     setGraphCoordinates(coordinates);

@@ -1,13 +1,15 @@
+import eventBus from "../utils/event-bus.js";
+
 document.getElementById('navbar-button-example').addEventListener('click', function() {
 
     const data = {
         genome: "GRCh38",
-        chrom: "chr18",
+        chromosome: "chr18",
         start: 47506000,
         end: 47600000,
         source:"navbar-example"
     };
-    document.dispatchEvent(new CustomEvent('selectedCoordinatesChanged', { detail: data }));
+    eventBus.publish("ui:coordinates-changed", data);
 });
 
 document.getElementById('navbar-button-example2').addEventListener('click', function() {
@@ -15,7 +17,7 @@ document.getElementById('navbar-button-example2').addEventListener('click', func
     //SERPINB5
     const data = {
         genome: "GRCh38",
-        chrom: "chr18",
+        chromosome: "chr18",
         start: 63476958-10000,
         end: 63505085+10000,
         source:"navbar-example"
@@ -29,7 +31,7 @@ document.getElementById('navbar-button-example2').addEventListener('click', func
     //    source:"navbar-example"
     //};
 
-    document.dispatchEvent(new CustomEvent('selectedCoordinatesChanged', { detail: data }));
+    eventBus.publish("ui:coordinates-changed", data);
 
 });
 
@@ -37,7 +39,7 @@ document.getElementById('navbar-button-example3').addEventListener('click', func
 
     //const data = {
     //    genome: "CHM13",
-    //    chrom: "XXX",
+    //    chromosome: "XXX",
     //    start: -1000,
     //    end: 999999999999,
     //    source:"navbar-example"
@@ -46,13 +48,12 @@ document.getElementById('navbar-button-example3').addEventListener('click', func
     //SMAD4
     const data = {
         genome: "GRCh38",
-        chrom: "chr18",
+        chromosome: "chr18",
         start: 51028528-10000,
         end: 51085045+10000,
         source:"navbar-example"
     };
-
-
-    document.dispatchEvent(new CustomEvent('selectedCoordinatesChanged', { detail: data }));
+    
+    eventBus.publish("ui:coordinates-changed", data);
 
 });

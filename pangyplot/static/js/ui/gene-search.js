@@ -1,3 +1,5 @@
+import eventBus from "../utils/event-bus.js";
+
 const geneSearchItemTemplate = `
     <div class="gene-search-item-line gene-search-item-line1">
         <div class="gene-search-item-chrom">{{chrom}}</div>:
@@ -208,7 +210,7 @@ function processSearchItemTemplate(template, data) {
         }
 
         let geneData = {
-            chrom: getTextContent("chrom"),
+            chromosome: getTextContent("chrom"),
             start: getTextContent("start"),
             end: getTextContent("end"),
             name: getTextContent("name"),
@@ -222,13 +224,12 @@ function processSearchItemTemplate(template, data) {
         gene1.classList.remove('option-button-unselected');
 
         const data = {
-            chrom: geneData.chrom,
+            chromosome: geneData.chromosome,
             start: parseInt(geneData.start, 10),
             end: parseInt(geneData.end, 10),
             source: "gene-search"
         };
-
-        document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
+        eventBus.publish("ui:coordinates-changed", data);        
     }
 
     function selectSuggestionItem(item) {
@@ -259,25 +260,24 @@ function processSearchItemTemplate(template, data) {
         }
     
         return {
-            chrom: getTextContent("chrom"),
+            chromosome: getTextContent("chrom"),
             start: parseInt(getTextContent("start"), 10),
             end: parseInt(getTextContent("end"), 10),
             source: "gene-search"
         };
     }
-    
 
     function selectedGeneClicked() {
-        data = getCoordinateData(this)
-        document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
+        const data = getCoordinateData(this);
+        eventBus.publish("ui:coordinates-changed", data);        
     }
 
     for (let geneSelectedId = 1; geneSelectedId <= 4; geneSelectedId++) {
         document.getElementById('gene-search-result-' + geneSelectedId).addEventListener('click', selectedGeneClicked);
     }
 
-    document.addEventListener('selectedCoordinatesChanged', function(event) {
-        if (event.detail.source ===  "gene-search"){
+    eventBus.subscribe("ui:coordinates-changed", function (data) { 
+        if (data.source === "gene-search"){
             return;
         }
 
@@ -287,10 +287,10 @@ function processSearchItemTemplate(template, data) {
             element.classList.remove('option-button-selected');
             element.classList.add('option-button-unselected');
 
-            let data = getCoordinateData(element);
-            if( !flag && data.chrom == event.detail.chrom &&
-                data.start == event.detail.start &&
-                data.end == event.detail.end){
+            let coordData = getCoordinateData(element);
+            if( !flag && coordData.chromosome == data.chromosome &&
+                coordData.start == data.start &&
+                coordData.end == data.end){
                     flag = true;
                     element.classList.add('option-button-selected');
                     element.classList.remove('option-button-unselected');

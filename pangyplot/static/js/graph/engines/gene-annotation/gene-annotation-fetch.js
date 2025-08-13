@@ -1,4 +1,4 @@
-import { fetchData, buildUrl } from "../../utils/network-utils.js";
+import { fetchData, buildUrl } from "../../../utils/network-utils.js";
 import { addGene, clearAllGenes } from "./gene-annotation-state.js";
 
 export function fetchAnnotations(coordinates) {

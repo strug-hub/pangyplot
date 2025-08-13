@@ -1,6 +1,6 @@
 import buildGraphData from './graph-data.js';
 import { cleanGraph } from './graph-integrity.js';
-import eventBus from '../../input/event-bus.js';
+import eventBus from '../../utils/event-bus.js';
 
 let forceGraphRef = null;
 

@@ -1,4 +1,4 @@
-import eventBus from '../../../input/event-bus.js';
+import eventBus from '../../../utils/event-bus.js';
 
 const InputModes = Object.freeze({
     SELECTION: 'selection',

@@ -1,4 +1,6 @@
-function drawChromosomeCytoband(data) {
+import { chromosomeCytobandDimensions } from "./constants.js"
+;
+export function drawChromosomeCytoband(data) {
     const dim = chromosomeCytobandDimensions();
 
     function createSvgCanvas() {

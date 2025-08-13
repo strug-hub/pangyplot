@@ -1,6 +1,6 @@
 import { queueSubgraph, dequeueSubgraph } from './bubble-pop-queue.js';
 import { getGraphCoordinates } from '../../graph-state.js';
-import { buildUrl, fetchData } from '../../utils/network-utils.js';
+import { buildUrl, fetchData } from '../../../utils/network-utils.js';
 import { explodeSubgraph } from './bubble-pop-force.js';
 import { processPoppedSubgraph } from '../../graph-data/graph-manager.js';
 
@@ -33,7 +33,6 @@ export function fetchBubbleEnd(chainNodeId) {
 }
 
 export async function processSubgraphData(rawSubgraph, originNode) {
-    console.log("Fetched subgraph data:", rawSubgraph);
     const subgraph = await processPoppedSubgraph(originNode.id, rawSubgraph, fetchBubbleEnd);
 
     // Now it's safe to update UI

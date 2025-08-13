@@ -1,3 +1,5 @@
+import eventBus from "../utils/event-bus.js";
+
 const EMPTY = "⬜";
 const EMPTY_FLANKING = "flankingregion";
 
@@ -30,7 +32,7 @@ document.getElementById("go-button").addEventListener("click", function () {
     //todo: get genome
     const data = {
       genome: document.getElementById('go-genome').textContent,
-      chromosome: chrom,
+      chromosome: chromosome,
       start: start,
       end: end,
     };
@@ -69,8 +71,8 @@ function errorAnimationBadInput(textBox) {
   );
 }
 
-document.addEventListener("selectedCoordinatesChanged", function (event) {
-  updateGoValues(event.detail.chrom, event.detail.start, event.detail.end);
+eventBus.subscribe("ui:coordinates-changed", function (data) {
+    updateGoValues(data.chromosome, data.start, data.end);
 });
 
 function updateGenomicCoordinates(rawText) {
@@ -87,7 +89,7 @@ function updateGenomicCoordinates(rawText) {
     return;
   }
 
-  let [chrom, range] = input.split(":");
+  let [chromosome, range] = input.split(":");
   let [start, end] = range.split("-").map((s) => parseInt(s, 10));
 
   if (end < 0 || start < 0) {
@@ -102,8 +104,8 @@ function updateGenomicCoordinates(rawText) {
 
   textBox.value = "";
 
-  const data = {chrom: chrom, start: start, end: end, source: "coordinate-text"};
-  document.dispatchEvent( new CustomEvent('selectedCoordinatesChanged', { detail: data }));
+  const data = {chromosome: chromosome, start: start, end: end, source: "coordinate-text"};
+  eventBus.publish("ui:coordinates-changed", data);
 }
 
 function getFlankingInput() {

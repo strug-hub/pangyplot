@@ -4,7 +4,7 @@ import { getAllGenes } from "./gene-annotation-state.js";
 import { addNodeGeneAnnotation, addNodeExonAnnotation, clearAllAnnotations, getAllNodeAnnotations } from "./gene-annotation-state.js";
 import { annotationOverlap } from "./gene-annotation-utils.js";
 import { populateGeneAnnotationsTable } from "../../../ui/tabs/graph-annotation.js";
-import eventBus from '../../../input/event-bus.js';
+import eventBus from '../../../utils/event-bus.js';
 
 function annotateTranscripts(forceGraph) {
     clearAllAnnotations();

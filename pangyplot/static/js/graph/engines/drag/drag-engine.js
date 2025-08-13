@@ -1,4 +1,4 @@
-import eventBus from '../../../input/event-bus.js';
+import eventBus from '../../../utils/event-bus.js';
 import { dragState, setDraggedNode, clearDraggedNode } from './drag-state.js';
 import dragInfluenceForce from './drag-force.js';
 

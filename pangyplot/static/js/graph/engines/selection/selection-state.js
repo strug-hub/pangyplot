@@ -1,4 +1,4 @@
-import eventBus from '../../../input/event-bus.js';
+import eventBus from '../../../utils/event-bus.js';
 
 export const selectionState = {
   highlighted: new Set(),

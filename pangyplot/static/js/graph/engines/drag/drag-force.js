@@ -1,4 +1,4 @@
-import eventBus from '../../../input/event-bus.js';
+import eventBus from '../../../utils/event-bus.js';
 import { dragState } from './drag-state.js';
 
 function buildDragCache(forceGraph, draggedNode) {
