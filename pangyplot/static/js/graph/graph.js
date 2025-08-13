@@ -68,7 +68,7 @@ function createForceGraph(graph){
             return link.length;
         }
         if (link.isDel){
-            return 200;
+            return 1;
         }
 
         return 10; //"edge"
