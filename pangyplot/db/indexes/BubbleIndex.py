@@ -211,6 +211,14 @@ class BubbleIndex:
         chains = self.create_chains(inside_bubbles, gfaidx, parent_bubble=bubble)
         for chain in chains:
             bubbles, links = chain.decompose()
+
+            for bubble in bubbles:
+                print("***********************************")
+                if 76052 in bubble.inside:
+                    print(f"Bubble {bubble.id} contains segment 76052")
+                if 76052 in bubble.source_segments or 76052 in bubble.sink_segments:
+                    print(f"Bubble {bubble.id} has segment 76052 in source or sink segments")
+
             all_nodes.extend(bubbles)
             all_links.extend(links)
 
@@ -219,15 +227,13 @@ class BubbleIndex:
         for chain in chains:
             internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
         exposed_segments = bubble.inside - internal_chain_segments
+        #print("exposed:", exposed_segments)
+        #print("internal:", internal_chain_segments)
+        #print("inside:", bubble.inside)
+
 
         inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)
         all_links.extend(inside_segment_links)
-
-        #todo:
-        # - parent child bubble junction
-        # - remove junction class 
         
-        print({"nodes": all_nodes, "links": all_links})
-
         return {"nodes": all_nodes, "links": all_links}

@@ -43,6 +43,11 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
     graph_path = os.path.join(data_dir, "graphs", db_name)
     for chr in os.listdir(graph_path):
+        chr_dir = os.path.join(graph_path, chr)
+        if not os.path.isdir(chr_dir):
+            continue
+        
+        print(f"Loading chromosome: {chr}")
         app.chromosomes.append(chr)
 
         print(f"Loading: {chr}")
