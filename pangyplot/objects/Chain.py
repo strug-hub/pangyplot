@@ -29,23 +29,6 @@ class Chain:
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else (None, None)
 
-    def update_bubble_ends(self, bubbleidx):
-        if self.gfaidx is None or self.parent_bubble is None:
-            return
-
-        result = bubbleidx.get_chain_ends(self.id)
-        if result is None:
-            return
-
-        start_id, start_step = result[0]
-        end_id, end_step = result[1]
-
-        #for bubble in (self.bubbles[0], self.bubbles[-1]):
-        #    if bubble.id == start_id:
-        #        bubble.source.update_with_parent(self.parent_bubble, gfaidx)
-        #    if bubble.id == end_id:
-        #        bubble.sink.update_with_parent(self.parent_bubble, gfaidx)
-
     def get_chain_links(self):
         if self.gfaidx is None:
             return None
@@ -65,11 +48,11 @@ class Chain:
     def get_internal_segment_ids(self, include_ends=True, as_set=False):
         seg_ids = []
         for i, bubble in enumerate(self.bubbles[:-1]):
-            seg_ids.extend(bubble.sink.get_contained())
+            seg_ids.extend(bubble.sink_segments)
         
         if include_ends:
-            seg_ids.extend(self.bubbles[0].source.get_contained())
-            seg_ids.extend(self.bubbles[-1].sink.get_contained())
+            seg_ids.extend(self.bubbles[0].source_segments)
+            seg_ids.extend(self.bubbles[-1].sink_segments)
 
         return set(seg_ids) if as_set else seg_ids
 

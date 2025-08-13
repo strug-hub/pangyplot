@@ -1,5 +1,4 @@
 from pangyplot.objects.BubbleJunction import BubbleJunction
-from pangyplot.objects.Junction import Junction
 
 class Bubble:
     def __init__(self):
@@ -15,9 +14,6 @@ class Bubble:
 
         self.source_segments = []
         self.sink_segments = []
-
-        self.source = Junction(self, is_source=True)
-        self.sink = Junction(self, is_source=False)
 
         self.inside = set()
         self.range_exclusive = []
@@ -53,14 +49,6 @@ class Bubble:
             "y2": self.y2
         }
 
-    def add_source(self, seg_ids):
-        self.source_segments = seg_ids
-        self.source = Junction(self, seg_ids=seg_ids, is_source=True)
-
-    def add_sink(self, seg_ids):
-        self.sink_segments = seg_ids
-        self.sink = Junction(self, seg_ids=seg_ids, is_source=False)
-
     def correct_source_sink(self, prevId=None, nextId=None):
         def check_same(id1, id2):
             if id1 is None and id2 is None:
@@ -69,25 +57,20 @@ class Bubble:
                 return False
             return id1 == id2
 
-        flipSource = check_same(nextId, self.source.other_bubble_id)
-        flipSink = check_same(prevId, self.sink.other_bubble_id)
+        shouldFlipSource = check_same(nextId, self.siblings[0])
+        shouldFlipSink = check_same(prevId, self.siblings[1])
 
-        if flipSource and flipSink:
+        if shouldFlipSource and shouldFlipSink:
             self.siblings = self.siblings[::-1]
             self.source_segments, self.sink_segments = self.sink_segments, self.source_segments
-            self.source, self.sink = self.sink, self.source
-            self.source.flip_source_sink()
-            self.sink.flip_source_sink()
 
     def add_source_sibling(self, sibling):
         if sibling is None: return
         self.siblings[0] = sibling.id
-        self.source.update_other_bubble(sibling.id)
 
     def add_sink_sibling(self, sibling):
         if sibling is None: return
         self.siblings[1] = sibling.id
-        self.sink.update_other_bubble(sibling.id)
 
     def _clean_inside(self, inside_ids, bubble_dict):
         self.inside -= inside_ids
@@ -99,10 +82,6 @@ class Bubble:
         self.children.append(child.id)
         self._clean_inside(child.inside, bubble_dict)
 
-    def calculate_properties(self, gfaidx):
-        self.source.calculate_properties(gfaidx)
-        self.sink.calculate_properties(gfaidx)
-
     def get_siblings(self):
         return self.siblings
 
@@ -113,36 +92,14 @@ class Bubble:
         return self.siblings[0]
 
     def get_source_segments(self):
-        return self.source.get_contained()
+        return self.source_segments
 
     def get_sink_segments(self):
-        return self.sink.get_contained()
+        return self.sink_segments
 
     def get_end_segments(self):
         return self.get_source_segments() + self.get_sink_segments()
-
-    def get_source_links(self, gfa_index):
-        links = []
-        source_ids = self.get_source_segments()
-        for source_id in source_ids:
-            for link in gfa_index.get_links(source_id):
-                if link.other_id(source_id) in source_ids:
-                    continue
-                link.update_to_bubble(source_id, self.id)
-                links.append(link)
-        return links
-
-    def get_sink_links(self, gfa_index):
-        links = []
-        sink_ids = self.get_sink_segments()
-        for sink_id in sink_ids:
-            for link in gfa_index.get_links(sink_id):
-                if link.other_id(sink_id) in sink_ids:
-                    continue
-                link.update_to_bubble(sink_id, self.id)
-                links.append(link)
-        return links
-
+    
     def emit_chain_junctions(self, gfaidx):
         source = BubbleJunction(self, True, gfaidx)
         sink = BubbleJunction(self, False, gfaidx)
@@ -171,48 +128,7 @@ class Bubble:
         return any(lo <= lower and hi >= upper for lo, hi in self.range_inclusive)
 
     def is_ref(self):
-        return len(self._range_inclusive) > 0
-        
-    def get_deletion_links(self, gfaidx):
-        deletion_links = [] 
-
-        for seg_id in self.source.contained:
-            for link in gfaidx.get_links(seg_id):
-                if link.other_id(seg_id) in self.sink.contained:
-                    del_link = link.clone()
-                    del_link.set_as_deletion(self.id)
-                    deletion_links.append(del_link)
-                    
-                    del_link2 = del_link.clone()
-                    if del_link2.to_id == seg_id:
-                        del_link2.set_to_type("b<")
-                        del_link2.to_id = self.id
-                    else:
-                        del_link2.set_from_type("b<")
-                        del_link2.from_id = self.id
-                    deletion_links.append(del_link2)
-
-                    del_link3 = del_link.clone()
-                    if del_link3.to_id == seg_id:
-                        del_link3.set_from_type("b>")
-                        del_link3.from_id = self.id
-                    else:
-                        del_link3.set_to_type("b>")
-                        del_link3.to_id = self.id
-                    deletion_links.append(del_link3)
-
-                    del_link4 = del_link.clone()
-                    del_link4.to_id = self.id
-                    del_link4.from_id = self.id
-                    if del_link4.to_id == seg_id:
-                        del_link4.set_to_type("b<")
-                        del_link4.set_from_type("b>")
-                    else:
-                        del_link4.set_to_type("b>")
-                        del_link4.set_from_type("b<")
-                    deletion_links.append(del_link4)
-        
-        return deletion_links
+        return len(self.range_inclusive) > 0
 
     def __str__(self):
         return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, inside={self.inside}, inclusive range={self.range_inclusive})"

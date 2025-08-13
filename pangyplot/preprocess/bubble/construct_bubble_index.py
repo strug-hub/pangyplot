@@ -24,12 +24,12 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     source_node = raw_bubble.source
     source_compacted_ids = [int(n.id) for n in source_node.optional_info.get("compacted", [])]
     source_ids = [int(source_node.id)] + source_compacted_ids
-    bubble.add_source(source_ids)
+    bubble.source_segments = source_ids
 
     sink_node = raw_bubble.sink
     sink_compacted_ids = [int(n.id) for n in sink_node.optional_info.get("compacted", [])]
     sink_ids = [int(sink_node.id)] + sink_compacted_ids
-    bubble.add_sink(sink_ids)
+    bubble.sink_segments = sink_ids
 
     # Inside nodes + compacted
     nodes = raw_bubble.inside

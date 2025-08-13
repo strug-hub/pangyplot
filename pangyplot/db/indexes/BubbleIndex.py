@@ -91,8 +91,6 @@ class BubbleIndex:
         missing_bubbles = [self[bubble_id] for bubble_id in bubble_ids if bubble_id not in current_bids]
         chain.add_bubbles(missing_bubbles)
 
-        chain.update_bubble_ends(self)
-
     def create_chains(self, bubbles, gfaidx, parent_bubble=None):
         chain_dict = defaultdict(list)
         for bubble in bubbles:

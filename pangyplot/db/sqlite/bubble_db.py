@@ -99,10 +99,8 @@ def create_bubble(row, gfaidx):
     bubble.y1 = row["y1"]
     bubble.y2 = row["y2"]
 
-    bubble.add_source(json.loads(row["source"]))
-    bubble.add_sink(json.loads(row["sink"]))
-
-    bubble.calculate_properties(gfaidx)
+    bubble.source_segments = json.loads(row["source"])
+    bubble.sink_segments = json.loads(row["sink"])
 
     return bubble
 
