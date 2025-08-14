@@ -82,15 +82,6 @@ class BubbleIndex:
         self.ids = array('I', quick_index["ids"])
         return True
 
-    def fill_chain(self, chain):
-        min_step, max_step = chain.chain_step_range()
-        if min_step is None: return
-
-        bubble_ids = db.get_bubble_ids_from_chain(self.dir, chain.id, min_step, max_step)
-        current_bids = {bubble.id for bubble in chain.bubbles}
-        missing_bubbles = [self[bubble_id] for bubble_id in bubble_ids if bubble_id not in current_bids]
-        chain.add_bubbles(missing_bubbles)
-
     def create_chains(self, bubbles, gfaidx, parent_bubble=None):
         chain_dict = defaultdict(list)
         for bubble in bubbles:
@@ -98,8 +89,15 @@ class BubbleIndex:
             
         chains = []
         for chain_id in chain_dict:
+            min_step = min([b.chain_step for b in chain_dict[chain_id]])
+            max_step = max([b.chain_step for b in chain_dict[chain_id]])
+
+            bubble_ids = db.get_bubble_ids_from_chain(self.dir, chain_id, min_step, max_step)
+            current_bids = {bubble.id for bubble in chain_dict[chain_id]}
+            missing_bubbles = [self[bubble_id] for bubble_id in bubble_ids if bubble_id not in current_bids]
+            chain_dict[chain_id].extend(missing_bubbles)
+
             chain = Chain(chain_id, chain_dict[chain_id], parent_bubble=parent_bubble, gfaidx=gfaidx)
-            self.fill_chain(chain)
             chains.append(chain)
         return chains
 
@@ -197,7 +195,7 @@ class BubbleIndex:
             return {"nodes": all_nodes, "links": all_links} 
 
         #[bubble:end]-[x]
-        junctions = bubble.emit_chain_junctions(gfaidx)
+        junctions = bubble.emit_junctions(gfaidx)
         for junction in junctions:
             all_nodes.append(junction)
             all_links.extend(junction.get_links())
@@ -211,14 +209,6 @@ class BubbleIndex:
         chains = self.create_chains(inside_bubbles, gfaidx, parent_bubble=bubble)
         for chain in chains:
             bubbles, links = chain.decompose()
-
-            for bubble in bubbles:
-                print("***********************************")
-                if 76052 in bubble.inside:
-                    print(f"Bubble {bubble.id} contains segment 76052")
-                if 76052 in bubble.source_segments or 76052 in bubble.sink_segments:
-                    print(f"Bubble {bubble.id} has segment 76052 in source or sink segments")
-
             all_nodes.extend(bubbles)
             all_links.extend(links)
 

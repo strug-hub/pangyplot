@@ -19,7 +19,7 @@ class BubbleJunction:
             linkDict = {link.id: link for seg_id in self.contained for link in gfaidx.get_links(seg_id)}
             self.links = list(linkDict.values())
             
-        self.length = sum(seg.length for seg in self.segments)
+            self.length = sum(seg.length for seg in self.segments)
 
     def serialize(self):
         return {
@@ -74,7 +74,7 @@ class BubbleJunction:
     def get_segment_links(self):
         links = []
         for link in self.links:
-            new_link = link.clone()
+            new_link = link.clone() 
 
             if new_link.to_id in self.contained:
                 new_link.to_id = self.id
@@ -102,8 +102,6 @@ class BubbleJunction:
             if is_deletion:
                 new_link.set_as_deletion(self.bubble_id)
             
-            print(link.id(), "->", new_link.id())
-
             links.append(new_link)
 
         for link in self.links:

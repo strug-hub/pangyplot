@@ -49,19 +49,21 @@ class Bubble:
             "y2": self.y2
         }
 
-    def correct_source_sink(self, prevId=None, nextId=None):
-        def check_same(id1, id2):
-            if id1 is None and id2 is None:
-                return True
-            if id1 is None or id2 is None:
-                return False
-            return id1 == id2
+    def correct_source_sink(self, prevBubble=None, nextBubble=None):
+        shouldFlipSource = False
+        if prevBubble is None and len(self.sink_segments) == 0:
+            shouldFlipSource = True
+        elif prevBubble is not None and set(self.sink_segments).issubset(set(prevBubble.get_end_segments())):
+            shouldFlipSource = True
 
-        shouldFlipSource = check_same(nextId, self.siblings[0])
-        shouldFlipSink = check_same(prevId, self.siblings[1])
+        shouldFlipSink = False
+        if nextBubble is None and len(self.source_segments) == 0:
+            shouldFlipSink = True
+        elif nextBubble is not None and set(self.source_segments).issubset(set(nextBubble.get_end_segments())):
+            shouldFlipSink = True      
 
         if shouldFlipSource and shouldFlipSink:
-            self.siblings = self.siblings[::-1]
+            self.siblings = [prevBubble.id if prevBubble else None, nextBubble.id if nextBubble else None]
             self.source_segments, self.sink_segments = self.sink_segments, self.source_segments
 
     def add_source_sibling(self, sibling):
@@ -100,7 +102,7 @@ class Bubble:
     def get_end_segments(self):
         return self.get_source_segments() + self.get_sink_segments()
     
-    def emit_chain_junctions(self, gfaidx):
+    def emit_junctions(self, gfaidx):
         source = BubbleJunction(self, True, gfaidx)
         sink = BubbleJunction(self, False, gfaidx)
         return [source, sink]
@@ -131,7 +133,7 @@ class Bubble:
         return len(self.range_inclusive) > 0
 
     def __str__(self):
-        return f"Bubble(id={self.id}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, inside={self.inside}, inclusive range={self.range_inclusive})"
+        return f"Bubble(id={self.id}, chain={self.chain}:{self.chain_step}, parent={self.parent}, children={len(self.children)}, siblings={self.siblings}, source={self.source_segments}, inside={self.inside}, sink={self.sink_segments}, inclusive range={self.range_inclusive})"
 
     def __repr__(self):
         return f"Bubble({self.id}, inclusive range={self.range_inclusive})"

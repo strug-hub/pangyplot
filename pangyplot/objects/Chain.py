@@ -1,4 +1,4 @@
-from pangyplot.objects.BubbleJunction import BubbleJunction
+from pangyplot.objects.ChainJunction import ChainJunction
 
 class Chain:
     def __init__(self, chain_id, bubbles=None, parent_bubble=None, gfaidx=None):
@@ -9,7 +9,6 @@ class Chain:
         self.bubbles = bubbles if bubbles is not None else []
 
         self._sort_bubbles()
-        self._assign_siblings()
 
     def serialize(self):
         return {
@@ -29,13 +28,18 @@ class Chain:
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else (None, None)
 
+    def emit_junctions(self, gfaidx):
+        source = ChainJunction(self, True, gfaidx)
+        sink = ChainJunction(self, False, gfaidx)
+        return [source, sink]
+
     def get_chain_links(self):
         if self.gfaidx is None:
             return None
         links = []
 
-        for i, bubble in enumerate(self.bubbles[1:-1]):
-            junctions = bubble.emit_chain_junctions(self.gfaidx)
+        for bubble in self.bubbles[1:-1]:
+            junctions = bubble.emit_junctions(self.gfaidx)
             for junction in junctions:
                 links.extend(junction.get_chain_links())
         return links
@@ -56,22 +60,11 @@ class Chain:
 
         return set(seg_ids) if as_set else seg_ids
 
-    def add_bubbles(self, bubbles):
-        self.bubbles.extend(bubbles)
-        self._sort_bubbles()
-
     def _sort_bubbles(self):
         if len(self.bubbles) < 2:
             return
-
         self.bubbles.sort(key=lambda bubble: bubble.chain_step)
-        chain_order = [None, *self.bubbles, None]
-
-        for i, bubble in enumerate(chain_order):
-            if bubble is None: continue
-            prevId = chain_order[i - 1].id if chain_order[i - 1] is not None else None
-            nextId = chain_order[i + 1].id if chain_order[i + 1] is not None else None
-            bubble.correct_source_sink(prevId, nextId)
+        self._assign_siblings()
 
     def _assign_siblings(self):
         chain_order = [None, *self.bubbles, None]
@@ -79,6 +72,7 @@ class Chain:
             if bubble is None: continue
             bubble.add_source_sibling(chain_order[i - 1])
             bubble.add_sink_sibling(chain_order[i + 1])
+            bubble.correct_source_sink(chain_order[i - 1], chain_order[i + 1])
 
     def __len__(self):
         return len(self.bubbles)

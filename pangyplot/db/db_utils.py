@@ -5,7 +5,7 @@ import gzip
 
 def get_connection(dir, filename, clear_existing=False):
     db_path = os.path.join(dir, filename)
-    print(f"Connecting to database at {db_path}")
+
     if clear_existing and os.path.exists(db_path):
             os.remove(db_path)
 
