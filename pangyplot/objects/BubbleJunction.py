@@ -6,6 +6,9 @@ class BubbleJunction:
         self.bubble_id = bubble.id
         self.other_bubble_id = bubble.get_previous_sibling() if is_source else bubble.get_next_sibling()
 
+        #todo: get both other bubble id and other popped bubble id
+        # create popped link and replace in graph-manager
+
         chain_id = bubble.chain
         chain_step = bubble.chain_step
         self.id = f"{chain_id}:{chain_step-1 if is_source else chain_step}:{1 if is_source else 0}"
