@@ -2,16 +2,14 @@ from pangyplot.objects.Link import Link
 from statistics import mean
 
 class ChainJunction:
-    def __init__(self, chain, is_source, gfaidx=None):
-        self.chain_id = chain.id
-        self.other_bubble_id = bubble.get_previous_sibling() if is_source else bubble.get_next_sibling()
+    def __init__(self, bubble, is_source, parent_bubble, gfaidx=None):
+        self.chain_id = bubble.chain
+        self.bubble_id = bubble.id
+        self.other_bubble_id = parent_bubble.id 
 
-        chain_id = bubble.chain
-        chain_step = bubble.chain_step
-        self.id = f"{chain_id}:{chain_step-1 if is_source else chain_step}:{1 if is_source else 0}"
+        self.id = f"{self.chain_id}:{1 if is_source else 0}"
 
         self.is_source = is_source
-
         self.contained = set(bubble.source_segments if is_source else bubble.sink_segments)
         
         if gfaidx is not None:
@@ -20,6 +18,17 @@ class ChainJunction:
             self.links = list(linkDict.values())
             
         self.length = sum(seg.length for seg in self.segments)
+
+        self.parent_junction = self.match_junction(parent_bubble, gfaidx)
+
+    def match_junction(self, bubble, gfaidx):
+        junctions = bubble.emit_junctions(gfaidx)
+        for junction in junctions:
+            seg_ids = set(junction.contained)
+            for link in self.links:
+                if link.to_id in seg_ids or link.from_id in seg_ids:
+                    return junction
+        return None
 
     def serialize(self):
         return {
@@ -38,15 +47,15 @@ class ChainJunction:
         }
 
     def get_popped_chain_links(self):
-        if self.other_bubble_id is None: return []
+        if self.parent_junction is None: return []
         link = Link()
         link.make_chain_link(list(self.contained), self.length)
         if self.is_source:
             link.from_id = self.id
-            link.to_id = self.other_bubble_id
+            link.to_id = self.parent_junction.id
             link.from_type = "c"
         else:
-            link.from_id = self.other_bubble_id
+            link.from_id = self.parent_junction.id
             link.to_id = self.id
             link.to_type = "c"
 
@@ -56,6 +65,8 @@ class ChainJunction:
         return [link]
 
     def get_chain_links(self):
+        return []
+
         if self.other_bubble_id is None: return []
         link = Link()
         link.make_chain_link(list(self.contained), self.length)
@@ -88,6 +99,7 @@ class ChainJunction:
         return links
 
     def shared_links(self, other):
+        return []
         is_deletion = self.bubble_id == other.bubble_id
         links = []
 
@@ -102,8 +114,6 @@ class ChainJunction:
             if is_deletion:
                 new_link.set_as_deletion(self.bubble_id)
             
-            print(link.id(), "->", new_link.id())
-
             links.append(new_link)
 
         for link in self.links:
@@ -125,6 +135,6 @@ class ChainJunction:
         return self.get_chain_links() + self.get_popped_chain_links() + self.get_segment_links()
 
     def __str__(self):
-        return f"BubbleJunction(bubble={self.bubble_id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source})"
+        return f"ChainJunction(bubble={self.bubble_id}, parent_junction={self.parent_junction.id if self.parent_junction else None}, contained={self.contained}, is_source={self.is_source})"
     def __repr__(self):
-        return f"BubbleJunction({self.bubble_id}, {'source' if self.is_source else 'sink'})"
+        return f"ChainJunction({self.bubble_id}, {'source' if self.is_source else 'sink'})"

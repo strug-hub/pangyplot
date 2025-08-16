@@ -102,9 +102,9 @@ class Bubble:
     def get_end_segments(self):
         return self.get_source_segments() + self.get_sink_segments()
     
-    def emit_junctions(self, gfaidx):
-        source = BubbleJunction(self, True, gfaidx)
-        sink = BubbleJunction(self, False, gfaidx)
+    def emit_junctions(self, gfaidx, parent_hint=None):
+        source = BubbleJunction(self, True, parent_hint, gfaidx)
+        sink = BubbleJunction(self, False, parent_hint, gfaidx)
         return [source, sink]
 
     def has_range(self, exclusive=True):

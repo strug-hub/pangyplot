@@ -205,6 +205,12 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
 
   addInsideContents(bubbleId, subgraph);
 
+  for (const link of subgraph.links) {
+    if (link.element.isPopLink) {
+      console.log(`Removing pop link ${link.linkId} from subgraph`);
+    }
+  }
+
   // If both ends of a chain are present, fetch the segments inside
   const fetchPromises = [];
   for (const [graphId, subgraphId] of findFullBubbleEnds(graphData, subgraph)) {

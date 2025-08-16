@@ -2,7 +2,7 @@ from pangyplot.objects.Link import Link
 from statistics import mean
 
 class BubbleJunction:
-    def __init__(self, bubble, is_source, gfaidx=None):
+    def __init__(self, bubble, is_source, parent_bubble=None, gfaidx=None):
         self.bubble_id = bubble.id
         self.other_bubble_id = bubble.get_previous_sibling() if is_source else bubble.get_next_sibling()
 
@@ -21,6 +21,22 @@ class BubbleJunction:
             
             self.length = sum(seg.length for seg in self.segments)
 
+        self.is_chain_end = False
+        if self.other_bubble_id is None and parent_bubble is not None:
+            self.other_bubble_id = self.match_junction(parent_bubble, gfaidx)
+            if self.other_bubble_id is not None:
+                self.is_chain_end = True
+
+    def match_junction(self, bubble, gfaidx):
+        if gfaidx is None: return None
+        junctions = bubble.emit_junctions(gfaidx)
+        for junction in junctions:
+            seg_ids = set(junction.contained)
+            for link in self.links:
+                if link.to_id in seg_ids or link.from_id in seg_ids:
+                    return junction.id
+        return None
+    
     def serialize(self):
         return {
             "id": f"c{self.id}",
@@ -37,6 +53,47 @@ class BubbleJunction:
             "y2": mean([seg.y2 for seg in self.segments])
         }
 
+    def get_chain_links(self):
+        if self.other_bubble_id is None: return []
+
+        link = Link()
+        link.make_chain_link(list(self.contained), self.length)
+        links = []
+        if self.is_chain_end:
+            if self.is_source:
+                link.from_id = self.other_bubble_id
+                link.to_id = self.bubble_id
+                link.from_type = "c"
+                pop_link = link.clone()
+                pop_link.to_id = self.id
+                pop_link.to_type = "c"
+            else:
+                link.from_id = self.bubble_id
+                link.to_id = self.other_bubble_id 
+                link.to_type = "c"
+                pop_link = link.clone()
+                pop_link.from_id = self.id
+                pop_link.from_type = "c"
+                
+            links.append(link)
+            pop_link.make_pop_link()
+            print(pop_link)
+            links.append(pop_link)
+        else:
+            if self.is_source:
+                link.from_id = self.bubble_id
+                link.to_id = self.other_bubble_id
+                links.append(link)
+            else:
+                link.from_id = self.other_bubble_id
+                link.to_id = self.bubble_id
+                links.append(link)
+        
+        #link.haplotype
+        #link.reverse
+        #link.frequency
+        return links
+    
     def get_popped_chain_links(self):
         if self.other_bubble_id is None: return []
         link = Link()
@@ -49,22 +106,6 @@ class BubbleJunction:
             link.from_id = self.other_bubble_id
             link.to_id = self.id
             link.to_type = "c"
-
-        #link.haplotype
-        #link.reverse
-        #link.frequency
-        return [link]
-
-    def get_chain_links(self):
-        if self.other_bubble_id is None: return []
-        link = Link()
-        link.make_chain_link(list(self.contained), self.length)
-        if self.is_source:
-            link.from_id = self.bubble_id
-            link.to_id = self.other_bubble_id
-        else:
-            link.from_id = self.other_bubble_id
-            link.to_id = self.bubble_id
 
         #link.haplotype
         #link.reverse
@@ -123,6 +164,6 @@ class BubbleJunction:
         return self.get_chain_links() + self.get_popped_chain_links() + self.get_segment_links()
 
     def __str__(self):
-        return f"BubbleJunction(bubble={self.bubble_id}, other_bubble={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source})"
+        return f"BubbleJunction(bubble={self.bubble_id}, other_id={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source})"
     def __repr__(self):
         return f"BubbleJunction({self.bubble_id}, {'source' if self.is_source else 'sink'})"

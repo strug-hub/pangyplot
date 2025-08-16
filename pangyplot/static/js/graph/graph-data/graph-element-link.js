@@ -13,6 +13,8 @@ class GraphElementLink {
         this.contained = rawLink.contained;
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
+        
+        this.isPopLink = rawLink.is_pop_link || false; 
     }
 
     get isChainLink() {

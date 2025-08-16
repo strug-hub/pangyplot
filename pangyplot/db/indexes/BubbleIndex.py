@@ -216,7 +216,10 @@ class BubbleIndex:
         internal_chain_segments = set()
         for chain in chains:
             internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
+
         exposed_segments = bubble.inside - internal_chain_segments
+
+
         #print("exposed:", exposed_segments)
         #print("internal:", internal_chain_segments)
         #print("inside:", bubble.inside)

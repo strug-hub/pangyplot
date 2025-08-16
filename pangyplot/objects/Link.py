@@ -13,6 +13,7 @@ class Link:
         self.contained = []
         self.length = 0
         self.deletionBubbleId = None
+        self.is_pop_link = False
 
     def serialize(self):
         return {
@@ -28,6 +29,7 @@ class Link:
             "contained": self.contained,
             "length": self.length,
             "is_deletion": self.deletionBubbleId is not None,
+            "is_pop_link": self.is_pop_link,
             "bubble_id": f"b{self.deletionBubbleId}" if self.deletionBubbleId is not None else None
         }
     
@@ -69,6 +71,9 @@ class Link:
     def set_to_type(self, x):
         self.to_type = x
 
+    def make_pop_link(self):
+        self.link_type = "pop"
+        self.is_pop_link = True
 
     def make_segment_to_bubble(self):   
         self.from_type = "s"

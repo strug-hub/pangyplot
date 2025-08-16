@@ -1,5 +1,3 @@
-from pangyplot.objects.ChainJunction import ChainJunction
-
 class Chain:
     def __init__(self, chain_id, bubbles=None, parent_bubble=None, gfaidx=None):
         self.id = chain_id
@@ -28,18 +26,13 @@ class Chain:
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else (None, None)
 
-    def emit_junctions(self, gfaidx):
-        source = ChainJunction(self, True, gfaidx)
-        sink = ChainJunction(self, False, gfaidx)
-        return [source, sink]
-
     def get_chain_links(self):
         if self.gfaidx is None:
             return None
         links = []
 
-        for bubble in self.bubbles[1:-1]:
-            junctions = bubble.emit_junctions(self.gfaidx)
+        for bubble in self.bubbles:
+            junctions = bubble.emit_junctions(self.gfaidx, parent_hint=self.parent_bubble)
             for junction in junctions:
                 links.extend(junction.get_chain_links())
         return links
