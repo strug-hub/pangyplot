@@ -17,6 +17,7 @@ class GraphElementNode {
 class Bubble extends GraphElementNode {
     constructor(rawBubble) {
         super(rawBubble, "bubble");
+        this.parent = rawBubble.parent;
         this.subtype = rawBubble.subtype;
         this.chain = rawBubble.chain;
         this.chainStep = rawBubble.chain_step;
@@ -28,6 +29,8 @@ class BubbleEnd extends GraphElementNode {
     constructor(rawBubbleEnd) {
         super(rawBubbleEnd, "bubble:end");
         this.subtype = rawBubbleEnd.subtype;
+        this.parent = rawBubbleEnd.parent;
+        this.parentEnd = rawBubbleEnd.parent_end;
         this.chain = rawBubbleEnd.chain;
         this.size = rawBubbleEnd.size;
     }

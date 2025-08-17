@@ -35,6 +35,7 @@ class Bubble:
         return {
             "id": self.get_serialized_id(),
             "type": "bubble",
+            "parent": self.parent,
             "chain": f"c{self.chain}",
             "chain_step": self.chain_step,
             "subtype": self.subtype,

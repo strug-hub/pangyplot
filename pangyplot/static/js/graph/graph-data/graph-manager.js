@@ -9,7 +9,6 @@ const nodeIdDict = new Map();
 const linkDict = new Map();
 const linkIdDict = new Map();
 
-
 function initializeNodeRecord(id) {
   if (nodeDict.has(id)) return;
   const record = {
@@ -177,14 +176,51 @@ export function removeNode(id, graphData) {
   );
 }
 
-function findFullBubbleEnds(subgraph) {
-  const results = [];
+function findFullBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
+  const ends = [];
   for (const link of subgraph.links) {
     if (link.element.isPopLink) {
-      results.push([link.sourceId, link.targetId]);
+
+      const source_node = getNodeElement(link.sourceId);
+      const target_node = getNodeElement(link.targetId);
+      
+      if (source_node && source_node.element.parentEnd === target_node.id) {
+        ends.push([link.sourceId, null]);
+      } else if (target_node && target_node.element.parentEnd === source_node.id) {
+        ends.push([link.targetId, null]);
+      } else{
+        ends.push([link.targetId, link.sourceId]);
+      }
     }
   }
-  return results;
+
+  // If both ends of a chain are present, fetch the segments inside
+  const fetchPromises = [];
+  for (const [node1, node2] of ends) {
+    console.log(`Processing bubble end for ${node1} and ${node2}`);
+    fetchPromises.push(
+      fetchBubbleEndFn(node1).then(endData => {
+        const endSubgraph = buildGraphData(endData);
+        console.log(`Fetched bubble end for ${node1} and ${node2}`, endData);
+        subgraph.nodes.push(...endSubgraph.nodes);
+        subgraph.links.push(...endSubgraph.links);
+        addInsideContents(node1, endData);
+        if (node2) {
+            addInsideContents(node2, endData);
+        }
+      })
+    );
+
+    removeNode(node1, graphData);
+    removeNode(node1, subgraph);
+
+    if (node2) {
+      removeNode(node2, subgraph);
+      removeNode(node2, graphData);
+    }
+  }
+
+  return fetchPromises;
 }
 
 export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEndFn) {
@@ -194,34 +230,9 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
 
   addInsideContents(bubbleId, subgraph);
 
-  //rescueLinks(subgraph);
+  rescueLinks(subgraph);
 
-  // If both ends of a chain are present, fetch the segments inside
-  const fetchPromises = [];
-  for (const [node1, node2] of findFullBubbleEnds(subgraph)) {
-  
-    console.log(`Fetching bubble end for ${node1} and ${node2}`);
-    fetchPromises.push(
-      fetchBubbleEndFn(node1).then(endData => {
-        const endSubgraph = buildGraphData(endData);
-        console.log(`Fetched bubble end for ${node1} and ${node2}`, endData);
-        subgraph.nodes.push(...endSubgraph.nodes);
-        subgraph.links.push(...endSubgraph.links);
-        addInsideContents(node1, endData);
-        addInsideContents(node2, endData);
-
-      })
-    );
-
-    removeNode(node1, graphData);
-    removeNode(node2, graphData);
-
-    removeNode(node1, subgraph);
-    removeNode(node2, subgraph);
-
-  }
-  
-  // Wait for all bubble-end fetches
+  const fetchPromises = findFullBubbleEnds(graphData, subgraph, fetchBubbleEndFn);
   await Promise.all(fetchPromises);
 
   removeNode(bubbleId, graphData);

@@ -64,6 +64,7 @@ class BubbleIndex:
 
     def get_bubble_by_chain(self, chain_id, chain_step):
         result = db.get_bubble_ids_from_chain(self.dir, chain_id, chain_step, chain_step)
+        print(f"Lookup for bubble in chain {chain_id} at step {chain_step} returned: {result}")
         if result:
             bubble_id = result[0]
             return self[bubble_id]
@@ -195,7 +196,8 @@ class BubbleIndex:
             return {"nodes": all_nodes, "links": all_links} 
 
         #[bubble:end]-[x]
-        junctions = bubble.emit_junctions(gfaidx)
+        bubble_parent = self[bubble.parent] if bubble.parent else None
+        junctions = bubble.emit_junctions(gfaidx, parent_hint=bubble_parent)
         for junction in junctions:
             all_nodes.append(junction)
             all_links.extend(junction.get_links())

@@ -35,7 +35,7 @@ class BubbleJunction:
             
     def match_junction(self, bubble, gfaidx):
         if gfaidx is None: return None
-        junctions = bubble.emit_junctions(gfaidx)
+        junctions = bubble.emit_junctions(gfaidx, parent_hint=None)
         for junction in junctions:
             seg_ids = set(junction.contained)
             for link in self.links:
@@ -47,6 +47,9 @@ class BubbleJunction:
         return {
             "id": f"c{self.id}",
             "type": "bubble:end",
+            "parent": f"b{self.other_bubble_id}" if self.is_chain_end else None,
+            "parent_end": f"c{self.other_id}" if self.is_chain_end else None,
+            "bubble_id": self.bubble_id,
             "subtype": "source" if self.is_source else "sink",
             "length": self.length,
             "size": len(self.contained),
@@ -119,12 +122,10 @@ class BubbleJunction:
                                 "c", self.other_id, 
                                 pop_link=True,
                                 should_flip=not self.is_source)
-        print(str(self), "LINKSS:", link)
-
         return [link]    
 
     #[bubble:end]-[segment]
-    def get_segment_links(self):
+    def get_segment_links(self, ends_only=False):
         links = []
         for link in self.links:
             from_contained = link.from_id in self.contained
@@ -134,7 +135,26 @@ class BubbleJunction:
                 new_link = self.create_link("c", self.id,
                                             "s", seg_id,  
                                             copy_link=link,
-                                            should_flip=from_contained)
+                                            should_flip=to_contained)
+            links.append(new_link)
+        return links
+
+
+    #[bubble]-[segment]
+    def get_parent_popped_links(self):
+        links = []
+        if not self.is_chain_end: return []
+        
+        for link in self.links:
+            from_contained = link.from_id in self.contained
+            to_contained = link.to_id in self.contained
+            if from_contained or to_contained:
+                seg_id = link.from_id if to_contained else link.to_id
+                new_link = self.create_link("b", self.bubble_id,
+                                            "s", seg_id,  
+                                            copy_link=link,
+                                            chain_link=True,
+                                            should_flip=to_contained)
             links.append(new_link)
         return links
 
