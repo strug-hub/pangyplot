@@ -14,7 +14,7 @@ class GraphElementLink {
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
         
-        this.isPopLink = rawLink.is_pop_link || false; 
+        this.isPopLink = rawLink.type == "pop"; 
     }
 
     get isChainLink() {

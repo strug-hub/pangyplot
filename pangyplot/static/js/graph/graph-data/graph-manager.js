@@ -177,22 +177,11 @@ export function removeNode(id, graphData) {
   );
 }
 
-function findFullBubbleEnds(graphData, subgraph) {
-
-  const newChainNodes = subgraph.nodes.filter(node => node.id.startsWith("c")).map(node => node.id);
-  const chainNodes = graphData.nodes.filter(node => node.id.startsWith("c")).map(node => node.id);
+function findFullBubbleEnds(subgraph) {
   const results = [];
-
-  for (const id of newChainNodes) {
-    const parts = id.split(":");
-    const chainId = parts[0];
-    const chainStep = parseInt(parts[1]);
-    const side = parseInt(parts[2]);
-    const otherSide = side === 0 ? 1 : 0;
-
-    const otherId = `${chainId}:${chainStep}:${otherSide}`;
-    if (chainNodes.includes(otherId)) {
-      results.push([otherId, id]);
+  for (const link of subgraph.links) {
+    if (link.element.isPopLink) {
+      results.push([link.sourceId, link.targetId]);
     }
   }
   return results;
@@ -205,30 +194,31 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
 
   addInsideContents(bubbleId, subgraph);
 
-  for (const link of subgraph.links) {
-    if (link.element.isPopLink) {
-      console.log(`Removing pop link ${link.linkId} from subgraph`);
-    }
-  }
+  //rescueLinks(subgraph);
 
   // If both ends of a chain are present, fetch the segments inside
   const fetchPromises = [];
-  for (const [graphId, subgraphId] of findFullBubbleEnds(graphData, subgraph)) {
-    console.log(`Fetching bubble end for ${graphId} and ${subgraphId}`);
+  for (const [node1, node2] of findFullBubbleEnds(subgraph)) {
+  
+    console.log(`Fetching bubble end for ${node1} and ${node2}`);
     fetchPromises.push(
-      fetchBubbleEndFn(subgraphId).then(endData => {
+      fetchBubbleEndFn(node1).then(endData => {
         const endSubgraph = buildGraphData(endData);
-        console.log(`Fetched bubble end for ${graphId} and ${subgraphId}`, endData);
+        console.log(`Fetched bubble end for ${node1} and ${node2}`, endData);
         subgraph.nodes.push(...endSubgraph.nodes);
         subgraph.links.push(...endSubgraph.links);
-        addInsideContents(graphId, endData);
-        addInsideContents(subgraphId, endData);
+        addInsideContents(node1, endData);
+        addInsideContents(node2, endData);
 
       })
     );
 
-    removeNode(graphId, graphData);
-    removeNode(subgraphId, subgraph);
+    removeNode(node1, graphData);
+    removeNode(node2, graphData);
+
+    removeNode(node1, subgraph);
+    removeNode(node2, subgraph);
+
   }
   
   // Wait for all bubble-end fetches

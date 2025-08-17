@@ -29,7 +29,6 @@ class Link:
             "contained": self.contained,
             "length": self.length,
             "is_deletion": self.deletionBubbleId is not None,
-            "is_pop_link": self.is_pop_link,
             "bubble_id": f"b{self.deletionBubbleId}" if self.deletionBubbleId is not None else None
         }
     
@@ -60,8 +59,6 @@ class Link:
         return None
 
     def make_chain_link(self, contained=[], length=0):
-        self.from_type = "b"
-        self.to_type = "b"
         self.contained = contained
         self.length = length
         self.link_type = "chain"

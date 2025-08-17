@@ -201,7 +201,7 @@ class BubbleIndex:
             all_links.extend(junction.get_links())
 
         # check for deletion links
-        del_links = junctions[0].shared_links(junctions[1])
+        del_links = junctions[0].get_deletion_links(junctions[1])
         all_links.extend(del_links)
 
         # [bubble]-[bubble]
@@ -218,12 +218,6 @@ class BubbleIndex:
             internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
 
         exposed_segments = bubble.inside - internal_chain_segments
-
-
-        #print("exposed:", exposed_segments)
-        #print("internal:", internal_chain_segments)
-        #print("inside:", bubble.inside)
-
 
         inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)

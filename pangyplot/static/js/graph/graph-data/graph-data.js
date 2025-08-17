@@ -194,9 +194,9 @@ function trackFailedLinks(failedLinks) {
 
 function retryFailedLinks(newNodes) {
     const allRefailedLinks = [];
+
     for (const node of newNodes) {
         if (!linkRetryDict.has(node.id)) continue;
-
         const failedLinksMap = linkRetryDict.get(node.id);
 
         const [linkElements, refailedLinks] = deserializeLinks([...failedLinksMap.values()]);
