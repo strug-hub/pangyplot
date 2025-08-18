@@ -3,7 +3,7 @@ import { computeNodeCentroid } from "../utils/node-utils.js";
 
 export default function delLinkForce() {
   const cache = new Map();
-  let strength = 1;
+  let strength = 2;
 
   function force(alpha) {
     for (const { link, nodes } of cache.values()) {
@@ -48,12 +48,12 @@ export default function delLinkForce() {
       const bubbleId = link.bubbleId;
 
       const insideNodes = getInsideNodeElements(bubbleId)
-      .filter(node => {
-        // Remove end nodes
-        if (node.type !== "bubble:end") return true;
-        const stripped = bubbleId.slice(1); // remove initial "b"
-        return !(node.id === `b>${stripped}` || node.id === `b<${stripped}`);
-      });
+        .filter(node => {
+          // Remove end nodes
+          if (node.type !== "bubble:end") return true;
+          const stripped = bubbleId.slice(1); // remove initial "b"
+          return !(node.id === `b>${stripped}` || node.id === `b<${stripped}`);
+        });
 
       if (!insideNodes.length) continue;
       const record = {link: link, nodes: insideNodes };

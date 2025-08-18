@@ -35,7 +35,6 @@ class Chain:
             junctions = bubble.emit_junctions(self.gfaidx, parent_hint=self.parent_bubble)
             for junction in junctions:
                 links.extend(junction.get_chain_links() + \
-                             junction.get_popped_indicator_links(chain_end_only=True) + \
                              junction.get_parent_popped_links())
         return links
 
@@ -50,8 +49,8 @@ class Chain:
             seg_ids.extend(bubble.sink_segments)
         
         if include_ends:
-            seg_ids.extend(self.bubbles[0].source_segments)
-            seg_ids.extend(self.bubbles[-1].sink_segments)
+            seg_ids.extend(self.bubbles[0].get_source_segments())
+            seg_ids.extend(self.bubbles[-1].get_sink_segments())
 
         return set(seg_ids) if as_set else seg_ids
 

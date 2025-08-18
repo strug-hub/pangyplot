@@ -51,19 +51,18 @@ class Bubble:
         }
 
     def correct_source_sink(self, prevBubble=None, nextBubble=None):
-        shouldFlipSource = False
-        if prevBubble is None and len(self.sink_segments) == 0:
-            shouldFlipSource = True
-        elif prevBubble is not None and set(self.sink_segments).issubset(set(prevBubble.get_end_segments())):
+        # if at chain end, check other side
+        shouldFlipSource = prevBubble is None
+        shouldFlipSink = nextBubble is None
+
+        if prevBubble is not None and set(self.sink_segments).issubset(set(prevBubble.get_end_segments())):
             shouldFlipSource = True
 
-        shouldFlipSink = False
-        if nextBubble is None and len(self.source_segments) == 0:
-            shouldFlipSink = True
-        elif nextBubble is not None and set(self.source_segments).issubset(set(nextBubble.get_end_segments())):
+        if nextBubble is not None and set(self.source_segments).issubset(set(nextBubble.get_end_segments())):
             shouldFlipSink = True      
 
         if shouldFlipSource and shouldFlipSink:
+            print(f"[WARNING] Bubble {self.id} has ambiguous source/sink segments, defaulting to original assignment")
             self.siblings = [prevBubble.id if prevBubble else None, nextBubble.id if nextBubble else None]
             self.source_segments, self.sink_segments = self.sink_segments, self.source_segments
 

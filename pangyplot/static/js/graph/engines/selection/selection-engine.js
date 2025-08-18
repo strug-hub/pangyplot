@@ -1,16 +1,16 @@
 import setUpMultiSelectionEngine from './multi-selection/multi-selection-engine.js';
-import { updateSelectionState } from './selection-state.js';
+import { updateSelectionState, flipBubbleMode, isInBubbleMode } from './selection-state.js';
 import { findNearestNode, euclideanDist } from '../../utils/node-utils.js';
 import { isDebugMode } from '../../graph-state.js';
 import { multiSelectInProgress } from './multi-selection/multi-selection-engine.js';
 import { isPanZoomMode } from '../navigate/pan-zoom-engine.js';
 
-let hoverNode = null;
+const hoverNodes = [];
 const MAX_HOVER_DISTANCE = 40;
 const MAX_SELECT_DISTANCE = 25;
 
 function hoverPreview(event, forceGraph) {
-    hoverNode = null;
+    hoverNodes.length = 0;
     if (multiSelectInProgress) return;
 
     const coords = { x: event.offsetX, y: event.offsetY };
@@ -26,20 +26,20 @@ function hoverPreview(event, forceGraph) {
 
     if (distPx > MAX_HOVER_DISTANCE) return;
 
-    hoverNode = nearestNode;
+    hoverNodes.push(nearestNode);
     nearestNode.isHighlighted = true;
 }
 
-export function cleanSelection(event, forceGraph) {
+function cleanSelection(event, forceGraph) {
     if (event.button !== 0 || multiSelectInProgress || isPanZoomMode()) return; // Only left click
 
-    if (hoverNode == null || !hoverNode.isSelected) {
+    if (hoverNodes.length === 0 || !hoverNodes[0].isSelected) {
         forceGraph.graphData().nodes.forEach(node => node.isSelected = false);
         return;
     }
 }
 
-export function attemptSelection(event, forceGraph) {
+function attemptSelection(event, forceGraph) {
     if (event.button !== 0 || multiSelectInProgress || isPanZoomMode()) return; // Only left click
 
     if (hoverNode == null) return;
@@ -50,17 +50,26 @@ export function attemptSelection(event, forceGraph) {
     if (distPx > MAX_SELECT_DISTANCE) return;
 
     if (isDebugMode()) {
-        console.log("clicked:", hoverNode);
+        console.log("clicked:", hoverNodes[0]);
         const connectedEdges = forceGraph.graphData().links.filter(link =>
-            link.source === hoverNode || link.target === hoverNode
+            link.source === hoverNodes[0] || link.target === hoverNodes[0]
         );
         console.log("connected edges:", connectedEdges);
     }
 
-    hoverNode.isHighlighted = false;
-    hoverNode.isSelected = true;
-    hoverNode = null
+    hoverNodes[0].isHighlighted = false;
+    hoverNodes[0].isSelected = true;
+    hoverNodes.length = 0;
 }
+
+function switchBubbleMode(event) {
+    if (event.key === 'b' || event.key === 'B') {
+        event.preventDefault();
+        flipBubbleMode();
+    }
+}
+
+
 
 export default function setUpSelectionEngine(forceGraph, canvasElement) {
 
@@ -73,6 +82,10 @@ export default function setUpSelectionEngine(forceGraph, canvasElement) {
     canvasElement.addEventListener('pointerup', (event) => {
         attemptSelection(event, forceGraph);
     });
+    canvasElement.addEventListener('keydown', (event) => {
+        switchBubbleMode(event);
+    });
+
 
 
     setUpMultiSelectionEngine(forceGraph, canvasElement);

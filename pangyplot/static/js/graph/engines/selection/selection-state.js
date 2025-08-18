@@ -1,6 +1,7 @@
 import eventBus from '../../../utils/event-bus.js';
 
 export const selectionState = {
+  bubbleMode: false,
   highlighted: new Set(),
   selected: new Set()
 };
@@ -40,6 +41,13 @@ export function updateSelectionState(nodes) {
   if (highlightChanged) {
     eventBus.publish('selection:highlight-changed', selectionState);
   }
-
 }
 
+export function flipBubbleMode() {
+  selectionState.bubbleMode = !selectionState.bubbleMode;
+  eventBus.publish('selection:bubble-mode-toggled', selectionState.bubbleMode);
+}
+
+export function isInBubbleMode() {
+  return selectionState.bubbleMode;
+}

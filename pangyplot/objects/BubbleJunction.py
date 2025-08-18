@@ -47,9 +47,7 @@ class BubbleJunction:
         return {
             "id": f"c{self.id}",
             "type": "bubble:end",
-            "parent": f"b{self.other_bubble_id}" if self.is_chain_end else None,
-            "parent_end": f"c{self.other_id}" if self.is_chain_end else None,
-            "unpaired": self.other_id is None,
+            "chain_end": self.is_chain_end,
             "bubble_id": self.bubble_id,
             "subtype": "source" if self.is_source else "sink",
             "length": self.length,
@@ -116,9 +114,8 @@ class BubbleJunction:
         return [link]
 
     #[bubble:end]-[bubble:end]
-    def get_popped_indicator_links(self, chain_end_only=False):
-        if chain_end_only and not self.is_chain_end: return []
-        if self.other_id is None: return []
+    def get_popped_indicator_links(self):
+        if self.is_chain_end or self.other_id is None: return []
         link = self.create_link("c", self.id, 
                                 "c", self.other_id, 
                                 pop_link=True,
@@ -126,7 +123,7 @@ class BubbleJunction:
         return [link]    
 
     #[bubble:end]-[segment]
-    def get_segment_links(self, ends_only=False):
+    def get_segment_links(self):
         links = []
         for link in self.links:
             from_contained = link.from_id in self.contained

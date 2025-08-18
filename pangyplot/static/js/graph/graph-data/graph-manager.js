@@ -178,6 +178,16 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   const ends = [];
   const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
 
+    //for bubble ends that don't meet another bubble
+    for (const node of subgraph.nodes) {
+      console.log("nodeElement", node);
+      if (node.element.chainEnd) {
+        console.log(`Unpaired bubble end found: ${node}`);
+        ends.push([node.id, null]);
+        continue;
+      } 
+    }
+
   for (const link of subgraph.links) {
     if (link.element.isPopLink) {
 
@@ -185,29 +195,7 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
       const sourceActive = isNodeActive(link.sourceId) || subgraphNodes.includes(link.sourceId);
       const targetActive = isNodeActive(link.targetId) || subgraphNodes.includes(link.targetId);
 
-      const sourceNode = getNodeElement(link.sourceId);
-      const targetNode = getNodeElement(link.targetId);
-
-      console.log("here",sourceNode, targetNode);
-      //when a bubble end doesn't pair to another bubble
-      if (sourceNode && sourceNode.element.unpaired) {
-        console.log(`Unpaired bubble end found: ${link.sourceId}`);
-        ends.push([link.sourceId, null]);
-        continue;
-      } else if (targetNode && targetNode.element.unpaired) {
-        console.log(`Unpaired bubble end found: ${link.targetId}`);
-        ends.push([link.targetId, null]);
-        continue;
-      }
-
-      if (!sourceActive || !targetActive) {
-        continue; // Skip if either end is not active
-      }
-      if (sourceNode && sourceNode.element.parentEnd === targetNode.id) {
-        ends.push([link.sourceId, null]);
-      } else if (targetNode && targetNode.element.parentEnd === sourceNode.id) {
-        ends.push([link.targetId, null]);
-      } else{
+      if (sourceActive && targetActive) {
         ends.push([link.targetId, link.sourceId]);
       }
     }
@@ -273,6 +261,8 @@ export function updateForceGraph(graphData) {
   }
   graphData.nodes.forEach(node => {
     nodeDict.get(node.id).active = true;
+    //node.fx = node.x;
+    //node.fy = node.y;
   });
 
   forceGraphRef.graphData(graphData);
