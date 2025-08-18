@@ -1,7 +1,6 @@
 import os
 from pangyplot.db.indexes.StepIndex import StepIndex
 import pangyplot.db.sqlite.bubble_db as db
-import pangyplot.db.sqlite.bubble_link_db as link_db
 
 from pangyplot.utils.plot_bubbles import plot_bubbles
 from collections import defaultdict
@@ -129,42 +128,55 @@ def find_children(bubbles):
 
 
 def store_bubble_links(links, bubbles, chr_dir):
-    node_to_bubble = dict()
-    bubble_to_node = dict()
+    node_to_bubbles = defaultdict(set)
 
     for bubble in bubbles:
         for nid in bubble.inside:
-            node_to_bubble[nid] = bubble.id
+            node_to_bubbles[nid].add(bubble.id)
+        #for nid in bubble.get_end_segments():
+        #    node_to_bubbles[nid].add(bubble.id)
 
     internal_links = []
     external_links = []
-    
+    counts = defaultdict(int)
+
+    seen_keys = set()
+    print("Processing links...", len(links))
+    input( "Press Enter to continue...")
     for key, link in links.items():
-        from_id, to_id = key
-        from_bubble = node_to_bubble.get(from_id)
-        to_bubble = node_to_bubble.get(to_id)
-
-        if from_bubble is None and to_bubble is None:
-            continue
- 
         link_id = link.id()
+        if link_id in seen_keys:
+            continue
+        seen_keys.add(link_id)
 
-        if from_bubble == to_bubble:
-            internal_links.append((from_bubble, link_id))
-            internal_links.append((to_bubble, link_id))
-        else:
-            external_links.append((from_bubble, link_id))
-            external_links.append((to_bubble, link_id))
+        from_id, to_id = key
+        from_bubbles = node_to_bubbles.get(from_id)
+        to_bubbles = node_to_bubbles.get(to_id)
 
-    link_db.insert_internal_links(chr_dir, internal_links)
-    link_db.insert_external_links(chr_dir, external_links)
+        if from_bubbles is None and to_bubbles is None:
+            continue
+        
+        print(f"Processing link {link_id} with bubbles {from_bubbles} -> {to_bubbles}")
+        counts[len(from_bubbles) if from_bubbles else 0] += 1
+        counts[len(to_bubbles) if to_bubbles else 0] += 1
 
+        #if from_bubble == to_bubble:
+        #    internal_links.append((from_bubble, link_id))
+        #    internal_links.append((to_bubble, link_id))
+        #else:
+        #    external_links.append((from_bubble, link_id))
+        #    external_links.append((to_bubble, link_id))
+
+    print("Link counts by bubble size:", counts)
+    db.insert_internal_links(chr_dir, internal_links)
+    db.insert_external_links(chr_dir, external_links)
+
+    
 def construct_bubble_index(segments, links, graph, chr_dir, ref, plot=False):
     step_index = StepIndex(chr_dir, ref)
     step_dict = step_index.segment_map()
 
     db.create_bubble_tables(chr_dir)
-    link_db.create_bubble_link_table(chr_dir)
 
     bubbles = []
 

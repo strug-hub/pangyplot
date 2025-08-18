@@ -4,7 +4,6 @@ from bisect import bisect_left
 from array import array
 
 import pangyplot.db.sqlite.bubble_db as db
-import pangyplot.db.sqlite.bubble_link_db as link_db
 
 import pangyplot.db.db_utils as utils
 from pangyplot.objects.Chain import Chain
