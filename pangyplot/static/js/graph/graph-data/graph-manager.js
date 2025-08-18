@@ -188,11 +188,14 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
       const sourceNode = getNodeElement(link.sourceId);
       const targetNode = getNodeElement(link.targetId);
 
+      console.log("here",sourceNode, targetNode);
       //when a bubble end doesn't pair to another bubble
       if (sourceNode && sourceNode.element.unpaired) {
+        console.log(`Unpaired bubble end found: ${link.sourceId}`);
         ends.push([link.sourceId, null]);
         continue;
       } else if (targetNode && targetNode.element.unpaired) {
+        console.log(`Unpaired bubble end found: ${link.targetId}`);
         ends.push([link.targetId, null]);
         continue;
       }
