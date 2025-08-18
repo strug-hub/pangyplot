@@ -133,31 +133,31 @@ def store_bubble_links(links, bubbles, chr_dir):
     bubble_to_node = dict()
 
     for bubble in bubbles:
-        #if bubble.id not in node_to_bubble:
-            #bubble_to_node[bubble.id] = set()
         for nid in bubble.inside:
-            #bubble_to_node[bubble.id].add(nid)
             node_to_bubble[nid] = bubble.id
 
-    internal,external = True, False
-    bubble_links = defaultdict(lambda: {internal: [], external: []})
-
+    internal_links = []
+    external_links = []
+    
     for key, link in links.items():
         from_id, to_id = key
         from_bubble = node_to_bubble.get(from_id)
         to_bubble = node_to_bubble.get(to_id)
 
-        is_internal = from_bubble == to_bubble
+        if from_bubble is None and to_bubble is None:
+            continue
+ 
         link_id = link.id()
 
-        print(from_bubble, to_bubble, is_internal, link_id)
-        bubble_links[from_bubble][is_internal].append(link_id)
-        bubble_links[to_bubble][is_internal].append(link_id)
+        if from_bubble == to_bubble:
+            internal_links.append((from_bubble, link_id))
+            internal_links.append((to_bubble, link_id))
+        else:
+            external_links.append((from_bubble, link_id))
+            external_links.append((to_bubble, link_id))
 
-    for bubble_id, links in bubble_links.items():
-        link_db.insert_internal_links(chr_dir, bubble_id, links[internal])
-        link_db.insert_external_links(chr_dir, bubble_id, links[external])
-
+    link_db.insert_internal_links(chr_dir, internal_links)
+    link_db.insert_external_links(chr_dir, external_links)
 
 def construct_bubble_index(segments, links, graph, chr_dir, ref, plot=False):
     step_index = StepIndex(chr_dir, ref)

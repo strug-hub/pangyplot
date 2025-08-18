@@ -62,7 +62,6 @@ class Bubble:
             shouldFlipSink = True      
 
         if shouldFlipSource and shouldFlipSink:
-            print(f"[WARNING] Bubble {self.id} has ambiguous source/sink segments, defaulting to original assignment")
             self.siblings = [prevBubble.id if prevBubble else None, nextBubble.id if nextBubble else None]
             self.source_segments, self.sink_segments = self.sink_segments, self.source_segments
 
