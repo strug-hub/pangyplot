@@ -49,6 +49,7 @@ class BubbleJunction:
             "type": "bubble:end",
             "parent": f"b{self.other_bubble_id}" if self.is_chain_end else None,
             "parent_end": f"c{self.other_id}" if self.is_chain_end else None,
+            "unpaired": self.other_id is None,
             "bubble_id": self.bubble_id,
             "subtype": "source" if self.is_source else "sink",
             "length": self.length,

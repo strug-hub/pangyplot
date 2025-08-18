@@ -31,6 +31,7 @@ class BubbleEnd extends GraphElementNode {
         this.subtype = rawBubbleEnd.subtype;
         this.parent = rawBubbleEnd.parent;
         this.parentEnd = rawBubbleEnd.parent_end;
+        this.unpaired = rawBubbleEnd.unpaired;
         this.chain = rawBubbleEnd.chain;
         this.size = rawBubbleEnd.size;
     }
