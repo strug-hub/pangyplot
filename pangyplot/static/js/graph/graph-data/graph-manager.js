@@ -109,8 +109,6 @@ function rescueLinks(subgraph) {
     for (const link of getLinkElements(node.id)) {
       const linkId = link.linkId;
       if (linkIds.has(linkId)) continue;
-
-      console.log(`Rescuing link ${linkId} for node ${node.id}`);
       linkIds.add(linkId);
       subgraph.links.push(link);
     }
@@ -176,17 +174,28 @@ export function removeNode(id, graphData) {
   );
 }
 
-function findFullBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
+function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   const ends = [];
+  const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
+
   for (const link of subgraph.links) {
     if (link.element.isPopLink) {
 
-      const source_node = getNodeElement(link.sourceId);
-      const target_node = getNodeElement(link.targetId);
-      
-      if (source_node && source_node.element.parentEnd === target_node.id) {
+      // active nodes are in the graphData we check if they are in the subgraph
+      const sourceActive = isNodeActive(link.sourceId) || subgraphNodes.includes(link.sourceId);
+      const targetActive = isNodeActive(link.targetId) || subgraphNodes.includes(link.targetId);
+
+      const sourceNode = getNodeElement(link.sourceId);
+      const targetNode = getNodeElement(link.targetId);
+
+      console.log("Source/Target active:", subgraphNodes, sourceActive, targetActive, link.sourceId, link.targetId);
+      console.log("Source/Target nodes:", subgraphNodes.includes(link.sourceId), subgraphNodes.includes(link.targetId));
+      if (!sourceActive || !targetActive) {
+        continue; // Skip if either end is not active
+      }
+      if (sourceNode && sourceNode.element.parentEnd === targetNode.id) {
         ends.push([link.sourceId, null]);
-      } else if (target_node && target_node.element.parentEnd === source_node.id) {
+      } else if (targetNode && targetNode.element.parentEnd === sourceNode.id) {
         ends.push([link.targetId, null]);
       } else{
         ends.push([link.targetId, link.sourceId]);
@@ -197,7 +206,7 @@ function findFullBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   // If both ends of a chain are present, fetch the segments inside
   const fetchPromises = [];
   for (const [node1, node2] of ends) {
-    console.log(`Processing bubble end for ${node1} and ${node2}`);
+
     fetchPromises.push(
       fetchBubbleEndFn(node1).then(endData => {
         const endSubgraph = buildGraphData(endData);
@@ -213,7 +222,6 @@ function findFullBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
 
     removeNode(node1, graphData);
     removeNode(node1, subgraph);
-
     if (node2) {
       removeNode(node2, subgraph);
       removeNode(node2, graphData);
@@ -229,10 +237,9 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
   const subgraph = buildGraphData(rawSubgraph);
 
   addInsideContents(bubbleId, subgraph);
+  //rescueLinks(subgraph);
 
-  rescueLinks(subgraph);
-
-  const fetchPromises = findFullBubbleEnds(graphData, subgraph, fetchBubbleEndFn);
+  const fetchPromises = retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn);
   await Promise.all(fetchPromises);
 
   removeNode(bubbleId, graphData);
@@ -276,6 +283,10 @@ export function getActiveDeletionLinks() {
 
 export function getNodeElement(nodeId) {
   return nodeIdDict.get(nodeId) || null;
+}
+
+export function isNodeActive(nodeId) {
+  return nodeDict.has(nodeId) && nodeDict.get(nodeId).active;
 }
 
 export function getNodeElements(id) {
