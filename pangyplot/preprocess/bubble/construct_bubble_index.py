@@ -1,6 +1,8 @@
 import os
 from pangyplot.db.indexes.StepIndex import StepIndex
 import pangyplot.db.sqlite.bubble_db as db
+import pangyplot.db.sqlite.bubble_link_db as link_db
+
 from pangyplot.utils.plot_bubbles import plot_bubbles
 from collections import defaultdict
 from pangyplot.objects.Bubble import Bubble
@@ -125,9 +127,44 @@ def find_children(bubbles):
             bubble_parent = bubble_dict[bubble.parent]
             bubble_parent.add_child(bubble, bubble_dict)
 
-def construct_bubble_index(graph, chr_dir, ref, plot=False):
+
+def store_bubble_links(links, bubbles, chr_dir):
+    node_to_bubble = dict()
+    bubble_to_node = dict()
+
+    for bubble in bubbles:
+        #if bubble.id not in node_to_bubble:
+            #bubble_to_node[bubble.id] = set()
+        for nid in bubble.inside:
+            #bubble_to_node[bubble.id].add(nid)
+            node_to_bubble[nid] = bubble.id
+
+    internal,external = True, False
+    bubble_links = defaultdict(lambda: {internal: [], external: []})
+
+    for key, link in links.items():
+        from_id, to_id = key
+        from_bubble = node_to_bubble.get(from_id)
+        to_bubble = node_to_bubble.get(to_id)
+
+        is_internal = from_bubble == to_bubble
+        link_id = link.id()
+
+        print(from_bubble, to_bubble, is_internal, link_id)
+        bubble_links[from_bubble][is_internal].append(link_id)
+        bubble_links[to_bubble][is_internal].append(link_id)
+
+    for bubble_id, links in bubble_links.items():
+        link_db.insert_internal_links(chr_dir, bubble_id, links[internal])
+        link_db.insert_external_links(chr_dir, bubble_id, links[external])
+
+
+def construct_bubble_index(segments, links, graph, chr_dir, ref, plot=False):
     step_index = StepIndex(chr_dir, ref)
     step_dict = step_index.segment_map()
+
+    db.create_bubble_tables(chr_dir)
+    link_db.create_bubble_link_table(chr_dir)
 
     bubbles = []
 
@@ -137,9 +174,9 @@ def construct_bubble_index(graph, chr_dir, ref, plot=False):
 
     find_children(bubbles)
 
-    db.create_bubble_tables(chr_dir)
     db.insert_bubbles(chr_dir, bubbles)
-
+    store_bubble_links(links, bubbles, chr_dir)
+    
     if plot:
         plot_path = os.path.join(chr_dir, "bubbles.plot.svg")
         plot_bubbles(bubbles, output_path=plot_path)
