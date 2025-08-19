@@ -1,7 +1,8 @@
 from itertools import product
 from collections import defaultdict
+import pangyplot.db.sqlite.bubble_db as db
 
-def classify_link(from_bubbles, to_bubbles, parent_child_dict, chain_end_dict):
+def classify_link(from_bubbles, to_bubbles, parent_child_dict):
 
     # this is a function that untangles the complex link relationships
     # at the ends of bubbles. Links here go to a bubble end (source or sink)
@@ -29,23 +30,24 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict, chain_end_dict):
         return [],[]
     
     if from_bubbles is None or to_bubbles is None:
-        types.append("seg-bubble") #[segment]-[bubble]
-        alt_links = [(from_bubbles, to_bubbles)] # Scenario 3.1
+        types.append("singleton") #[segment]-[bubble]
+        alt_links.append(("singleton", (from_bubbles, to_bubbles))) # Scenario 3.1
         return types, alt_links
-   
+
+    print("pairs", list(product(from_bubbles, to_bubbles)))
     for pair in list(product(from_bubbles, to_bubbles)):
         (b1, x1), (b2, x2) = pair
-         
+        
         if b1 == b2: # Scenario 1
             if {x1, x2} == {inside}:
                 types.append("internal") #[segment]-[segment]
                 continue
-            if {x1, x2} == {source, inside} or {x1, x2} == {sink, inside}:
-                types.append("inside-end"); #[segment]-[bubble]
-                alt_links.append(("inside-end", pair)) # Scenario 1.1
-                continue
             if x1 == x2:
                 types.append("compacted"); #[segment]-[segment]
+                continue
+            if {x1, x2} == {source, inside} or {x1, x2} == {sink, inside}:
+                types.append("end"); #[segment]-[bubble]
+                alt_links.append(("end", pair)) # Scenario 1.1
                 continue
             if {x1, x2} == {source, sink}:
                 types.append("deletion") #[bubble]-[bubble]
@@ -53,56 +55,40 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict, chain_end_dict):
                 continue
         elif b1 != b2: # different bubbles
             if b1 in parent_child_dict[b2]:
-                if inside == x1 and chain_end_dict.get((b2, x2), False):
-                    if :
-                        types.append("parent-child-chain")
-                    types.append("parent-child"); continue #[segment]-[child_bubble]
-                else:
-                    types.append("parent-child-ends") #[parent_bubble]-[child_bubble]
-                    alt_links.append(("parent-child-ends", pair)) 
-                    continue 
+                if x1 in {source, sink} and x2 in {source, sink}:
+                    types.append("parent-child") #[parent_bubble]-[child_bubble]
+                    alt_links.append(("parent-child", pair)) # Scenario 3.2
+                    continue
+                elif {x1,x2} == {inside}:
+                    # shouldn't happen
+                    types.append("parent-child-insides") 
+                    continue
+                else: # one inside (parent), one end
+                    types.append("singleton") #[segment]-[child_bubble]
+                    alt_links.append(("singleton", pair)) # Scenario 3.3
+                    continue
+
+            elif {x1, x2} == {source, inside} or {x1, x2} == {sink, inside}:
+                types.append("chain") # Scenario 2.1
+                alt_links.append(("chain", pair))
+                continue
 
             if {x1, x2} == {source, sink} or {x1, x2} == {source} or {x1, x2} == {sink}:
-                types.append("sib-ends") # this one is strange because you'd think it would be a bubble chain but they aren't connected by a end???
-                continue
-            if {x1, x2} == {source, inside}:
-                types.append("inside-sib-source")
-                continue
-            if {x1, x2} == {sink, inside}:
-                types.append("inside-sib-sink")
+                # almost a bubble chain but they aren't connected by a common end
+                # though it happens with deletion links
+                types.append("non-chain-ends") 
                 continue
 
+        print(f"Unknown link type: {pair}")
         types.append("unknown")
     
-    print("raw types:", types)
+    #print("raw types:", types)
 
-    if "compacted" in types:
-        types = ["compacted"]
-
-    if "deletion" in types:
-        types = ["deletion"]
-
-    if len(types) > 1:
-        types = [t for t in types if t != "parent-child"]
-    if len(types) > 1:
-        types = [t for t in types if t != "internal"]
-
-    if "inside-sib-sink" in types and "source-inside" in types:
-        types = [t for t in types if t not in ["inside-sib-sink", "source-inside"]]
-        types.append("end-link")
-    if "inside-sib-source" in types and "sink-inside" in types:
-        types = [t for t in types if t not in ["inside-sib-source", "sink-inside"]]
-        types.append("end-link")
-
-    types.sort()
-
-    return types, alt_links
-
+    return alt_links
 
 def store_bubble_links(links, bubbles, chr_dir):
     node_to_bubbles = defaultdict(set)
     parent_child_dict = defaultdict(set)
-    chain_end_dict = defaultdict()
 
     source, sink, inside = 0, 1, 2
 
@@ -116,17 +102,14 @@ def store_bubble_links(links, bubbles, chr_dir):
         for nid in bubble.get_source_segments():
             key = (bubble.id, source)
             node_to_bubbles[nid].add(key)
-            chain_end_dict[key] = bubble.is_source_chain_end()
         for nid in bubble.get_sink_segments():
             key = (bubble.id, sink)
             node_to_bubbles[nid].add(key)
-            chain_end_dict[key] = bubble.is_sink_chain_end()
         for nid in bubble.inside:
             node_to_bubbles[nid].add((bubble.id, inside))
 
     internal_links = []
     external_links = []
-    counts = defaultdict(int)
 
     for key, link in links.items():
         link_id = link.id()
@@ -134,29 +117,10 @@ def store_bubble_links(links, bubbles, chr_dir):
         from_id, to_id = key
         from_bubbles = node_to_bubbles.get(from_id)
         to_bubbles = node_to_bubbles.get(to_id)
+        print(f"Processing link {link_id} with bubbles {from_bubbles} -> {to_bubbles}...")
+        alt_links = classify_link(from_bubbles, to_bubbles, parent_child_dict)
 
-        link_type, alt_links = classify_link(from_bubbles, to_bubbles, parent_child_dict)
-        counts[";".join(link_type)] += 1
-
-        print(f"Processing link {link_id} with bubbles {from_bubbles} -> {to_bubbles}... {link_type}")
-        if ";".join(link_type) == "inside-sib-source;parent-child-ends;source-inside":
-            input("Press Enter to continue...")
-
-
-        if from_bubbles is None and to_bubbles is None:
-            continue
-        
-        #if from_bubble == to_bubble:
-        #    internal_links.append((from_bubble, link_id))
-        #    internal_links.append((to_bubble, link_id))
-        #else:
-        #    external_links.append((from_bubble, link_id))
-        #    external_links.append((to_bubble, link_id))
-
-    for key,count in counts.items():
-        print(f"{key}: {count}")
-
-    input("Press Enter to continue...")
+        #TODO: handle alt_links
 
     db.insert_internal_links(chr_dir, internal_links)
     db.insert_external_links(chr_dir, external_links)

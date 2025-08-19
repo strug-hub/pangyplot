@@ -81,7 +81,12 @@ class Bubble:
 
     def add_child(self, child, bubble_dict):
         self.children.append(child.id)
-        self._clean_inside(child.inside, bubble_dict)
+        to_remove = set()
+        for sid in child.get_end_segments():
+            to_remove.add(sid)
+        for sid in child.inside:
+            to_remove.add(sid)
+        self._clean_inside(to_remove, bubble_dict)
 
     def get_siblings(self):
         return self.siblings

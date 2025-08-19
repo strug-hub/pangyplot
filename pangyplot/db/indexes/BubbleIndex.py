@@ -216,11 +216,11 @@ class BubbleIndex:
             all_links.extend(links)
 
         #[segment]-[segment]
-        internal_chain_segments = set()
-        for chain in chains:
-            internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
-
-        exposed_segments = bubble.inside - internal_chain_segments
+        #internal_chain_segments = set()
+        #for chain in chains:
+        #    internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
+        #exposed_segments = bubble.inside - internal_chain_segments
+        exposed_segments = bubble.inside
 
         inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
         all_nodes.extend(inside_segments)
