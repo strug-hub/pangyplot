@@ -98,6 +98,13 @@ class Bubble:
     def get_sink_segments(self):
         return self.sink_segments
 
+    def is_chain_end(self):
+        return self.siblings[0] is None or self.siblings[1] is None
+    def is_source_chain_end(self):
+        return self.siblings[0] is None
+    def is_sink_chain_end(self):
+        return self.siblings[1] is None
+        
     def get_end_segments(self):
         return self.get_source_segments() + self.get_sink_segments()
     
