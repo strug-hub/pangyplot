@@ -27,7 +27,14 @@ class Bubble:
         self.x2 = 0
         self.y1 = 0
         self.y2 = 0
-        
+
+
+        #todo: convert to dict, read/write from db
+        self.chain_links = []
+        self.deletion_link = None
+        self.parent_links = []
+        self.singleton_links = []
+
     def get_serialized_id(self):
         return f"b{self.id}"
 
@@ -73,6 +80,18 @@ class Bubble:
         if sibling is None: return
         self.siblings[1] = sibling.id
 
+    def add_chain_link(self, link_id, from_id, to_id):
+        self.chain_links.append((link_id, from_id, to_id))
+
+    def add_deletion_link(self, link_id):
+        self.deletion_link = link_id
+
+    def add_parent_link(self, link_id, from_id, to_id):
+        self.parent_links.append((link_id, from_id, to_id))
+
+    def add_singleton_link(self, link_id, from_id, to_id):
+        self.singleton_links.append((link_id, from_id, to_id))
+
     def _clean_inside(self, inside_ids, bubble_dict):
         self.inside -= inside_ids
         if self.parent:
@@ -105,10 +124,6 @@ class Bubble:
 
     def is_chain_end(self):
         return self.siblings[0] is None or self.siblings[1] is None
-    def is_source_chain_end(self):
-        return self.siblings[0] is None
-    def is_sink_chain_end(self):
-        return self.siblings[1] is None
         
     def get_end_segments(self):
         return self.get_source_segments() + self.get_sink_segments()

@@ -27,14 +27,18 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict):
     types, alt_links = [],[]
 
     if from_bubbles is None and to_bubbles is None:
-        return [],[]
+        return alt_links
     
     if from_bubbles is None or to_bubbles is None:
-        types.append("singleton") #[segment]-[bubble]
-        alt_links.append(("singleton", (from_bubbles, to_bubbles))) # Scenario 3.1
-        return types, alt_links
+        valid_bubbles = from_bubbles if from_bubbles is not None else to_bubbles
+        for bub in valid_bubbles:
+            fb = bub if from_bubbles is not None else (None, None)
+            tb = bub if to_bubbles is not None else (None, None)
 
-    print("pairs", list(product(from_bubbles, to_bubbles)))
+            types.append("singleton") #[segment]-[bubble]
+            alt_links.append(("singleton", (fb, tb))) # Scenario 3.1
+        return alt_links
+    
     for pair in list(product(from_bubbles, to_bubbles)):
         (b1, x1), (b2, x2) = pair
         
@@ -79,14 +83,14 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict):
                 types.append("non-chain-ends") 
                 continue
 
-        print(f"Unknown link type: {pair}")
         types.append("unknown")
     
     #print("raw types:", types)
 
     return alt_links
 
-def store_bubble_links(links, bubbles, chr_dir):
+def store_bubble_links(links, bubbles):
+    bubble_dict = {bubble.id: bubble for bubble in bubbles}
     node_to_bubbles = defaultdict(set)
     parent_child_dict = defaultdict(set)
 
@@ -108,20 +112,46 @@ def store_bubble_links(links, bubbles, chr_dir):
         for nid in bubble.inside:
             node_to_bubbles[nid].add((bubble.id, inside))
 
-    internal_links = []
-    external_links = []
-
     for key, link in links.items():
-        link_id = link.id()
-
         from_id, to_id = key
         from_bubbles = node_to_bubbles.get(from_id)
         to_bubbles = node_to_bubbles.get(to_id)
-        print(f"Processing link {link_id} with bubbles {from_bubbles} -> {to_bubbles}...")
+        #print(f"Processing link {link_id} with bubbles {from_bubbles} -> {to_bubbles}...")
         alt_links = classify_link(from_bubbles, to_bubbles, parent_child_dict)
+        
+        for alt in alt_links:
+            print(alt[1])
+            (b1, x1), (b2, x2) = alt[1]
+            link_id = link.id()
+            if alt[0] == "chain":
+                if x1 == inside:
+                    if x2 == source:
+                        bubble_dict[b1].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
+                    if x2 == sink:
+                        bubble_dict[b1].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
+                if x2 == inside:
+                    if x1 == source:
+                        bubble_dict[b2].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
+                    if x1 == sink:
+                        bubble_dict[b2].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
+            elif alt[0] == "deletion":
+                bubble_dict[b1].add_deletion_link(link_id)
+            elif alt[0] == "parent-child":
+                #todo: only give it to the child
+                bubble_dict[b1].add_parent_link(link_id, f"{b1}:{x1}", f"{b2}:{x2}")
+            elif alt[0] == "singleton":
+                from_id = f"{b1}:{x1}" if b1 else None
+                to_id = f"{b2}:{x2}" if b2 else None
+                b = b1 if b1 else b2
+                #todo: only give it to the child (second case scenario)
+                bubble_dict[b].add_singleton_link(link_id, from_id, to_id)
 
-        #TODO: handle alt_links
+    for bubble in bubbles:
+        print(bubble.id, "chain links:", bubble.chain_links)
+        print(bubble.id, "deletion link:", bubble.deletion_link)
+        print(bubble.id, "parent links:", bubble.parent_links)
+        print(bubble.id, "singleton links:", bubble.singleton_links)
+        print("----------------------")
 
-    db.insert_internal_links(chr_dir, internal_links)
-    db.insert_external_links(chr_dir, external_links)
+    
 

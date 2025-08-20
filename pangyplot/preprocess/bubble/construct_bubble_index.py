@@ -145,7 +145,7 @@ def construct_bubble_index(segments, links, graph, chr_dir, ref, plot=False):
     find_children(bubbles)
 
     db.insert_bubbles(chr_dir, bubbles)
-    bubble_links.store_bubble_links(links, bubbles, chr_dir)
+    bubble_links.store_bubble_links(links, bubbles)
     
     if plot:
         plot_path = os.path.join(chr_dir, "bubbles.plot.svg")
