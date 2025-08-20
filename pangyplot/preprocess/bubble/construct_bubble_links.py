@@ -2,8 +2,7 @@ from itertools import product
 from collections import defaultdict
 import pangyplot.db.sqlite.bubble_db as db
 
-def classify_link(from_bubbles, to_bubbles, parent_child_dict):
-
+def classify_link(link, from_bubbles, to_bubbles, parent_child_dict):
     # this is a function that untangles the complex link relationships
     # at the ends of bubbles. Links here go to a bubble end (source or sink)
     # or inside a bubble. And of course bubbles can be nested in other bubbles.
@@ -22,9 +21,10 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict):
     # 2. [BubbleA source/sink]-[ParentBubble source/sink] a link from a child bubble to its parent bubble
     # 3. [BubbleA source/sink]-[ParentBubble inside] similar to case 1 but segment is inside a bubble
     
-    source, sink, inside = 0, 1, 2
+    source, sink, inside, segment = 0, 1, 2, -1
 
-    types, alt_links = [],[]
+    types = []
+    alt_links = defaultdict(list)
 
     if from_bubbles is None and to_bubbles is None:
         return alt_links
@@ -32,11 +32,12 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict):
     if from_bubbles is None or to_bubbles is None:
         valid_bubbles = from_bubbles if from_bubbles is not None else to_bubbles
         for bub in valid_bubbles:
-            fb = bub if from_bubbles is not None else (None, None)
-            tb = bub if to_bubbles is not None else (None, None)
+            fb = bub if from_bubbles is not None else (link.from_id, segment)
+            tb = bub if to_bubbles is not None else (link.to_id, segment)
 
             types.append("singleton") #[segment]-[bubble]
-            alt_links.append(("singleton", (fb, tb))) # Scenario 3.1
+            alt_links["singleton"].append((fb, tb)) # Scenario 3.1
+
         return alt_links
     
     for pair in list(product(from_bubbles, to_bubbles)):
@@ -50,31 +51,36 @@ def classify_link(from_bubbles, to_bubbles, parent_child_dict):
                 types.append("compacted"); #[segment]-[segment]
                 continue
             if {x1, x2} == {source, inside} or {x1, x2} == {sink, inside}:
-                types.append("end"); #[segment]-[bubble]
-                alt_links.append(("end", pair)) # Scenario 1.1
+                types.append("end"); #[segment]-[bubble] Scenario 1.1
+                alt_links["end"].append(pair)
                 continue
             if {x1, x2} == {source, sink}:
-                types.append("deletion") #[bubble]-[bubble]
-                alt_links.append(("deletion", pair)) # Scenario 1.2
+                types.append("deletion") #[bubble]-[bubble] Scenario 1.2
+                alt_links["deletion"].append(pair)
                 continue
         elif b1 != b2: # different bubbles
             if b1 in parent_child_dict[b2]:
                 if x1 in {source, sink} and x2 in {source, sink}:
-                    types.append("parent-child") #[parent_bubble]-[child_bubble]
-                    alt_links.append(("parent-child", pair)) # Scenario 3.2
-                    continue
+                    types.append("parent-child") #[parent_bubble]-[child_bubble] Scenario 3.2
+                    alt_links["parent-child"].append(pair)
                 elif {x1,x2} == {inside}:
                     # shouldn't happen
                     types.append("parent-child-insides") 
                     continue
                 else: # one inside (parent), one end
-                    types.append("singleton") #[segment]-[child_bubble]
-                    alt_links.append(("singleton", pair)) # Scenario 3.3
+                    types.append("singleton") #[segment]-[child_bubble] Scenario 3.3
+
+                    if x1 == inside:
+                        seg_pair = ((link.from_id, segment), (b2, x2))
+                        alt_links["singleton"].append(seg_pair)
+                    elif x2 == inside:
+                        seg_pair = ((b1, x1), (link.to_id, segment))
+                        alt_links["singleton"].append(seg_pair)
                     continue
 
             elif {x1, x2} == {source, inside} or {x1, x2} == {sink, inside}:
-                types.append("chain") # Scenario 2.1
-                alt_links.append(("chain", pair))
+                types.append("chain") # [bubble]-[bubble] Scenario 2.1
+                alt_links["chain"].append(pair)
                 continue
 
             if {x1, x2} == {source, sink} or {x1, x2} == {source} or {x1, x2} == {sink}:
@@ -94,15 +100,13 @@ def store_bubble_links(links, bubbles):
     node_to_bubbles = defaultdict(set)
     parent_child_dict = defaultdict(set)
 
-    source, sink, inside = 0, 1, 2
+    source, sink, inside, segment = 0, 1, 2, -1
 
     for bubble in bubbles:
         if bubble.parent:
             parent_child_dict[bubble.parent].add(bubble.id)
             parent_child_dict[bubble.id].add(bubble.parent)
         
-        #for nid in bubble.inside:
-        #    node_to_bubbles[nid].add(bubble.id)
         for nid in bubble.get_source_segments():
             key = (bubble.id, source)
             node_to_bubbles[nid].add(key)
@@ -116,42 +120,35 @@ def store_bubble_links(links, bubbles):
         from_id, to_id = key
         from_bubbles = node_to_bubbles.get(from_id)
         to_bubbles = node_to_bubbles.get(to_id)
-        #print(f"Processing link {link_id} with bubbles {from_bubbles} -> {to_bubbles}...")
-        alt_links = classify_link(from_bubbles, to_bubbles, parent_child_dict)
+        alt_links = classify_link(link, from_bubbles, to_bubbles, parent_child_dict)
         
-        for alt in alt_links:
-            print(alt[1])
-            (b1, x1), (b2, x2) = alt[1]
-            link_id = link.id()
-            if alt[0] == "chain":
-                if x1 == inside:
-                    if x2 == source:
-                        bubble_dict[b1].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
-                    if x2 == sink:
-                        bubble_dict[b1].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
-                if x2 == inside:
-                    if x1 == source:
-                        bubble_dict[b2].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
-                    if x1 == sink:
-                        bubble_dict[b2].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
-            elif alt[0] == "deletion":
-                bubble_dict[b1].add_deletion_link(link_id)
-            elif alt[0] == "parent-child":
-                #todo: only give it to the child
-                bubble_dict[b1].add_parent_link(link_id, f"{b1}:{x1}", f"{b2}:{x2}")
-            elif alt[0] == "singleton":
-                from_id = f"{b1}:{x1}" if b1 else None
-                to_id = f"{b2}:{x2}" if b2 else None
-                b = b1 if b1 else b2
-                #todo: only give it to the child (second case scenario)
-                bubble_dict[b].add_singleton_link(link_id, from_id, to_id)
+        link_id = link.id()
 
-    for bubble in bubbles:
-        print(bubble.id, "chain links:", bubble.chain_links)
-        print(bubble.id, "deletion link:", bubble.deletion_link)
-        print(bubble.id, "parent links:", bubble.parent_links)
-        print(bubble.id, "singleton links:", bubble.singleton_links)
-        print("----------------------")
-
-    
-
+        for link_type in alt_links:
+            for (b1, x1), (b2, x2) in alt_links[link_type]:
+                if link_type == "chain":
+                    if x1 == inside:
+                        if x2 == source:
+                            bubble_dict[b1].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
+                        if x2 == sink:
+                            bubble_dict[b1].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
+                    if x2 == inside:
+                        if x1 == source:
+                            bubble_dict[b2].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
+                        if x1 == sink:
+                            bubble_dict[b2].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
+                elif link_type == "deletion":
+                    bubble_dict[b1].add_deletion_link(link_id)
+                elif link_type == "parent-child":
+                    if bubble_dict[b1].parent == b2:
+                        b = b1
+                    elif bubble_dict[b2].parent == b1:
+                        b = b2
+                    else:
+                        continue
+                    bubble_dict[b].add_parent_link(link_id, f"{b1}:{x1}", f"{b2}:{x2}")
+                elif link_type == "singleton":
+                    if x1 == segment:
+                        bubble_dict[b2].add_singleton_link(link_id, f"{b1}", f"{b2}:{x2}")
+                    if x2 == segment:
+                        bubble_dict[b1].add_singleton_link(link_id, f"{b1}{x1}", f"{b2}")

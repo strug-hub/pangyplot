@@ -28,7 +28,6 @@ class Bubble:
         self.y1 = 0
         self.y2 = 0
 
-
         #todo: convert to dict, read/write from db
         self.chain_links = []
         self.deletion_link = None
@@ -91,6 +90,28 @@ class Bubble:
 
     def add_singleton_link(self, link_id, from_id, to_id):
         self.singleton_links.append((link_id, from_id, to_id))
+
+    def summarize_link_data(self):
+        link_data = dict()
+        if len(self.chain_links) > 0:
+            link_data["chain"] = self.chain_links
+        if self.deletion_link is not None:
+            link_data["deletion"] = self.deletion_link
+        if len(self.parent_links) > 0:
+            link_data["parent-child"] = self.parent_links
+        if len(self.singleton_links) > 0:
+            link_data["singleton"] = self.singleton_links
+        return link_data
+    
+    def set_link_data(self, link_data):
+        if "chain" in link_data:
+            self.chain_links = link_data["chain"]
+        if "deletion" in link_data:
+            self.deletion_link = link_data["deletion"]
+        if "parent-child" in link_data:
+            self.parent_links = link_data["parent-child"]
+        if "singleton" in link_data:
+            self.singleton_links = link_data["singleton"]
 
     def _clean_inside(self, inside_ids, bubble_dict):
         self.inside -= inside_ids
