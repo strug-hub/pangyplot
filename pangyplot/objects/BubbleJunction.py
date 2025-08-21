@@ -2,53 +2,27 @@ from pangyplot.objects.Link import Link
 from statistics import mean
 
 class BubbleJunction:
-    def __init__(self, bubble, is_source, parent_bubble=None, gfaidx=None):
+    def __init__(self, bubble, is_source, gfaidx):
         self.is_source = is_source
 
-        self.bubble_id = bubble.id
-        self.id = ":".join([str(bubble.chain),
-                            str(bubble.chain_step - 1 if is_source else bubble.chain_step),
-                            str(1 if is_source else 0)]) 
+        self.gfaidx = gfaidx
+        self.bubble = bubble
 
-        self.other_bubble_id = bubble.get_previous_sibling() if is_source else bubble.get_next_sibling()
-        self.is_chain_end = self.other_bubble_id is None
-
-        if not self.is_chain_end:
-            self.other_id = ":".join([str(bubble.chain),
-                                str(bubble.chain_step - 1 if is_source else bubble.chain_step),
-                                str(0 if is_source else 1)]) 
-        else:
-            self.other_id = None
+        self.id = f"{bubble.id}:{0 if is_source else 1}"
+        self.other_id = f"{bubble.id}:{1 if is_source else 0}"
 
         self.contained = set(bubble.source_segments if is_source else bubble.sink_segments)
-        
-        if gfaidx is not None:
-            self.segments = [gfaidx[seg_id] for seg_id in self.contained]
-            linkDict = {link.id: link for seg_id in self.contained for link in gfaidx.get_links(seg_id)}
-            self.links = list(linkDict.values())
-            
-            self.length = sum(seg.length for seg in self.segments)
+        self.length = sum([gfaidx.segment_length(sid) for sid in self.contained])
+        self.segments = [gfaidx[sid] for sid in self.contained]
 
-        if self.is_chain_end and parent_bubble is not None:
-            self.other_bubble_id = parent_bubble.id
-            self.other_id = self.match_junction(parent_bubble, gfaidx)
-            
-    def match_junction(self, bubble, gfaidx):
-        if gfaidx is None: return None
-        junctions = bubble.emit_junctions(gfaidx, parent_hint=None)
-        for junction in junctions:
-            seg_ids = set(junction.contained)
-            for link in self.links:
-                if link.to_id in seg_ids or link.from_id in seg_ids:
-                    return junction.id
-        return None
-    
+        self.is_chain_end = bubble.siblings[0] is None if is_source else bubble.siblings[1] is None
+
     def serialize(self):
         return {
-            "id": f"c{self.id}",
+            "id": f"b{self.id}",
             "type": "bubble:end",
             "chain_end": self.is_chain_end,
-            "bubble_id": self.bubble_id,
+            "bubble_id": self.bubble.id,
             "subtype": "source" if self.is_source else "sink",
             "length": self.length,
             "size": len(self.contained),
@@ -60,126 +34,162 @@ class BubbleJunction:
             "x2": mean([seg.x2 for seg in self.segments]),
             "y2": mean([seg.y2 for seg in self.segments])
         }
-
-    def create_link(self, from_type, from_id, to_type, to_id, should_flip=False,
-                    copy_link=None, chain_link=False, pop_link=False, deletion_link=False):
-        if copy_link is None:
-            link = Link()
-        else:
-            link = copy_link.clone()
-        if from_id is not None:
-            link.from_id = from_id if not should_flip else to_id
-        if to_id is not None:
-            link.to_id = to_id if not should_flip else from_id
-        if chain_link:
-            link.make_chain_link(list(self.contained), self.length)
-        if pop_link:
-            link.make_pop_link()
-        if deletion_link:
-            link.set_as_deletion(self.bubble_id)
-        if from_type is not None:
-            link.set_from_type(from_type if not should_flip else to_type)
-        if to_type is not None:
-            link.set_to_type(to_type if not should_flip else from_type)
-
-        #link.haplotype
-        #link.reverse
-        #link.frequency
     
-        return link
+    def fetch_links(self, link_ids):
+        links = self.gfaidx.get_links_by_id(link_ids)
+        link_dict = {link.id(): link for link in links}
+        return link_dict
 
-    #[bubble]-[bubble]
     def get_chain_links(self):
-        if self.other_bubble_id is None: return []
+        chain_link = self.bubble.get_chain_link(self.gfaidx, self.is_source)
+        chain_link.add_to_suffix("0") if self.is_source else \
+            chain_link.add_from_suffix("1")
 
-        if not self.is_chain_end:
-            link = self.create_link("b", self.bubble_id,
-                                    "b", self.other_bubble_id, 
-                                    chain_link=True,
-                                    should_flip=not self.is_source)
-        else:
-            link = self.create_link("b", self.bubble_id, 
-                                    "c", self.other_id, 
-                                    chain_link=True,
-                                    should_flip=not self.is_source)
-        return [link]
+        destroy_indicator = chain_link.clone()
+        destroy_indicator.add_from_suffix("1") if self.is_source else \
+            destroy_indicator.add_to_suffix("0")
+        destroy_indicator.make_pop_link()
+
+        return [chain_link, destroy_indicator]
     
-    #[bubble:end]-[bubble]
-    def get_popped_chain_links(self):
-        if self.other_bubble_id is None: return []
-        link = self.create_link("c", self.id, 
-                                "b", self.other_bubble_id, 
-                                chain_link=True,
-                                should_flip=not self.is_source)
-        return [link]
-
-    #[bubble:end]-[bubble:end]
-    def get_popped_indicator_links(self):
-        if self.is_chain_end or self.other_id is None: return []
-        link = self.create_link("c", self.id, 
-                                "c", self.other_id, 
-                                pop_link=True,
-                                should_flip=not self.is_source)
-        return [link]    
-
-    #[bubble:end]-[segment]
-    def get_segment_links(self):
-        links = []
-        for link in self.links:
-            from_contained = link.from_id in self.contained
-            to_contained = link.to_id in self.contained
-            if from_contained or to_contained:
-                seg_id = link.from_id if to_contained else link.to_id
-                new_link = self.create_link("c", self.id,
-                                            "s", seg_id,  
-                                            copy_link=link,
-                                            should_flip=to_contained)
-            links.append(new_link)
-        return links
-
-
-    #[bubble]-[segment]
-    def get_parent_popped_links(self):
-        links = []
-        if not self.is_chain_end: return []
+    def get_deletion_links(self):
+        del_id = self.bubble.deletion_link
+        if del_id is None:
+            return []
+        links = self.gfaidx.get_links_by_id([del_id])
+        if len(links) < 1: return []
+        link = links[0]
         
-        for link in self.links:
-            from_contained = link.from_id in self.contained
-            to_contained = link.to_id in self.contained
-            if from_contained or to_contained:
-                seg_id = link.from_id if to_contained else link.to_id
-                new_link = self.create_link("b", self.bubble_id,
-                                            "s", seg_id,  
-                                            copy_link=link,
-                                            chain_link=True,
-                                            should_flip=to_contained)
-            links.append(new_link)
-        return links
+        #only one side needs to construct the deletion links
+        if link.from_id not in self.contained:
+            return []
+        
+        def new_del_link(from_id=link.from_id, from_type="s",
+                         to_id=link.to_id, to_type="s",):
+            new_link = link.clone()
+            new_link.update_to_deletion_link((from_id, to_id), self.bubble.id)
+            new_link.set_from_type(from_type)
+            new_link.set_to_type(to_type)
+            return new_link
+        
+        deletion_links = [
+            new_del_link(from_id=self.id, from_type="b"),
+            new_del_link(to_id=self.other_id, to_type="b"),
+            new_del_link(from_id=self.id, to_id=self.other_id,
+                         from_type="b", to_type="b")
+        ]
 
-    def get_links(self):
-        return self.get_chain_links() + \
-                self.get_popped_indicator_links() + \
-                self.get_popped_chain_links() + \
-                self.get_segment_links()
+        return deletion_links
+
+    def get_end_links(self):
+        end_links = []
+        link_data = [link for link in self.bubble.end_links if self.id in link]
+
+        if len(link_data) < 1: return end_links
+        
+        link_dict = self.fetch_links([x[0] for x in link_data])
+
+        for link_id, from_id, to_id in link_data:
+            if link_id not in link_dict: continue
+            end_link = link_dict.get(link_id).clone()
+            end_link.from_id = from_id
+            if from_id == self.id:
+                end_link.from_type = "b"
+            end_link.to_id = to_id
+            if to_id == self.id:
+                end_link.to_type = "b"
+        
+            end_links.append(end_link)
+
+        return end_links
+
+    def get_child_links(self):
+        child_links = []
+        link_data = [link for link in self.bubble.child_links if self.id in link]
+        if len(link_data) < 1:
+            return child_links
+
+        link_dict = self.fetch_links([x[0] for x in link_data])
+
+        for link_id, from_id, to_id in link_data:
+            if link_id not in link_dict:
+                continue
+
+            # child is unpopped
+            if from_id == self.id:
+                child_link1 = link_dict.get(link_id).clone()
+                child_link1.to_id = to_id.split(":")[0]
+                child_link1.to_type = "b"
+                child_links.append(child_link1)
+                
+                child_link2 = child_link1.clone()
+                child_link2.from_id = from_id
+                child_link2.make_bubble_to_bubble()
+                child_links.append(child_link2)
+
+            else:
+                child_link1 = link_dict.get(link_id).clone()
+                child_link1.from_id = from_id.split(":")[0]
+                child_link1.from_type = "b"
+                child_links.append(child_link1)
+                
+                child_link2 = child_link1.clone()
+                child_link2.to_id = to_id
+                child_link2.make_bubble_to_bubble()
+                child_links.append(child_link2)
+
+            child_popped_link = link_dict.get(link_id).clone()
+
+            if from_id == self.id:
+                child_popped_link.from_id = from_id
+                child_popped_link.from_type = "b"
+            else:
+                child_popped_link.to_id = to_id
+                child_popped_link.to_type = "b"
+
+            child_links.append(child_popped_link)
+
+        return child_links
+
+    #TODO: SINGLETON LINKS ARE IN CHILD BUBBLES NOT PARENT!
+    def get_singleton_links(self):
+        singleton_links = []
+        print("SINGLETON LINKS:", self.bubble.singleton_links)
+
+        link_data = [link for link in self.bubble.singleton_links if self.id in link]
+
+        if len(link_data) < 1:
+            return singleton_links
+        
+        link_dict = self.fetch_links([x[0] for x in link_data])
+
+        for link_id, from_id, to_id in link_data:
+            if link_id not in link_dict:
+                continue
+
+            singleton_link = link_dict.get(link_id).clone()
+            singleton_link.from_id = from_id
+            singleton_link.to_id = to_id
+
+            if from_id == self.id:
+                singleton_link.from_type = "b"
+            else:
+                singleton_link.to_type = "b"
+
+            singleton_links.append(singleton_link)
+
+        print("SINGLETON LINKS:", len(singleton_links), "for", self.id)
+        return singleton_links
     
-    def get_deletion_links(self, other_junction):
-        if not self.bubble_id == other_junction.bubble_id: return []
-        links = []
-        for link in self.links:
-            from_contained = link.from_id in other_junction.contained
-            to_contained = link.to_id in other_junction.contained
-            if to_contained or from_contained:
-                new_link = self.create_link("c", self.id, 
-                                            "c", other_junction.id, 
-                                            deletion_link=True,
-                                            copy_link=link,
-                                            should_flip=from_contained)
-                links.append(new_link)
-
-        return links
-
+    def get_popped_links(self):
+        return self.get_chain_links() + \
+               self.get_deletion_links() + \
+               self.get_end_links() + \
+               self.get_child_links() + \
+               self.get_singleton_links()
 
     def __str__(self):
-        return f"BubbleJunction(bubble={self.bubble_id}, other_id={self.other_bubble_id}, contained={self.contained}, is_source={self.is_source})"
+        return f"BubbleJunction(bubble={self.id}, contained={self.contained})"
     def __repr__(self):
-        return f"BubbleJunction({self.bubble_id}, {'source' if self.is_source else 'sink'})"
+        return f"BubbleJunction({self.id})"
+    

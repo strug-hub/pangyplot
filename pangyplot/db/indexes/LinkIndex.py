@@ -98,6 +98,9 @@ class LinkIndex:
         else:
             raise TypeError("Key must be int or tuple of two ints")
 
+    def get_links_by_id(self, link_ids):
+        return db.get_link_by_ids(self.dir, link_ids)
+
     def get_links_by_segment(self, seg_id):
         if seg_id >= len(self.seg_index_offsets) or seg_id < 0:
             return []

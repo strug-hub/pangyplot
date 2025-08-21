@@ -76,8 +76,11 @@ def create_link(row):
     link.frequency = row["frequency"]
     return link
 
-def get_link(dir, key):
-    cur = get_connection(dir).cursor()
+def get_link(dir, key, cur=None):
+    if cur is None:
+        cur = get_connection(dir).cursor()
+    
+    key = key.replace("s", "")
     cur.execute("SELECT * FROM links WHERE id = ?", (key,))
     row = cur.fetchone()
     if row:
@@ -88,3 +91,8 @@ def count_links(dir):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT COUNT(*) FROM links")
     return int(cur.fetchone()[0])
+
+def get_link_by_ids(dir, link_ids):
+    cur = get_connection(dir).cursor()
+    links = [get_link(dir, link_id, cur) for link_id in link_ids]
+    return [link for link in links if link is not None]

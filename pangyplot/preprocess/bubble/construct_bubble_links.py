@@ -52,7 +52,12 @@ def classify_link(link, from_bubbles, to_bubbles, parent_child_dict):
                 continue
             if {x1, x2} == {source, inside} or {x1, x2} == {sink, inside}:
                 types.append("end"); #[segment]-[bubble] Scenario 1.1
-                alt_links["end"].append(pair)
+                if x1 == inside:
+                    seg_pair = ((link.from_id, segment), (b2, x2))
+                    alt_links["end"].append(seg_pair)
+                elif x2 == inside:
+                    seg_pair = ((b1, x1), (link.to_id, segment))
+                    alt_links["end"].append(seg_pair)
                 continue
             if {x1, x2} == {source, sink}:
                 types.append("deletion") #[bubble]-[bubble] Scenario 1.2
@@ -116,17 +121,36 @@ def store_bubble_links(links, bubbles):
         for nid in bubble.inside:
             node_to_bubbles[nid].add((bubble.id, inside))
 
+    bubble_check = defaultdict(list)
+    bubble_check_result = defaultdict(list)
+
     for key, link in links.items():
         from_id, to_id = key
         from_bubbles = node_to_bubbles.get(from_id)
         to_bubbles = node_to_bubbles.get(to_id)
+
+        if from_bubbles is not None:
+            for bubble in from_bubbles:
+                bubble_check[bubble].append(link)
+        if to_bubbles is not None:
+            for bubble in to_bubbles:
+                bubble_check[bubble].append(link)
+
         alt_links = classify_link(link, from_bubbles, to_bubbles, parent_child_dict)
         
+        if from_bubbles is not None:
+            for bubble in from_bubbles:
+                bubble_check_result[bubble].append(alt_links)
+        if to_bubbles is not None:
+            for bubble in to_bubbles:
+                bubble_check_result[bubble].append(alt_links)
+
         link_id = link.id()
 
         for link_type in alt_links:
             for (b1, x1), (b2, x2) in alt_links[link_type]:
                 if link_type == "chain":
+                    continue # chains are computed from end links
                     if x1 == inside:
                         if x2 == source:
                             bubble_dict[b1].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
@@ -137,18 +161,26 @@ def store_bubble_links(links, bubbles):
                             bubble_dict[b2].add_chain_link(link_id, f"{b1}:0", f"{b2}:1")
                         if x1 == sink:
                             bubble_dict[b2].add_chain_link(link_id, f"{b1}:1", f"{b2}:0")
+                elif link_type == "end":
+                    if x1 == segment:
+                        bubble_dict[b2].add_end_link(link_id, f"{b1}", f"{b2}:{x2}")
+                    if x2 == segment:
+                        bubble_dict[b1].add_end_link(link_id, f"{b1}:{x1}", f"{b2}")
                 elif link_type == "deletion":
                     bubble_dict[b1].add_deletion_link(link_id)
                 elif link_type == "parent-child":
                     if bubble_dict[b1].parent == b2:
-                        b = b1
+                        bparent, bchild = b2, b1
                     elif bubble_dict[b2].parent == b1:
-                        b = b2
+                        bparent, bchild = b1, b2
                     else:
                         continue
-                    bubble_dict[b].add_parent_link(link_id, f"{b1}:{x1}", f"{b2}:{x2}")
+                    if str(b1) == "27708" or str(b2) == "27708":
+                        print(f"[DEBUG] Parent-child link: {b1} -> {b2}, parent: {bparent}, child: {bchild}")
+                    bubble_dict[bparent].add_child_link(link_id, f"{b1}:{x1}", f"{b2}:{x2}")
                 elif link_type == "singleton":
                     if x1 == segment:
                         bubble_dict[b2].add_singleton_link(link_id, f"{b1}", f"{b2}:{x2}")
                     if x2 == segment:
-                        bubble_dict[b1].add_singleton_link(link_id, f"{b1}{x1}", f"{b2}")
+                        bubble_dict[b1].add_singleton_link(link_id, f"{b1}:{x1}", f"{b2}")
+

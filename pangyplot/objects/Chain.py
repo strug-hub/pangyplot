@@ -29,13 +29,19 @@ class Chain:
     def get_chain_links(self):
         if self.gfaidx is None:
             return None
+                
         links = []
-
         for bubble in self.bubbles:
-            junctions = bubble.emit_junctions(self.gfaidx, parent_hint=self.parent_bubble)
-            for junction in junctions:
-                links.extend(junction.get_chain_links() + \
-                             junction.get_parent_popped_links())
+            chain_link = bubble.get_sink_chain_link(self.gfaidx)
+            if chain_link is not None:
+                links.append(chain_link)
+        
+        #for bubble in self.bubbles:
+        #    junctions = bubble.emit_junctions(self.gfaidx, parent_hint=self.parent_bubble)
+        #    for junction in junctions:
+        #        links.extend(junction.get_chain_links() + \
+        #                     junction.get_parent_popped_links())
+        
         return links
 
     def get_parent_segment_links(self):

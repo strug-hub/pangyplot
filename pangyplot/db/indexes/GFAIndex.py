@@ -18,6 +18,9 @@ class GFAIndex:
     
     def get_links(self, seg_id):
         return self.link_index[seg_id]
+    
+    def get_links_by_id(self, link_ids):
+        return self.link_index.get_links_by_id(link_ids)
 
     def get_samples(self):
         return self.link_index.get_samples()

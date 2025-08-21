@@ -128,10 +128,10 @@ export function unpopBubble(bubbleId) {
   for (const link of unpoppedContents.links) {
     const siblingIds = [];
 
-    if (link.targetId === bubbleId && link.sourceId.startsWith("c")) {
+    if (link.targetId === bubbleId && link.sourceId.startsWith("b") && link.sourceId.includes(":")) {
         siblingIds.push(link.sourceId);
     } 
-    if (link.sourceId === bubbleId && link.targetId.startsWith("c")) {
+    if (link.sourceId === bubbleId && link.targetId.startsWith("b") && link.targetId.includes(":")) {
         siblingIds.push(link.targetId);
     }
 

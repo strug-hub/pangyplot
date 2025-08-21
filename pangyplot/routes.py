@@ -123,9 +123,10 @@ def subgraph():
     if id.startswith("s"):
         subgraph = {"nodes": [], "links": []}
     if id.startswith("b"):
-        subgraph = query.pop_bubble(current_app, id, genome, chrom)
-    if id.startswith("c"):
-        subgraph = query.get_bubble_end(current_app, id, genome, chrom)
+        if ":" in id:
+            subgraph = query.get_bubble_end(current_app, id, genome, chrom)
+        else:
+            subgraph = query.pop_bubble(current_app, id, genome, chrom)
 
     return jsonify(subgraph)
 

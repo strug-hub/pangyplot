@@ -22,9 +22,8 @@ def pop_bubble(indexes, nodeid, genome, chrom):
 
     stepidx = indexes.step_index[(chrom, genome)]
     bubbleidx = indexes.bubble_index[chrom]
-    gfaidx = indexes.gfa_index[chrom]
 
-    subgraph = bubbleidx.get_popped_subgraph(nodeid, gfaidx, stepidx)
+    subgraph = bubbleidx.get_popped_subgraph(nodeid, stepidx)
 
     serialized_subgraph = dict()
     serialized_subgraph["nodes"] = [node.serialize() for node in subgraph["nodes"]]
@@ -37,18 +36,15 @@ def get_bubble_end(indexes, nodeid, genome, chrom):
     bubbleidx = indexes.bubble_index[chrom]
     gfaidx = indexes.gfa_index[chrom]
 
-    nodeid = nodeid.replace("c", "").split("#")[0]
-    chain_id, chain_step, side = [int(x) for x in nodeid.split(":")]
-    
-    print(f"Getting bubble end for chain {chain_id} at step {chain_step} on side {side}...")
+    nodeid = nodeid.replace("b", "").split("#")[0]
+    bubble_id = int(nodeid.split(":")[0])
+    side = int(nodeid.split(":")[1])
 
-    # side = 1 if source and 0 if sink
-    if side == 1: chain_step += 1
+    print(f"Getting bubble end for {bubble_id} on side {side}...")
 
-    print(f"Getting bubble end for chain {chain_id} at step {chain_step} on side {side}...")
-    bubble = bubbleidx.get_bubble_by_chain(chain_id, chain_step)
+    bubble = bubbleidx[bubble_id]
 
-    inside_segments = bubble.source_segments if side == 1 else bubble.sink_segments
+    inside_segments = bubble.source_segments if side == 0 else bubble.sink_segments
 
     serialized_subgraph = dict()
     segments, links = gfaidx.get_subgraph(inside_segments, stepidx)
