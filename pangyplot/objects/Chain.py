@@ -35,12 +35,12 @@ class Chain:
             chain_link = bubble.get_sink_chain_link(self.gfaidx)
             if chain_link is not None:
                 links.append(chain_link)
-        
-        #for bubble in self.bubbles:
-        #    junctions = bubble.emit_junctions(self.gfaidx, parent_hint=self.parent_bubble)
-        #    for junction in junctions:
-        #        links.extend(junction.get_chain_links() + \
-        #                     junction.get_parent_popped_links())
+
+            if bubble.is_chain_end():
+                junctions = bubble.emit_junctions(self.gfaidx)
+                for junction in junctions:
+                    chain_end_links = junction.get_chain_end_links()
+                    links.extend(chain_end_links)
         
         return links
 

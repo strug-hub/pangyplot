@@ -38,6 +38,9 @@ class Bubble:
         # flowing from the bubble end to the end of a child bubble
         self.child_links = []
 
+        # flowing from one chain end to another separate chain 
+        self.cross_links = []
+
         # flowing from a segment that isn't captured a bubble
         self.singleton_links = []
 
@@ -97,6 +100,9 @@ class Bubble:
 
     def add_singleton_link(self, link_id, from_id, to_id):
         self.singleton_links.append((link_id, from_id, to_id))
+    
+    def add_cross_link(self, link_id, from_id, to_id):
+        self.cross_links.append((link_id, from_id, to_id))
 
     def get_chain_link(self, gfaidx, source=False):
         end_id = f"{self.id}:0" if source else f"{self.id}:1"
@@ -131,6 +137,8 @@ class Bubble:
             link_data["child"] = self.child_links
         if len(self.singleton_links) > 0:
             link_data["singleton"] = self.singleton_links
+        if len(self.cross_links) > 0:
+            link_data["cross"] = self.cross_links
         return link_data
     
     def set_link_data(self, link_data):
@@ -142,7 +150,9 @@ class Bubble:
             self.child_links = link_data["child"]
         if "singleton" in link_data:
             self.singleton_links = link_data["singleton"]
-
+        if "cross" in link_data:
+            self.cross_links = link_data["cross"]
+            
     def _clean_inside(self, inside_ids, bubble_dict):
         self.inside -= inside_ids
         if self.parent:

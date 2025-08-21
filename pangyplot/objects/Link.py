@@ -77,6 +77,12 @@ class Link:
         self.to_id = f"{self.to_id}:{suffix}"
     def add_from_suffix(self, suffix):
         self.from_id = f"{self.from_id}:{suffix}"
+    def remove_to_suffix(self):
+        if type(self.to_id) is str:
+            self.to_id = self.to_id.split(":")[0]
+    def remove_from_suffix(self):
+        if type(self.from_id) is str:
+            self.from_id = self.from_id.split(":")[0]
 
     def update_to_chain_link(self, new_ids, contained=[], length=0):
         self.from_id = new_ids[0]

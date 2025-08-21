@@ -118,7 +118,7 @@ class BubbleJunction:
             # child is unpopped
             if from_id == self.id:
                 child_link1 = link_dict.get(link_id).clone()
-                child_link1.to_id = to_id.split(":")[0]
+                child_link1.remove_to_suffix()
                 child_link1.to_type = "b"
                 child_links.append(child_link1)
                 
@@ -129,7 +129,7 @@ class BubbleJunction:
 
             else:
                 child_link1 = link_dict.get(link_id).clone()
-                child_link1.from_id = from_id.split(":")[0]
+                child_link1.remove_from_suffix()
                 child_link1.from_type = "b"
                 child_links.append(child_link1)
                 
@@ -151,10 +151,10 @@ class BubbleJunction:
 
         return child_links
 
-    #TODO: SINGLETON LINKS ARE IN CHILD BUBBLES NOT PARENT!
+    #TODO: SINGLETON LINKS ARE IN CHILD BUBBLES NOT PARENT! [check]
+    #also: sibling chains don't attach
     def get_singleton_links(self):
         singleton_links = []
-        print("SINGLETON LINKS:", self.bubble.singleton_links)
 
         link_data = [link for link in self.bubble.singleton_links if self.id in link]
 
@@ -173,20 +173,85 @@ class BubbleJunction:
 
             if from_id == self.id:
                 singleton_link.from_type = "b"
+                unpopped_link = singleton_link.clone()
+                unpopped_link.remove_from_suffix()
+                singleton_links.append(unpopped_link)
             else:
                 singleton_link.to_type = "b"
+                unpopped_link = singleton_link.clone()
+                unpopped_link.remove_to_suffix()
+                singleton_links.append(unpopped_link)
 
             singleton_links.append(singleton_link)
 
-        print("SINGLETON LINKS:", len(singleton_links), "for", self.id)
         return singleton_links
     
+    def get_cross_links(self):
+        cross_links = []
+
+        link_data = [link for link in self.bubble.cross_links if self.id in link]
+        print("cross links:", link_data)
+
+        if len(link_data) < 1:
+            return cross_links
+
+        link_dict = self.fetch_links([x[0] for x in link_data])
+
+        for link_id, from_id, to_id in link_data:
+            if link_id not in link_dict:
+                continue
+
+            cross_link = link_dict.get(link_id).clone()
+
+            cross_link1 = cross_link.clone()
+            cross_link1.from_id = from_id
+            cross_link1.from_type = "b"
+            cross_links.append(cross_link1)
+
+            cross_link2 = cross_link1.clone()
+            cross_link2.remove_from_suffix()
+            cross_links.append(cross_link2)
+
+            cross_link3 = cross_link.clone()
+            cross_link3.to_id = to_id
+            cross_link3.to_type = "b"
+            cross_links.append(cross_link3)
+
+            cross_link4 = cross_link3.clone()
+            cross_link4.remove_to_suffix()
+            cross_links.append(cross_link4)
+
+            cross_link5 = cross_link.clone()
+            cross_link5.from_id = from_id
+            cross_link5.to_id = to_id
+            cross_link5.from_type = "b"
+            cross_link5.to_type = "b"
+            cross_links.append(cross_link5)
+
+            cross_link6 = cross_link5.clone()
+            cross_link6.remove_from_suffix()
+            cross_links.append(cross_link6)
+
+            cross_link7 = cross_link5.clone()
+            cross_link7.remove_to_suffix()
+            cross_links.append(cross_link7)
+
+            cross_link8 = cross_link5.clone()
+            cross_link8.remove_from_suffix()
+            cross_link8.remove_to_suffix()
+            cross_links.append(cross_link8)
+
+        return cross_links
+
     def get_popped_links(self):
         return self.get_chain_links() + \
                self.get_deletion_links() + \
                self.get_end_links() + \
-               self.get_child_links() + \
-               self.get_singleton_links()
+               self.get_child_links()
+    
+    def get_chain_end_links(self):
+        return self.get_singleton_links() + \
+               self.get_cross_links()
 
     def __str__(self):
         return f"BubbleJunction(bubble={self.id}, contained={self.contained})"
