@@ -58,6 +58,15 @@ class Link:
             return self.from_id
         return None
 
+    def flip(self):
+        self.from_id, self.to_id = self.to_id, self.from_id
+        self.from_strand, self.to_strand = self.to_strand, self.from_strand
+        self.from_type, self.to_type = self.to_type, self.from_type
+    def flip_from_strand(self):
+        self.from_strand = "-" if self.from_strand == "+" else "+"
+    def flip_to_strand(self):
+        self.to_strand = "-" if self.to_strand == "+" else "+"
+        
     def set_from_type(self, x):
         self.from_type = x
     def set_to_type(self, x):

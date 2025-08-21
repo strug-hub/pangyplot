@@ -108,7 +108,7 @@ class BubbleJunction:
         link_data = [link for link in self.bubble.child_links if self.id in link]
         if len(link_data) < 1:
             return child_links
-
+        print(link_data)
         link_dict = self.fetch_links([x[0] for x in link_data])
 
         for link_id, from_id, to_id in link_data:
@@ -117,26 +117,49 @@ class BubbleJunction:
 
             # child is unpopped
             if from_id == self.id:
+                # child bubble to parent segment
                 child_link1 = link_dict.get(link_id).clone()
-                child_link1.remove_to_suffix()
+                child_link1.to_id = to_id
                 child_link1.to_type = "b"
-                child_links.append(child_link1)
-                
+                child_link1.remove_to_suffix()
+
+                # child bubble to parent bubble end
                 child_link2 = child_link1.clone()
                 child_link2.from_id = from_id
-                child_link2.make_bubble_to_bubble()
-                child_links.append(child_link2)
+                child_link2.from_type = "b"
 
+                if to_id.endswith(":1"):
+                    child_link1.flip()
+                    child_link1.from_strand = "+"
+                    child_link1.flip_to_strand()
+                    child_link2.flip()
+                    child_link2.from_strand = "+"
+                    child_link2.to_strand = "+"
+
+                print("child links:", child_link1.id(), child_link2.id())
+                child_links.append(child_link1)
+                child_links.append(child_link2)
             else:
                 child_link1 = link_dict.get(link_id).clone()
-                child_link1.remove_from_suffix()
+                child_link1.from_id = from_id
                 child_link1.from_type = "b"
-                child_links.append(child_link1)
+                child_link1.remove_from_suffix()
                 
                 child_link2 = child_link1.clone()
                 child_link2.to_id = to_id
-                child_link2.make_bubble_to_bubble()
+                child_link2.to_type = "b"
+
+                if from_id.endswith(":0"):
+                    child_link1.flip()
+                    child_link1.flip_from_strand()
+                    child_link1.to_strand = "+"
+                    child_link2.flip()
+                    child_link2.from_strand = "+"
+                    child_link2.to_strand = "+"
+
+                print("child links2:", child_link1.id(), child_link2.id())
                 child_links.append(child_link2)
+                child_links.append(child_link1)
 
             child_popped_link = link_dict.get(link_id).clone()
 
@@ -151,8 +174,6 @@ class BubbleJunction:
 
         return child_links
 
-    #TODO: SINGLETON LINKS ARE IN CHILD BUBBLES NOT PARENT! [check]
-    #also: sibling chains don't attach
     def get_singleton_links(self):
         singleton_links = []
 
@@ -241,6 +262,7 @@ class BubbleJunction:
             cross_link8.remove_to_suffix()
             cross_links.append(cross_link8)
 
+            print("cross links:", [l.id() for l in cross_links])
         return cross_links
 
     def get_popped_links(self):

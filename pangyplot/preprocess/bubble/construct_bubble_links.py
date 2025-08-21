@@ -1,5 +1,6 @@
 from itertools import product
 from collections import defaultdict
+from wsgiref import types
 import pangyplot.db.sqlite.bubble_db as db
 
 def classify_link(link, from_bubbles, to_bubbles, bubble_dict):
@@ -69,6 +70,7 @@ def classify_link(link, from_bubbles, to_bubbles, bubble_dict):
                 if x1 in {source, sink} and x2 in {source, sink}:
                     types.append("parent-child") #[parent_bubble]-[child_bubble] Scenario 3.2
                     alt_links["parent-child"].append(pair)
+                    continue
                 elif {x1,x2} == {inside}:
                     # shouldn't happen
                     types.append("parent-child-insides") 
@@ -89,11 +91,21 @@ def classify_link(link, from_bubbles, to_bubbles, bubble_dict):
                 alt_links["chain"].append(pair)
                 continue
 
-            if {x1, x2} == {source, sink} or {x1, x2} == {source} or {x1, x2} == {sink}:
+            elif {x1, x2} == {source, sink} or {x1, x2} == {source} or {x1, x2} == {sink}:
                 # bubbles not connected by a common end
                 # happens with deletion links, ignore within a chain
-                if bubble_dict[b1].chain == bubble_dict[b2].chain:
+                b1_chain = bubble_dict[b1].chain
+                b2_chain = bubble_dict[b2].chain
+                b1_parent_id = bubble_dict[b1].parent
+                b2_parent_id = bubble_dict[b2].parent
+                b1_parent_chain = bubble_dict[b1_parent_id].chain if b1_parent_id else None
+                b2_parent_chain = bubble_dict[b2_parent_id].chain if b2_parent_id else None
+                
+                if b1_chain == b2_chain:
                     types.append("skip-ends-in-chain")
+                elif (b2_parent_chain is not None and b1_chain == b2_parent_chain) or \
+                      (b1_parent_chain is not None and b2_chain == b1_parent_chain):
+                    types.append("skip-parent-bubble-sibling")
                 else:
                     types.append("cross-chain") #[bubble]-[bubble] Scenario 3.4
                     alt_links["cross-chain"].append(pair)
