@@ -123,6 +123,17 @@ export function unpopBubble(bubbleId) {
   const poppedContents = getPoppedContents(bubbleId, true);
   const unpoppedContents = getUnpoppedContents(bubbleId);
 
+  for (const endId of [bubbleId + ":0", bubbleId + ":1"]) {
+    console.log(getPoppedContents(endId).nodes)
+    const inside = getPoppedContents(endId);
+    poppedContents.nodes.push(...inside.nodes);
+  }
+
+
+  console.log("Unpopping bubble:", bubbleId);
+  console.log("Popped contents:", poppedContents.nodes.map(n => n.id));
+  console.log("Unpopped contents:", unpoppedContents.nodes.map(n => n.id));
+
   const recoverData = { nodes: [], links: [] };
 
   for (const link of unpoppedContents.links) {
@@ -178,16 +189,6 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   const ends = [];
   const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
 
-    //for bubble ends that don't meet another bubble
-    for (const node of subgraph.nodes) {
-      console.log("nodeElement", node);
-      if (node.element.chainEnd) {
-        console.log(`Unpaired bubble end found: ${node}`);
-        ends.push([node.id, null]);
-        continue;
-      } 
-    }
-
   for (const link of subgraph.links) {
     if (link.element.isPopLink) {
 
@@ -196,19 +197,22 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
       const targetActive = isNodeActive(link.targetId) || subgraphNodes.includes(link.targetId);
 
       if (sourceActive && targetActive) {
-        ends.push([link.targetId, link.sourceId]);
+        if (link.targetId === link.sourceId) {
+          ends.push([link.sourceId, null]);
+        } else {
+          ends.push([link.targetId, link.sourceId]);
+        }
       }
     }
   }
 
-  // If both ends of a chain are present, fetch the segments inside
   const fetchPromises = [];
   for (const [node1, node2] of ends) {
 
     fetchPromises.push(
       fetchBubbleEndFn(node1).then(endData => {
         const endSubgraph = buildGraphData(endData);
-        console.log(`Fetched bubble end for ${node1} and ${node2}`, endData);
+        console.log(`Fetched bubble end for ${node1} / ${node2}`, endData);
         subgraph.nodes.push(...endSubgraph.nodes);
         subgraph.links.push(...endSubgraph.links);
         addInsideContents(node1, endData);

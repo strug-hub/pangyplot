@@ -238,7 +238,13 @@ class BubbleIndex:
         # get externals
         junctions = bubble.emit_junctions(self.gfaidx)
         for junction in junctions:
-            all_nodes.append(junction)
+            # when the last bubble in the chain is popped,
+            # we also want to pop the chain end
+            if junction.is_chain_end:
+                all_links.extend(junction.get_self_destroy_link())
+            else:
+                all_nodes.append(junction)
+
             all_links.extend(junction.get_popped_links())
 
         # get internals

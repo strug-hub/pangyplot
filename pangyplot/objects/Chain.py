@@ -10,7 +10,7 @@ class Chain:
 
     def serialize(self):
         return {
-            "nodes": [bubble.serialize() for bubble in self.bubbles],
+            "nodes": [bubble.serialize() for bubble in self.bubbles] + self.get_chain_ends(),
             "links": [link.serialize() for link in self.get_chain_links()]
         }
     
@@ -18,13 +18,22 @@ class Chain:
         return self.bubbles[i]
 
     def decompose(self):
-        return self.bubbles, self.get_chain_links()
-    
+        return self.bubbles + self.get_chain_ends(), self.get_chain_links()
+
     def source_bubble(self): return self.bubbles[0] if self.bubbles else None
     def sink_bubble(self): return self.bubbles[-1] if self.bubbles else None
 
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else (None, None)
+
+    def get_chain_ends(self):
+        ends = []
+        for bubble in (self.source_bubble(), self.sink_bubble()):
+            for junction in bubble.emit_junctions(self.gfaidx):
+                print(junction, junction.is_chain_end)
+                if junction.is_chain_end:
+                    ends.append(junction)
+        return ends
 
     def get_chain_links(self):
         if self.gfaidx is None:

@@ -48,10 +48,33 @@ class BubbleJunction:
         destroy_indicator = chain_link.clone()
         destroy_indicator.add_from_suffix("1") if self.is_source else \
             destroy_indicator.add_to_suffix("0")
-        destroy_indicator.make_pop_link()
+        destroy_indicator.update_to_pop_link()
 
         return [chain_link, destroy_indicator]
     
+    def get_self_destroy_link(self):
+        destroy_indicator = Link()
+        destroy_indicator.from_id = self.id
+        destroy_indicator.to_id = self.id
+        destroy_indicator.from_type = "b"
+        destroy_indicator.to_type = "b"
+
+        destroy_indicator.update_to_pop_link()
+
+        return [destroy_indicator]
+    def get_chain_terminal_link(self):  
+        if not self.is_chain_end:
+            return []
+        
+        chain_link = self.bubble.get_chain_link(self.gfaidx, self.is_source)
+        
+        if chain_link.from_id is None:
+            chain_link.from_id = self.id
+        if chain_link.to_id is None:
+            chain_link.to_id = self.id
+
+        return [chain_link]
+
     def get_deletion_links(self):
         del_id = self.bubble.deletion_link
         if del_id is None:
@@ -108,69 +131,30 @@ class BubbleJunction:
         link_data = [link for link in self.bubble.child_links if self.id in link]
         if len(link_data) < 1:
             return child_links
-        print(link_data)
+
         link_dict = self.fetch_links([x[0] for x in link_data])
 
         for link_id, from_id, to_id in link_data:
             if link_id not in link_dict:
                 continue
 
-            # child is unpopped
-            if from_id == self.id:
-                # child bubble to parent segment
-                child_link1 = link_dict.get(link_id).clone()
-                child_link1.to_id = to_id
-                child_link1.to_type = "b"
-                child_link1.remove_to_suffix()
+            child_link = link_dict.get(link_id)
 
-                # child bubble to parent bubble end
-                child_link2 = child_link1.clone()
-                child_link2.from_id = from_id
-                child_link2.from_type = "b"
+            child_link1 = child_link.clone()
+            child_link1.to_id = to_id
+            child_link1.to_type = "b"
 
-                if to_id.endswith(":1"):
-                    child_link1.flip()
-                    child_link1.from_strand = "+"
-                    child_link1.flip_to_strand()
-                    child_link2.flip()
-                    child_link2.from_strand = "+"
-                    child_link2.to_strand = "+"
+            child_link2 = child_link.clone()
+            child_link2.from_id = from_id
+            child_link2.from_type = "b"
 
-                print("child links:", child_link1.id(), child_link2.id())
-                child_links.append(child_link1)
-                child_links.append(child_link2)
-            else:
-                child_link1 = link_dict.get(link_id).clone()
-                child_link1.from_id = from_id
-                child_link1.from_type = "b"
-                child_link1.remove_from_suffix()
-                
-                child_link2 = child_link1.clone()
-                child_link2.to_id = to_id
-                child_link2.to_type = "b"
+            child_link3 = child_link.clone()
+            child_link3.from_id = from_id
+            child_link3.to_id = to_id
+            child_link3.from_type = "b"
+            child_link3.to_type = "b"
 
-                if from_id.endswith(":0"):
-                    child_link1.flip()
-                    child_link1.flip_from_strand()
-                    child_link1.to_strand = "+"
-                    child_link2.flip()
-                    child_link2.from_strand = "+"
-                    child_link2.to_strand = "+"
-
-                print("child links2:", child_link1.id(), child_link2.id())
-                child_links.append(child_link2)
-                child_links.append(child_link1)
-
-            child_popped_link = link_dict.get(link_id).clone()
-
-            if from_id == self.id:
-                child_popped_link.from_id = from_id
-                child_popped_link.from_type = "b"
-            else:
-                child_popped_link.to_id = to_id
-                child_popped_link.to_type = "b"
-
-            child_links.append(child_popped_link)
+            child_links.extend([child_link1, child_link2, child_link3])
 
         return child_links
 
@@ -189,19 +173,13 @@ class BubbleJunction:
                 continue
 
             singleton_link = link_dict.get(link_id).clone()
-            singleton_link.from_id = from_id
-            singleton_link.to_id = to_id
 
             if from_id == self.id:
+                singleton_link.from_id = from_id
                 singleton_link.from_type = "b"
-                unpopped_link = singleton_link.clone()
-                unpopped_link.remove_from_suffix()
-                singleton_links.append(unpopped_link)
-            else:
+            if to_id == self.id:
+                singleton_link.to_id = to_id
                 singleton_link.to_type = "b"
-                unpopped_link = singleton_link.clone()
-                unpopped_link.remove_to_suffix()
-                singleton_links.append(unpopped_link)
 
             singleton_links.append(singleton_link)
 
@@ -211,7 +189,6 @@ class BubbleJunction:
         cross_links = []
 
         link_data = [link for link in self.bubble.cross_links if self.id in link]
-        print("cross links:", link_data)
 
         if len(link_data) < 1:
             return cross_links
@@ -229,18 +206,10 @@ class BubbleJunction:
             cross_link1.from_type = "b"
             cross_links.append(cross_link1)
 
-            cross_link2 = cross_link1.clone()
-            cross_link2.remove_from_suffix()
-            cross_links.append(cross_link2)
-
             cross_link3 = cross_link.clone()
             cross_link3.to_id = to_id
             cross_link3.to_type = "b"
             cross_links.append(cross_link3)
-
-            cross_link4 = cross_link3.clone()
-            cross_link4.remove_to_suffix()
-            cross_links.append(cross_link4)
 
             cross_link5 = cross_link.clone()
             cross_link5.from_id = from_id
@@ -249,20 +218,6 @@ class BubbleJunction:
             cross_link5.to_type = "b"
             cross_links.append(cross_link5)
 
-            cross_link6 = cross_link5.clone()
-            cross_link6.remove_from_suffix()
-            cross_links.append(cross_link6)
-
-            cross_link7 = cross_link5.clone()
-            cross_link7.remove_to_suffix()
-            cross_links.append(cross_link7)
-
-            cross_link8 = cross_link5.clone()
-            cross_link8.remove_from_suffix()
-            cross_link8.remove_to_suffix()
-            cross_links.append(cross_link8)
-
-            print("cross links:", [l.id() for l in cross_links])
         return cross_links
 
     def get_popped_links(self):
@@ -273,7 +228,8 @@ class BubbleJunction:
     
     def get_chain_end_links(self):
         return self.get_singleton_links() + \
-               self.get_cross_links()
+               self.get_cross_links() + \
+               self.get_chain_terminal_link()
 
     def __str__(self):
         return f"BubbleJunction(bubble={self.id}, contained={self.contained})"

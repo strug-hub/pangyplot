@@ -72,7 +72,7 @@ class Link:
     def set_to_type(self, x):
         self.to_type = x
 
-    def make_pop_link(self):
+    def update_to_pop_link(self):
         self.link_type = "pop"
         self.is_pop_link = True
 
@@ -93,9 +93,10 @@ class Link:
         if type(self.from_id) is str:
             self.from_id = self.from_id.split(":")[0]
 
-    def update_to_chain_link(self, new_ids, contained=[], length=0):
-        self.from_id = new_ids[0]
-        self.to_id = new_ids[1]
+    def update_to_chain_link(self, new_ids=None, contained=[], length=0):
+        if new_ids is not None:
+            self.from_id = new_ids[0]
+            self.to_id = new_ids[1]
         self.contained = contained
         self.length = length
         self.link_type = "chain"
