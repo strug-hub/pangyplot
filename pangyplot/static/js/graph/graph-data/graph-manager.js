@@ -1,5 +1,6 @@
 import buildGraphData from './graph-data.js';
 import { cleanGraph } from './graph-integrity.js';
+import { updateSelected } from '../engines/selection/selection-state.js';
 import eventBus from '../../utils/event-bus.js';
 
 let forceGraphRef = null;
@@ -129,7 +130,6 @@ export function unpopBubble(bubbleId) {
     poppedContents.nodes.push(...inside.nodes);
   }
 
-
   console.log("Unpopping bubble:", bubbleId);
   console.log("Popped contents:", poppedContents.nodes.map(n => n.id));
   console.log("Unpopped contents:", unpoppedContents.nodes.map(n => n.id));
@@ -248,7 +248,7 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
 
   rescueLinks(subgraph);
 
-  subgraph.nodes.forEach(node => node.isSelected = true);
+  updateSelected(subgraph.nodes);
 
   graphData.nodes.push(...subgraph.nodes);
   graphData.links.push(...subgraph.links);
@@ -289,6 +289,10 @@ export function getNodeElement(nodeId) {
   return nodeIdDict.get(nodeId) || null;
 }
 
+export function getNodeIfActive(nodeId) {
+  return isNodeActive(nodeId) ? nodeIdDict.get(nodeId) : null;
+}
+
 export function isNodeActive(nodeId) {
   return nodeDict.has(nodeId) && nodeDict.get(nodeId).active;
 }
@@ -305,4 +309,18 @@ export function getLinkElements(id) {
 }
 export function getLinkElement(id) {
   return linkIdDict.get(id) || null;
+}
+
+export function getNodeComponents(nodeId) {
+  if (!isNodeActive(nodeId)) {
+    return { nodes: [], links: [] };
+  }
+  const nodes = getNodeElements(nodeId);
+  const links = getLinkElements(nodeId).filter(link => link.class === 'node');
+  
+  return {
+    nodes,
+    links
+  };
+
 }

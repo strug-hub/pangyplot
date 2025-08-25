@@ -1,3 +1,5 @@
+import { getSelected } from '../selection/selection-state.js';
+
 export class RightClickMenu {
     constructor(forceGraph) {
         this.forceGraph = forceGraph;
@@ -20,7 +22,7 @@ export class RightClickMenu {
 
     showMenu(x, y) {
         this.menuElement.innerHTML = '';
-        const targetNodes = this.forceGraph.graphData().nodes.filter(n => n.isSelected);
+        const targetNodes = getSelected();
 
         const categorizedOptions = this.categorizeOptions();
 

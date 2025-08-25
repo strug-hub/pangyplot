@@ -1,13 +1,13 @@
 import eventBus from '../../../../utils/event-bus.js';
-import { nodesInBox } from '../../../utils/node-utils.js';
+import { updateSelected, updateHighlighted, clearHighlighted } from '../selection-state.js';
 
+import { nodesInBox } from '../../../utils/node-utils.js';
+import { selectionState } from '../selection-state.js';
 import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';
 
 const selectionBox = new MultiSelectionBox();
-let overlayElement = null;
-let selectionAllowed = true;
-
-export let multiSelectInProgress = false;
+var overlayElement = null;
+var selectionAllowed = true;
 
 function pointerDown(event) {
     if (!selectionAllowed) return;
@@ -29,14 +29,13 @@ function pointerMove(event, canvasElement, forceGraph) {
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
 
     if (bounds) {
-        multiSelectInProgress = true;
+        selectionState.multiSelectMode = true;
         if (!overlayElement) overlayElement = createOverlay(canvasElement);
         updateOverlay(overlayElement, bounds);
 
         // Highlight nodes
-        forceGraph.graphData().nodes.forEach(node => node.isHighlighted = false);
         const hitNodes = nodesInBox(forceGraph, bounds);
-        hitNodes.forEach(node => node.isHighlighted = true);
+        updateHighlighted(hitNodes);
 
     } else if (overlayElement) {
         destroySelectionBox()
@@ -48,14 +47,13 @@ function pointerUp(event, forceGraph) {
         const bounds = selectionBox.getBoxBounds();
 
         if (bounds) {
-
-            forceGraph.graphData().nodes.forEach(node => node.isSelected = false);
             const hitNodes = nodesInBox(forceGraph, bounds);
-            hitNodes.forEach(node => node.isSelected = true);
+            updateSelected(hitNodes);
+            clearHighlighted();
         }
     }
     destroySelectionBox();
-    setTimeout(() => multiSelectInProgress = false, 0);
+    setTimeout(() => selectionState.multiSelectMode = false, 0);
 }
 
 export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {

@@ -46,3 +46,4 @@ export function getZoomFactor() {
 export function isDebugMode() {
     return state.debug;
 }
+

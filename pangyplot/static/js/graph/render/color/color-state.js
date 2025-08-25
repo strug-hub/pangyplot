@@ -1,7 +1,9 @@
 export const colorState = {
-    highlightNode: "#FAB3AE",
-    selectedNode: "#F44336",
+    highlightColor: "#FAB3AE", // #FAB3AE,
+    selectedColor: "#F44336", // #F1A307
+
     highlightLink: "#FF0000",
+
     background: "#373737",
 
     nodeColors: ["#0762E5", "#F2DC0F", "#FF6700"],

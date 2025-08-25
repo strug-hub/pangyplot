@@ -1,10 +1,48 @@
 import eventBus from '../../../utils/event-bus.js';
+import { isPanZoomMode } from '../navigate/pan-zoom-engine.js';
+import { isDragging } from '../drag/drag-state.js';
 
 export const selectionState = {
+  multiSelectMode: false,
   bubbleMode: false,
+
+  hoverNode: null,
   highlighted: new Set(),
   selected: new Set()
 };
+
+export function updateSelected(nodes) {
+  if (isPanZoomMode()) return;
+  const oldSelected = selectionState.selected;
+  selectionState.selected = new Set(nodes);
+
+  if (!setsEqual(oldSelected, selectionState.selected)) {
+    eventBus.publish('selection:changed', selectionState);
+  }
+}
+
+export function clearSelected() {
+  if (isPanZoomMode()) return;
+  selectionState.selected = new Set();
+}
+
+export function updateHoverNode(node) {
+  selectionState.hoverNode = node;
+}
+
+export function updateHighlighted(nodes) {
+  const oldHighlighted = selectionState.highlighted;
+  selectionState.highlighted = new Set(nodes);
+
+  if (!setsEqual(oldHighlighted, selectionState.highlighted)) {
+    eventBus.publish('selection:highlight-changed', selectionState);
+  }
+}
+
+export function clearHighlighted() {
+  selectionState.highlighted = new Set();
+  updateHoverNode(null);
+}
 
 export function numberSelected() {
   return selectionState.selected.size;
@@ -16,33 +54,6 @@ function setsEqual(a, b) {
   return true;
 }
 
-export function updateSelectionState(nodes) {
-  // Track old state
-  const oldSelected = new Set(selectionState.selected);
-  const oldHighlighted = new Set(selectionState.highlighted);
-
-  // Reset state
-  selectionState.highlighted.clear();
-  selectionState.selected.clear();
-
-  // Rebuild new state
-  for (const node of nodes) {
-    if (node.isHighlighted) selectionState.highlighted.add(node.nodeId);
-    if (node.isSelected) selectionState.selected.add(node.nodeId);
-  }
-
-  // Detect changes
-  const selectionChanged = !setsEqual(selectionState.selected, oldSelected);
-  const highlightChanged = !setsEqual(selectionState.highlighted, oldHighlighted);
-
-  if (selectionChanged) {
-    eventBus.publish('selection:changed', selectionState);
-  }
-  if (highlightChanged) {
-    eventBus.publish('selection:highlight-changed', selectionState);
-  }
-}
-
 export function flipBubbleMode() {
   selectionState.bubbleMode = !selectionState.bubbleMode;
   eventBus.publish('selection:bubble-mode-toggled', selectionState.bubbleMode);
@@ -50,4 +61,28 @@ export function flipBubbleMode() {
 
 export function isInBubbleMode() {
   return selectionState.bubbleMode;
+}
+
+export function canSingleSelect() {
+  return !selectionState.multiSelectMode && !isPanZoomMode();
+}
+
+export function canHighlight() {
+  return !selectionState.multiSelectMode && !isPanZoomMode() && !isDragging();
+}
+
+export function getSelected() {
+  return [...selectionState.selected];
+}
+
+export function isSelected(node) {
+  return selectionState.selected.has(node);
+}
+
+export function getHighlighted() {
+  return [...selectionState.highlighted];
+}
+
+export function getHoverNode() {
+  return selectionState.hoverNode;
 }

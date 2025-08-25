@@ -58,8 +58,6 @@ function forceGraphNodes(element) {
             initY: y,
             isEnd: (i === 0 || i === kinks - 1),
             isSingleton: kinks === 1,
-            isHighlight: false,
-            isSelected: false,
             isVisible: true,
             isDrawn: true,
             isFixed: false,

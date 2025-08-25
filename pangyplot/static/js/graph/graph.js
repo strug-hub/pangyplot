@@ -7,7 +7,6 @@ import setUpEngineManager from './engines/engine-manager.js';
 import { setCanvasSize } from './render/canvas-size.js';
 import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotation-engine.js';
 import { anchorEndpointNodes } from './utils/node-utils.js';
-import { zoomScaleUpdate } from './engines/navigate/zoom-scale.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
 import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
 import { fetchData, buildUrl } from '../utils/network-utils.js';
@@ -28,7 +27,7 @@ function createForceGraph(graph){
     forceGraph.graphData(graph)
         .nodeId("nodeId")
         .nodeLabel("nodeId")
-        .nodeVal(node => node.width)
+        .enablePointerInteraction(false)
         .autoPauseRedraw(false) // keep drawing after engine has stopped
         .d3VelocityDecay(0.1)
         .cooldownTicks(Infinity)
@@ -53,7 +52,6 @@ function createForceGraph(graph){
 
     forceGraph.onEngineTick(() => {
         //debugInformationUpdate(forceGraph.graphData());
-        zoomScaleUpdate(forceGraph);
     })
     
     // --- FORCES ---

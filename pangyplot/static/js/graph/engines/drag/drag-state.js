@@ -1,5 +1,7 @@
 export const dragState = {
   draggedNode: null,
+  readyNode: null,
+  initialMousePos: { x: null, y: null },
   fixAfterDrag: true,
   previousPos: { x: null, y: null },
   decay: 0.05,
@@ -18,4 +20,8 @@ export function clearDraggedNode() {
   dragState.draggedNode = null;
   dragState.previousPos = { x: null, y: null };
   dragState.cache = null;
+}
+
+export function isDragging() {
+  return dragState.draggedNode !== null;
 }

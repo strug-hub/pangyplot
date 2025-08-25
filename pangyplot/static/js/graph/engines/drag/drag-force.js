@@ -1,8 +1,8 @@
 import eventBus from '../../../utils/event-bus.js';
 import { dragState } from './drag-state.js';
+import { getSelected } from '../selection/selection-state.js';
 
 function buildDragCache(forceGraph, draggedNode) {
-    const nodes = forceGraph.graphData().nodes;
     const links = forceGraph.graphData().links;
 
     const visited = new Set();
@@ -13,9 +13,11 @@ function buildDragCache(forceGraph, draggedNode) {
 
     const maxDepth = 200;
 
+    const selectedNodeIds = new Set(getSelected().map(n => n.nodeId));
+
     while (queue.length > 0) {
         const { node, depth } = queue.shift();
-        if (!node.isSelected) {
+        if (!selectedNodeIds.has(node.nodeId)) {
             cache.push({ node, depth });
         }
 
@@ -34,10 +36,8 @@ function buildDragCache(forceGraph, draggedNode) {
     }
 
     // Add selected nodes as depth 0
-    for (const node of nodes) {
-        if (node.isSelected) {
-            cache.push({ node, depth: 0 });
-        }
+    for (const node of getSelected()) {
+      cache.push({ node, depth: 0 });
     }
 
     return cache;
@@ -50,6 +50,9 @@ export default function dragInfluenceForce(forceGraph) {
     });
 
   return function force(alpha) {
+
+    const selectedNodeIds = new Set(getSelected().map(n => n.nodeId));
+    
     if (!dragState.draggedNode) return;
 
     if (!dragState.cache) {
@@ -67,14 +70,14 @@ export default function dragInfluenceForce(forceGraph) {
     for (const { node, depth } of dragState.cache) {
       if (node === dragState.draggedNode) continue;
 
-      const strength = depth === 0
+      const dampen = depth === 0
         ? 1
         : Math.max(0, 1 - dragState.decay * depth);
-      
-      node.x += dx * strength;
-      node.y += dy * strength;
 
-      if (node.isSelected && node.isFixed) {
+      node.x += dx * dampen;
+      node.y += dy * dampen;
+
+      if (selectedNodeIds.has(node.nodeId) && node.isFixed) {
         node.fx += dx;
         node.fy += dy;
       }

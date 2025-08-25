@@ -1,3 +1,4 @@
+import { getSelected } from '../selection/selection-state.js';
 
 export default function setUpRecenterEngine(forceGraph, canvasElement) {
     canvasElement.addEventListener('keydown', (event) => {
@@ -8,7 +9,8 @@ export default function setUpRecenterEngine(forceGraph, canvasElement) {
 
         if (event.code === 'ArrowUp') {
             event.preventDefault();
-            forceGraph.zoomToFit(200, 10, node => node.isSelected);
+            const selectedNodeIds = new Set(getSelected().map(n => n.nodeId));
+            forceGraph.zoomToFit(200, 10, node => selectedNodeIds.has(node.nodeId));
         }
     });
 }
