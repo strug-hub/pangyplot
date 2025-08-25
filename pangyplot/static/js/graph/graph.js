@@ -1,5 +1,5 @@
-import { setGraphCoordinates, equalCoordinates, forceGraph, canvasElement }  from './graph-state.js';
-import buildGraphData from './graph-data/graph-data.js';
+import { setGraphCoordinates, equalCoordinates, forceGraph, canvasElement }  from './graph-data/graph-state.js';
+import buildGraphData from './graph-data/create/graph-data.js';
 import delLinkForce from './forces/del-link-force.js';
 import bubbleCircularForce from './forces/bubble-circular-force.js';
 import setUpRenderManager from './render/render-manager.js';
@@ -10,6 +10,8 @@ import { anchorEndpointNodes } from './utils/node-utils.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
 import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
 import { fetchData, buildUrl } from '../utils/network-utils.js';
+import { statusUpdate } from './graph-data/graph-status.js';
+
 import eventBus from '../utils/event-bus.js';
 
 // todo https://github.com/vasturiano/d3-force-registry
@@ -26,7 +28,6 @@ function createForceGraph(graph){
 
     forceGraph.graphData(graph)
         .nodeId("nodeId")
-        .nodeLabel("nodeId")
         .enablePointerInteraction(false)
         .autoPauseRedraw(false) // keep drawing after engine has stopped
         .d3VelocityDecay(0.1)
@@ -51,7 +52,7 @@ function createForceGraph(graph){
     // todo: searchSequenceEngineRerun();
 
     forceGraph.onEngineTick(() => {
-        //debugInformationUpdate(forceGraph.graphData());
+        statusUpdate(forceGraph, canvasElement);
     })
     
     // --- FORCES ---

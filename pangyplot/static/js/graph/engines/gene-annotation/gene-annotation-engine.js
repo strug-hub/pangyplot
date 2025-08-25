@@ -1,5 +1,5 @@
 import { fetchAnnotations } from "./gene-annotation-fetch.js";
-import { getGraphCoordinates } from "../../graph-state.js";
+import { getGraphCoordinates } from "../../graph-data/graph-state.js";
 import { getAllGenes } from "./gene-annotation-state.js";
 import { addNodeGeneAnnotation, addNodeExonAnnotation, clearAllAnnotations, getAllNodeAnnotations } from "./gene-annotation-state.js";
 import { annotationOverlap } from "./gene-annotation-utils.js";

@@ -1,6 +1,6 @@
 import { getHoverNode, canSingleSelect, updateSelected } from './selection-state.js';
 import { euclideanDist } from '../../utils/node-utils.js';
-import { isDebugMode } from '../../graph-state.js';
+import { isDebugMode } from '../../graph-data/graph-state.js';
 
 const MAX_SELECT_DISTANCE = 25;
 

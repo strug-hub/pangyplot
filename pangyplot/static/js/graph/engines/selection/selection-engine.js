@@ -1,18 +1,12 @@
 import setUpMultiSelectionEngine from './multi-selection/multi-selection-engine.js';
-import setUpHoverEngine from './hover-engine.js';
+import setUpHoverEngine from './hover/hover-engine.js';
 import setUpSingleSelectEngine from './single-select-engine.js';
-import { flipBubbleMode, clearSelected} from './selection-state.js';
+import { flipChainMode, clearSelected} from './selection-state.js';
+import { generateSelectedInfo } from "./information/selected-information.js";
 import eventBus from '../../../utils/event-bus.js';
 
 var nodesDragged = false;
 var selectionUpdated = false;
-
-function switchBubbleMode(event) {
-    if (event.key === 'b' || event.key === 'B') {
-        event.preventDefault();
-        flipBubbleMode();
-    }
-}
 
 export default function setUpSelectionEngine(forceGraph, canvasElement) {
 
@@ -26,6 +20,7 @@ export default function setUpSelectionEngine(forceGraph, canvasElement) {
     });
     eventBus.subscribe('selection:changed', () => {
         selectionUpdated = true;
+        generateSelectedInfo();
     });
 
     canvasElement.addEventListener('pointerdown', (event) => {
@@ -44,7 +39,9 @@ export default function setUpSelectionEngine(forceGraph, canvasElement) {
     });
 
     canvasElement.addEventListener('keydown', (event) => {
-        switchBubbleMode(event);
+        if (event.key === 'c' || event.key === 'C') {
+            event.preventDefault();
+            flipChainMode();
+        }
     });
-
 }

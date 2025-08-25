@@ -9,7 +9,7 @@ import labelPainter from './painter/label-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
 import { highlightSelection } from '../engines/selection/select-render.js';
-import { setZoomFactor } from '../graph-state.js';
+import { setZoomFactor } from '../graph-data/graph-state.js';
 
 function renderPreFrame(ctx, forceGraph) {
     const zoomFactor = ctx.canvas.__zoom.k;

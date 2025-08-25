@@ -1,4 +1,4 @@
-import buildGraphData from './graph-data.js';
+import buildGraphData from './create/graph-data.js';
 import { cleanGraph } from './graph-integrity.js';
 import { updateSelected } from '../engines/selection/selection-state.js';
 import eventBus from '../../utils/event-bus.js';

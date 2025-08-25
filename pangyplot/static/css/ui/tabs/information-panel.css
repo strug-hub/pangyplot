@@ -1,23 +1,51 @@
-#info-debug-container{
+#info-debug-container {
     padding-left: 1em;
     background-color: lightcoral;
+}
+
+#info-selected-container {
+    display: grid;
+    gap: 8px;
 }
 
 .info-label {
     margin-bottom: 5px;
     margin-right: 1em;
+    font-weight: bold;
 }
 
-.info-neo4j-button {
-    font-weight: bold;
-    margin-left: 3px;
+.info-copyable {
+    border-radius: 5px;
+
+    padding: 5px;
+    border: 1px solid var(--dark-green);
+    cursor: pointer;
+    position: relative;
+}
+
+.info-copyable:hover {
+    background: var(--highlight);
+    border-radius: 5px;
+}
+
+.info-selected .copied::after {
+    content: "Copied!";
+    position: absolute;
+    right: 6px;
+    top: -10px;
+    font-size: 11px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    border-radius: 3px;
+    z-index: 10;
 }
 
 .info-content {
     margin-left: 1em;
 }
 
-.info-optional{
+.info-optional {
     display: none;
 }
 
@@ -30,23 +58,23 @@
     margin-top: auto;
 }
 
-#info-full-sequence-container{
+#info-full-sequence-container {
     margin-top: 0.5em;
-    max-height: 100px;
-    overflow-y: auto;
-    overflow-x: auto;
 }
 
-.info-sequence-wrapper {
+.info-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     background-color: var(--site-background);
     border-radius: 5px;
     display: flex;
     justify-content: center;
     padding-top: 0.5em;
     padding-bottom: 0.5em;
+    max-height: 100px;
+
 }
 
-.info-sequence-wrapper pre {
+.info-code pre {
     text-align: left;
     margin: 0;
 }

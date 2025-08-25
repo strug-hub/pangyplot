@@ -34,3 +34,23 @@
     background-color: var(--highlight);
   }
   
+  .hover-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background-color: var(--tab-box);
+  border: 1px solid var(--text-color);
+  padding: 5px 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  color: var(--text-color);
+  z-index: 1000;
+  white-space: pre;
+  display: flex;
+  align-items: center;
+  gap: 6px; /* spacing between icon and text */
+
+}
+
+.hover-tooltip i {
+  color: var(--text-color);
+}

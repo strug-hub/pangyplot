@@ -1,6 +1,6 @@
 import deserializeNodes from './graph-element-node.js';
 import deserializeLinks from './graph-element-link.js';
-import { addNodeRecord, addLinkRecord, getNodeElement, getNodeElements, getLinkElement } from './graph-manager.js';
+import { addNodeRecord, addLinkRecord, getNodeElement, getNodeElements, getLinkElement } from '../graph-manager.js';
 
 //TODO: move responsibility for size to render engine
 const NODE_WIDTH=50;
@@ -38,8 +38,9 @@ function getKinkCoordinates(coords, kinks, i=0){
 function forceGraphNodes(element) {
     let nodes = [];
     var kinks = 1;
-    if (element.type !== "bubble:end")
+    if (element.type !== "bubble:end"){
         kinks = calculateNumberOfKinks(element.seqLength);
+    }
     
     for (let i = 0; i < kinks; i++) {
         const { x, y } = getKinkCoordinates(element.coords, kinks, i);

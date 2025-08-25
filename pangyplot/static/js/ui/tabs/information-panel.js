@@ -1,133 +1,86 @@
-var fullSequence ="";
+import { isDebugMode } from "../../graph/graph-data/graph-state.js";
 
-function updateGraphInfo(nodeData) {
+var fullSequence = "";
 
-  const typeEmoji = {
-    segment: '⚪',
-    bubble: '🫧',
-    chain: '🔗'
-  };
+const panel = document.getElementById('info-selected-container');
+const debugContainer = document.getElementById('info-debug-container');
 
-  const emoji = typeEmoji[nodeData.type] || '🔹';
-  const typeDisplay = nodeData.type ? `${emoji} ${nodeData.type.charAt(0).toUpperCase()}${nodeData.type.slice(1)}` : '';
-  document.getElementById('info-node-id').textContent = nodeData.id || '';
-  document.getElementById('info-node-type').textContent = typeDisplay;
-  document.getElementById('info-node-section').style.display = (nodeData.id || nodeData.type) ? 'block' : 'none';
+function appendRow({ label, valueEl }) {
+  const row = document.createElement('div');
+  row.className = 'info-row';
 
-  // Position
-  const hasPosition = nodeData.chrom && nodeData.start != null && nodeData.end != null;
-  const positionText = hasPosition ? `${nodeData.chrom}:${nodeData.start}-${nodeData.end}` : '';
-  document.getElementById('info-position').textContent = positionText;
-  document.getElementById('info-position-section').style.display = hasPosition ? 'block' : 'none';
+  const l = document.createElement('div');
+  l.className = 'info-label';
+  l.textContent = label;
 
-  // Length
-  const showLength = nodeData.length != null && nodeData.type === "segment";
-  document.getElementById('info-length').textContent = showLength ? `${nodeData.length} bp` : '';
-  document.getElementById('info-sequence-section').style.display = showLength ? 'block' : 'none';
+  const v = document.createElement('div');
+  v.className = 'info-value';
+  v.appendChild(valueEl);
 
-  // Neo4j link
-  goToNeo4jBrowser(nodeData.type, nodeData.id);
+  row.append(l, v);
+  panel.appendChild(row);
+}
 
-  // Sequence or Nodes Inside
-  const type = nodeData.type;
-  if (type === "segment") {
-    fullSequence = nodeData.sequence || '';
-    const formattedSequence = fullSequence.match(/.{1,40}/g)?.join('\n') || '';
-    document.getElementById('info-sequence-full').textContent = formattedSequence;
-    document.getElementById('info-full-sequence-container').style.display = fullSequence ? "block" : "none";
-    document.getElementById('info-n-inside-container').style.display = "none";
-  } else if (type === "bubble" || type === "chain") {
-    const children = nodeData.children != null ? nodeData.children : '';
-    document.getElementById('info-number-inside').textContent = children;
-    document.getElementById('info-n-inside-container').style.display = children ? "block" : "none";
-    document.getElementById('info-full-sequence-container').style.display = "none";
+function makeCopyable(value, { allowHTML = false, monospace = false, copyString = null } = {}) {
+  if (copyString === null) copyString = String(value);
+  const el = document.createElement('span');
+  el.className = 'info-copyable' + (monospace ? ' info-code' : '');
+  el.setAttribute('data-copy', copyString);
+  if (allowHTML) {
+    el.innerHTML = value;
   } else {
-    document.getElementById('info-full-sequence-container').style.display = "none";
-    document.getElementById('info-n-inside-container').style.display = "none";
+    el.textContent = value;
   }
+  return el;
 }
 
-document.getElementById('info-copy-id').addEventListener('click', function () {
-  const text = `${document.getElementById('info-node-id').textContent}`;
-  navigator.clipboard.writeText(text);
-});
+export function updateSelectedInfo(info) {
+  panel.innerHTML = ''; 
 
-document.getElementById('info-copy-position').addEventListener('click', function () {
-  const text = `${document.getElementById('info-position').textContent}`;
-  navigator.clipboard.writeText(text);
-});
+  appendRow({ label: 'Node:', valueEl: makeCopyable(info.id, { allowHTML: true }) });
+  appendRow({ label: 'Class:', valueEl: makeCopyable(info.type) });
 
-document.getElementById('info-copy-sequence').addEventListener('click', function () {
-  const text = `${fullSequence}`;
-  navigator.clipboard.writeText(text);
-});
+  const positionText = `${info.genome}#${info.chromosome}:${info.start}-${info.end}`;
+  appendRow({ label: 'Coordinates:', valueEl: makeCopyable(positionText) });
 
+  appendRow({ label: 'Length:', valueEl: makeCopyable(info.length) });
+  appendRow({ label: 'Children:', valueEl: makeCopyable(info.children) });
+  appendRow({ label: 'Sequence:', valueEl: makeCopyable(info.seq, { monospace: true }) });
 
-let frameTimes = [];
-//average across last [maxFrames] frames
-const maxFrames = 10;
-
-function calculateFPS(){
-  const elementFPS = document.getElementById('info-fps');
-
-  const now = Date.now();
-  frameTimes.push(now);
-
-  if (frameTimes.length > maxFrames) {
-      frameTimes.shift();
-  }
-
-  if (frameTimes.length > 1) {
-      const timeDiff = frameTimes[frameTimes.length - 1] - frameTimes[0];
-      const frameRate = 1000 * frameTimes.length / timeDiff;
-
-      elementFPS.textContent = `${frameRate.toFixed(2)}`;
-  }
+  // TODO: chain info? multi-select? frequency?
 }
 
-function showGraphInfo(graphData){
-  const elementNodes = document.getElementById('info-graph-nodes');
-  const elementLinks = document.getElementById('info-graph-links');
- 
-  elementNodes.textContent = `${graphData.nodes.length}`;
-  elementLinks.textContent = `${graphData.links.length}`;
+panel.addEventListener('click', async (e) => {
+  const target = e.target.closest('[data-copy]');
+  if (!target) return;
+  const text = target.getAttribute('data-copy');
+  try {
+    await navigator.clipboard.writeText(text);
+    target.classList.add('copied');
+    setTimeout(() => target.classList.remove('copied'), 700);
+  } catch {}
+});
 
-}
-
-function goToNeo4jBrowser(nodetype, id) {
-  if (!nodetype || !id) {
-    console.warn('nodetype and id are required to generate the Neo4j query.');
+export function updateGraphInformation(status) {
+  if (!isDebugMode()) {
+    debugContainer.style.display = 'none';
     return;
   }
 
-  const type = nodetype.charAt(0).toUpperCase() + nodetype.slice(1);
-  const query = `MATCH (n:${type}) WHERE n.id = "${id}" RETURN n`;
-  const encodedQuery = encodeURIComponent(query);
-  const neo4jUrl = `http://localhost:7474/browser/?cmd=edit&arg=${encodedQuery}`;
+  //TODO make dynamic too
 
-  button.onclick = () => {
-    window.open(neo4jUrl, '_blank');
-  };
-}
+  const elementFPS = document.getElementById('info-fps');
+  elementFPS.textContent = status.fps;
 
+  const elementNodes = document.getElementById('info-graph-nodes');
+  elementNodes.textContent = ` ${status.nodes}`;
+  const elementLinks = document.getElementById('info-graph-links');
+  elementLinks.textContent = ` ${status.links}`;
 
-function debugInformationUpdate(graphData){
-  calculateFPS();
-  showGraphInfo(graphData);
-}
-
-function showCoordinates(coordinates){
   const elementCanvasCoord = document.getElementById('info-canvas-coordinates');
+  elementCanvasCoord.textContent = ` (${status.canvasX}, ${status.canvasY})`;
+
   const elementScreenCoord = document.getElementById('info-screen-coordinates');
-  const ndigits = 0;
+  elementScreenCoord.textContent = ` (${status.screenX}, ${status.screenY})`;
 
-  const x = Math.round(coordinates.x*(10**ndigits))/(10**ndigits);
-  const y = Math.round(coordinates.y*(10**ndigits))/(10**ndigits);
-
-  elementCanvasCoord.textContent = `(${x}, ${y})`;
-
-  const mx = Math.round(coordinates.screen.x*100)/100
-  const my = Math.round(coordinates.screen.y*100)/100
-
-  elementScreenCoord.textContent = `(${mx}, ${my})`;  
 }

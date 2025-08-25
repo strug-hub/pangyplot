@@ -1,5 +1,5 @@
 import { queueSubgraph, dequeueSubgraph } from './bubble-pop-queue.js';
-import { getGraphCoordinates } from '../../graph-state.js';
+import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 import { buildUrl, fetchData } from '../../../utils/network-utils.js';
 import { explodeSubgraph } from './bubble-pop-force.js';
 import { processPoppedSubgraph } from '../../graph-data/graph-manager.js';

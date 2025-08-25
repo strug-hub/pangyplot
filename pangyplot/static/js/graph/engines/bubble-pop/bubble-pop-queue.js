@@ -9,7 +9,6 @@ export function queueSubgraph(id) {
     }
     subgraphQueue.add(id);
     //TODO: showLoader();
-    
     return true;
 }
 

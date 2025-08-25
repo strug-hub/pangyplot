@@ -4,7 +4,7 @@ import { isDragging } from '../drag/drag-state.js';
 
 export const selectionState = {
   multiSelectMode: false,
-  bubbleMode: false,
+  chainMode: false,
 
   hoverNode: null,
   highlighted: new Set(),
@@ -31,12 +31,12 @@ export function updateHoverNode(node) {
 }
 
 export function updateHighlighted(nodes) {
-  const oldHighlighted = selectionState.highlighted;
+  //const oldHighlighted = selectionState.highlighted;
   selectionState.highlighted = new Set(nodes);
 
-  if (!setsEqual(oldHighlighted, selectionState.highlighted)) {
-    eventBus.publish('selection:highlight-changed', selectionState);
-  }
+  //if (!setsEqual(oldHighlighted, selectionState.highlighted)) {
+  //  eventBus.publish('selection:highlight-changed', selectionState);
+  //}
 }
 
 export function clearHighlighted() {
@@ -54,13 +54,12 @@ function setsEqual(a, b) {
   return true;
 }
 
-export function flipBubbleMode() {
-  selectionState.bubbleMode = !selectionState.bubbleMode;
-  eventBus.publish('selection:bubble-mode-toggled', selectionState.bubbleMode);
+export function flipChainMode() {
+  selectionState.chainMode = !selectionState.chainMode;
 }
 
-export function isInBubbleMode() {
-  return selectionState.bubbleMode;
+export function isInChainMode() {
+  return selectionState.chainMode;
 }
 
 export function canSingleSelect() {

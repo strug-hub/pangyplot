@@ -1,7 +1,7 @@
 import { colorState } from "../color/color-state.js";
 import { findNodeBounds } from "../../utils/node-utils.js";
 import { drawText } from "./painter-utils.js";
-import { getZoomFactor } from "../../graph-state.js";
+import { getZoomFactor } from "../../graph-data/graph-state.js";
 
 const LABEL_FONT_SIZE=60;
 

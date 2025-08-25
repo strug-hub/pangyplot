@@ -1,4 +1,4 @@
-import { getNodeElement } from './graph-manager.js';
+import { getNodeElement } from '../graph-manager.js';
 
 class GraphElementLink {
     constructor(rawLink, sourceElement, targetElement) {
