@@ -96,3 +96,8 @@ def get_link_by_ids(dir, link_ids):
     cur = get_connection(dir).cursor()
     links = [get_link(dir, link_id, cur) for link_id in link_ids]
     return [link for link in links if link is not None]
+
+def get_all(dir):
+    cur = get_connection(dir).cursor()
+    for row in cur.execute("SELECT * FROM links"):
+        yield create_link(row)

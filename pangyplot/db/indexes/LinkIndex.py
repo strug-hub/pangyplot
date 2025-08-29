@@ -29,6 +29,27 @@ class LinkIndex:
             self._load_links()
             self.save_quick_index()
 
+    def __iter__(self):
+        return db.get_all(self.dir)
+       
+    def __getitem__(self, key):
+        if isinstance(key, tuple) and len(key) == 2:
+            from_id, to_id = key
+            results = []
+            for link in self.get_links_by_segment(from_id):
+                if link.from_id == from_id and link.to_id == to_id:
+                    results.append(link)
+            return results
+        elif isinstance(key, int):
+            return self.get_links_by_segment(key)
+        elif isinstance(key, str):
+            return db.get_link(self.dir, key)
+        else:
+            raise TypeError("Key must be int or tuple of two ints or a link id")
+        
+    def __len__(self):
+        return len(self.from_ids)
+
     def get_samples(self):
         return [sample for sample in self.sample_idx]
 
@@ -84,19 +105,6 @@ class LinkIndex:
         self.seg_index_counts = array('B', quick_index["seg_index_counts"])
         self.seg_index_flat = array('I', quick_index["seg_index_flat"])
         return True
-    
-    def __getitem__(self, key):
-        if isinstance(key, tuple) and len(key) == 2:
-            from_id, to_id = key
-            results = []
-            for link in self.get_links_by_segment(from_id):
-                if link.from_id == from_id and link.to_id == to_id:
-                    results.append(link)
-            return results
-        elif isinstance(key, int):
-            return self.get_links_by_segment(key)
-        else:
-            raise TypeError("Key must be int or tuple of two ints")
 
     def get_links_by_id(self, link_ids):
         return db.get_link_by_ids(self.dir, link_ids)

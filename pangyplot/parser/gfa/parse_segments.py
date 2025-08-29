@@ -1,5 +1,6 @@
 from pangyplot.objects.Segment import Segment
 import pangyplot.db.sqlite.segment_db as db
+from pangyplot.db.indexes.SegmentIndex import SegmentIndex
 
 def parse_line_S(line):
     cols = line.strip().split("\t")
@@ -15,7 +16,6 @@ def parse_line_S(line):
 def parse_segments(gfa, layout_coords, dir):
     conn = db.create_segment_table(dir)
     cur = conn.cursor()
-    segment_dict = dict()
 
     counter = 0
     for line in gfa:
@@ -28,10 +28,11 @@ def parse_segments(gfa, layout_coords, dir):
             segment.y2 = layout_coords[counter]["y2"]
 
             db.insert_segment(cur, segment)
-            segment_dict[segment.id] = segment
             counter += 1
 
     conn.commit()
     conn.close()
-    
-    return segment_dict
+
+    segment_idx = SegmentIndex(dir)
+
+    return segment_idx

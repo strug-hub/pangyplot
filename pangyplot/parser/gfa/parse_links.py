@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pangyplot.db.indexes.LinkIndex import LinkIndex
 import pangyplot.db.sqlite.link_db as db
 from pangyplot.objects.Link import Link
 
@@ -58,5 +59,6 @@ def parse_links(gfa, sample_idx, path_dict, dir):
 
     conn.commit()
     conn.close()
-    
-    return link_dict
+
+    link_idx = LinkIndex(dir)
+    return link_idx

@@ -83,3 +83,7 @@ def count_segments(dir):
     cur.execute("SELECT COUNT(*) FROM segments")
     return int(cur.fetchone()[0])
 
+def get_all(dir, step_index=None):
+    cur = get_connection(dir).cursor()
+    for row in cur.execute("SELECT * FROM segments"):
+        yield create_segment(row, step_index)

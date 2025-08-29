@@ -7,13 +7,12 @@ import pangyplot.preprocess.bubble.compact_graph as compacter
 import pangyplot.preprocess.bubble.construct_bubble_index as indexer
 import time
 
-def to_bubblegun_obj(segments, links):
+def to_bubblegun_obj(segment_idx, link_idx):
 
     nodes = dict()
 
-    for sid in segments:
-        segment = segments[sid]
-        sid = str(sid)
+    for segment in segment_idx:
+        sid = str(segment.id)
         node = BubbleGunNode.Node(sid)
         node.seq = segment.seq
         node.seq_len = segment.length
@@ -29,10 +28,9 @@ def to_bubblegun_obj(segments, links):
         node.optional_info = info
         nodes[sid] = node
 
-    for from_id, to_id in links:
-        link = links[(from_id, to_id)]
-        from_id = str(from_id)
-        to_id = str(to_id)
+    for link in link_idx:
+        from_id = str(link.from_id)
+        to_id = str(link.to_id)
 
         from_strand = link.from_strand
         to_strand = link.to_strand
@@ -57,14 +55,14 @@ def to_bubblegun_obj(segments, links):
 
     return nodes
 
-def shoot(segments, links, chr_path, ref):
+def shoot(segment_idx, link_idx, chr_path, ref):
     print("→ Finding bubbles.")
 
     graph = BubbleGunGraph.Graph()
 
     print("   🔫 Loading BubbleGun...", end="", flush=True)
     start_time = time.time()
-    graph.nodes = to_bubblegun_obj(segments, links)
+    graph.nodes = to_bubblegun_obj(segment_idx, link_idx)
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
 
@@ -89,7 +87,7 @@ def shoot(segments, links, chr_path, ref):
     print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
 
     print("   💾 Indexing bubbles...", end="", flush=True)
-    indexer.construct_bubble_index(segments, links, graph, chr_path, ref)
+    indexer.construct_bubble_index(segment_idx, link_idx, graph, chr_path, ref)
     print(f" Done.")
 
     return graph

@@ -117,7 +117,7 @@ def classify_link(link, from_bubbles, to_bubbles, bubble_dict):
 
     return alt_links
 
-def store_bubble_links(links, bubbles):
+def store_bubble_links(link_idx, bubbles):
     bubble_dict = {bubble.id: bubble for bubble in bubbles}
     node_to_bubbles = defaultdict(set)
 
@@ -134,30 +134,13 @@ def store_bubble_links(links, bubbles):
         for nid in bubble.inside:
             node_to_bubbles[nid].add((bubble.id, inside))
 
-    bubble_check = defaultdict(list)
-    bubble_check_result = defaultdict(list)
-
-    for key, link in links.items():
-        from_id, to_id = key
+    for link in link_idx:
+        from_id, to_id = link.from_id, link.to_id
         from_bubbles = node_to_bubbles.get(from_id)
         to_bubbles = node_to_bubbles.get(to_id)
 
-        if from_bubbles is not None:
-            for bubble in from_bubbles:
-                bubble_check[bubble].append(link)
-        if to_bubbles is not None:
-            for bubble in to_bubbles:
-                bubble_check[bubble].append(link)
-
         alt_links = classify_link(link, from_bubbles, to_bubbles, bubble_dict)
         
-        if from_bubbles is not None:
-            for bubble in from_bubbles:
-                bubble_check_result[bubble].append(alt_links)
-        if to_bubbles is not None:
-            for bubble in to_bubbles:
-                bubble_check_result[bubble].append(alt_links)
-
         link_id = link.id()
 
         for link_type in alt_links:

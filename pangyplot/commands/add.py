@@ -34,8 +34,9 @@ def pangyplot_add(args):
     os.mkdir(chr_path)
 
     layout_coords = parse_layout(args.layout)
-    segment_dict, link_dict  = parse_gfa(args.gfa, args.ref, args.path, layout_coords, chr_path)
-    bubble_gun.shoot(segment_dict, link_dict, chr_path, args.ref)
+
+    segment_idx, link_idx  = parse_gfa(args.gfa, args.ref, args.path, layout_coords, chr_path)
+    bubble_gun.shoot(segment_idx, link_idx, chr_path, args.ref)
 
     print("→ Creating quick indexes.")
     gfa_index = GFAIndex(chr_path)

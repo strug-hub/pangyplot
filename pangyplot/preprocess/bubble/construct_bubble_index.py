@@ -130,7 +130,7 @@ def find_children(bubbles):
 
 
     
-def construct_bubble_index(segments, links, graph, chr_dir, ref, plot=False):
+def construct_bubble_index(segment_idx, link_idx, graph, chr_dir, ref, plot=False):
     step_index = StepIndex(chr_dir, ref)
     step_dict = step_index.segment_map()
 
@@ -144,7 +144,7 @@ def construct_bubble_index(segments, links, graph, chr_dir, ref, plot=False):
 
     find_children(bubbles)
 
-    bubble_links.store_bubble_links(links, bubbles)
+    bubble_links.store_bubble_links(link_idx, bubbles)
     db.insert_bubbles(chr_dir, bubbles)
     
     if plot:

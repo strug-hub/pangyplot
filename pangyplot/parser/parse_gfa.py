@@ -48,19 +48,19 @@ def parse_gfa(gfa_file, ref, path, layout_coords, dir):
     # ==== SEGMENTS ====
     print("   🍡 Gathering segments from GFA...", end="", flush=True)
     start_time = time.time()
-    segment_dict = parse_segments(get_reader(gfa_file), layout_coords, dir)
-    write_step_index(segment_dict, ref, reference_path, dir)
+    segment_idx = parse_segments(get_reader(gfa_file), layout_coords, dir)
+    write_step_index(segment_idx, ref, reference_path, dir)
 
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    print(f"      {len(segment_dict)} segments total.")
+    print(f"      {len(segment_idx)} segments total.")
 
     # ==== LINKS ====
     print("   🧷 Gathering links from GFA...", end="", flush=True)
     start_time = time.time()
-    link_dict = parse_links(get_reader(gfa_file), sample_idx, path_dict, dir)
+    link_idx = parse_links(get_reader(gfa_file), sample_idx, path_dict, dir)
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    print(f"      {len(link_dict)} links total.")
+    print(f"      {len(link_idx)} links total.")
 
-    return segment_dict, link_dict
+    return segment_idx, link_idx
