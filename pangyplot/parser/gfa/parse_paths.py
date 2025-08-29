@@ -24,12 +24,12 @@ def path_from_W(path_str):
             if i != 0:
                 seg_id = path_str[pos:i]
                 strand = "+" if path_str[i - 1] == ">" else "-"
-                path.append(seg_id + strand)
+                path.append(strand + seg_id)
             pos = i + 1
     # Append last
     seg_id = path_str[pos:]
     strand = "+" if path_str[pos - 1] == ">" else "-"
-    path.append(seg_id + strand)
+    path.append(strand + seg_id)
     return path
 
 def parse_line_W(line):
@@ -47,24 +47,25 @@ def parse_line_W(line):
 
 def parse_paths(gfa, ref_path):
     sample_idx = dict()
+    next_idx = 0
     path_dict = defaultdict(int)
     matching_refs = []
 
     def collapse_binary(path):
+        nonlocal next_idx
+
         suffix = "" if path["hap"] is None else "." + path["hap"]
         pid = path["sample"] + suffix
 
         if pid not in sample_idx:
-            if len(sample_idx) == 0:
-                sample_idx[pid] = 0
-            else:
-                sample_idx[pid] = max([sample_idx[x] for x in sample_idx])+1
+            sample_idx[pid] = next_idx
+            next_idx += 1
         idx = sample_idx[pid]
 
         #compresses path links into a binary number stored as integer
         path_list = path["path"]
         for i in range(len(path_list) - 1):
-            key = (path_list[i], path_list[i + 1])
+            key = path_list[i] + path_list[i + 1]
             path_dict[key] |= (1 << idx)
 
         return idx
@@ -74,7 +75,8 @@ def parse_paths(gfa, ref_path):
     for line in gfa:
         if line[0] in "PW":
             path = parse_line_P(line) if line[0] == "P" else parse_line_W(line)
-            idx = collapse_binary(path)
+            
+            collapse_binary(path)
 
             if ref_path in path["full_id"]:
                 matching_refs.append(path["full_id"])
@@ -82,4 +84,5 @@ def parse_paths(gfa, ref_path):
 
     path_info = (sample_idx, path_dict)
     reference_info = (reference_path, matching_refs)
+    
     return path_info, reference_info

@@ -26,6 +26,11 @@ def create_segment_table(dir):
     conn.commit()
     return conn
 
+def get_max_id(dir):
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT MAX(id) FROM segments")
+    return cur.fetchone()[0]
+
 def insert_segment(cur, segment):
     cur.execute("""
         INSERT INTO segments (id, gc_count, n_count, length, x1, y1, x2, y2, seq)
@@ -42,10 +47,15 @@ def insert_segment(cur, segment):
         segment.seq
     ))
 
-def load_segments(dir):
+def get_index_info(dir):
     cur = get_connection(dir).cursor()
-    cur.execute("SELECT id, length, x1, y1, x2, y2 FROM segments")
-    return cur.fetchall()
+    for row in cur.execute("SELECT id, length, x1, y1, x2, y2 FROM segments"):
+        yield row
+
+def get_all(dir, step_index=None):
+    cur = get_connection(dir).cursor()
+    for row in cur.execute("SELECT * FROM segments"):
+        yield create_segment(row, step_index)
 
 def create_segment(row, step_index=None):
     segment = Segment()
@@ -83,7 +93,3 @@ def count_segments(dir):
     cur.execute("SELECT COUNT(*) FROM segments")
     return int(cur.fetchone()[0])
 
-def get_all(dir, step_index=None):
-    cur = get_connection(dir).cursor()
-    for row in cur.execute("SELECT * FROM segments"):
-        yield create_segment(row, step_index)

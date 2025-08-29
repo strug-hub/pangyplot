@@ -5,7 +5,7 @@ DB_NAME = "step_index.db"
 def get_connection(chr_dir):
     return utils.get_connection(chr_dir, DB_NAME)
 
-def write_step_index(segments, genome, path, dir):
+def write_step_index(segment_index, genome, path, dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
@@ -25,7 +25,7 @@ def write_step_index(segments, genome, path, dir):
     pos = 1
     for i, step in enumerate(path["path"]):
         sid = int(step[:-1])
-        length = segments[sid].length
+        length = segment_index.segment_length(sid)
         start = pos
         end = pos + length - 1
         cur.execute("INSERT INTO step_index (step, seg_id, start, end, genome) VALUES (?, ?, ?, ?, ?)",

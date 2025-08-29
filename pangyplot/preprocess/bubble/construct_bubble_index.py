@@ -20,7 +20,7 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
         bubble.subtype = "insertion"
     elif raw_bubble.is_super():
         bubble.subtype = "super"
-
+    
     bubble.parent = raw_bubble.parent_sb if raw_bubble.parent_sb else None
 
     # Source and sink
@@ -51,9 +51,9 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
             steps.update(step_dict.get(sid, []))
         return steps
 
-    inside_steps = get_steps(bubble.inside)
     source_steps = get_steps(source_ids)
     sink_steps = get_steps(sink_ids)
+    inside_steps = get_steps(bubble.inside)
 
     def collapse_ranges(steps):
         if not steps:
@@ -128,9 +128,7 @@ def find_children(bubbles):
             bubble_parent = bubble_dict[bubble.parent]
             bubble_parent.add_child(bubble, bubble_dict)
 
-
-    
-def construct_bubble_index(segment_idx, link_idx, graph, chr_dir, ref, plot=False):
+def construct_bubble_index(link_idx, graph, chr_dir, ref, plot=False):
     step_index = StepIndex(chr_dir, ref)
     step_dict = step_index.segment_map()
 

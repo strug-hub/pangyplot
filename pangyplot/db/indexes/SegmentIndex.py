@@ -9,9 +9,8 @@ class SegmentIndex:
         self.dir = dir
         
         if not self.load_quick_index():
-            rows = db.load_segments(self.dir)
-            max_id = max(row["id"] for row in rows) if rows else 0
-
+            max_id = db.get_max_id(self.dir)
+            
             #self.id = array('I', [0] * (max_id + 1))
             self.length = array('I', [0] * (max_id + 1))
             self.x1 = array('f', [0.0] * (max_id + 1))
@@ -20,7 +19,7 @@ class SegmentIndex:
             self.y2 = array('f', [0.0] * (max_id + 1))
             self.valid = array('B', [0] * (max_id + 1))
 
-            for row in rows:
+            for row in db.get_index_info(self.dir):
                 sid = row["id"]
                 #self.id[sid] = sid
                 self.valid[sid] = 1

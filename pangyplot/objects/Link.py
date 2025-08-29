@@ -81,7 +81,9 @@ class Link:
         
     def id(self):
         return f"{self.from_type}{self.from_id}{self.from_strand}{self.to_type}{self.to_id}{self.to_strand}"
-    
+    def reverse_id(self):
+        return f"{self.to_id}{'-' if self.to_strand == '+' else '+'}{self.from_id}{'-' if self.from_strand == '+' else '+'}"
+
     def add_to_suffix(self, suffix):
         self.to_id = f"{self.to_id}:{suffix}"
     def add_from_suffix(self, suffix):

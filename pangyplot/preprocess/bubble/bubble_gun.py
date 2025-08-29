@@ -87,7 +87,7 @@ def shoot(segment_idx, link_idx, chr_path, ref):
     print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
 
     print("   💾 Indexing bubbles...", end="", flush=True)
-    indexer.construct_bubble_index(segment_idx, link_idx, graph, chr_path, ref)
+    indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
     print(f" Done.")
 
     return graph

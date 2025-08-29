@@ -13,16 +13,6 @@ def parse_line_L(line):
     link.to_strand = cols[4]
     return link
 
-def reverse_key(key):
-    def flip(stranded_id):
-        seg_id = stranded_id[:-1]
-        strand = stranded_id[-1]
-        flipped_strand = '-' if strand == '+' else '+'
-        return seg_id + flipped_strand
-
-    from_key, to_key = key
-    return (flip(to_key), flip(from_key))
-
 def parse_links(gfa, sample_idx, path_dict, dir):
     conn = db.create_link_table(dir, sample_idx)
     cur = conn.cursor()
@@ -31,9 +21,8 @@ def parse_links(gfa, sample_idx, path_dict, dir):
     def process_path_information(link):
         n = len(sample_idx)
 
-        key = (f"{link.from_id}{link.from_strand}",
-               f"{link.to_id}{link.to_strand}")
-        keyReverse = reverse_key(key)
+        key = link.id()
+        keyReverse = link.reverse_id()
 
         mask = 0
         if key in path_dict:
@@ -42,7 +31,6 @@ def parse_links(gfa, sample_idx, path_dict, dir):
             mask |= path_dict[keyReverse]
             
         # We store the haplotype bitmask as a hex string (e.g., '0x2fa')
-        # to avoid integer overflow in Neo4j Bolt protocol (>64-bit ints not supported)
         link.haplotype = hex(mask)[2:]  # e.g., '2fa'
         link.frequency = bin(mask).count("1") / n
         link.reverse = hex(path_dict.get(keyReverse, 0))[2:]
