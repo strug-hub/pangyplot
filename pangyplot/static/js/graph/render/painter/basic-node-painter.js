@@ -11,8 +11,7 @@ export default function basicNodePainter(ctx, node, svg=false) {
     const color = getNodeColor(node);
     var nodesize = node.width + 3/zoomFactor;
 
-    const widthAdjustment = getWidthAdjustment();
-    nodesize = node.width + widthAdjustment;
+    nodesize = node.width + getWidthAdjustment();
 
     if (svg) {
         return {

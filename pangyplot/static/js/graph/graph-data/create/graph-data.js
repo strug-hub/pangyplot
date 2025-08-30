@@ -56,6 +56,7 @@ function forceGraphNodes(element) {
             kinks: kinks,
             x, y,
             initX: x,
+            isRef: element.ranges.length > 0,
             initY: y,
             isEnd: (i === 0 || i === kinks - 1),
             isSingleton: kinks === 1,
@@ -89,6 +90,7 @@ function forceGraphNodeLinks(element) {
             target: target,
             sourceId: element.id,
             targetId: element.id,
+            isRef: element.ranges.length > 0,
             sourceNodeId: source,
             targetNodeId: target,
             isDrawn: true,
@@ -109,6 +111,8 @@ function forceGraphLinks(element) {
 
     const sourceElement = getNodeElements(sourceId)[0];
     const targetElement = getNodeElements(targetId)[0];
+
+    const isRef = sourceElement.element.ranges.length > 0 || targetElement.element.ranges.length > 0;
 
     const sourceNodeId = element.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
     const targetNodeId = element.toStrand === "+" ? targetElement.head() : targetElement.tail();
@@ -132,6 +136,7 @@ function forceGraphLinks(element) {
         targetId: targetId,
         targetNodeId: targetNodeId,
         isDel: element.isDel,
+        isRef: isRef,
         bubbleId: element.bubbleId, //currently only for del-links
         isVisible: true,
         isDrawn: true,
