@@ -69,6 +69,7 @@ class SegmentIndex:
         self.x2 = array('f', quick_index["x2"])
         self.y2 = array('f', quick_index["y2"])
         self.valid = array('B', quick_index["valid"])
+
         return True
 
     def get_by_ids(self, seg_ids, step_index=None):

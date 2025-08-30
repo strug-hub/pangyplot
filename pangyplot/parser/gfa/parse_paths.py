@@ -40,12 +40,17 @@ def parse_line_W(line):
     path["full_id"] = cols[1]
     path["hap"] = cols[2]
     path["start"] = cols[4]
-    path["end"] = cols[5]
+    #path["end"] = cols[5]
     path["path"] = path_from_W(cols[6])
 
     return path
 
-def parse_paths(gfa, ref_path):
+def apply_offset(path, ref_offset):
+    if ref_offset and ref_offset > 0:
+        path["start"] = ref_offset
+    return path
+
+def parse_paths(gfa, ref_path, ref_offset):
     sample_idx = dict()
     next_idx = 0
     path_dict = defaultdict(int)
@@ -80,6 +85,7 @@ def parse_paths(gfa, ref_path):
 
             if ref_path in path["full_id"]:
                 matching_refs.append(path["full_id"])
+                apply_offset(path, ref_offset)
                 reference_path = path
 
     path_info = (sample_idx, path_dict)

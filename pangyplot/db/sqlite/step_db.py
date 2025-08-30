@@ -22,12 +22,13 @@ def write_step_index(segment_index, genome, path, dir):
     cur.execute("CREATE INDEX idx_seg_id ON step_index(genome, seg_id);")
     cur.execute("CREATE INDEX idx_genome ON step_index(genome, step);")
 
-    pos = 1
+    pos = path["start"]
     for i, step in enumerate(path["path"]):
         sid = int(step[:-1])
         length = segment_index.segment_length(sid)
-        start = pos
-        end = pos + length - 1
+        start = pos + 1
+        end = pos + length
+    
         cur.execute("INSERT INTO step_index (step, seg_id, start, end, genome) VALUES (?, ?, ?, ?, ?)",
                     (i, sid, start, end, genome))
         pos += length

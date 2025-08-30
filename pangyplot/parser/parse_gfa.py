@@ -24,7 +24,7 @@ def verify_reference(ref_path, matching_refs):
 
     print(f"   🎯 Found reference path {matching_refs[0]}.")
 
-def parse_gfa(gfa_file, ref, path, layout_coords, dir):
+def parse_gfa(gfa_file, ref, path, ref_offset, layout_coords, dir):
     print(f"→ Parsing GFA file: {gfa_file}.")
     
     if path:
@@ -34,11 +34,10 @@ def parse_gfa(gfa_file, ref, path, layout_coords, dir):
         print(f"   🔎 Looking for reference genome: {ref}")
         ref_path = ref
 
-
     # ==== PATHS ====
     print("   🧵 Gathering paths from GFA...", end="", flush=True)
     start_time = time.time()
-    path_info, reference_info = parse_paths(get_reader(gfa_file), ref_path)
+    path_info, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset)
     sample_idx, path_dict = path_info
     reference_path, matching_refs = reference_info
     end_time = time.time()
