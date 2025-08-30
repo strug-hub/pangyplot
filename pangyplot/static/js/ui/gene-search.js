@@ -2,7 +2,7 @@ import eventBus from "../utils/event-bus.js";
 
 const geneSearchItemTemplate = `
     <div class="gene-search-item-line gene-search-item-line1">
-        <div class="gene-search-item-chrom">{{chrom}}</div>:
+        <div class="gene-search-item-chrom">{{chromosome}}</div>:
         <div class="gene-search-item-start">{{start}}</div> -
         <div class="gene-search-item-end">{{end}}</div>
     </div>
@@ -44,7 +44,7 @@ function processSearchItemTemplate(template, data) {
 
         let geneData = {
             index: index,
-            chrom: chrom,
+            chromosome: chrom,
             start: gene.start,
             end: gene.end,
             name: gene.gene,
@@ -308,7 +308,7 @@ const selectedTemplateTest = `
 </div>`;
 
 gene1Test.innerHTML = processSearchItemTemplate(selectedTemplateTest, {
-    chrom: "chr18",
+    chromosome: "chr18",
     start: "63476958",
     end: "63505085",
     name: "SERPINB5",

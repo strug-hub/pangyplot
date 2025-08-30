@@ -1,8 +1,12 @@
 
 def get_bubble_graph(indexes, genome, chrom, start, end):
-    stepidx = indexes.step_index[(chrom, genome)]
-    bubbleidx = indexes.bubble_index[chrom]
-    gfaidx = indexes.gfa_index[chrom]
+
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    #gfaidx = indexes.gfa_index.get(chrom, None)
+
+    if stepidx is None or bubbleidx is None:
+        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
     start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
     bubble_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)

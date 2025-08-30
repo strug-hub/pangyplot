@@ -18,6 +18,10 @@
     fill: var(--text-color);
 }
 
+#cytoband-genome-canvas{
+    height: auto;
+}
+
 #cytoband-genome-other-selector{
     width: 15em;
 }

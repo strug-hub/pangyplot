@@ -106,7 +106,10 @@ def select():
     end = int(request.args.get("end"))
 
     print(f"Making graph for {genome}#{chrom}:{start}-{end}...")
-    graph = query.get_bubble_graph(current_app, genome, chrom, start, end)
+    try:
+        graph = query.get_bubble_graph(current_app, genome, chrom, start, end)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
 
     return jsonify(graph)
 

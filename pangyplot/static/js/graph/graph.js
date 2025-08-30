@@ -154,6 +154,8 @@ function fetchAndConstructGraph(coordinates){
         const graphData = buildGraphData(rawGraph);
         anchorEndpointNodes(graphData.nodes, graphData.links);
         createForceGraph(graphData);
+    }).catch(error => {
+        console.warn("Skipping graph construction:", error);
     });
 }
 
@@ -191,5 +193,5 @@ document.addEventListener('DOMContentLoaded', function () {
     const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
     const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010, genome: "GRCh38"};
     
-    eventBus.publish("ui:construct-graph", DAZ1);
+    eventBus.publish("ui:construct-graph", PRSS2);
 });
