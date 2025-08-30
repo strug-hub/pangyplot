@@ -16,7 +16,9 @@ export function popGroupOfBubbles(nodes) {
 
 function updateKeyChange(event, canvasElement){
     bubblePopMode = false;
-    canvasElement.style.cursor = "default";
+    if (canvasElement.style.cursor === "pointer") {
+        canvasElement.style.cursor = "default";
+    }
 
     if (event.ctrlKey || event.metaKey) {
         bubblePopMode = true;
@@ -56,9 +58,10 @@ function keyDown(event, forceGraph, canvasElement) {
 }
 
 function keyUp(event, forceGraph, canvasElement) {
+
     if (bubblePopMode) {
         bubblePopMode = false;
-        canvasElement.style.cursor = "pointer";
+        canvasElement.style.cursor = "default";
     }
 }
 

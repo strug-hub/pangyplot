@@ -1,5 +1,6 @@
 import { getLinkColor } from '../color/color-style.js';
 import { drawLine, drawRotatedCross } from './painter-utils.js';
+import { getWidthAdjustment } from '../render-settings.js';
 
 export default function basicLinkPainter(ctx, link, svg=false){
     if (! link.isVisible || !link.isDrawn) return;
@@ -12,8 +13,10 @@ export default function basicLinkPainter(ctx, link, svg=false){
     if (link.class === "node"){
         zoomAdjust = 3/zoomFactor;
     }
-    const linkwidth = link.width+zoomAdjust;
     //console.log(link, link.source, link.target)
+    const widthAdjustment = getWidthAdjustment();
+    const linkwidth = link.width + zoomAdjust + widthAdjustment;
+
     const x1 = link.source.x;
     const y1 = link.source.y;
     const x2 = link.target.x;

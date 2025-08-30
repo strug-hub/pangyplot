@@ -1,9 +1,9 @@
 import eventBus from '../../../../utils/event-bus.js';
 import { updateSelected, updateHighlighted, clearHighlighted } from '../selection-state.js';
-
 import { nodesInBox } from '../../../utils/node-utils.js';
 import { selectionState } from '../selection-state.js';
 import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';
+import { isPanZoomMode } from '../../navigate/pan-zoom-engine.js';
 
 const selectionBox = new MultiSelectionBox();
 var overlayElement = null;
@@ -63,6 +63,7 @@ export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {
     });
     eventBus.subscribe('navigation:pan-zoom', () => {
         selectionAllowed = false;
+        destroySelectionBox();
     });
     eventBus.subscribe('navigation:selection', () => {
         selectionAllowed = true;

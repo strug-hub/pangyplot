@@ -77,7 +77,7 @@ function createForceGraph(graph){
 
     forceGraph.d3Force('link')
         .distance(link_force_distance) // target link size
-        .strength(0.6); // tolerance to the link size is
+        .strength(0.9); // tolerance to the link size is
 
     // Collision force: prevents node overlap
     //forceGraph.d3Force('collide', d3.forceCollide(50).radius(50));
@@ -101,7 +101,7 @@ function createForceGraph(graph){
         .distanceMax(2000*GLOBAL_MULTIPLIER);  // CONTROLS WAVEYNESS
 
     // Custom force to repel from deleted links
-    forceGraph.d3Force('delLinkForce', delLinkForce());
+    //forceGraph.d3Force('delLinkForce', delLinkForce());
     forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
 
     //canvasElement.addEventListener("click", evt => {

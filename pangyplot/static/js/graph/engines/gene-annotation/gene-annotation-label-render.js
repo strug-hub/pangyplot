@@ -1,6 +1,7 @@
 import { colorState } from '../../render/color/color-state.js';
 import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
 import { drawText } from "../../render/painter/painter-utils.js";
+import { getTextSizeAdjustment } from '../../render/render-settings.js';
 
 export const FONT_SIZE = 180;
 export const LABEL_SPEED = 0.05;
@@ -114,7 +115,8 @@ export function renderGeneLabels(ctx, forceGraph, viewport, svg = false) {
         });
     });
 
-    const fontSize = Math.max(FONT_SIZE, FONT_SIZE / (zoomFactor * 10));
+    var fontSize = Math.max(FONT_SIZE, FONT_SIZE / (zoomFactor * 10));
+    fontSize += getTextSizeAdjustment()*3;
     const labels = [];
     const placedLabels = [];
 

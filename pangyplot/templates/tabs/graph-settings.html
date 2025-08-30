@@ -1,64 +1,13 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/graph-settings.css') }}">
-<div class="tab-header">Graph Dynamics</div>
+<div class="tab-header">Graph Settings</div>
 <hr>
 
 <div id="graph-settings" class="flex-col">
-
-    <!--
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="collapse-slider">Collapse: </label>
-        <input type="range" id="collapse-slider" name="collapse-slider" class="flex-1" min="0" max="5000" step="10" value="250">
-        <span id="collapse-slider-value" class="graph-setting-value flex-1">250</span>
-        <button onclick="resetSlider('collapse-slider', 250)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-    -->
-
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="alpha-slider">Alpha: </label>
-        <input type="range" id="alpha-slider" name="alpha-slider" class="flex-1" min="0" max="1" step="0.0001" value="0.0228">
-        <span id="alpha-slider-value" class="graph-setting-value flex-1">0.0228</span>
-        <button onclick="resetSlider('alpha-slider', 0.0228)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-    
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="friction-slider">Friction: </label>
-        <input type="range" id="friction-slider" name="friction-slider" class="flex-1" min="0.05" max="1.0" step="0.01" value="0.4">
-        <span id="friction-slider-value" class="graph-setting-value flex-1">0.1</span>
-        <button onclick="resetSlider('friction-slider', 0.1)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="attraction-slider">Attraction: </label>
-        <input type="range" id="attraction-slider" name="attraction-slider" class="flex-1" min="-1000" max="1000" step="1" value="-500">
-        <span id="attraction-slider-value" class="graph-setting-value flex-1">-500</span>
-        <button onclick="resetSlider('attraction-slider', -500)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-    
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="collision-slider">Collision: </label>
-        <input type="range" id="collision-slider" name="collision-slider" class="flex-1" min="0" max="200" step="1" value="50">
-        <span id="collision-slider-value" class="graph-setting-value flex-1">50</span>
-        <button onclick="resetSlider('collision-slider', 50)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-    
-    <!--
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="spread-slider">Spread: </label>
-        <input type="range" id="spread-slider" name="spread-slider" class="flex-1" min="-1" max="1" step="0.01" value="0">
-        <span id="spread-slider-value" class="graph-setting-value flex-1">0</span>
-        <button onclick="resetSlider('spread-slider', 0)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-    -->
-
-    <div class="graph-setting flex-1 flex-row">
-        <label class="graph-setting-label flex-1" for="pull-slider">Pull: </label>
-        <input type="range" id="pull-slider" name="pull-slider" class="flex-1" min="0" max="200" step="1" value="100">
-        <span id="pull-slider-value" class="graph-setting-value flex-1">100</span>
-        <button onclick="resetSlider('pull-slider', 100)" class="graph-setting-reset-button"><i class="fas fa-undo"></i></button>
-    </div>
-
-    <button id="reset-all-button" class="reset-all-button"><i class="fas fa-undo"></i> Reset All</button>
-    
+    <!-- Rows will be appended by JS -->
+    <button id="reset-all-button" class="reset-all-button">
+        <i class="fas fa-undo"></i> Reset All
+    </button>
 </div>
+
 
 <script src="{{url_for('static', filename='js/ui/tabs/graph-settings.js')}}"></script>

@@ -1,5 +1,6 @@
 import { getNodeColor } from '../color/color-style.js';
 import { drawCircle } from './painter-utils.js';
+import { getWidthAdjustment } from '../render-settings.js';
 
 export default function basicNodePainter(ctx, node, svg=false) {
 
@@ -9,7 +10,10 @@ export default function basicNodePainter(ctx, node, svg=false) {
 
     const color = getNodeColor(node);
     var nodesize = node.width + 3/zoomFactor;
-    nodesize = node.width;
+
+    const widthAdjustment = getWidthAdjustment();
+    nodesize = node.width + widthAdjustment;
+
     if (svg) {
         return {
             cx: node.x,

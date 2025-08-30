@@ -6,6 +6,8 @@ let state = {
     chromosome: null,
     start: null,
     end: null,
+    
+    rotation: 0,
 
     zoomFactor: 1,
     debug: true
@@ -41,6 +43,14 @@ export function setZoomFactor(zoomFactor) {
 
 export function getZoomFactor() {
     return state.zoomFactor;
+}
+
+export function getRotation() {
+    return state.rotation;
+}
+
+export function addRotation(rotation) {
+    state.rotation += rotation;
 }
 
 export function isDebugMode() {

@@ -1,3 +1,4 @@
+import setUpRenderSettings from './render-settings.js'
 import { getViewport } from './viewport.js';
 import { updateVisibility } from './viewport.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-render.js';
@@ -32,6 +33,7 @@ function renderPostFrame(ctx, forceGraph) {
 
 export default function setUpRenderManager(forceGraph) {
     updateLegend();
+    setUpRenderSettings(forceGraph);
 
     forceGraph
         .onRenderFramePre((ctx) => renderPreFrame(ctx, forceGraph))
