@@ -7,6 +7,8 @@ export const FONT_SIZE = 180;
 export const LABEL_SPEED = 0.05;
 export const GRID_SIZE = 30;
 
+//todo move this functionality to the /render directory
+
 const labelCache = {};
 
 export const splitScreenIntoGrid = (viewport, N) => {
@@ -29,20 +31,6 @@ export const splitScreenIntoGrid = (viewport, N) => {
         }
     }
     return grid;
-};
-
-function placeNodesInGrid(nodes, grid, N) {
-    const sectionWidth = grid[0][0].x2 - grid[0][0].x1;
-    const sectionHeight = grid[0][0].y2 - grid[0][0].y1;
-
-    nodes.forEach(node => {
-        const gridX = Math.floor((node.x - grid[0][0].x1) / sectionWidth);
-        const gridY = Math.floor((node.y - grid[0][0].y1) / sectionHeight);
-
-        if (gridX >= 0 && gridX < N && gridY >= 0 && gridY < N) {
-            grid[gridX][gridY].nodes.push(node);
-        }
-    });
 };
 
 function findGroupCentroid(nodes) {

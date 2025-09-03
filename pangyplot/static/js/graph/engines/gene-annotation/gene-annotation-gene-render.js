@@ -1,20 +1,22 @@
 import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
 import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
 import { getScaleFactor } from "../../render/render-scaling.js";
+import { highlightNodePainter } from "../../render/painter/highlight-node-painter.js";
+import { highlightLinkPainter } from "../../render/painter/highlight-link-painter.js";
 
-const THICKNESS = 5;
+const HIGHLIGHT_THICKNESS = 4;
+
+//todo move this functionality to the /render directory
 
 export function renderGenes(ctx, forceGraph, svg = false) {
-    //const genes = getAllGenes();
-    const scaleFactor = getScaleFactor(ctx);
+
     ctx.save();
 
-    let renderQueue = [];
+    const renderQueue = [];
 
     //todo: cache which nodes have gene annotations to avoid looping through all nodes
     forceGraph.graphData().nodes.forEach(node => {
         if (node.isVisible && node.isDrawn) {
-            var hsize = (node.width+THICKNESS)*scaleFactor;
             const annotations = getNodeAnnotations(node.nodeId);
             var n = 1;
 
@@ -26,13 +28,12 @@ export function renderGenes(ctx, forceGraph, svg = false) {
                 if (gene.showExons && annotation.length <= 0) {
                     return;
                 }
-                
+
                 renderQueue.push({
-                    type: 'node', 
-                    element: node, 
+                    type: 'node',
+                    element: node,
                     color: gene.color,
-                    width: hsize * n, 
-                    zIndex: n
+                    thickness: HIGHLIGHT_THICKNESS * n
                 });
                 n += 1;
             });
@@ -41,7 +42,6 @@ export function renderGenes(ctx, forceGraph, svg = false) {
 
     forceGraph.graphData().links.forEach(link => {
         if (link.isVisible && link.isDrawn) {
-            var hsize = (link.width + THICKNESS) * scaleFactor;
             const sourceAnnotations = getNodeAnnotations(link.source.nodeId)
             const targetAnnotations = getNodeAnnotations(link.target.nodeId);
 
@@ -75,28 +75,23 @@ export function renderGenes(ctx, forceGraph, svg = false) {
                     type: 'link', 
                     element: link, 
                     color: gene.color, 
-                    width: hsize * n, 
-                    zIndex: n
+                    thickness: HIGHLIGHT_THICKNESS * n
                 });
                 n += 1;
             });
         }
     });
-    
-    renderQueue.sort((a, b) => b.zIndex - a.zIndex);
-    
-    if (svg){
-        return renderQueue;
-    } else; {
-        renderQueue.forEach(item => {
-            if (item.type === 'node') {
-                outlineNode(item.element, ctx, 0, item.width, item.color);
-            } else if (item.type === 'link') {
-                outlineLink(item.element, ctx, 0, item.width, item.color);
-            }
-        });
-    }
 
+    renderQueue.sort((a, b) => b.thickness - a.thickness);
+    
+    renderQueue.forEach(item => {
+        if (item.type === 'node') {
+            highlightNodePainter(ctx, item.element, item.color, item.thickness, svg);
+        } else if (item.type === 'link') {
+            highlightLinkPainter(ctx, item.element, item.color, item.thickness, svg);
+        }
+    });
+    
     ctx.restore();
 }
 
