@@ -29,9 +29,9 @@ export function generateSelectedInfo(){
     info.start = node.start != null ? node.start : '?';
     info.end = node.end != null ? node.end : '?';
     info.position = node.position || '';
-    info.length = node.length || '?';
+    info.length = node.element.seqLength || '?';
     info.seq = node.seq || 'N?';
-    info.nInside = node.nInside || '';
+    info.nInside = node.element.size || '';
 
     updateSelectedInfo(info);
 }

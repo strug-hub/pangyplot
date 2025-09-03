@@ -1,21 +1,18 @@
 import { getLinkColor } from '../color/color-style.js';
-import { drawLine, drawRotatedCross } from './painter-utils.js';
-import { getWidthAdjustment } from '../render-settings.js';
+import { drawLine, drawLineSvg, drawRotatedCross } from './painter-utils.js';
+import { getScaleFactor, getZoomFactor } from '../render-scaling.js';
 
-export default function basicLinkPainter(ctx, link, svg=false){
+export function basicLinkPainter(ctx, link, svg=null){
     if (! link.isVisible || !link.isDrawn) return;
-    
+
+    //todo: draw based on zoom factor and node distance
+    //if (getZoomFactor(ctx) < 0.1) {
+    //    return;
+    //}
     const color = getLinkColor(link);
-    const zoomFactor = ctx.canvas.__zoom["k"];
 
-    let zoomAdjust = 0;
-
-    if (link.class === "node"){
-        zoomAdjust = 3/zoomFactor;
-    }
-    //console.log(link, link.source, link.target)
-    const widthAdjustment = getWidthAdjustment();
-    const linkwidth = link.width + zoomAdjust + widthAdjustment;
+    const linkwidth = link.width * getScaleFactor(ctx);
+    // + zoomAdjust + widthAdjustment;
 
     const x1 = link.source.x;
     const y1 = link.source.y;
@@ -24,14 +21,8 @@ export default function basicLinkPainter(ctx, link, svg=false){
     
     //todo: add del cross to svg
     if (svg){
-        return({
-            x1:x1,
-            x2:x2,
-            y1:y1,
-            y2:y2,
-            width:linkwidth,
-            color:color
-        })
+        console.log(linkwidth)
+        drawLineSvg(svg, x1, y1, x2, y2, linkwidth, color);
     } else{
 
         drawLine(ctx, x1, y1, x2, y2, linkwidth, color);
@@ -39,10 +30,10 @@ export default function basicLinkPainter(ctx, link, svg=false){
         
             const midX = (x1 + x2) / 2;
             const midY = (y1 + y2) / 2;
-            const crossSize = (link.width+zoomAdjust)*2; 
+            //const crossSize = (link.width+zoomAdjust)*2; 
             const angle = Math.atan2(y2 - y1, x2 - x1);
             
-            drawRotatedCross(ctx, midX, midY, crossSize, link.width + zoomAdjust, color, angle);
+            //drawRotatedCross(ctx, midX, midY, crossSize, link.width + zoomAdjust, color, angle);
         }
     }
 }

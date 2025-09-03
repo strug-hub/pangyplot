@@ -4,7 +4,7 @@ import delLinkForce from './forces/del-link-force.js';
 import bubbleCircularForce from './forces/bubble-circular-force.js';
 import setUpRenderManager from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
-import { setCanvasSize } from './render/canvas-size.js';
+import { setCanvasSize } from './render/canvas-utils.js';
 import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotation-engine.js';
 import { anchorEndpointNodes } from './utils/node-utils.js';
 import setUpForceSettings from './forces/force-setttings/force-settings.js';
@@ -61,44 +61,32 @@ function createForceGraph(graph){
     forceGraph.d3Force('center', null);
 
     function link_force_distance(link) {
-        if (link.type === "chain") {
-            return link.length;
-        }
-
-        if (link.class === "node") {
-            return link.length;
-        }
-        if (link.isDel){
-            return 1;
-        }
-
-        return 10; //"edge"
+        return link.length;
     }
 
     forceGraph.d3Force('link')
         .distance(link_force_distance) // target link size
-        .strength(0.9); // tolerance to the link size is
+        .strength(0.95); // tolerance to the link size is
 
     // Collision force: prevents node overlap
     //forceGraph.d3Force('collide', d3.forceCollide(50).radius(50));
 
-    function customCollisionRadius(node) {
-        if (node.class === "mid") {
-            return 20; 
-        }
-        return 50;
-    }
+    //function customCollisionRadius(node) {
+    //    if (node.class === "mid") {
+    //        return 20; 
+    //    }
+    //    return 50;
+    //}
 
     // Collision force: prevents node overlap, customized per node
-    forceGraph.d3Force('collide', d3.forceCollide()
-                                    .radius(customCollisionRadius)
-                                    .strength(1)
-                                    .iterations(2));
+    //forceGraph.d3Force('collide', d3.forceCollide()
+    //                                .radius(customCollisionRadius)
+    //                                .strength(1)
+    //                                .iterations(2));
 
-    var GLOBAL_MULTIPLIER=1;
     forceGraph.d3Force('charge')
-        .strength(-500)
-        .distanceMax(2000*GLOBAL_MULTIPLIER);  // CONTROLS WAVEYNESS
+        .strength(-200)
+        .distanceMax(2000);  // CONTROLS WAVEYNESS
 
     // Custom force to repel from deleted links
     //forceGraph.d3Force('delLinkForce', delLinkForce());

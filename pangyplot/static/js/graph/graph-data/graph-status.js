@@ -1,4 +1,5 @@
-import { updateGraphInformation } from '../../ui/tabs/information-panel.js';
+import { updateDebugInformation } from '../../ui/tabs/information-panel.js';
+import { getZoomFactor, getScaleFactor, getDampenedZoomFactor } from '../render/render-scaling.js';
 
 var frameRate = 0;
 var lastMousePosition = { x: 0, y: 0 };
@@ -34,12 +35,16 @@ function setupMouseListener(canvasElement) {
 
 export function statusUpdate(forceGraph, canvasElement) {
     calculateFPS();
-    updateGraphInformation(getStatus(forceGraph));
+    updateDebugInformation(getStatus(forceGraph));
     setupMouseListener(canvasElement);
 }
 
 function getStatus(forceGraph) {
     const ndigits = 1;
+    
+    const canvasElement = document.querySelector('#graph-container canvas');
+    const ctx = canvasElement.getContext('2d');
+
 
     const x = lastMousePosition.x;
     const y = lastMousePosition.y;
@@ -52,6 +57,9 @@ function getStatus(forceGraph) {
         canvasX: x.toFixed(ndigits),
         canvasY: y.toFixed(ndigits),
         screenX: coordinates.x.toFixed(ndigits),
-        screenY: coordinates.y.toFixed(ndigits)
+        screenY: coordinates.y.toFixed(ndigits),
+        zoom: `${getZoomFactor(ctx).toFixed(3)}`,
+        scale: `${getScaleFactor(ctx).toFixed(3)}`,
+        dampzoom: `${getDampenedZoomFactor(ctx).toFixed(3)}`
     };
 }

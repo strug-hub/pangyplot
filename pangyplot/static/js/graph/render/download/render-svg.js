@@ -1,60 +1,60 @@
-function getFormattedDateTime() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+import { getImageName } from './download-utils.js';
+import { getViewport } from '../viewport-utils.js'
+import { getFontCss } from './download-utils.js';
+import { basicNodePainter } from '../painter/basic-node-painter.js';
+import { basicLinkPainter } from '../painter/basic-link-painter.js';
+
+const svgNS = "http://www.w3.org/2000/svg";
+
+async function getSvgObject() {
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("xmlns", svgNS);
+
+    const fontCss = await getFontCss();
+    const fontStyle = document.createElementNS(svgNS, "style");
+    fontStyle.textContent = fontCss;
+    svg.appendChild(fontStyle);
+
+    return svg;
 }
 
-function downloadGraphImage(){
-    const canvas = document.querySelector('.force-graph-container canvas');
-    if (!canvas) {
-        console.error('Canvas element not found');
-        return;
-    }
+function saveSvg(svg) {
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svg);
 
-    const dateTimeStr = getFormattedDateTime();
-    const dataUrl = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `pangyplot_${dateTimeStr}.png`;
-    link.href = dataUrl;
+    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(svgBlob);
+    link.download = getImageName('svg');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-
-function exportForceGraphToSVG(forceGraph) {
+export async function exportGraphToSvg(forceGraph) {
     const canvasElement = document.querySelector('#graph-container canvas');
     const ctx = canvasElement.getContext('2d');
-    const viewport = getViewport(forceGraph, getCanvasWidth(), getCanvasHeight(), buffer=1.01);
+    const viewport = getViewport(forceGraph, 1.01);
     const graphData = forceGraph.graphData();
     const { nodes, links } = graphData;
+  
+    const svg = await getSvgObject();
 
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
+    // Add nodes to the SVG
+    graphData.links.forEach(link => { basicLinkPainter(ctx, link, svg); });
+    graphData.nodes.forEach(node => { basicNodePainter(ctx, node, svg); });
 
-    const style = document.createElementNS(svgNS, "style");
-    style.textContent = `
-        text {
-            font-family: sans-serif;
-            font-weight: bold;
-        }
-    `;
-    svg.appendChild(style);
+    svg.setAttribute("width", canvasElement.width);
+    svg.setAttribute("height", canvasElement.height);
 
+    console.log(canvasElement.width, canvasElement.height);
+
+    svg.setAttribute("viewBox", `0 0 ${canvasElement.width} ${canvasElement.height}`);
     
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    function updateBoundingBox(x, y) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-    }
-    
+    saveSvg(svg);
+
+
+
     const geneGroup = document.createElementNS(svgNS, "g");
 
     genes = geneRenderEngineDraw(ctx, graphData, true)
@@ -98,25 +98,7 @@ function exportForceGraphToSVG(forceGraph) {
         updateBoundingBox(l.x2, l.y2);
     });
 
-    // Add nodes to the SVG
-    nodes.forEach(node => {
-        if (!node.isVisible || !node.isDrawn) return;
 
-        const n = basicRenderPaintNode(ctx, node, true);
-        const circle = document.createElementNS(svgNS, "circle");
-        circle.setAttribute("cx", n.cx);
-        circle.setAttribute("cy", n.cy);
-        circle.setAttribute("r", n.width/2);
-        circle.setAttribute("fill", n.fill);
-
-        if (n.stroke) {
-            circle.setAttribute("stroke", n.stroke); // Outline color
-            circle.setAttribute("stroke-width", n.strokeWidth);
-        }
-
-        nodeGroup.appendChild(circle);
-        updateBoundingBox(n.cx, n.cy);
-    });
 
     const sequenceSearchGroup = document.createElementNS(svgNS, "g");
     sequenceSearch = searchSequenceEngineUpdate(ctx, forceGraph, true);
@@ -185,32 +167,6 @@ function exportForceGraphToSVG(forceGraph) {
     svg.appendChild(geneLabelGroup);
     svg.appendChild(labelGroup);
     
-    // Calculate final bounding box dimensions
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    // Add a 10% buffer to the bounding box
-    const bufferX = width * 0.1;
-    const bufferY = height * 0.1;
-    const finalMinX = minX - bufferX;
-    const finalMinY = minY - bufferY;
-    const finalWidth = width + 2 * bufferX;
-    const finalHeight = height + 2 * bufferY;
-
-    svg.setAttribute("width", finalWidth / 10);
-    svg.setAttribute("height", finalHeight / 10);
-    svg.setAttribute("viewBox", `${finalMinX} ${finalMinY} ${finalWidth} ${finalHeight}`);
 
 
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svg);
-
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(svgBlob);
-    const dateTimeStr = getFormattedDateTime();
-    link.download = `pangyplot_${dateTimeStr}.svg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
 }

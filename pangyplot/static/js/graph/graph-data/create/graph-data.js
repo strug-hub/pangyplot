@@ -2,16 +2,11 @@ import deserializeNodes from './graph-element-node.js';
 import deserializeLinks from './graph-element-link.js';
 import { addNodeRecord, addLinkRecord, getNodeElement, getNodeElements, getLinkElement } from '../graph-manager.js';
 
-//TODO: move responsibility for size to render engine
-const NODE_WIDTH=50;
-const NODE_LINK_WIDTH=60;
-const LINK_LENGTH = 10;
-const LINK_WIDTH = 10;
-const CHAIN_WIDTH = 35;
+const LINK_SCALE = 1;
 
-const SINGLE_NODE_BP_THRESH = 6;
-const KINK_SIZE = 1000;
-const MAX_KINKS = 10;
+const SINGLE_NODE_BP_THRESH = 10;
+const KINK_SIZE = 2000;
+const MAX_KINKS = 20;
 
 function calculateNumberOfKinks(length) {
     let n = (length < SINGLE_NODE_BP_THRESH) ? 1 : Math.floor(length / KINK_SIZE) + 2;
@@ -63,7 +58,7 @@ function forceGraphNodes(element) {
             isVisible: true,
             isDrawn: true,
             isFixed: false,
-            width: NODE_WIDTH,
+            width: 5,
             annotations: []
         });
     }
@@ -94,8 +89,8 @@ function forceGraphNodeLinks(element) {
             sourceNodeId: source,
             targetNodeId: target,
             isDrawn: true,
-            width: NODE_LINK_WIDTH,
-            length: Math.min(element.seqLength / kinks, 1000),
+            width: 5,
+            length: Math.min(element.seqLength/100, 1000)*LINK_SCALE,
             annotations: [],
             linkId: `${source}+${target}+`
         });
@@ -117,12 +112,12 @@ function forceGraphLinks(element) {
     const sourceNodeId = element.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
     const targetNodeId = element.toStrand === "+" ? targetElement.head() : targetElement.tail();
 
-    var length = LINK_LENGTH;
+    var length = 1;
     if (element.seqLength > 0) {
-        length = length * element.seqLength / 10;
+        length = Math.min(element.seqLength/10, 100);
     }
     if (element.isDel) {
-        length = length * 2;
+        length = 2;
     }
 
     return {
@@ -140,8 +135,8 @@ function forceGraphLinks(element) {
         bubbleId: element.bubbleId, //currently only for del-links
         isVisible: true,
         isDrawn: true,
-        length: length,
-        width: isChainLink ? CHAIN_WIDTH : LINK_WIDTH,
+        length: length * LINK_SCALE,
+        width: isChainLink ? 5 : 1,
         contained: element.contained || [],
         annotations: [],
         linkId: `${sourceNodeId}${element.fromStrand}${targetNodeId}${element.toStrand}`

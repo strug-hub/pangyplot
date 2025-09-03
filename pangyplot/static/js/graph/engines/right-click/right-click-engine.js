@@ -1,7 +1,7 @@
 import { RightClickMenu } from './right-click-menu.js';
 import { popGroupOfBubbles } from '../bubble-pop/bubble-pop-engine.js';
-//TODO
-//import { downloadGraphImage, exportForceGraphToSVG } from './download-utils.js';
+import { exportGraphToPng } from '../../render/download/render-png.js';
+import { exportGraphToSvg } from '../../render/download/render-svg.js';
 import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 
 var menu = null;
@@ -61,11 +61,11 @@ export function populateOptions(forceGraph) {
     });
 
     menu.addOption('download', 'Download PNG', 'general', () => {
-        downloadGraphImage();
+        exportGraphToPng(forceGraph);
     });
 
     menu.addOption('download', 'Download SVG', 'general', () => {
-        exportForceGraphToSVG(forceGraph);
+        exportGraphToSvg(forceGraph);
     });
 
     return menu;

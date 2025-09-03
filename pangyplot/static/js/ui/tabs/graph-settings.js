@@ -5,8 +5,8 @@ document.addEventListener("DOMContentLoaded", function () {
         { id: "attraction-slider", label: "Attraction", min: -1000, max: 1000, step: 1, value: -500, default: -500 },
         { id: "collision-slider", label: "Collision", min: 0, max: 200, step: 1, value: 50, default: 50 },
         { id: "pull-slider", label: "Pull", min: 0, max: 200, step: 1, value: 100, default: 100 },
-        { id: "node-width-slider", label: "Node Width", min: -10, max: 500, step: 1, value: 0, default: 0 },
-        { id: "font-size-slider", label: "Font Size", min: -10, max: 100, step: 1, value: 0, default: 0 }
+        { id: "node-width-slider", label: "Node Width", min: 0.1, max: 10, step: 0.5, value: 1, default: 1 },
+        { id: "font-size-slider", label: "Font Size", min: 0.1, max: 10, step: 0.5, value: 1, default: 1 }
 
     ];
 

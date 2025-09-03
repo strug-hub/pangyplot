@@ -61,26 +61,38 @@ panel.addEventListener('click', async (e) => {
   } catch {}
 });
 
-export function updateGraphInformation(status) {
+export function updateDebugInformation(status) {
   if (!isDebugMode()) {
     debugContainer.style.display = 'none';
     return;
   }
 
-  //TODO make dynamic too
+  debugContainer.style.display = 'block';
+  debugContainer.innerHTML = ""; // clear previous
 
-  const elementFPS = document.getElementById('info-fps');
-  elementFPS.textContent = status.fps;
+  const table = document.createElement("table");
+  table.className = "info-table";
 
-  const elementNodes = document.getElementById('info-graph-nodes');
-  elementNodes.textContent = ` ${status.nodes}`;
-  const elementLinks = document.getElementById('info-graph-links');
-  elementLinks.textContent = ` ${status.links}`;
+  const header = document.createElement("tr");
+  header.className = "info-debug-header";
+  header.textContent = "DEBUG INFO";
+  table.appendChild(header);
 
-  const elementCanvasCoord = document.getElementById('info-canvas-coordinates');
-  elementCanvasCoord.textContent = ` (${status.canvasX}, ${status.canvasY})`;
+  Object.entries(status).forEach(([key, value]) => {
+    const row = document.createElement("tr");
 
-  const elementScreenCoord = document.getElementById('info-screen-coordinates');
-  elementScreenCoord.textContent = ` (${status.screenX}, ${status.screenY})`;
+    const keyCell = document.createElement("td");
+    keyCell.className = "info-debug-key";
+    keyCell.textContent = key;
 
+    const valueCell = document.createElement("td");
+    valueCell.className = "info-debug-value";
+    valueCell.textContent = value;
+
+    row.appendChild(keyCell);
+    row.appendChild(valueCell);
+    table.appendChild(row);
+  });
+
+  debugContainer.appendChild(table);
 }

@@ -2,11 +2,11 @@ import { colorState } from "../color/color-state.js";
 import { findNodeBounds } from "../../utils/node-utils.js";
 import { drawText } from "./painter-utils.js";
 import { getZoomFactor } from "../../graph-data/graph-state.js";
-import { getTextSizeAdjustment } from "../render-settings.js";
+import { getTextScaleFactor } from "../render-scaling.js";
 
 const LABEL_FONT_SIZE=60;
 
-export default function labelPainter(ctx, forceGraph, svg=false){
+export function labelPainter(ctx, forceGraph, svg=false){
     const zoomFactor = getZoomFactor();
 
     const labelGroups = {};
@@ -30,8 +30,8 @@ export default function labelPainter(ctx, forceGraph, svg=false){
         const x = bounds.x + bounds.width/2;
         const y = bounds.y + bounds.height/2;
         var size = Math.max(LABEL_FONT_SIZE, LABEL_FONT_SIZE * (1 / zoomFactor / 10));
-        const textSizeAdjustment = getTextSizeAdjustment();
-        size = size + textSizeAdjustment;
+        const scaleFactor = getTextScaleFactor();
+        size = size * scaleFactor;
 
         if (svg){
           properties.push(
@@ -39,7 +39,7 @@ export default function labelPainter(ctx, forceGraph, svg=false){
                 text: label,
                 x: x,
                 y: y,
-                fontSize: LABEL_FONT_SIZE + textSizeAdjustment,
+                fontSize: LABEL_FONT_SIZE * scaleFactor,
                 strokeWidth: 2,
                 stroke: colorState.textOutline,
                 color: colorState.textFill

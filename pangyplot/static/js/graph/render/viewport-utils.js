@@ -1,6 +1,5 @@
 
-import { getCanvasWidth, getCanvasHeight } from './canvas-size.js';
-
+import { getCanvasWidth, getCanvasHeight } from './canvas-utils.js';
 
 export function getViewport(forceGraph, buffer=1){
     const canvasWidth = getCanvasWidth();

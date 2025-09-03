@@ -1,33 +1,21 @@
-const renderSettings = {
-    widthAdjustment: 0,
-    textSizeAdjustment: 0
-};
-
-export function getWidthAdjustment() {
-    return renderSettings.widthAdjustment;
-}
-
-export function getTextSizeAdjustment() {
-    return renderSettings.textSizeAdjustment;
-}
+import {updateWidthMultiplier, updateTextSizeMultiplier} from './render-scaling.js';
 
 export default function setUpRenderSettings(forceGraph) {
     const settings = [
         {
             id: "node-width-slider",
             onChange: (value) => {
-                renderSettings.widthAdjustment = value;
+                updateWidthMultiplier(value);
             }
         },
         {
             id: "font-size-slider",
             onChange: (value) => {
-                renderSettings.textSizeAdjustment = value;
+                updateTextSizeMultiplier(value);
             }
         },
     ];
 
-    // Attach listeners dynamically
     settings.forEach(({ id, onChange }) => {
         const slider = document.getElementById(id);
         if (!slider) {

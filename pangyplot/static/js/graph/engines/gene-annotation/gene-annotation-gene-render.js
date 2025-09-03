@@ -1,10 +1,12 @@
 import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
 import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
-import { getWidthAdjustment } from "../../render/render-settings.js";
+import { getScaleFactor } from "../../render/render-scaling.js";
+
+const THICKNESS = 5;
 
 export function renderGenes(ctx, forceGraph, svg = false) {
     //const genes = getAllGenes();
-    const zoomFactor = ctx.canvas.__zoom.k;
+    const scaleFactor = getScaleFactor(ctx);
     ctx.save();
 
     let renderQueue = [];
@@ -12,8 +14,7 @@ export function renderGenes(ctx, forceGraph, svg = false) {
     //todo: cache which nodes have gene annotations to avoid looping through all nodes
     forceGraph.graphData().nodes.forEach(node => {
         if (node.isVisible && node.isDrawn) {
-            var hsize = Math.max(100, node.width) + 10/zoomFactor;
-            hsize += getWidthAdjustment();
+            var hsize = (node.width+THICKNESS)*scaleFactor;
             const annotations = getNodeAnnotations(node.nodeId);
             var n = 1;
 
@@ -40,8 +41,7 @@ export function renderGenes(ctx, forceGraph, svg = false) {
 
     forceGraph.graphData().links.forEach(link => {
         if (link.isVisible && link.isDrawn) {
-            var hsize = Math.max(100, link.width) + 10 / zoomFactor;
-            hsize += getWidthAdjustment();
+            var hsize = (link.width + THICKNESS) * scaleFactor;
             const sourceAnnotations = getNodeAnnotations(link.source.nodeId)
             const targetAnnotations = getNodeAnnotations(link.target.nodeId);
 
