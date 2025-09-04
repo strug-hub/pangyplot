@@ -68,16 +68,16 @@ function onDragEnd() {
 }
 
 
-export default function setUpDragEngine(forceGraph, canvasElement) {
+export default function setUpDragEngine(forceGraph, graphElement) {
 
   forceGraph.d3Force('dragInfluence', dragInfluenceForce(forceGraph));
 
-  canvasElement.addEventListener('pointerdown', event => {
+  graphElement.addEventListener('pointerdown', event => {
     if (event.button !== 0) return; // Only left click
     setDragStart(event, forceGraph);
   });
 
-  canvasElement.addEventListener('pointermove', event => {
+  graphElement.addEventListener('pointermove', event => {
     if (dragState.readyNode != null){
       checkIfDragging(event);
     } else if (isDragging()) {
@@ -85,7 +85,7 @@ export default function setUpDragEngine(forceGraph, canvasElement) {
     }
   });
 
-  canvasElement.addEventListener('pointerup', event => {
+  graphElement.addEventListener('pointerup', event => {
     dragState.readyNode = null;
     if (isDragging()) {
       onDragEnd(event);

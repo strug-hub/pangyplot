@@ -4,9 +4,9 @@ import { addRotation } from '../../graph-data/graph-state.js';
 // TODO: but a challenge is where the "center" is to apply the rotation
 // if we just rotate at the end (ie during render) I think everything else will just work??
 
-export default function setUpRotationEngine(forceGraph, canvasElement) {
+export default function setUpRotationEngine(forceGraph, graphElement) {
 
-    canvasElement.addEventListener('mousedown', (event) => {
+    graphElement.addEventListener('mousedown', (event) => {
         if (event.button === 1) { // 1 is the middle mouse button
             if (isPanZoomMode()) {
                 event.preventDefault();

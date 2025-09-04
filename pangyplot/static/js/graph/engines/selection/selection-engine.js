@@ -8,12 +8,12 @@ import eventBus from '../../../utils/event-bus.js';
 var nodesDragged = false;
 var selectionUpdated = false;
 
-export default function setUpSelectionEngine(forceGraph, canvasElement) {
+export default function setUpSelectionEngine(forceGraph, graphElement) {
 
-    setUpHoverEngine(forceGraph, canvasElement);
+    setUpHoverEngine(forceGraph, graphElement);
 
-    setUpSingleSelectEngine(forceGraph, canvasElement);
-    setUpMultiSelectionEngine(forceGraph, canvasElement);
+    setUpSingleSelectEngine(forceGraph, graphElement);
+    setUpMultiSelectionEngine(forceGraph, graphElement);
 
     eventBus.subscribe('drag:node', () => {
         nodesDragged = true;
@@ -23,13 +23,13 @@ export default function setUpSelectionEngine(forceGraph, canvasElement) {
         generateSelectedInfo();
     });
 
-    canvasElement.addEventListener('pointerdown', (event) => {
+    graphElement.addEventListener('pointerdown', (event) => {
         if (event.button !== 0) return; // Only left click
         nodesDragged = false;
         selectionUpdated = false;
     });
 
-    canvasElement.addEventListener('pointerup', (event) => {
+    graphElement.addEventListener('pointerup', (event) => {
         if (event.button !== 0) return; // Only left click
         setTimeout(() => {
             if (!nodesDragged && !selectionUpdated) {
@@ -38,7 +38,7 @@ export default function setUpSelectionEngine(forceGraph, canvasElement) {
         }, 50);
     });
 
-    canvasElement.addEventListener('keydown', (event) => {
+    graphElement.addEventListener('keydown', (event) => {
         if (event.key === 'c' || event.key === 'C') {
             event.preventDefault();
             flipChainMode();

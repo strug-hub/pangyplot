@@ -5,13 +5,13 @@ export default function setUpRenderSettings(forceGraph) {
         {
             id: "node-width-slider",
             onChange: (value) => {
-                updateWidthMultiplier(value);
+                updateWidthMultiplier(1+value); // -1 to 1
             }
         },
         {
             id: "font-size-slider",
             onChange: (value) => {
-                updateTextSizeMultiplier(value);
+                updateTextSizeMultiplier(1+value); // -1 to 1
             }
         },
     ];

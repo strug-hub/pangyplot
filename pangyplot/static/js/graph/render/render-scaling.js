@@ -40,5 +40,8 @@ export function getScaleFactor(ctx) {
 }
 
 export function getTextScaleFactor(ctx) {
-    return scaleSettings.textSizeMultiplier;
+    const zoomFactor = ctx.canvas.__zoom["k"];
+    const adjustedFactor = scaleSettings.textSizeMultiplier;
+
+    return 1/zoomFactor * adjustedFactor;
 }

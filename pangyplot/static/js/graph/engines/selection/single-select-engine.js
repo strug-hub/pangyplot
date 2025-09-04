@@ -28,9 +28,9 @@ function attemptSelection(event, forceGraph) {
 }
 
 
-export default function setUpSingleSelectEngine(forceGraph, canvasElement) {
+export default function setUpSingleSelectEngine(forceGraph, graphElement) {
 
-    canvasElement.addEventListener('pointerup', (event) => {
+    graphElement.addEventListener('pointerup', (event) => {
         if (event.button !== 0) return; // Only left click 
         attemptSelection(event, forceGraph);
     });

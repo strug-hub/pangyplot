@@ -23,14 +23,14 @@ function destroySelectionBox() {
     selectionBox.clearBox();
 }
 
-function pointerMove(event, canvasElement, forceGraph) {
+function pointerMove(event, graphElement, forceGraph) {
     if (!selectionAllowed) return;
 
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
 
     if (bounds) {
         selectionState.multiSelectMode = true;
-        if (!overlayElement) overlayElement = createOverlay(canvasElement);
+        if (!overlayElement) overlayElement = createOverlay(graphElement);
         updateOverlay(overlayElement, bounds);
 
         // Highlight nodes
@@ -56,7 +56,7 @@ function pointerUp(event, forceGraph) {
     setTimeout(() => selectionState.multiSelectMode = false, 0);
 }
 
-export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {
+export default function setUpMultiSelectionEngine(forceGraph, graphElement) {
 
     eventBus.subscribe('drag:node', () => {
         destroySelectionBox();
@@ -69,13 +69,13 @@ export default function setUpMultiSelectionEngine(forceGraph, canvasElement) {
         selectionAllowed = true;
     });
 
-    canvasElement.addEventListener('pointerdown', e => {
+    graphElement.addEventListener('pointerdown', e => {
         if (e.button !== 0) return; // Only left click
         pointerDown(e);
     });
 
-    canvasElement.addEventListener('pointermove', e => {
-        pointerMove(e, canvasElement, forceGraph);
+    graphElement.addEventListener('pointermove', e => {
+        pointerMove(e, graphElement, forceGraph);
     });
 
     document.addEventListener('pointerup', e => {

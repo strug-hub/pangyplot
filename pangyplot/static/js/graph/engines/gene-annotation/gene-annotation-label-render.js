@@ -1,9 +1,7 @@
 import { colorState } from '../../render/color/color-state.js';
 import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
-import { drawText } from "../../render/painter/painter-utils.js";
-import { getTextScaleFactor } from '../../render/render-scaling.js';
+import { labelPainter } from "../../render/painter/label-painter.js";
 
-export const FONT_SIZE = 180;
 export const LABEL_SPEED = 0.05;
 export const GRID_SIZE = 30;
 
@@ -85,8 +83,7 @@ function findSpiralPosition(anchor, labelWidth, labelHeight, placedLabels, nodes
     return anchor; // fallback if no space found
 }
 
-export function renderGeneLabels(ctx, forceGraph, viewport, svg = false) {
-    const zoomFactor = ctx.canvas.__zoom.k;
+export function renderGeneLabels(ctx, forceGraph, svg = false) {
     const visibleNodes = [];
     const annotationGroups = {};
 
@@ -103,8 +100,6 @@ export function renderGeneLabels(ctx, forceGraph, viewport, svg = false) {
         });
     });
 
-    var fontSize = Math.max(FONT_SIZE, FONT_SIZE / (zoomFactor * 10));
-    fontSize += getTextScaleFactor()*3;
     const labels = [];
     const placedLabels = [];
 
@@ -131,21 +126,21 @@ export function renderGeneLabels(ctx, forceGraph, viewport, svg = false) {
                     y: interpolate(cached.y, centroid.y, LABEL_SPEED)
                 };
 
-                const width = (gene.name.length + 6) * (fontSize / 4); // rough width
-                const height = fontSize / 2;
+                const width = (gene.name.length + 6) * (FONT_SIZE / 4); // rough width
+                const height = FONT_SIZE / 2;
 
                 const pos = findSpiralPosition(labelCache[key], width, height, placedLabels, visibleNodes);
                 placedLabels.push({ ...pos, width, height });
 
-                labels.push({ text: `${gene.name}:exon${exon}`, ...pos, color: gene.color, size: fontSize / 2 });
+                labels.push({ text: `${gene.name}:exon${exon}`, ...pos, color: gene.color, size: "medium" });
             });
         } else {
             const nodesOnly = groupNodes.map(({ node }) => node);
             const centroid = findGroupCentroid(nodesOnly);  // <-- current position of group
             const cached = labelCache[geneId] || centroid;
 
-            const width = (gene.name.length + 2) * (fontSize / 2); // rough width
-            const height = fontSize;
+            const width = (gene.name.length + 2) * 20; // rough width
+            const height = 20; // rough height
 
             // Spiral search around centroid, not cached
             const targetPos = findSpiralPosition(centroid, width, height, placedLabels, visibleNodes);
@@ -158,22 +153,10 @@ export function renderGeneLabels(ctx, forceGraph, viewport, svg = false) {
 
             placedLabels.push({ ...labelCache[geneId], width, height });
 
-            labels.push({ text: gene.name, ...labelCache[geneId], color: gene.color, size: fontSize });
+            labels.push({ text: gene.name, ...labelCache[geneId], color: gene.color, size: "large" });
         }
 
     });
 
-    if (svg) {
-        return labels.map(l => ({
-            text: l.text,
-            x: l.x,
-            y: l.y,
-            color: l.color,
-            fontSize: l.size,
-            stroke: colorState.textOutline,
-            strokeWidth: l.size / 20
-        }));
-    } else {
-        labels.forEach(l => drawText(l.text, ctx, l.x, l.y, l.size, l.color, colorState.background, l.size / 8));
-    }
+    labels.forEach(l => labelPainter(ctx, l.text, l.x, l.y, l.size, l.color, colorState.background, svg));
 };

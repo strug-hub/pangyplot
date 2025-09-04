@@ -1,4 +1,5 @@
-import { drawCircle, drawCircleSvg } from './painter-utils.js';
+import { drawCircle } from './painter-utils.js';
+import { drawCircleSvg } from './painter-svg-utils.js';
 import { getScaleFactor } from '../render-scaling.js';
 
 export function highlightNodePainter(ctx, node, color, thickness, svg=null) {

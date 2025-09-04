@@ -1,5 +1,5 @@
 import { colorState } from '../color/color-state.js';
-const svgNS = "http://www.w3.org/2000/svg";
+
 
 export function outlineNode(node, ctx, shift, size, color) {
     drawCircle(ctx, node.x+shift, node.y+shift, size, color)
@@ -31,20 +31,6 @@ export function drawLine(ctx, x1, y1, x2, y2, width, color){
     ctx.strokeStyle = previousStrokeStyle;
 }
 
-export function drawLineSvg(target, x1, y1, x2, y2, width, color) {
-    const line = document.createElementNS(svgNS, "line");
-    line.setAttribute("x1", x1);
-    line.setAttribute("y1", y1);
-    line.setAttribute("x2", x2);
-    line.setAttribute("y2", y2);
-    line.setAttribute("stroke", color);
-    line.setAttribute("stroke-width", width);
-    line.setAttribute("stroke-linecap", "round"); // to match ctx.lineCap = 'round'
-    target.appendChild(line);
-    return line;
-}
-
-
 export function drawCircle(ctx, x, y, size, color){
     const previousFillStyle = ctx.fillStyle;
     ctx.fillStyle = color;
@@ -53,17 +39,6 @@ export function drawCircle(ctx, x, y, size, color){
     ctx.fill();
     ctx.fillStyle = previousFillStyle;
 }
-
-export function drawCircleSvg(target, x, y, size, color) {
-    const circle = document.createElementNS(svgNS, "circle");
-    circle.setAttribute("cx", x);
-    circle.setAttribute("cy", y);
-    circle.setAttribute("r", size / 2);
-    circle.setAttribute("fill", color);
-    target.appendChild(circle);
-    return circle;
-}
-
 
 export function drawCircleOutline(ctx, x, y, size, color, lineWidth=3, fill=colorState.background){
     ctx.save();
@@ -151,20 +126,17 @@ export function drawRotatedCross(ctx, x, y, size, width, color, angle) {
     ctx.lineTo(size, size);
     ctx.moveTo(size, -size);
     ctx.lineTo(-size, size);
-
     ctx.stroke();
 
     ctx.restore(); 
 }
 
-export function drawText(text, ctx, x, y, size, color, outlineColor=null, outlineWidth=4, align="center", baseline="middle") {
+export function drawText(ctx, text, x, y, size, color, outlineWidth, outlineColor) {
     ctx.save();
-    
-    ctx.textAlign = align;
-    ctx.textBaseline = baseline;
-    
-    ctx.font = size.toString() + 'px Sans-Serif';
-    
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `bold ${size}px 'Rubik', 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+
     if (outlineColor) {
         ctx.lineWidth = outlineWidth;
         ctx.strokeStyle = outlineColor;
@@ -173,6 +145,5 @@ export function drawText(text, ctx, x, y, size, color, outlineColor=null, outlin
 
     ctx.fillStyle = color;
     ctx.fillText(text, x, y); 
-    
     ctx.restore();
 }

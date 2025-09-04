@@ -1,8 +1,8 @@
-import { setGraphCoordinates, equalCoordinates, forceGraph, canvasElement }  from './graph-data/graph-state.js';
+import { setGraphCoordinates, equalCoordinates, forceGraph, graphElement, canvasElement }  from './graph-data/graph-state.js';
 import buildGraphData from './graph-data/create/graph-data.js';
 import delLinkForce from './forces/del-link-force.js';
 import bubbleCircularForce from './forces/bubble-circular-force.js';
-import setUpRenderManager from './render/render-manager.js';
+import { setUpRenderManager } from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import { setCanvasSize } from './render/canvas-utils.js';
 import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotation-engine.js';
@@ -42,17 +42,17 @@ function createForceGraph(graph){
     setUpGraphManager(forceGraph);
     setCanvasSize(forceGraph);
 
-    setUpEngineManager(forceGraph, canvasElement);
+    setUpEngineManager(forceGraph, graphElement);
     setUpRenderManager(forceGraph, canvasElement);
     setUpForceSettings(forceGraph);
 
-    updateGeneAnnotationEngine(forceGraph, canvasElement);
+    updateGeneAnnotationEngine(forceGraph, graphElement);
 
     // todo: pathManagerInitialize();
     // todo: searchSequenceEngineRerun();
 
     forceGraph.onEngineTick(() => {
-        statusUpdate(forceGraph, canvasElement);
+        statusUpdate(forceGraph, graphElement);
     })
     
     // --- FORCES ---
@@ -92,8 +92,8 @@ function createForceGraph(graph){
     //forceGraph.d3Force('delLinkForce', delLinkForce());
     forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
 
-    //canvasElement.addEventListener("click", evt => {
-    //    const rect = canvasElement.getBoundingClientRect();
+    //graphElement.addEventListener("click", evt => {
+    //    const rect = graphElement.getBoundingClientRect();
     //    const mouseX = evt.clientX - rect.left;
     //    const mouseY = evt.clientY - rect.top;
     //    const graphCoords = forceGraph.screen2GraphCoords(mouseX, mouseY);

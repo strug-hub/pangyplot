@@ -1,5 +1,6 @@
 import { updateDebugInformation } from '../../ui/tabs/information-panel.js';
 import { getZoomFactor, getScaleFactor, getDampenedZoomFactor } from '../render/render-scaling.js';
+import { canvasElement } from './graph-state.js';
 
 var frameRate = 0;
 var lastMousePosition = { x: 0, y: 0 };
@@ -24,27 +25,25 @@ function calculateFPS() {
 }
 
 var isMouseListenerSetUp = false;
-function setupMouseListener(canvasElement) {
+function setupMouseListener(graphElement) {
     if (isMouseListenerSetUp) return;
-    canvasElement.addEventListener('mousemove', (event) => {
+    graphElement.addEventListener('mousemove', (event) => {
         lastMousePosition.x = event.offsetX;
         lastMousePosition.y = event.offsetY;
     });
     isMouseListenerSetUp = true;
 }
 
-export function statusUpdate(forceGraph, canvasElement) {
+export function statusUpdate(forceGraph, graphElement) {
     calculateFPS();
     updateDebugInformation(getStatus(forceGraph));
-    setupMouseListener(canvasElement);
+    setupMouseListener(graphElement);
 }
 
 function getStatus(forceGraph) {
     const ndigits = 1;
-    
-    const canvasElement = document.querySelector('#graph-container canvas');
-    const ctx = canvasElement.getContext('2d');
 
+    const ctx = canvasElement.getContext('2d');
 
     const x = lastMousePosition.x;
     const y = lastMousePosition.y;
@@ -54,10 +53,10 @@ function getStatus(forceGraph) {
         fps: `${frameRate.toFixed(ndigits)}`,
         nodes: forceGraph ? forceGraph.graphData().nodes.length : 0,
         links: forceGraph ? forceGraph.graphData().links.length : 0,
-        canvasX: x.toFixed(ndigits),
-        canvasY: y.toFixed(ndigits),
-        screenX: coordinates.x.toFixed(ndigits),
-        screenY: coordinates.y.toFixed(ndigits),
+        screenX: x.toFixed(ndigits),
+        screenY: y.toFixed(ndigits),
+        graphX: coordinates.x.toFixed(ndigits),
+        graphY: coordinates.y.toFixed(ndigits),
         zoom: `${getZoomFactor(ctx).toFixed(3)}`,
         scale: `${getScaleFactor(ctx).toFixed(3)}`,
         dampzoom: `${getDampenedZoomFactor(ctx).toFixed(3)}`

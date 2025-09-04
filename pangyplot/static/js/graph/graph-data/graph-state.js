@@ -1,5 +1,6 @@
-export const canvasElement = document.getElementById("graph");
-export const forceGraph = ForceGraph()(canvasElement);
+export const graphElement = document.getElementById("graph");
+export const forceGraph = ForceGraph()(graphElement);
+export const canvasElement = document.querySelector('#graph-container canvas');
 
 let state = {
     genome: null,

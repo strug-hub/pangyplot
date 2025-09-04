@@ -1,5 +1,6 @@
 
 import { getCanvasWidth, getCanvasHeight } from './canvas-utils.js';
+import { canvasElement } from '../graph-data/graph-state.js';
 
 export function getViewport(forceGraph, buffer=1){
     const canvasWidth = getCanvasWidth();
@@ -19,6 +20,15 @@ export function getViewport(forceGraph, buffer=1){
     };
 
     return viewport;
+}
+
+export function getCenterGraphCoordinates(forceGraph) {
+    const rect = canvasElement.getBoundingClientRect();
+    const screenCenterX = rect.width / 2;
+    const screenCenterY = rect.height / 2;
+
+    const center = forceGraph.screen2GraphCoords(screenCenterX, screenCenterY);
+    return center;
 }
 
 export function updateVisibility(forceGraph) {

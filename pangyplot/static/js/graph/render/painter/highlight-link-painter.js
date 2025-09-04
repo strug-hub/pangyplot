@@ -1,4 +1,5 @@
-import { drawLine, drawLineSvg } from './painter-utils.js';
+import { drawLine } from './painter-utils.js';
+import { drawLineSvg } from './painter-svg-utils.js';
 import { getScaleFactor } from '../render-scaling.js';
 
 export function highlightLinkPainter(ctx, link, color, thickness, svg=null){

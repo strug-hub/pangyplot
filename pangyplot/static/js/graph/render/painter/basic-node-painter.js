@@ -1,5 +1,6 @@
 import { getNodeColor } from '../color/color-style.js';
-import { drawCircle, drawCircleSvg } from './painter-utils.js';
+import { drawCircleSvg } from './painter-svg-utils.js';
+import { drawCircle} from './painter-utils.js';
 import { getScaleFactor, getZoomFactor } from '../render-scaling.js';
 
 //possible todo: don't shrink if connected to a long link

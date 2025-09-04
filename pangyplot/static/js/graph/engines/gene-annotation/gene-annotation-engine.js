@@ -36,7 +36,7 @@ function updateAnnotations(forceGraph){
         populateGeneAnnotationsTable();
     });
 }
-export default function updateGeneAnnotationEngine(forceGraph, canvasElement) {
+export default function updateGeneAnnotationEngine(forceGraph, graphElement) {
     updateAnnotations(forceGraph);
 
     eventBus.subscribe("graph-updated", () => {

@@ -50,11 +50,11 @@ function attemptHover(event, forceGraph, tooltip) {
   tooltip.show(labelText, event.clientX, event.clientY);
 }
 
-export default function setUpHoverEngine(forceGraph, canvasElement) {
-  const container = canvasElement.parentElement || canvasElement;
+export default function setUpHoverEngine(forceGraph, graphElement) {
+  const container = graphElement.parentElement || graphElement;
   const tooltip = makeHoverLabel(container);
 
-  canvasElement.addEventListener('pointermove', (event) => {
+  graphElement.addEventListener('pointermove', (event) => {
     attemptHover(event, forceGraph, tooltip);
   });
 

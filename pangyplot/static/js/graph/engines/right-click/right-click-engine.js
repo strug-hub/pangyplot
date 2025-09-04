@@ -71,10 +71,10 @@ export function populateOptions(forceGraph) {
     return menu;
 }
 
-export default function setupRightClickMenu(forceGraph, canvasElement) {
+export default function setupRightClickMenu(forceGraph, graphElement) {
     populateOptions(forceGraph);
 
-    canvasElement.addEventListener('contextmenu', event => {
+    graphElement.addEventListener('contextmenu', event => {
         event.preventDefault();
         menu.showMenu(event.pageX, event.pageY);
     });
