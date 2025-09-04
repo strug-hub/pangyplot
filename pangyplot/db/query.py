@@ -61,14 +61,15 @@ def get_path(indexes, genome, chrom, start, end, sample):
     stepidx = indexes.step_index.get((chrom, genome), None)
 
     start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
+    start_segment = stepidx[start_step]
+    end_segment = stepidx[end_step]
 
+    print(f"Getting path for {sample} from {start_segment} to {end_segment}...")
     gfaidx = indexes.gfa_index[chrom]
     paths = gfaidx.get_paths(sample)
 
+    subpaths = []
     for path in paths:
-        subpaths = path.subset_path(start_step, end_step, gfaidx=gfaidx)
-        print("path:", path, "subpaths:", subpaths)
-        for p in subpaths:
-            print(p.path)
+        subpaths.extend(path.subset_path(start_segment, end_segment, gfaidx=gfaidx))
 
-    return {}
+    return [p.serialize() for p in subpaths]

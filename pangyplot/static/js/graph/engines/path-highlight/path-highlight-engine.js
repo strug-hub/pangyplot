@@ -1,5 +1,6 @@
 import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { getGraphCoordinates } from '../../graph-data/graph-state.js';
+import { loadInPaths, playAnimation } from './path-highlight-state.js';
 
 const PATH_SELECTOR = "path-selector";
 const PATH_SELECT_BUTTON = "path-select-button"
@@ -9,9 +10,9 @@ var pathData = null;
 async function fetchPathData(sample){
     const params = { sample, ...getGraphCoordinates() };
     const url = buildUrl('/path', params);
-    const paths = await fetchData(url, "path-selection");
-
-    console.log("Fetched paths:", paths);
+    fetchData(url, "path-selection").then(paths => {
+        loadInPaths(paths);
+    });
 }
 
 export default async function setUpPathHighlightEngine() {
@@ -28,15 +29,18 @@ export default async function setUpPathHighlightEngine() {
         select.appendChild(opt);
     });
 
-    //document.getElementById(PATH_SELECTER).addEventListener('change', function () {
+    //document.getElementById(PATH_SELECTOR).addEventListener('change', function () {
     document.getElementById(PATH_SELECT_BUTTON).addEventListener('click', function () {
-        var selectedOption = document.getElementById(PATH_SELECTOR).options[document.getElementById(PATH_SELECTOR).selectedIndex];
-        var selectedId = selectedOption.value;
+        const selectedOption = document.getElementById(PATH_SELECTOR).options[document.getElementById(PATH_SELECTOR).selectedIndex];
+        const selectedId = selectedOption.value;
         console.log("Selected path:", selectedId);
-        var selectedIndex = selectedOption.getAttribute('data-index');
+        const selectedIndex = selectedOption.getAttribute('data-index');
 
-        CURRENTLY_SELECTED_PATH = selectedIndex;
         fetchPathData(selectedId);
+    });
+
+    document.getElementById("path-play-button").addEventListener("click", function () {
+        playAnimation();
     });
 }
 

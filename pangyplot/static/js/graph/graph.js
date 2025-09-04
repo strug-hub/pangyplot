@@ -11,6 +11,7 @@ import setUpForceSettings from './forces/force-setttings/force-settings.js';
 import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
 import { fetchData, buildUrl } from '../utils/network-utils.js';
 import { statusUpdate } from './graph-data/graph-status.js';
+import { pathHighlightTick } from './engines/path-highlight/path-highlight-tick.js';
 
 import eventBus from '../utils/event-bus.js';
 
@@ -53,6 +54,8 @@ function createForceGraph(graph){
 
     forceGraph.onEngineTick(() => {
         statusUpdate(forceGraph, graphElement);
+
+        pathHighlightTick(forceGraph);
     })
     
     // --- FORCES ---

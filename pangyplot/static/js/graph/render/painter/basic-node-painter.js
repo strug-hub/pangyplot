@@ -23,8 +23,14 @@ export function basicNodePainter(ctx, node, svg=null) {
 
     if (shrinkFactor < 0.1) return;
 
-    const color = getNodeColor(node);
-    const width = node.width * scaleFactor * shrinkFactor;
+    var color = getNodeColor(node);
+
+    var width = node.width * scaleFactor * shrinkFactor;
+
+    if (node.color_override) {
+        color = node.color_override;
+        width = node.width * scaleFactor
+    }
 
     if (svg) {
         drawCircleSvg(svg, node.x, node.y, width, color);
