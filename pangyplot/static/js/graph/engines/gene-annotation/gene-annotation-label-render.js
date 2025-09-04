@@ -126,8 +126,8 @@ export function renderGeneLabels(ctx, forceGraph, svg = false) {
                     y: interpolate(cached.y, centroid.y, LABEL_SPEED)
                 };
 
-                const width = (gene.name.length + 6) * (FONT_SIZE / 4); // rough width
-                const height = FONT_SIZE / 2;
+                const width = (gene.name.length + 6) * 12; // rough width
+                const height = 12; // rough height
 
                 const pos = findSpiralPosition(labelCache[key], width, height, placedLabels, visibleNodes);
                 placedLabels.push({ ...pos, width, height });

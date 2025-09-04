@@ -3,27 +3,36 @@ import { faLabel } from '../selection-utils.js';
 import { numberSelected, getSelected } from '../selection-state.js';
 import { getGraphCoordinates } from "../../../graph-data/graph-state.js";
 
+const blankInfo = {
+    id: '',
+    type: '',
+    start: '',
+    end: '',
+    position: '',
+    length: '',
+    seq: '',
+    nInside: ''
+};
+
 export function generateSelectedInfo(){
-    const info = {};
+    const info = { ...blankInfo };
 
     const coords = getGraphCoordinates();
     info.genome = coords.genome || '';
     info.chromosome = coords.chromosome || '';
 
     if (numberSelected() !== 1) {
-        info.id = '';
-        info.type = '';
-        info.start = '';
-        info.end = '';
-        info.position = '';
-        info.length = '';
-        info.seq = '';
-        info.nInside = '';
         updateSelectedInfo(info);
+        return;
     }
 
-    const node = getSelected()[0];
-
+    const selected = getSelected();
+    if (selected == null) {
+        updateSelectedInfo(info);
+        return;
+    }
+    const node = selected[0];
+    
     info.id = faLabel(node.id) || '';
     info.type = node.type || '';
     info.start = node.start != null ? node.start : '?';
