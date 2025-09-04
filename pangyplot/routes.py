@@ -133,6 +133,22 @@ def subgraph():
 
     return jsonify(subgraph)
 
+@bp.route('/path', methods=["GET"])
+def path():
+    genome = request.args.get("genome")
+    chrom = request.args.get("chromosome")
+    start = int(request.args.get("start"))
+    end = int(request.args.get("end"))
+    sample = request.args.get("sample")
+
+    print(f"Getting path for {sample}, {genome}#{chrom}:{start}-{end}...")
+    try:
+        path = query.get_path(current_app, genome, chrom, start, end, sample)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify(path)
+
 @bp.route('/gfa', methods=["GET"])
 def gfa():
     genome = request.args.get("genome")

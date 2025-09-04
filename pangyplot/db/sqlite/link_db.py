@@ -6,7 +6,7 @@ DB_NAME = "links.db"
 def get_connection(dir):
     return utils.get_connection(dir, DB_NAME)
 
-def create_link_table(dir, sample_idx):
+def create_link_table(dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
@@ -26,16 +26,6 @@ def create_link_table(dir, sample_idx):
     cur.execute("CREATE INDEX IF NOT EXISTS idx_from_id ON links(from_id);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_to_id ON links(to_id);")
 
-    cur.execute("CREATE TABLE IF NOT EXISTS sample_index ("
-                "sample TEXT PRIMARY KEY,"
-                "idx INTEGER NOT NULL"
-                ");")
-    
-    cur.executemany("""
-        INSERT INTO sample_index (sample, idx)
-        VALUES (?, ?)
-    """, sample_idx.items())
-
     conn.commit()
     return conn
 
@@ -54,11 +44,6 @@ def insert_link(cur, link):
         link.reverse,
         link.frequency
     ))
-
-def load_sample_index(dir):
-    cur = get_connection(dir).cursor()
-    cur.execute("SELECT sample, idx FROM sample_index")
-    return {row["sample"]: row["idx"] for row in cur.fetchall()}
 
 def load_links(dir):
     cur = get_connection(dir).cursor()

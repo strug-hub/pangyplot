@@ -56,3 +56,19 @@ def get_bubble_end(indexes, nodeid, genome, chrom):
     serialized_subgraph["links"] = [link.serialize() for link in links]
 
     return serialized_subgraph
+
+def get_path(indexes, genome, chrom, start, end, sample):
+    stepidx = indexes.step_index.get((chrom, genome), None)
+
+    start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
+
+    gfaidx = indexes.gfa_index[chrom]
+    paths = gfaidx.get_paths(sample)
+
+    for path in paths:
+        subpaths = path.subset_path(start_step, end_step, gfaidx=gfaidx)
+        print("path:", path, "subpaths:", subpaths)
+        for p in subpaths:
+            print(p.path)
+
+    return {}

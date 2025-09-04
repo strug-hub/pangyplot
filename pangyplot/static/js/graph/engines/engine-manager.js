@@ -7,6 +7,7 @@ import setupBubblePopEngine from './bubble-pop/bubble-pop-engine.js';
 import setUpSequenceSearchEngine from './sequence-search/sequence-search-engine.js';
 import setUpGeneAnnotationEngine from './gene-annotation/gene-annotation-engine.js';
 import setUpRotationEngine from './navigate/rotation-engine.js';
+import setUpPathHighlightEngine from './path-highlight/path-highlight-engine.js';
 
 export default function setUpEngineManager(forceGraph, graphElement) {
     setUpDragEngine(forceGraph, graphElement);
@@ -18,4 +19,5 @@ export default function setUpEngineManager(forceGraph, graphElement) {
     setupBubblePopEngine(forceGraph, graphElement);
     setUpSequenceSearchEngine(forceGraph, graphElement);
     setUpGeneAnnotationEngine(forceGraph, graphElement);
+    setUpPathHighlightEngine(forceGraph, graphElement);
 }

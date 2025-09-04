@@ -1,47 +1,50 @@
-import { fetchData, buildUrl } from '../../utils/network-utils.js';
+import { fetchData, buildUrl } from '../../../utils/network-utils.js';
+import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 
-PATH_SELECTER="path-selector";
-CURRENTLY_SELECTED_PATH = null;
+const PATH_SELECTOR = "path-selector";
+const PATH_SELECT_BUTTON = "path-select-button"
+var CURRENTLY_SELECTED_PATH = null;
 var pathData = null;
 
-function fetchSamples() {
-    const url = '/samples';
-    return fetchData(url, 'samples').then(fetchedData => {
-        return fetchedData;
+async function fetchPathData(sample){
+    const params = { sample, ...getGraphCoordinates() };
+    const url = buildUrl('/path', params);
+    const paths = await fetchData(url, "path-selection");
+
+    console.log("Fetched paths:", paths);
+}
+
+export default async function setUpPathHighlightEngine() {
+
+    const samples = await fetchData('/samples', "path-selection");
+    console.log("Fetched samples:", samples);
+    var select = document.getElementById(PATH_SELECTOR);
+
+    samples.forEach(function (id, index) {
+        var opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = id;
+        opt.setAttribute('data-index', index);
+        select.appendChild(opt);
+    });
+
+    //document.getElementById(PATH_SELECTER).addEventListener('change', function () {
+    document.getElementById(PATH_SELECT_BUTTON).addEventListener('click', function () {
+        var selectedOption = document.getElementById(PATH_SELECTOR).options[document.getElementById(PATH_SELECTOR).selectedIndex];
+        var selectedId = selectedOption.value;
+        console.log("Selected path:", selectedId);
+        var selectedIndex = selectedOption.getAttribute('data-index');
+
+        CURRENTLY_SELECTED_PATH = selectedIndex;
+        fetchPathData(selectedId);
     });
 }
 
-function pathManagerInitialize() {
-    
-    fetchSamples().then(fetchedSamples => {
-        samples = fetchedSamples;
-        
-        var select = document.getElementById(PATH_SELECTER);
-
-        samples.forEach(function(sample) {
-            var opt = document.createElement("option");
-            opt.value = sample.id; 
-            opt.textContent = sample.id;
-            opt.setAttribute('data-index', sample.index);
-            select.appendChild(opt);
-        });
-    });
-}
-
-function pathManagerShouldHighlightLink(link){
-    if (!CURRENTLY_SELECTED_PATH || ! link.haplotype || CURRENTLY_SELECTED_PATH >= link.haplotype.length){
+function pathManagerShouldHighlightLink(link) {
+    if (!CURRENTLY_SELECTED_PATH || !link.haplotype || CURRENTLY_SELECTED_PATH >= link.haplotype.length) {
         return false;
     }
     return link.haplotype[CURRENTLY_SELECTED_PATH];
 }
-
-document.getElementById(PATH_SELECTER).addEventListener('change', function() {
-    var selectedOption = this.options[this.selectedIndex];
-    var selectedId = selectedOption.value; 
-    var selectedIndex = selectedOption.getAttribute('data-index');
-
-    CURRENTLY_SELECTED_PATH = selectedIndex; 
-});
-
 
 

@@ -1,11 +1,13 @@
 from collections import deque
 from pangyplot.db.indexes.LinkIndex import LinkIndex
 from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+from pangyplot.db.indexes.PathIndex import PathIndex
 
 class GFAIndex:
     def __init__(self, db_dir):
         self.segment_index = SegmentIndex(db_dir)
         self.link_index = LinkIndex(db_dir)
+        self.path_index = PathIndex(db_dir)
 
     def __getitem__(self, segment_id):
         return self.segment_index[segment_id]
@@ -23,7 +25,10 @@ class GFAIndex:
         return self.link_index.get_links_by_id(link_ids)
 
     def get_samples(self):
-        return self.link_index.get_samples()
+        return self.path_index.get_samples()
+    
+    def get_paths(self, sample):
+        return self.path_index.get_paths(sample)
     
     def get_neighbors(self, seg_id, direction=None):
         neighbors = []

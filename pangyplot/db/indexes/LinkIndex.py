@@ -11,7 +11,6 @@ class LinkIndex:
     def __init__(self, dir):
         self.dir = dir
 
-        self.sample_idx = db.load_sample_index(self.dir)
         self.strand_map = {'+': 1, '-': 0}
         self.rev_strand_map = {1: '+', 0: '-'}
 
@@ -49,9 +48,6 @@ class LinkIndex:
         
     def __len__(self):
         return len(self.from_ids)
-
-    def get_samples(self):
-        return [sample for sample in self.sample_idx]
 
     def _load_links(self):
         rows = db.load_links(self.dir)

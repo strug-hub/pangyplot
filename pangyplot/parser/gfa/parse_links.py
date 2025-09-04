@@ -13,13 +13,13 @@ def parse_line_L(line):
     link.to_strand = cols[4]
     return link
 
-def parse_links(gfa, sample_idx, path_dict, dir):
-    conn = db.create_link_table(dir, sample_idx)
+def parse_links(gfa, path_idx, path_dict, dir):
+    conn = db.create_link_table(dir)
     cur = conn.cursor()
     link_dict = defaultdict(list)
 
     def process_path_information(link):
-        n = len(sample_idx)
+        n = len(path_idx)
 
         key = link.id()
         keyReverse = link.reverse_id()

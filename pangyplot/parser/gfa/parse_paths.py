@@ -1,18 +1,22 @@
 from collections import defaultdict
 import pangyplot.parser.gfa.parse_utils as utils
+import pangyplot.db.sqlite.path_db as db
+from pangyplot.db.indexes.PathIndex import PathIndex
+from pangyplot.objects.Path import Path
 
 def parse_line_P(line):
     path = dict()
     cols = line.strip().split("\t")
 
-    path["full_id"] = cols[1]
+    path = Path()
+    path.full_id = cols[1]
     sampleInfo = utils.parse_id_string(cols[1])
 
-    path["sample"] = sampleInfo["genome"]
-    path["contig"] = sampleInfo["chrom"]
-    path["hap"] = sampleInfo["hap"]
-    path["start"] = sampleInfo["start"]
-    path["path"] = cols[2].split(",")
+    path.sample = sampleInfo["genome"]
+    path.contig = sampleInfo["chrom"]
+    path.hap = sampleInfo["hap"]
+    path.start = sampleInfo["start"]
+    path.path = cols[2].split(",")
 
     return path
 
@@ -36,21 +40,17 @@ def parse_line_W(line):
     path = dict()
     cols = line.strip().split("\t")
 
-    path["sample"] = cols[1]
-    path["full_id"] = cols[1]
-    path["hap"] = cols[2]
-    path["start"] = cols[4]
+    path = Path()
+    path.sample = cols[1]
+    path.full_id = cols[1]
+    path.hap = cols[2]
+    path.start = cols[4]
     #path["end"] = cols[5]
-    path["path"] = path_from_W(cols[6])
+    path.path = path_from_W(cols[6])
 
     return path
 
-def apply_offset(path, ref_offset):
-    if ref_offset and ref_offset > 0:
-        path["start"] = ref_offset
-    return path
-
-def parse_paths(gfa, ref_path, ref_offset):
+def parse_paths(gfa, ref_path, ref_offset, dir):
     sample_idx = dict()
     next_idx = 0
     path_dict = defaultdict(int)
@@ -59,8 +59,7 @@ def parse_paths(gfa, ref_path, ref_offset):
     def collapse_binary(path):
         nonlocal next_idx
 
-        suffix = "" if path["hap"] is None else "." + path["hap"]
-        pid = path["sample"] + suffix
+        pid = path.sample_name()
 
         if pid not in sample_idx:
             sample_idx[pid] = next_idx
@@ -68,7 +67,7 @@ def parse_paths(gfa, ref_path, ref_offset):
         idx = sample_idx[pid]
 
         #compresses path links into a binary number stored as integer
-        path_list = path["path"]
+        path_list = path.path
         for i in range(len(path_list) - 1):
             key = path_list[i] + path_list[i + 1]
             path_dict[key] |= (1 << idx)
@@ -80,15 +79,20 @@ def parse_paths(gfa, ref_path, ref_offset):
     for line in gfa:
         if line[0] in "PW":
             path = parse_line_P(line) if line[0] == "P" else parse_line_W(line)
-            
+
             collapse_binary(path)
 
-            if ref_path in path["full_id"]:
-                matching_refs.append(path["full_id"])
-                apply_offset(path, ref_offset)
+            path.is_ref = False
+            if path.id_like(ref_path):
+                matching_refs.append(path.full_id)
+                if ref_offset:
+                    path.apply_offset(ref_offset)
                 reference_path = path
+                path.is_ref = True
 
-    path_info = (sample_idx, path_dict)
+            db.store_path(dir, path)
+
+    db.store_sample_idx(dir, sample_idx)
     reference_info = (reference_path, matching_refs)
-    
-    return path_info, reference_info
+
+    return PathIndex(dir), path_dict, reference_info

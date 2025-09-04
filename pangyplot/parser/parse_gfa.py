@@ -37,12 +37,11 @@ def parse_gfa(gfa_file, ref, path, ref_offset, layout_coords, dir):
     # ==== PATHS ====
     print("   🧵 Gathering paths from GFA...", end="", flush=True)
     start_time = time.time()
-    path_info, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset)
-    sample_idx, path_dict = path_info
+    path_idx, path_dict, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset, dir)
     reference_path, matching_refs = reference_info
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    verify_reference(ref_path, matching_refs)
+    verify_reference(reference_path, matching_refs)
 
     # ==== SEGMENTS ====
     print("   🍡 Gathering segments from GFA...", end="", flush=True)
@@ -57,9 +56,9 @@ def parse_gfa(gfa_file, ref, path, ref_offset, layout_coords, dir):
     # ==== LINKS ====
     print("   🧷 Gathering links from GFA...", end="", flush=True)
     start_time = time.time()
-    link_idx = parse_links(get_reader(gfa_file), sample_idx, path_dict, dir)
+    link_idx = parse_links(get_reader(gfa_file), path_idx, path_dict, dir)
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
     print(f"      {len(link_idx)} links total.")
 
-    return segment_idx, link_idx
+    return path_idx, segment_idx, link_idx
