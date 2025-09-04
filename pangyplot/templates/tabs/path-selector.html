@@ -7,18 +7,52 @@
         <!-- The options will be appended here by JavaScript -->
     </select>
 
-    <button id="path-select-button" class="button-style">
-        Select Path
-    </button>
 
     <div class="flex-row">
+        <span id="path-table-container" class="flex-3"></span>
+        <!-- The options will be appended here by JavaScript -->
+    </div>
 
-        <button id="path-play-button" class="button-style flex-1">
-            <i class="fas fa-play"></i>
+    <div id="path-options-container" class="flex-col hidden">
+
+        <button id="path-select-button" class="button-style path-button" disabled>
+            Select Path [⚠️ under development]
         </button>
-        <button id="path-pause-button" class="button-style flex-1">
-            <i class="fas fa-pause"></i>
-        </button>
+
+        <div>
+            <br>
+            <div class="tab-header">Path Animation</div>
+            <hr>
+        </div>
+
+        <div class="flex-row">
+
+            <button id="path-play-button" class="button-style path-button flex-1">
+                <i class="fas fa-play"></i>
+            </button>
+            <button id="path-frame-reverse-button" class="button-style path-button flex-1">
+                <i class="fas fa-step-backward"></i>
+            </button>
+            <button id="path-frame-forward-button" class="button-style path-button flex-1">
+                <i class="fas fa-step-forward"></i>
+            </button>
+            <button id="path-pause-button" class="button-style path-button flex-1">
+                <i class="fas fa-pause"></i>
+            </button>
+
+        </div>
+
+        <div class="flex-row">
+            <label for="path-speed-slider" class="flex-1">Speed:</label>
+            <input type="range" id="path-speed-slider" class="flex-3" min="1" max="10" value="5" autocomplete="off" step="1">
+            <span id="path-speed-value" class="flex-1">5</span>
+        </div>
+
+        <div class="flex-row">
+            <label for="path-current-step" class="flex-1">Current Step:</label>
+            <span id="path-current-step" class="flex-1">0</span>
+        </div>
 
     </div>
+
 </div>

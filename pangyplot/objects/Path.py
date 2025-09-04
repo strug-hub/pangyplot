@@ -3,6 +3,7 @@ class Path:
         self.full_id = None
         self.sample = None
         self.hap = None
+        self.contig = None
         self.length = None
         self.start = None
         self.is_ref = False
@@ -11,8 +12,10 @@ class Path:
     def serialize(self):
         return {
             "full_id": self.full_id,
+            "id": self.sample_name(),
             "sample": self.sample,
             "hap": self.hap,
+            "contig": self.contig,
             "length": self.length,
             "start": self.start,
             "is_ref": self.is_ref,
@@ -43,6 +46,7 @@ class Path:
         new_path.full_id = self.full_id
         new_path.sample = self.sample
         new_path.hap = self.hap
+        new_path.contig = self.contig
         new_path.is_ref = self.is_ref
         if not no_path:
             new_path.start = self.start

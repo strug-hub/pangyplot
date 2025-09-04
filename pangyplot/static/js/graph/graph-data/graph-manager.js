@@ -285,6 +285,7 @@ export function getActiveDeletionLinks() {
   return links;
 }
 
+// by forcegraph id
 export function getNodeElement(nodeId) {
   return nodeIdDict.get(nodeId) || null;
 }
@@ -297,6 +298,7 @@ export function isNodeActive(nodeId) {
   return nodeDict.has(nodeId) && nodeDict.get(nodeId).active;
 }
 
+// by gfa id
 export function getNodeElements(id) {
   return nodeDict.has(id) ? Array.from(nodeDict.get(id).elements) : [];
 }

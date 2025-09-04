@@ -60,11 +60,8 @@ def get_bubble_end(indexes, nodeid, genome, chrom):
 def get_path(indexes, genome, chrom, start, end, sample):
     stepidx = indexes.step_index.get((chrom, genome), None)
 
-    start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
-    start_segment = stepidx[start_step]
-    end_segment = stepidx[end_step]
+    start_segment, end_segment = stepidx.query_segment_id_from_coordinates(start, end)
 
-    print(f"Getting path for {sample} from {start_segment} to {end_segment}...")
     gfaidx = indexes.gfa_index[chrom]
     paths = gfaidx.get_paths(sample)
 

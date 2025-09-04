@@ -1,54 +1,32 @@
 import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { getGraphCoordinates } from '../../graph-data/graph-state.js';
-import { loadInPaths, playAnimation } from './path-highlight-state.js';
-
-const PATH_SELECTOR = "path-selector";
-const PATH_SELECT_BUTTON = "path-select-button"
-var CURRENTLY_SELECTED_PATH = null;
-var pathData = null;
+import { loadInSamples, loadInPaths } from './path-highlight-state.js';
+import { setAnimationPath } from './animation/animation-state.js';
+import { setupUi } from './ui/path-highlight-ui.js';
 
 async function fetchPathData(sample){
     const params = { sample, ...getGraphCoordinates() };
     const url = buildUrl('/path', params);
     fetchData(url, "path-selection").then(paths => {
+
+        paths.sort((a, b) => b["length"] - a["length"]);
+        const longestPath = paths[0];
+
         loadInPaths(paths);
+        setAnimationPath(longestPath);
     });
 }
 
 export default async function setUpPathHighlightEngine() {
-
     const samples = await fetchData('/samples', "path-selection");
-    console.log("Fetched samples:", samples);
-    var select = document.getElementById(PATH_SELECTOR);
+    loadInSamples(samples);
+    setupUi(samples);
 
-    samples.forEach(function (id, index) {
-        var opt = document.createElement("option");
-        opt.value = id;
-        opt.textContent = id;
-        opt.setAttribute('data-index', index);
-        select.appendChild(opt);
+    const pathSelector = document.getElementById('path-selector');
+    pathSelector.addEventListener('change', function () {
+        const selectedOption = pathSelector.options[pathSelector.selectedIndex];
+        fetchPathData(selectedOption.value);
     });
+    
 
-    //document.getElementById(PATH_SELECTOR).addEventListener('change', function () {
-    document.getElementById(PATH_SELECT_BUTTON).addEventListener('click', function () {
-        const selectedOption = document.getElementById(PATH_SELECTOR).options[document.getElementById(PATH_SELECTOR).selectedIndex];
-        const selectedId = selectedOption.value;
-        console.log("Selected path:", selectedId);
-        const selectedIndex = selectedOption.getAttribute('data-index');
-
-        fetchPathData(selectedId);
-    });
-
-    document.getElementById("path-play-button").addEventListener("click", function () {
-        playAnimation();
-    });
 }
-
-function pathManagerShouldHighlightLink(link) {
-    if (!CURRENTLY_SELECTED_PATH || !link.haplotype || CURRENTLY_SELECTED_PATH >= link.haplotype.length) {
-        return false;
-    }
-    return link.haplotype[CURRENTLY_SELECTED_PATH];
-}
-
-

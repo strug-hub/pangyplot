@@ -9,3 +9,25 @@
 .path-selector-dropdown:focus {
     background-color: var(--highlight);
 }
+
+.path-no-data{
+  color: grey;
+  font-style: italic;
+}
+
+.path-table {
+    font-size: small;
+}
+
+.path-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.path-table tr { cursor: pointer; }
+.path-table td, .path-table th { padding: 6px 10px; border-bottom: 1px solid #ddd; }
+.path-table tr.selected { outline: 2px solid currentColor; background: var(--highlight); }
+.path-table tr:focus { outline: 2px dashed; }
+
+.path-button {
+    padding: 5px;
+}

@@ -21,6 +21,10 @@ export function basicNodePainter(ctx, node, svg=null) {
     const seqLength = node.element.seqLength || 1;
     var shrinkFactor = shrinkPower(getZoomFactor(ctx), seqLength);
 
+    if (node.color_override) {
+        shrinkFactor = 1;
+    }
+
     if (shrinkFactor < 0.1) return;
 
     var color = getNodeColor(node);
@@ -29,7 +33,6 @@ export function basicNodePainter(ctx, node, svg=null) {
 
     if (node.color_override) {
         color = node.color_override;
-        width = node.width * scaleFactor
     }
 
     if (svg) {

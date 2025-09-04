@@ -86,6 +86,11 @@ class StepIndex:
                   END:   step={res2[0]} / ref coords {res2[1]}-{res2[2]} / nodes {self._step_to_segment[res2[0]]}""")
         return (res1[0], res2[0])
 
+    def query_segment_id_from_coordinates(self, start, end):
+        start_step, end_step = self.query_coordinates(start, end)
+        return (self.segments[start_step], self.segments[end_step])
+
+
     def get_genome(self):
         return self.genome
     

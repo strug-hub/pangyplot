@@ -34,6 +34,7 @@ def create_path(filename):
         path.full_id = data.get("full_id")
         path.sample = data.get("sample")
         path.hap = data.get("hap")
+        path.contig = data.get("contig")
         path.start = data.get("start")
         path.length = data.get("length")
         path.is_ref = data.get("is_ref", False)

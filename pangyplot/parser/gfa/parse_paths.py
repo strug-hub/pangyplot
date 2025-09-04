@@ -44,6 +44,7 @@ def parse_line_W(line):
     path.sample = cols[1]
     path.full_id = cols[1]
     path.hap = cols[2]
+    path.contig = cols[3]
     path.start = cols[4]
     #path["end"] = cols[5]
     path.path = path_from_W(cols[6])
