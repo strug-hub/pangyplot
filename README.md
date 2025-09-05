@@ -1,4 +1,4 @@
-# PangyPlot
+# PangyPlot - A pangenome reference browser
 
 ![PangyPlot logo](images/pangyplot_logo_circle.svg)
 
@@ -35,11 +35,13 @@ XXX
 
 # Documentation
 
-For more detailed information about using PangyPlot, please refer to the [https://pangyplot-docs.readthedocs.io/en/latest/
-](documentation).
+For more detailed information about using PangyPlot, please refer to the [documentation](https://pangyplot-docs.readthedocs.io/en/latest/).
 
 # License
 
 PangyPlot is licensed under the MIT License
 
 # Acknowledgements
+
+PangyPlot is powered by the `odgi layout` algorithm: https://github.com/pangenome/odgi
+and BubbleGun: https://github.com/fawaz-dabbaghieh/bubble_gun
