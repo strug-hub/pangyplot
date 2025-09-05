@@ -116,7 +116,7 @@ body {
     transition: all 0.2s ease;
     font-size: large;
     text-decoration: none;
-    padding: 0px;
+    padding: 3px;
 } .button-style:hover {
     background-color: var(--highlight);
 } .button-style:active {
@@ -185,6 +185,10 @@ hr {
     border-color: var(--error) !important;
 }
 
+.no-data{
+  color: grey;
+  font-style: italic;
+}
 
 .organism-indicator{
     display: none;

@@ -10,11 +10,6 @@
     background-color: var(--highlight);
 }
 
-.path-no-data{
-  color: grey;
-  font-style: italic;
-}
-
 #path-table-container{
   max-height: 250px;
   overflow-y: auto;

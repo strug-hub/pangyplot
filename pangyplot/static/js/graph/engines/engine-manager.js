@@ -8,6 +8,7 @@ import setUpSequenceSearchEngine from './sequence-search/sequence-search-engine.
 import setUpGeneAnnotationEngine from './gene-annotation/gene-annotation-engine.js';
 import setUpRotationEngine from './navigate/rotation-engine.js';
 import setUpPathHighlightEngine from './path-highlight/path-highlight-engine.js';
+import setUpNodeSearchEngine from './navigate/node-search/node-search-engine.js';
 
 export default function setUpEngineManager(forceGraph, graphElement) {
     setUpDragEngine(forceGraph, graphElement);
@@ -20,4 +21,5 @@ export default function setUpEngineManager(forceGraph, graphElement) {
     setUpSequenceSearchEngine(forceGraph, graphElement);
     setUpGeneAnnotationEngine(forceGraph, graphElement);
     setUpPathHighlightEngine(forceGraph, graphElement);
+    setUpNodeSearchEngine(forceGraph, graphElement);
 }

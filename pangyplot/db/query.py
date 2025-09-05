@@ -69,8 +69,6 @@ def get_path(indexes, genome, chrom, start, end, sample):
     all_subpaths = []
     for path in paths:
         subpaths = path.subset_path(start_segment, end_segment, gfaidx=gfaidx)
-        for subpath in subpaths:
-            subpath.construct_bubble_path(bubbleidx)
-            all_subpaths.extend(subpaths)
+        all_subpaths.extend(subpaths)
 
-    return [p.serialize() for p in all_subpaths]
+    return [p.serialize(bubbleidx) for p in all_subpaths]

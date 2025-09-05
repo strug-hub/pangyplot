@@ -34,7 +34,7 @@ function createForceGraph(graph){
         .cooldownTime(Infinity)
         .d3AlphaDecay(0.0228)
         .minZoom(1e-6) //default = 0.01
-        .maxZoom(1000) //default = 1000
+        .maxZoom(10) //default = 1000
         .warmupTicks(4)
         //.linkDirectionalParticles(4)
 

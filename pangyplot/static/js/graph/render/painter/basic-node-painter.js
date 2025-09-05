@@ -21,7 +21,7 @@ export function basicNodePainter(ctx, node, svg=null) {
     const seqLength = node.element.seqLength || 1;
     var shrinkFactor = shrinkPower(getZoomFactor(ctx), seqLength);
 
-    if (node.color_override) {
+    if (node.focused) {
         shrinkFactor = 1;
     }
 
@@ -31,8 +31,8 @@ export function basicNodePainter(ctx, node, svg=null) {
 
     var width = node.width * scaleFactor * shrinkFactor;
 
-    if (node.color_override) {
-        color = node.color_override;
+    if (node.colorOverride) {
+        const { overrideColor, alpha } = node.colorOverride;
     }
 
     if (svg) {

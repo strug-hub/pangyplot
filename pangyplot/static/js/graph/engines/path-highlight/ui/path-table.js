@@ -4,11 +4,11 @@ export default function createPathTableElement(paths) {
 
     if (!paths?.length) {
         pathContainer.textContent = "No path data available.";
-        pathContainer.classList.add("path-no-data");
+        pathContainer.classList.add("no-data");
         return;
     }
 
-    pathContainer.classList.remove("path-no-data");
+    pathContainer.classList.remove("no-data");
     // Create table + header
     const table = document.createElement("table");
     table.className = "path-table";
