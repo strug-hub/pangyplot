@@ -1,9 +1,15 @@
-import { isAnimationPlaying, nextStep } from './animation-state.js';
+import { tickAnimation, pauseAnimation } from './animation-state.js';
 import { getNodeElements } from '../../../graph-data/graph-manager.js';
+import { updateStepDisplay } from '../ui/path-highlight-ui.js';
 
 const animatedNodes = [];
-var framesPerStep = 5;
-var frameCount = 0;
+var animationPath = null;
+var currentStep = -1;
+
+export function setAnimationPath(path){
+    animationPath = path.bubble_path;
+    resetAnimation();
+}
 
 function addPathStep(forceGraph, nodeid, direction) {
     console.log("Adding path step:", nodeid, direction);
@@ -21,10 +27,6 @@ function addPathStep(forceGraph, nodeid, direction) {
 
 }
 
-export function changeAnimationSpeed(speed) {
-    framesPerStep = 11-speed;
-}
-
 export function pathHighlightTick(forceGraph) {
     if (!isAnimationPlaying()) return
 
@@ -38,4 +40,48 @@ export function pathHighlightTick(forceGraph) {
     }
 
 
+}
+
+function splitStep(step){
+    var nodeid = step.slice(0, -1);
+    if (!nodeid.startsWith('s')) {
+        nodeid = 's' + nodeid;
+    }
+    const direction = step.slice(-1);
+    return [nodeid, direction];
+}
+
+export function nextStep(){
+    if (!animationPath) return;
+
+    const tick = tickAnimation();
+
+    //reset state
+    if (tick == null){ 
+        currentStep = -1;
+        updateStepDisplay(null);
+        return;
+    }
+
+    //paused
+    if (tick === 0) return; 
+
+    // end of animation
+    if (tick > 0 && currentStep >= animationPath.length-1) {
+        pauseAnimation();
+        return;
+    } 
+    // start of animation
+    if (tick < 0 && currentStep <= 0) {
+        pauseAnimation();
+        return;
+    }
+
+    currentStep += tick;
+
+    console.log("Current step:", currentStep, animationPath[currentStep-1]);
+    
+
+
+    return null;//splitStep(animationPath[currentStep]);
 }

@@ -39,7 +39,7 @@ function updateAnnotations(forceGraph){
 export default function updateGeneAnnotationEngine(forceGraph, graphElement) {
     updateAnnotations(forceGraph);
 
-    eventBus.subscribe("graph-updated", () => {
+    eventBus.subscribe("graph:updated", () => {
         updateAnnotations(forceGraph);
     });
 }

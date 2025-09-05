@@ -254,6 +254,8 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
   graphData.links.push(...subgraph.links);
 
   updateForceGraph(graphData);
+  
+  eventBus.publish("graph:bubble-popped", bubbleId);
   return subgraph;
 }
 
@@ -270,7 +272,7 @@ export function updateForceGraph(graphData) {
   });
 
   forceGraphRef.graphData(graphData);
-  eventBus.publish("graph-updated", true);
+  eventBus.publish("graph:updated", true);
 }
 
 export function getActiveDeletionLinks() {
@@ -302,6 +304,13 @@ export function isNodeActive(nodeId) {
 export function getNodeElements(id) {
   return nodeDict.has(id) ? Array.from(nodeDict.get(id).elements) : [];
 }
+export function getSourceNodeElements(id) {
+  return nodeDict.has(`${id}:0`) ? Array.from(nodeDict.get(`${id}:0`).elements) : [];
+}
+export function getSinkNodeElements(id) {
+  return nodeDict.has(`${id}:1`) ? Array.from(nodeDict.get(`${id}:1`).elements) : [];
+}
+
 export function getInsideNodeElements(id) {
   return nodeDict.has(id) ? Array.from(nodeDict.get(id).inside) : [];
 }

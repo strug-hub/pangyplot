@@ -1,7 +1,7 @@
 import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 import { loadInSamples, loadInPaths } from './path-highlight-state.js';
-import { setAnimationPath } from './animation/animation-state.js';
+import { setAnimationPath } from './animation/animation-tick.js';
 import { setupUi } from './ui/path-highlight-ui.js';
 
 async function fetchPathData(sample){

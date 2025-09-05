@@ -15,14 +15,19 @@
   font-style: italic;
 }
 
-.path-table {
-    font-size: small;
+#path-table-container{
+  max-height: 250px;
+  overflow-y: auto;
 }
 
 .path-table {
-  width: 100%;
+  font-size: small;
+  width: 90%;
+  margin: 5px auto;
   border-collapse: collapse;
+  table-layout: auto;
 }
+
 .path-table tr { cursor: pointer; }
 .path-table td, .path-table th { padding: 6px 10px; border-bottom: 1px solid #ddd; }
 .path-table tr.selected { outline: 2px solid currentColor; background: var(--highlight); }

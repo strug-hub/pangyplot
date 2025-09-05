@@ -1,13 +1,11 @@
 import { setGraphCoordinates, equalCoordinates, forceGraph, graphElement, canvasElement }  from './graph-data/graph-state.js';
 import buildGraphData from './graph-data/create/graph-data.js';
-import delLinkForce from './forces/del-link-force.js';
-import bubbleCircularForce from './forces/bubble-circular-force.js';
 import { setUpRenderManager } from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
+import setUpForceManager from './forces/force-manager.js';
 import { setCanvasSize } from './render/canvas-utils.js';
 import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotation-engine.js';
 import { anchorEndpointNodes } from './utils/node-utils.js';
-import setUpForceSettings from './forces/force-setttings/force-settings.js';
 import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
 import { fetchData, buildUrl } from '../utils/network-utils.js';
 import { statusUpdate } from './graph-data/graph-status.js';
@@ -45,7 +43,7 @@ function createForceGraph(graph){
 
     setUpEngineManager(forceGraph, graphElement);
     setUpRenderManager(forceGraph, canvasElement);
-    setUpForceSettings(forceGraph);
+    setUpForceManager(forceGraph);
 
     updateGeneAnnotationEngine(forceGraph, graphElement);
 
@@ -57,64 +55,7 @@ function createForceGraph(graph){
 
         pathHighlightTick(forceGraph);
     })
-    
-    // --- FORCES ---
 
-    // Disable center force (no gravitational centering)
-    forceGraph.d3Force('center', null);
-
-    function link_force_distance(link) {
-        return link.length;
-    }
-
-    forceGraph.d3Force('link')
-        .distance(link_force_distance) // target link size
-        .strength(0.95); // tolerance to the link size is
-
-    // Collision force: prevents node overlap
-    //forceGraph.d3Force('collide', d3.forceCollide(50).radius(50));
-
-    //function customCollisionRadius(node) {
-    //    if (node.class === "mid") {
-    //        return 20; 
-    //    }
-    //    return 50;
-    //}
-
-    // Collision force: prevents node overlap, customized per node
-    //forceGraph.d3Force('collide', d3.forceCollide()
-    //                                .radius(customCollisionRadius)
-    //                                .strength(1)
-    //                                .iterations(2));
-
-    forceGraph.d3Force('charge')
-        .strength(-200)
-        .distanceMax(2000);  // CONTROLS WAVEYNESS
-
-    // Custom force to repel from deleted links
-    //forceGraph.d3Force('delLinkForce', delLinkForce());
-    forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
-
-    //graphElement.addEventListener("click", evt => {
-    //    const rect = graphElement.getBoundingClientRect();
-    //    const mouseX = evt.clientX - rect.left;
-    //    const mouseY = evt.clientY - rect.top;
-    //    const graphCoords = forceGraph.screen2GraphCoords(mouseX, mouseY);
-    
-    //    triggerExplosion(forceGraph, graphCoords.x, graphCoords.y);
-    //});
-    
-
-    // --- Force pause toggle ---
-
-    const pause = false;
-    if (pause) {
-        forceGraph.d3AlphaDecay(1); // Rapid cooldown
-        forceGraph.d3Force('link', null);
-        forceGraph.d3Force('charge', null);
-        forceGraph.d3Force('collide', null);
-        forceGraph.d3Force('center', null);
-    }
 
     setTimeout(() => {
         forceGraph.zoomToFit(200, 10, node => true);

@@ -1,5 +1,5 @@
-import { playAnimation, pauseAnimation, frameAdvance, frameBackward } from '../animation/animation-state.js';
-import { changeAnimationSpeed } from '../animation/animation-tick.js';
+import { resetAnimation, playAnimation, pauseAnimation, frameAdvance, frameBackward } from '../animation/animation-state.js';
+import { changeAnimationSpeed } from '../animation/animation-state.js';
 import createPathTableElement from './path-table.js';
 
 export function populateDropdown(samples){
@@ -37,7 +37,7 @@ export function createPathList(paths){
     
     table.addEventListener("pathselect", (e) => {
         optionsContainer.classList.remove("hidden");
-        console.log(e.detail); // [{ index, item }]
+        resetAnimation();
     });
 
 }
