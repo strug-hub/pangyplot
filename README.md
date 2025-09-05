@@ -10,32 +10,34 @@
                 <i>Journal</i>. 2024 XXX;Y(ZZZ):N-M.
                 doi: <a href="https://doi.org/DOI" target="_blank">DOI</a>.
 
-## Live server
+PangyPlot (*ˈpæŋ-ɡi-plɑt*) is a genome graph visualization tool designed to offer intuitive and interactive visualization of genomic data. It enables researchers and biologists to effectively visualize and analyze complex genomic structures and variations.
+
+
+# For "pan-curious" users interested in public data
 
 Preloaded with HPRC v.1.1:
 https://pangyplot.research.sickkids.ca/
 
+SCREENSHOT WILL GO HERE
 
-PangyPlot (*ˈpæŋ-ɡi-plɑt*) is a genome graph visualization tool designed to offer intuitive and interactive visualization of genomic data. It enables researchers and biologists to effectively visualize and analyze complex genomic structures and variations.
-
-Features
-
-    Interactive Graphs: Zoom, pan, and explore genomic graphs with ease.
-    Customizable Visualization: Tailor the visualization to suit your data and research needs.
-    High-Performance Rendering: Optimized for large genomic datasets.
-
-
-
-# Getting Started
-
+# For pangenomics experts with their own data
 
 ## Prerequisites
 
+Graph in GFA format
 List any prerequisites for using PangyPlot, such as Python versions, necessary libraries, etc.
 
 ## Usage
 
-XXX
+to upload data:
+`pangyplot add` 
+
+to add annotations:
+`pangyplot annotate`
+
+to run
+
+`pangyplot run`
 
 # Documentation
 
