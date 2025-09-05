@@ -12,6 +12,9 @@ class GFAIndex:
     def __getitem__(self, segment_id):
         return self.segment_index[segment_id]
 
+    def max_segment_id(self):
+        return self.segment_index.max_id()
+    
     def get_segments(self, seg_ids):
         return self.segment_index.get_by_ids(seg_ids)
     

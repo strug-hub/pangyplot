@@ -145,6 +145,7 @@ def path():
     try:
         path = query.get_path(current_app, genome, chrom, start, end, sample)
     except ValueError as e:
+        print(f"Path query failed: {e}")
         return jsonify({"error": str(e)}), 404
 
     return jsonify(path)

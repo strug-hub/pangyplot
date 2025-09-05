@@ -40,6 +40,9 @@ class SegmentIndex:
     def __iter__(self):
         return db.get_all(self.dir)
 
+    def max_id(self):
+        return db.get_max_id(self.dir)
+
     def segment_length(self, seg_id):
         return self.length[seg_id] if seg_id < len(self.length) else 0
 

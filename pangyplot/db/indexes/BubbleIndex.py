@@ -1,5 +1,4 @@
 from collections import defaultdict
-import math
 from bisect import bisect_left
 from array import array
 
@@ -21,21 +20,36 @@ class BubbleIndex:
 
         if not self.load_quick_index():
 
-            self.starts = array('I')
-            self.ends = array('I')
+            max_seg_id = gfaidx.max_segment_id()
+            max_bubble_id = db.get_max_id(self.dir)
+            self.segment_to_bubble = array('I', [0] * (max_seg_id + 1))
+            self.bubble_to_parent = array('I', [0] * (max_bubble_id + 1))
+
+            for row in db.iter_relationships(self.dir):
+                if row["parent"] is not None:
+                    self.bubble_to_parent[row["id"]] = row["parent"]
+                    for sid in row["source"] + row["sink"]:
+                        self.segment_to_bubble[sid] = row["parent"]
+
+                for sid in row["inside"]:
+                    self.segment_to_bubble[sid] = row["id"]
+
+            # top-level bubbles only
+            self.start_steps = array('I')
+            self.end_steps = array('I')
             self.ids = array('I')
 
-            bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
-
+            parentless_bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
+            
             ranges = []
-            for bubble in bubbles:
+            for bubble in parentless_bubbles:
                 for start, end in bubble.get_ranges(exclusive=False):
                     ranges.append((start, end, bubble.id))
             
             ranges.sort()
             for start, end, bid in ranges:
-                self.starts.append(start)
-                self.ends.append(end)
+                self.start_steps.append(start)
+                self.end_steps.append(end)
                 self.ids.append(bid)
 
             self.save_quick_index()
@@ -55,8 +69,10 @@ class BubbleIndex:
 
     def serialize(self):
         return {
-            "starts": self.starts.tolist(),
-            "ends": self.ends.tolist(),
+            "bubble_to_parent": self.bubble_to_parent.tolist(),
+            "segment_to_bubble": self.segment_to_bubble.tolist(),
+            "start_steps": self.start_steps.tolist(),
+            "end_steps": self.end_steps.tolist(),
             "ids": self.ids.tolist()
         }
 
@@ -71,6 +87,18 @@ class BubbleIndex:
             return self[bubble_id]
         return None
     
+    def segment_in_bubble(self, seg_id):
+        if seg_id >= len(self.segment_to_bubble) or seg_id < 0:
+            return None
+        bubble_id = self.segment_to_bubble[seg_id]
+        return None if bubble_id == 0 else bubble_id
+    
+    def parent_of_bubble(self, bubble_id):
+        if bubble_id >= len(self.bubble_to_parent) or bubble_id < 0:
+            return None
+        parent_id = self.bubble_to_parent[bubble_id]
+        return None if parent_id == 0 else parent_id
+
     def save_quick_index(self):
         utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")  
 
@@ -78,9 +106,10 @@ class BubbleIndex:
         quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
         if quick_index is None:
             return False
-        
-        self.starts = array('I', quick_index["starts"])
-        self.ends = array('I', quick_index["ends"])
+        self.bubble_to_parent = array('I', quick_index["bubble_to_parent"])
+        self.segment_to_bubble = array('I', quick_index["segment_to_bubble"])
+        self.start_steps = array('I', quick_index["start_steps"])
+        self.end_steps = array('I', quick_index["end_steps"])
         self.ids = array('I', quick_index["ids"])
         return True
 
@@ -106,9 +135,9 @@ class BubbleIndex:
     def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
         bubbles = []
         
-        start_index = bisect_left(self.ends, min_step)
-        for i in range(start_index, len(self.starts)):
-            if self.starts[i] > max_step:
+        start_index = bisect_left(self.end_steps, min_step)
+        for i in range(start_index, len(self.start_steps)):
+            if self.start_steps[i] > max_step:
                 break  # No more possible overlaps
             bubble_id = self.ids[i]
             bubble = self[bubble_id]

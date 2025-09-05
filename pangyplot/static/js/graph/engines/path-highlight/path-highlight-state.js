@@ -6,6 +6,11 @@ var sampleData = null;
 export function loadInPaths(paths) {
     pathData = paths;
     console.log("Loaded in paths:", pathData);
+
+    for (const path of pathData) {
+        console.log("Path:", path);
+    }
+
     createPathList(pathData);
 }
 

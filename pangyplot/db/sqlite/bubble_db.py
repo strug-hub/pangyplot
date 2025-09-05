@@ -42,6 +42,25 @@ def create_bubble_tables(dir):
     conn.commit()
     return conn
 
+def iter_relationships(dir):
+    conn = get_connection(dir)
+    cur = conn.cursor()
+    cur.execute("SELECT id, parent, source, sink, inside FROM bubbles")
+    while True:
+        row = cur.fetchone()
+        if row is None:
+            break
+        row_dict = dict(row)
+        row_dict["inside"] = [int(x) for x in json.loads(row_dict["inside"])]
+        row_dict["source"] = [int(x) for x in json.loads(row_dict["source"])]
+        row_dict["sink"] = [int(x) for x in json.loads(row_dict["sink"])]
+        yield row_dict
+
+def get_max_id(dir):
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT MAX(id) FROM bubbles")
+    return cur.fetchone()[0]
+
 def insert_bubble(cur, bubble):    
     cur.execute("""
         INSERT INTO bubbles (
