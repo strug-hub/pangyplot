@@ -1,14 +1,19 @@
-# PangyPlot - A pangenome reference browser
+# PangyPlot - a pangenome reference browser
 
-![PangyPlot logo](images/pangyplot_logo_circle.svg) ![PangyPlot logo](images/pangyplot_header.svg)
+<p style="flex" align="center">
+  <img src="images/pangyplot_pangy.svg" alt="PangyPlot circle" height="144">
+  <img src="images/pangyplot_text_outline.svg" alt="PangyPlot header" height="144">
+</p>
 
                 Mastromatteo, Scott. 
                 <b>PangyPlot: a paper title</b>. 
                 <i>Journal</i>. 2024 XXX;Y(ZZZ):N-M.
                 doi: <a href="https://doi.org/DOI" target="_blank">DOI</a>.
 
+## Live server
 
-Pangenome graph visualization software
+Preloaded with HPRC v.1.1:
+https://pangyplot.research.sickkids.ca/
 
 
 PangyPlot is a genome graph visualization tool designed to offer intuitive and interactive visualization of genomic data. It enables researchers and biologists to effectively visualize and analyze complex genomic structures and variations.
@@ -19,11 +24,12 @@ Features
     Customizable Visualization: Tailor the visualization to suit your data and research needs.
     High-Performance Rendering: Optimized for large genomic datasets.
 
-![Analogy](images/figures/graph_analogy.svg)
-![Analogy](images/figures/graph_analogy2.svg)
 
 
 # Getting Started
+
+
+
 
 ## Prerequisites
 
@@ -43,5 +49,11 @@ PangyPlot is licensed under the MIT License
 
 # Acknowledgements
 
-PangyPlot is powered by the `odgi layout` algorithm: https://github.com/pangenome/odgi
-and BubbleGun: https://github.com/fawaz-dabbaghieh/bubble_gun
+PangyPlot is powered by
+
+[![d3-force-graph](https://img.shields.io/badge/d3--force--graph-FA9C1E?logo=github&logoColor=white)](https://github.com/vasturiano/force-graph)
+[![odgi layout](https://img.shields.io/badge/odgi-layout-007ACC?logo=github&logoColor=white)](https://github.com/pangenome/odgi)
+[![BubbleGun](https://img.shields.io/badge/BubbleGun-29ABE2?logo=github&logoColor=white)](https://github.com/fawaz-dabbaghieh/bubble_gun)
+
+
+ˈpæŋ-ɡi-plɑt
