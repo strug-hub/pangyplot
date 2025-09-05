@@ -1,6 +1,6 @@
 # PangyPlot - A pangenome reference browser
 
-![PangyPlot logo](images/pangyplot_logo_circle.svg)
+![PangyPlot logo](images/pangyplot_logo_circle.svg) ![PangyPlot logo](images/pangyplot_header.svg)
 
                 Mastromatteo, Scott. 
                 <b>PangyPlot: a paper title</b>. 
