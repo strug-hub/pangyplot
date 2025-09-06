@@ -23,9 +23,11 @@
 
 <body class="flex-col">
 
-    <div id="version-overlay">
-        PangyPlot {{ version }} ({{ version_name }})
-    </div>
+    <div id="version-overlay"> PangyPlot {{ version }} ({{ version_name }}) </div>
+
+    {% if organism %}
+    <div id="organism-indicator" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
+    {% endif %}
 
     {% include 'navbar-template.html' %}
 

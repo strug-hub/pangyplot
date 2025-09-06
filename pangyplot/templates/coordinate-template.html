@@ -12,7 +12,7 @@
                 <div class="flex-row flex-4">
 
                     <i class="fa-solid fa-location-crosshairs fa-min-width"></i>
-                    <div id="go-genome" style="align-content: center;">???</div>
+                    <div id="go-genome" style="align-content: center;">{{ genome }}</div>
                     <span class="less-important-text" style="align-content: center;">#</span>
 
                     <div id="go-chrom-start-end" class="border-emphasis flex-row flex-4">
@@ -45,18 +45,5 @@
 
     </div>
 </div>
-
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        fetch('/default-genome')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('go-genome').textContent = data.genome;
-            })
-            .catch(error => console.error('Error fetching genome data:', error));
-    });
-</script>
-    
 
 <script type="module" src="{{url_for('static', filename='js/ui/coordinates.js')}}"></script>

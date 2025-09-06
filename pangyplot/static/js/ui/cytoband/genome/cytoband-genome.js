@@ -1,5 +1,4 @@
 import { buildUrl, fetchData } from "../../../utils/network-utils.js";
-import { organismToEmoji } from "./constants.js";
 import { highlightGenomeCytoband } from "./selector.js";
 import { drawGenomeCytoband } from "./painter.js";
 import { fetchAndDrawChromosomeData } from "../chromosome/cytoband-chromosome.js";
@@ -14,7 +13,7 @@ export function setupGenomeCytoband() {
     });
  }
 
-export function fetchAndDrawGenome(initialChrom) {
+export async function fetchAndDrawGenome(initialChrom) {
   const url = buildUrl("/cytoband", {});
 
   return fetchData(url, "genome cytoband fetch")
@@ -26,7 +25,7 @@ export function fetchAndDrawGenome(initialChrom) {
         initialChrom = chromOrder[0];
       }
 
-      updateGenomeCytoband(genomeData.chromosome, chromOrder, initialChrom, genomeData.organism);
+      updateGenomeCytoband(genomeData.chromosome, chromOrder, initialChrom);
 
       if (initialChrom != null) {
         return fetchAndDrawChromosomeData(initialChrom);
@@ -34,14 +33,7 @@ export function fetchAndDrawGenome(initialChrom) {
     })
 }
 
-export function updateGenomeCytoband(genomeData, chromOrder, initialChrom, organism) {
-
-    let indicator = document.getElementsByClassName("organism-indicator");
-    for (let i = 0; i < indicator.length; i++) {
-        indicator[i].textContent = organismToEmoji[organism] || "";
-        indicator[i].title = organism;
-        indicator[i].style.display = "block";
-    }
+export function updateGenomeCytoband(genomeData, chromOrder, initialChrom) {
 
     drawGenomeCytoband(genomeData, chromOrder)
 

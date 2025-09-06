@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import pangyplot.organisms as organisms
 
 def pangyplot_setup(args):
 
-    env_path = Path(__file__).resolve().parent / ".env"
+    env_path = Path(__file__).resolve().parents[2] / ".env"
 
     if env_path.exists():
         load_dotenv(dotenv_path=env_path)
@@ -31,21 +32,20 @@ def pangyplot_setup(args):
     prompt_env_var("GA_TAG_ID", "Google Analytics tag ID (optional)", default="None", optional=True)
 
     # Cytoband setup
-    valid_organisms = ('human', 'mouse', 'fruitfly', 'zebrafish', 'chicken', 'rabbit', 'dog', 'none', 'custom')
+    valid_organisms = organisms.VALID_ORGANISMS.keys()
 
     new_env_values["ORGANISM"] = None
     while new_env_values["ORGANISM"] is None:
         prompt_env_var("ORGANISM",
-                       f"Select organism: {', '.join(valid_organisms)}: ",
-                       default="human")
+                       f"Choose organism: [{organisms.NO_ORGANISM}, {organisms.CUSTOM_ORGANISM}, {', '.join(valid_organisms)}]: ",
+                       default=organisms.DEFAULT_ORGANISM)
         if new_env_values["ORGANISM"] not in valid_organisms:
             new_env_values["ORGANISM"] = None
             print(f"Invalid organism. Please choose one of from list")
 
-    if new_env_values["ORGANISM"] == "custom":
+    if new_env_values["ORGANISM"] == organisms.CUSTOM_ORGANISM:
         prompt_env_var("CYTOBAND_PATH", "Path to custom cytoband file")
         prompt_env_var("CANONICAL_PATH", "Path to canonical chromosome file")
-
 
     with open(env_path, "w") as f:
         for k, v in new_env_values.items():

@@ -2,19 +2,14 @@ import os
 from flask import Blueprint, current_app, render_template, request, jsonify, make_response
 from dotenv import load_dotenv
 from pangyplot.version import __version__,__version_name__
-
+import pangyplot.organisms as organisms
 import pangyplot.db.query as query
 
 bp = Blueprint("routes", __name__)
 
 @bp.route('/')
 def index():
-    content = {
-        "version": __version__,
-        "version_name": __version_name__
-    }
-    response = make_response(render_template("index.html", **content ))
-    return response
+    return render_template("index.html")
 
 @bp.context_processor
 def inject_ga_tag_id():
@@ -23,9 +18,24 @@ def inject_ga_tag_id():
     ga_tag_id = os.getenv('GA_TAG_ID', '')
     return dict(ga_tag_id=ga_tag_id)
 
-@bp.route('/default-genome', methods=['GET'])
-def get_default_genome():
-    return jsonify({"genome": current_app.genome})
+@bp.context_processor
+def inject_version():
+    return {
+        "version": __version__,
+        "version_name": __version_name__
+    }
+
+@bp.context_processor
+def inject_default_genome():
+    return { "genome": current_app.genome }
+
+@bp.context_processor
+def inject_organism():
+    organism = current_app.cytoband["organism"]
+    emoji = organisms.VALID_ORGANISMS.get(organism, "")
+    if organism in {organisms.NO_ORGANISM, organisms.CUSTOM_ORGANISM, organisms.DEFAULT_ORGANISM}:
+        return {}
+    return { "organism": organism, "organism_emoji": emoji }
 
 @bp.route('/chromosomes', methods=["GET"])
 def chromosomes():
@@ -47,8 +57,7 @@ def cytobands():
     if not chromosome:
         return jsonify({
             "chromosome": current_app.cytoband["cytobands"],
-            "order": current_app.cytoband["chromosomes"],
-            "organism": current_app.cytoband["organism"]
+            "order": current_app.cytoband["chromosomes"]
         })
 
     print(f"Getting cytobands for {chromosome}...")

@@ -17,13 +17,3 @@ export function genomeCytobandDimensions(nChromosomes) {
 
     return constants;
 }
-
-export const organismToEmoji = {
-    //human: "🧍",
-    dog: "🐕",
-    mouse: "🐁",
-    fruitfly: "🪰",
-    zebrafish: "🐠",
-    chicken: "🐓",
-    rabbit: "🐇"
-};
