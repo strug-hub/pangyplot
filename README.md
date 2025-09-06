@@ -20,7 +20,7 @@ https://pangyplot.research.sickkids.ca/
 
 SCREENSHOT WILL GO HERE
 
-# For pangenomics experts with their own data
+# For "pan-genious" experts with their own data
 
 ## Prerequisites
 
