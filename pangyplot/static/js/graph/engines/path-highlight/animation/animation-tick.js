@@ -1,6 +1,6 @@
 import { tickAnimation, pauseAnimation, resetAnimation } from './animation-state.js';
 import { isNodeActive, getNodeElements } from '../../../graph-data/graph-manager.js';
-import { updateStepDisplay } from '../ui/path-highlight-ui.js';
+import { updateStepDisplay } from '../path-highlight-ui.js';
 
 var animationPath = null;
 var currentStep = -1;

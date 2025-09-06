@@ -1,0 +1,13 @@
+.selectable-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.selectable-table-header{
+
+}
+
+.selectable-table tr { cursor: pointer; }
+.selectable-table td, .selectable-table th { padding: 6px 10px; border-bottom: 1px solid var(--light-green); }
+.selectable-table tr.selected { outline: 2px solid currentColor; background: var(--highlight); }
+.selectable-table tr:focus { outline: 2px dashed; }

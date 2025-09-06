@@ -1,4 +1,4 @@
-import { createPathList } from './ui/path-highlight-ui.js';
+import { createPathList } from './path-highlight-ui.js';
 
 var pathData = [];
 var sampleData = null;
