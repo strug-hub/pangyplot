@@ -7,7 +7,7 @@ var framesPerStep = 5;
 var resetState = true;
 
 export function changeAnimationSpeed(speed) {
-    framesPerStep = 11-speed;
+    framesPerStep = 10-speed;
 }
 
 export function resetAnimation(){
@@ -46,6 +46,8 @@ export function isAnimationPlaying(){
     return isPlaying;
 }
 
+
+//todo : more than one update per frame
 export function tickAnimation(){
     if (resetState && !isPlaying) return null;
     if (!isPlaying) return 0;

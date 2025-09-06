@@ -1,19 +1,13 @@
 import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 import { loadInSamples, loadInPaths } from './path-highlight-state.js';
-import { setAnimationPath } from './animation/animation-tick.js';
 import { setupUi } from './path-highlight-ui.js';
 
 async function fetchPathData(sample){
     const params = { sample, ...getGraphCoordinates() };
     const url = buildUrl('/path', params);
     fetchData(url, "path-selection").then(paths => {
-
-        paths.sort((a, b) => b["length"] - a["length"]);
-        const longestPath = paths[0];
-
         loadInPaths(paths);
-        setAnimationPath(longestPath);
     });
 }
 

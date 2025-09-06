@@ -98,3 +98,39 @@ export function stringToColor(str, adjust = 0) {
     setCache(stringColorCache, str, color);
     return color;
 }
+
+export function mixColors(color1, color2, alpha) {
+
+    function parseColor(c) {
+        if (typeof c === 'string' && c.startsWith('#')) {
+            const hex = c.replace('#', '');
+            const bigint = parseInt(hex, 16);
+            if (hex.length === 6) {
+                return [
+                    (bigint >> 16) & 255,
+                    (bigint >> 8) & 255,
+                    bigint & 255
+                ];
+            } else if (hex.length === 3) {
+                return [
+                    ((bigint >> 8) & 15) * 17,
+                    ((bigint >> 4) & 15) * 17,
+                    (bigint & 15) * 17
+                ];
+            }
+        }
+        // fallback: black
+        return [0, 0, 0];
+    }
+    function mixColors(c1, c2, a) {
+        return [
+            Math.round(c1[0] * (1 - a) + c2[0] * a),
+            Math.round(c1[1] * (1 - a) + c2[1] * a),
+            Math.round(c1[2] * (1 - a) + c2[2] * a)
+        ];
+    }
+    const c1 = parseColor(color1);
+    const c2 = parseColor(color2);
+    const mixed = mixColors(c1, c2, alpha);
+    return `rgb(${mixed[0]},${mixed[1]},${mixed[2]})`;
+}

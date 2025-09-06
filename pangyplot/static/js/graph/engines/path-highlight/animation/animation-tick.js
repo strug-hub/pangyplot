@@ -5,15 +5,38 @@ import { updateStepDisplay } from '../path-highlight-ui.js';
 var animationPath = null;
 var currentStep = -1;
 var highlightStack = [];
-const highlightStackLength = 50;
+const maxHighlightStackLength = 150;
 
 export function setAnimationPath(path) {
+    resetHighlightStack();
     animationPath = path.path;
     resetAnimation();
     currentStep = -1;
     highlightStack = [];
     updateStepDisplay(null);
+
+    let count = 0;
+    for (const step of animationPath) {
+        const [segment, bubbles] = step;
+        const [nodeid, direction] = splitSegment(segment);
+
+        if (isNodeActive(nodeid)) {
+            count++;
+        }
+    }
+    console.log("Animation path set with", animationPath.length, "steps,", count, "active nodes ", count / animationPath.length * 100, "%");
 }
+
+function resetHighlightStack() {
+    for (const highlight of highlightStack) {
+        for (const node of highlight.nodes) {
+            node.focused = 0;
+            node.colorOverride = null;
+        }
+    }
+    highlightStack = [];
+}
+
 
 function splitSegment(step) {
     var nodeid = step.slice(0, -1);
@@ -25,11 +48,11 @@ function highlightNode(id, direction) {
     const nodes = getNodeElements(id);
     highlightStack.push({ id, direction, nodes });
 
-    if (highlightStack.length > highlightStackLength) {
+    if (highlightStack.length > maxHighlightStackLength) {
 
         const { id, direction, nodes } = highlightStack[0];
         for (const node of nodes) {
-            node.focused = false;
+            node.focused = 0;
             node.colorOverride = null;
         }
 
@@ -41,17 +64,18 @@ function updateNodeHighlight() {
 
     for (let i = highlightStack.length - 1; i >= 0; i--) {
         const { id, direction, nodes } = highlightStack[i];
-        const alpha = i / highlightStackLength;
+        const alpha = i / highlightStack.length;
         for (const node of nodes) {
-            node.focused = true;
-            node.colorOverride =
-                direction === "+" ? { color: "red", alpha } : { color: "pink", alpha };
+            node.focused = alpha;
+            node.colorOverride = direction === "+" ? "#000000" : "#FF0000";
         }
     }
 }
 
-function updatePathStep(step) {
-    const [segment, bubbles] = step;
+
+function updatePathStep(move) {
+    currentStep += move;
+    const [segment, bubbles] = animationPath[currentStep];
 
     const [nodeid, direction] = splitSegment(segment);
     console.log(bubbles)
@@ -86,31 +110,29 @@ function updatePathStep(step) {
 export function pathHighlightTick(forceGraph) {
     if (!animationPath) return;
 
-    const tick = tickAnimation();
+    const move = tickAnimation();
 
     //reset state
-    if (tick == null) {
+    if (move == null) {
         currentStep = -1;
         updateStepDisplay(null);
         return;
     }
 
     //paused
-    if (tick === 0) return;
+    if (move === 0) return;
 
     // end of animation
-    if (tick > 0 && currentStep >= animationPath.length - 1) {
+    if (move > 0 && currentStep >= animationPath.length - 1) {
         pauseAnimation();
         return;
     }
     // start of animation
-    if (tick < 0 && currentStep <= 0) {
+    if (move < 0 && currentStep <= 0) {
         currentStep = 0;
         pauseAnimation();
         return;
     }
-
-    currentStep += tick;
-
-    updatePathStep(animationPath[currentStep]);
+    
+    updatePathStep(move);
 }

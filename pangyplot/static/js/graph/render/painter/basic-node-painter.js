@@ -2,6 +2,7 @@ import { getNodeColor } from '../color/color-style.js';
 import { drawCircleSvg } from './painter-svg-utils.js';
 import { drawCircle} from './painter-utils.js';
 import { getScaleFactor, getZoomFactor } from '../render-scaling.js';
+import { mixColors } from '../color/color-utils.js';
 
 //possible todo: don't shrink if connected to a long link
 function shrinkPower(z, L, opts = {}) {
@@ -21,18 +22,17 @@ export function basicNodePainter(ctx, node, svg=null) {
     const seqLength = node.element.seqLength || 1;
     var shrinkFactor = shrinkPower(getZoomFactor(ctx), seqLength);
 
-    if (node.focused) {
-        shrinkFactor = 1;
+    if (node.focused && node.focused > 0) {
+        shrinkFactor = node.focused + (1-node.focused) * shrinkFactor;
     }
 
     if (shrinkFactor < 0.1) return;
 
     var color = getNodeColor(node);
-
     var width = node.width * scaleFactor * shrinkFactor;
 
     if (node.colorOverride) {
-        const { overrideColor, alpha } = node.colorOverride;
+        color = mixColors(color, node.colorOverride, node.focused);
     }
 
     if (svg) {
@@ -41,4 +41,3 @@ export function basicNodePainter(ctx, node, svg=null) {
         drawCircle(ctx, node.x, node.y, width, color);
     }
 }
-

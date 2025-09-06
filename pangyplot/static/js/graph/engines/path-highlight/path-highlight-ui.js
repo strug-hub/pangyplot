@@ -1,6 +1,6 @@
 import createSelectableTable from '../../../ui/utils/selectable-table.js';
 import setupAnimationUi from './animation/animation-ui.js';
-import { resetAnimation } from './animation/animation-state.js';
+import { setAnimationPath } from './animation/animation-tick.js';
 
 export function populateDropdown(samples){
     const pathSelector = document.getElementById('path-selector');
@@ -55,7 +55,7 @@ export function createPathList(paths){
 
     table.addEventListener("path-row-select", (e) => {
         optionsContainer.classList.remove("hidden");
-        resetAnimation();
+        setAnimationPath(e.detail.item);
     });
 
 }
