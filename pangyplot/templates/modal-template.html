@@ -1,21 +1,25 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/modal-style.css') }}">
 
 {% macro reference(title, github_link, description, image_src, paper_author, paper_title, journal, journal_info, doi) %}
-    <h2>
+<div class="modal-reference flex-col flex-1">
+    <div class="modal-title">
         {{ title }}
         <a href="{{ github_link }}" target="_blank"><i class="fa-brands fa-github"></i></a>
-    </h2>
-    <p>{{ description }}</p>
+    </div>
+    <div class="modal-description">{{ description }}</div>
     <div class="flex-row-left">
         <div class="flex-col">
             <img alt="{{ title }} logo" style="width:90px" src="{{ url_for('static', filename=image_src) }}">
         </div>
-        <p>
+        <div class="modal-citation">
             {{ paper_author }}. <b>{{ paper_title }}</b>. <i>{{ journal }}</i>. {{ journal_info }}.
-            doi: <a href="https://doi.org/{{ doi }}" target="_blank">{{ doi }}</a>.
-        </p>
+            {% if doi %}
+                doi: <a href="https://doi.org/{{ doi }}" target="_blank">{{ doi }}</a>.
+            {% endif %}
+        </div>
     </div>
-    <br><hr>
+    <div><hr></div>
+</div>
 {% endmacro %}
 
 <div id="citation-modal" class="modal">
@@ -23,45 +27,73 @@
 
         <span id="citation-modal-close-button" class="modal-close">&times;</span>
 
-            {{ reference(
-                'PangyPlot',
-                'https://github.com/ScottMastro/pangyplot',
-                'Pangenome graph visualization software.',
-                'images/pangyplot_logo.svg',
-                'Mastromatteo, Scott',
-                'PangyPlot: Coming soon',
-                'Journal',
-                '2024 XXX;Y(ZZZ):N-M',
-                'DOI',
-            ) }}
+        {{ reference(
+        'PangyPlot',
+        'https://github.com/ScottMastro/pangyplot',
+        'Pangenome graph visualization software.',
+        'images/pangyplot_logo.svg',
+        'Mastromatteo, Scott',
+        'PangyPlot: Coming soon',
+        'Journal',
+        '2025 XXX;Y(ZZZ):N-M',
+        'DOI',
+        ) }}
 
         <details>
             <summary>Supporting work</summary>
+            <br>
+            <div class="flex-col">
 
-            {{ reference(
+                {{ reference(
                 'Human Pangenome Reference Consortium',
                 'https://github.com/human-pangenomics/hpp_pangenome_resources',
                 'Pangenome reference data source.',
-                'images/hprc_logo.png',
+                'images/citation/hprc_logo.png',
                 'Human Pangenome Reference Consortium',
                 'A draft human pangenome reference',
                 'Nature',
                 '2023 May;617(7960):312-324',
                 '10.1038/s41586-023-05896-x',
-            ) }}
+                ) }}
 
-            {{ reference(
+                {{ reference(
                 'BubbleGun',
                 'https://github.com/fawaz-dabbaghieh/bubble_gun',
                 'Used for calculating graph hierarchical structure.',
-                'images/bubble_gun_logo.png',
+                'images/citation/bubble_gun_logo.png',
                 'Dabbaghie F, Ebler J, Marschall T',
                 'BubbleGun: enumerating bubbles and superbubbles in genome graphs',
                 'Bioinformatics',
-                '2022 Sep 2;38(17):4217-4219',
+                '2022 Sep;38(17):4217-4219',
                 '10.1093/bioinformatics/btac448',
-            ) }}
+                ) }}
 
+                {{ reference(
+                'odgi layout',
+                'https://github.com/pangenome/odgi',
+                'Used for generating the initial 2D layout.',
+                'images/citation/odgi_logo.png',
+                'Guarracino A, Heumos S, Nahnsen S, Prins P, Garrison E',
+                'ODGI: understanding pangenome graphs',
+                'Bioinformatics',
+                '2022 Jul;38(13):3319-3326',
+                '10.1093/bioinformatics/btac308',
+                ) }}
+
+                {{ reference(
+                'D3 [vasturiano/force-graph]',
+                'https://github.com/vasturiano/force-graph',
+                'Used as the baseline visualization library.',
+                'images/citation/d3_logo.png',
+                'Asturiano V',
+                'Force-graph',
+                'Github',
+                '2025',
+                '',
+                ) }}
+
+
+            </div>
         </details>
     </div>
 </div>
@@ -74,18 +106,22 @@
 
         <div style="display: flex; align-items: center; column-gap: 1em;">
             <i class="fa-solid fa-dna" style="font-size: 2em; color: #868686;"></i>
-            <p>PangyPlot is a tool designed for visualizing graph-based pangenome data. Currently, PangyPlot is set to visualize data from the <a href="https://www.nature.com/articles/s41586-023-05896-x" target="_blank">HPRC pangenome graph.</a></p>
+            <p>PangyPlot is a tool designed for visualizing graph-based pangenome data. Currently, PangyPlot is set to
+                visualize data from the <a href="https://www.nature.com/articles/s41586-023-05896-x"
+                    target="_blank">HPRC pangenome graph.</a></p>
         </div>
 
         <div style="display: flex; align-items: center; column-gap: 1em;">
             <i class="fa-solid fa-hammer" style="font-size: 2em; color: #868686;"></i>
-            <p>It is currently under active development and being prepared for publication. We plan to introduce additional features in the near future.</p>
+            <p>It is currently under active development and being prepared for publication. We plan to introduce
+                additional features in the near future.</p>
             <h3>NOTE: in this demo version we have only included chr18.</h3>
         </div>
 
         <div style="display: flex; align-items: center; column-gap: 1em;">
             <i class="fa-solid fa-bolt" style="font-size: 2em; color: #868686;"></i>
-            <p>To quickly run, select an "Example" button at the top of the page. Or input your region of interest then click "Go". "Example 2" centered at SERPINB5 is preloaded.</p>
+            <p>To quickly run, select an "Example" button at the top of the page. Or input your region of interest then
+                click "Go". "Example 2" centered at SERPINB5 is preloaded.</p>
         </div>
     </div>
 </div>

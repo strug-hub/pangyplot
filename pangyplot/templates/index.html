@@ -7,65 +7,69 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome/css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">   
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/option-button.css') }}">   
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/option-button.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/right-click.css') }}">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/utils/slider-set.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/utils/selectable-table.css') }}">
-    
+
     {% include 'google-analytics.html' %}
 
 </head>
 
 <body class="flex-col">
 
-{% include 'navbar-template.html' %}
+    <div id="version-overlay">
+        PangyPlot {{ version }} ({{ version_name }})
+    </div>
 
- <!--<select id="db-selection"> </select>-->
+    {% include 'navbar-template.html' %}
 
-{% include 'cytoband-template.html' %}
+    <!--<select id="db-selection"> </select>-->
 
-<div class="flex-row fixed-height-1">
+    {% include 'cytoband-template.html' %}
 
-    {% include 'gene-search-template.html' %}
-    {% include 'coordinate-template.html' %}
+    <div class="flex-row fixed-height-1">
 
-</div>
-
-<div id="graph-container" class="graph-container-empty">
-
-    <div class="loader-filter"></div>
-    <div class="loader"></div>
-    
-    <div class="flex-row">
-    
-        <div id="graph" class="flex-1" tabindex="0"></div>
-        <div id="graph-legend"></div>
-
-        {% include 'tabs/tab-container.html' %}
+        {% include 'gene-search-template.html' %}
+        {% include 'coordinate-template.html' %}
 
     </div>
-</div>
 
-<div class="flex-row fixed-height-1">
-    
-    {% include 'color-picker.html' %}
+    <div id="graph-container" class="graph-container-empty">
 
-</div>
+        <div class="loader-filter"></div>
+        <div class="loader"></div>
 
-<script src="{{url_for('static', filename='js/d3/d3.js')}}"></script>
-<script src="{{url_for('static', filename='js/d3/d3-annotation.min.js')}}"></script>
-<script src="{{url_for('static', filename='js/d3/force-graph.min.js')}}"></script>
+        <div class="flex-row">
 
-<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
+            <div id="graph" class="flex-1" tabindex="0"></div>
+            <div id="graph-legend"></div>
 
-<script src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
+            {% include 'tabs/tab-container.html' %}
+
+        </div>
+    </div>
+
+    <div class="flex-row fixed-height-1">
+
+        {% include 'color-picker.html' %}
+
+    </div>
+
+    <script src="{{url_for('static', filename='js/d3/d3.js')}}"></script>
+    <script src="{{url_for('static', filename='js/d3/d3-annotation.min.js')}}"></script>
+    <script src="{{url_for('static', filename='js/d3/force-graph.min.js')}}"></script>
+
+    <script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
+
+    <script src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
 
 
 </body>
-</html>
 
+</html>

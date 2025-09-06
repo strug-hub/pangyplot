@@ -26,6 +26,18 @@ body {
     height: 120px;
 }
 
+#version-overlay {
+    font-size: x-small;
+    position: absolute;
+    top: 1.5em;
+    right: 1.5em;
+    background: var(--light-green);
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    z-index: 100;
+    font-family: monospace;
+}
 
 #gene-search-container{
     flex: 4;

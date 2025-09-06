@@ -1,13 +1,18 @@
 import os
 from flask import Blueprint, current_app, render_template, request, jsonify, make_response
 from dotenv import load_dotenv
+from pangyplot.version import __version__,__version_name__
+
 import pangyplot.db.query as query
 
 bp = Blueprint("routes", __name__)
 
 @bp.route('/')
 def index():
-    content = dict()
+    content = {
+        "version": __version__,
+        "version_name": __version_name__
+    }
     response = make_response(render_template("index.html", **content ))
     return response
 

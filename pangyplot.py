@@ -7,6 +7,7 @@ from pangyplot.commands import setup
 from pangyplot.commands import status
 from pangyplot.commands import annotate
 from pangyplot.commands import reindex
+from pangyplot.version import __version__,__version_name__
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_DB_FOLDER = os.path.join(script_dir, "datastore")
@@ -52,6 +53,8 @@ def parse_args():
     parser_annotate.add_argument('--name', help='Name for the annotation set', default=None, required=True)
     parser_annotate.add_argument('--dir', help='Directory to store database files', default=DEFAULT_DB_FOLDER)
 
+    parser_version = subparsers.add_parser('version', help='Show version information.')
+
     #TODO: create metadata file and use to reindex 
     #parser_run = subparsers.add_parser('reindex', help='Reindex all GFA files.')
     #parser_run.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
@@ -81,7 +84,9 @@ def parse_args():
     if args.command == 'annotate':
         annotate.pangyplot_annotate(args)
 
-    exit(0)
+    if args.command == 'version':
+        print(f"PangyPlot {__version__} ({__version_name__})")
+        exit(0)
 
 if __name__ == '__main__':
     parse_args()

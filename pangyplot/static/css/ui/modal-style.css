@@ -31,3 +31,13 @@
     text-decoration: none;
     cursor: pointer;
 }
+.modal-title{
+    font-weight: bold;
+}
+
+.modal-citation{
+    font-family: monospace;
+    padding: 1em;
+    background: beige;
+    width: 100%;
+}
