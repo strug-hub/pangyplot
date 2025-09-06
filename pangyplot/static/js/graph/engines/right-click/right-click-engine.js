@@ -3,6 +3,7 @@ import { popGroupOfBubbles } from '../bubble-pop/bubble-pop-engine.js';
 import { exportGraphToPng } from '../../render/download/render-png.js';
 import { exportGraphToSvg } from '../../render/download/render-svg.js';
 import { getGraphCoordinates } from '../../graph-data/graph-state.js';
+import { createCustomGeneAnnotation } from '../gene-annotation/custom/custom-annotation.js';
 
 var menu = null;
 
@@ -28,10 +29,17 @@ export function populateOptions(forceGraph) {
         if (label) nodes.forEach(node => node.label = label);
     });
 
+    menu.addOption('tag', 'Add Custom Annotation', 'node', nodes => {
+        const name = prompt('Enter a custom annotation name for the nodes:');
+        if (name) {
+            createCustomGeneAnnotation(name, nodes);
+        }
+    });
+
     menu.addOption('trash-can', 'Clear Labels', 'node', nodes => {
         nodes.forEach(node => node.label = null);
     });
-
+    
     menu.addOption('lock-open', 'Unlock nodes', 'node', nodes => {
         nodes.forEach(node => {
             node.fx = null;

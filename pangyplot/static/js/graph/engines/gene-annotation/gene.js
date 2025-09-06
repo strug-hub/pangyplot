@@ -1,7 +1,7 @@
 import { rgbStringToHex, stringToColor } from "../../render/color/color-utils.js";
 
 export class Gene {
-    constructor({ id, gene, transcripts = [], color = null }) {
+    constructor({ id, gene, transcripts = [], color = null, isCustom = false }) {
         this.id = id;
         this.name = gene;
         this.transcripts = transcripts;
@@ -9,6 +9,8 @@ export class Gene {
 
         this.isVisible = true;
         this.showExons = false;
+
+        this.isCustom = isCustom || false;
     }
 
     toggleVisibility() {

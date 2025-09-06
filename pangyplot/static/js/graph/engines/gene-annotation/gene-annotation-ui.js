@@ -1,10 +1,11 @@
-import { getTableData, setGeneVisibility, setGeneExonVisibility, setGeneColor } from "../../graph/engines/gene-annotation/gene-annotation-state.js";
+import { getTableData, setGeneVisibility, setGeneExonVisibility, setGeneColor } from "./gene-annotation-state.js";
+import { deleteCustomAnnotation } from "./custom/custom-annotation.js";
 
 //example
 //const geneAnnotations = [
-//    { id: 1, name: "Gene 1", hasExon: true, color: "#ff0000", visible: true },
-//    { id: 2, name: "Gene 2", hasExon: false, color: "#00ff00", visible: false },
-//    { id: 3, name: "Gene 3", hasExon: true, color: "#0000ff", visible: true },
+//    { id: 1, name: "Gene 1", hasExon: true, isCustom: false, color: "#ff0000", visible: true },
+//    { id: 2, name: "Gene 2", hasExon: false, isCustom: true, color: "#00ff00", visible: false },
+//    { id: 3, name: "Gene 3", hasExon: true, isCustom: false, color: "#0000ff", visible: true },
 //];
 
 export function populateGeneAnnotationsTable() {
@@ -52,6 +53,21 @@ export function populateGeneAnnotationsTable() {
         exonButton.onclick = () => toggleExonSelection(annotation.id, exonButton);
         exonCell.appendChild(exonButton);
         row.appendChild(exonCell);
+
+
+        // Delete row button
+        if (annotation.isCustom) {
+            const deleteCell = document.createElement("td");
+            const deleteButton = document.createElement("button");
+            deleteButton.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            deleteButton.classList.add("button-style", "delete-annotation-row");
+            deleteButton.onclick = () => deleteCustomAnnotation(annotation.id);
+            deleteCell.appendChild(deleteButton);
+            row.appendChild(deleteCell);
+        } else {
+            const spacer = document.createElement("td");
+            row.appendChild(spacer);
+        }
 
         // Color picker
         const colorCell = document.createElement("td");

@@ -1,10 +1,11 @@
 import { fetchAnnotations } from "./gene-annotation-fetch.js";
 import { getGraphCoordinates } from "../../graph-data/graph-state.js";
 import { getAllGenes } from "./gene-annotation-state.js";
-import { addNodeGeneAnnotation, addNodeExonAnnotation, clearAllAnnotations, getAllNodeAnnotations } from "./gene-annotation-state.js";
+import { addNodeGeneAnnotation, addNodeExonAnnotation, clearAllAnnotations } from "./gene-annotation-state.js";
 import { annotationOverlap } from "./gene-annotation-utils.js";
-import { populateGeneAnnotationsTable } from "../../../ui/tabs/graph-annotation.js";
+import { populateGeneAnnotationsTable } from "./gene-annotation-ui.js"
 import eventBus from '../../../utils/event-bus.js';
+import { updateCustomAnnotations } from "./custom/custom-annotation.js";
 
 function annotateTranscripts(forceGraph) {
     clearAllAnnotations();
@@ -27,6 +28,9 @@ function annotateTranscripts(forceGraph) {
             }
         });
     });
+
+    updateCustomAnnotations();
+
 }
 
 function updateAnnotations(forceGraph){
