@@ -1,27 +1,26 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/information-panel.css') }}">
 
-<div class="tab-header">Graph Information</div>
-<hr>
+<div id="graph-info" class="flex-col">
 
-{% macro info_label(label, id) %}
-<div class="info-label flex-1">
-    {{ label }}:<span id="{{ id }}" class="info-value"></span>
-</div>
-{% endmacro %}
+    <div>
+        <div class="tab-header">Graph Information</div>
+        <hr>
+    </div>
 
+    <div id="info-selected-container">
+        <!-- Content will be appended by JS -->
+    </div>
 
-<div class="flex-col">
+    <div id="info-debug-container-outer" class="flex-col hidden">
 
-    <div id="info-selected-container"></div>
-    
-    <div id="graph-info" class="flex-4">
-        <div id="info-debug-container">
-            <div style="font-weight: bold;">DEBUG INFO</div>
-            {{ info_label('FPS', 'info-fps') }}
-            {{ info_label('Screen', 'info-screen-coordinates') }}
-            {{ info_label('Canvas', 'info-canvas-coordinates') }}
-            {{ info_label('Nodes Drawn', 'info-graph-nodes') }}
-            {{ info_label('Edges Drawn', 'info-graph-links') }}
+        <div>
+            <div class="tab-header">Debugging Information</div>
+            <hr>
+        </div>
+
+        <div id="info-debug-container" class="flex-col">
+            <!-- Content will be appended by JS -->
+
         </div>
     </div>
 </div>

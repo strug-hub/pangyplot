@@ -1,9 +1,17 @@
 #tabs-container{
-    display: none;
+    max-height: 750px;
+    height: 100%;
+    overflow: hidden;
 }
 
-.tab-header{
-    font-size: large;
+.tab-content {
+    flex: 1 1 auto;
+    background-color: var(--tab-box);
+    max-width: 20vw;
+    padding: 10px;
+    border-radius: 5px;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .tab-button {
@@ -24,20 +32,11 @@
     background-color: var(--highlight);
 }
 
-.tab-content {
-    display: none; 
-    background-color: var(--tab-box);
-    max-width: 20vw;
-    padding: 10px;
-    border-radius: 5px;
-
-}
-
 .active-tab-button{
     background-color: var(--highlight);
-
 }
 
-.active-tab-content {
-    display: block !important;
+.tab-header{
+    font-size: large;
 }
+

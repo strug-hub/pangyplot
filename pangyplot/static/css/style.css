@@ -178,7 +178,7 @@ hr {
 }
 
 .hidden{
-    display: none;
+    display: none !important;
  }
 
 .error-input {

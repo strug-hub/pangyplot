@@ -23,16 +23,14 @@ function createForceGraph(graph){
     
     graphContainer.classList.remove("graph-container-empty");
     graphContainer.scrollIntoView({ behavior: 'smooth' });
-    tabContainer.style.display = "block";
+    tabContainer.classList.remove("hidden");
 
     forceGraph.graphData(graph)
         .nodeId("nodeId")
         .enablePointerInteraction(false)
         .autoPauseRedraw(false) // keep drawing after engine has stopped
-        .d3VelocityDecay(0.1)
         .cooldownTicks(Infinity)
         .cooldownTime(Infinity)
-        .d3AlphaDecay(0.0228)
         .minZoom(1e-6) //default = 0.01
         .maxZoom(10) //default = 1000
         .warmupTicks(4)

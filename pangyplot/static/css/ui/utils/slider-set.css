@@ -1,0 +1,42 @@
+.slider-style{
+    min-height: 3em;
+}
+
+.slider-label{
+    font-size: small;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.slider-value{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    font-family: monospace;
+    font-size: small;
+    border-radius: 3px;
+    background: var(--site-background);
+}
+
+.slider-reset-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 5px;
+    vertical-align: middle;
+}
+
+.slider-reset-default i {
+    color: var(--tab-box);
+}
+
+.slider-reset-modified i {
+    color: var(--dark-green);
+}
+
+
+.slider-reset-all-button{
+    font-size: small;
+}

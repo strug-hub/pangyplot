@@ -1,13 +1,19 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/graph-settings.css') }}">
-<div class="tab-header">Graph Settings</div>
-<hr>
-
 <div id="graph-settings" class="flex-col">
-    <!-- Rows will be appended by JS -->
-    <button id="reset-all-button" class="reset-all-button">
-        <i class="fas fa-undo"></i> Reset All
-    </button>
+    <div>
+        <div class="tab-header">Force Settings</div>
+        <hr>
+    </div>
+
+    <div id="force-settings-container">
+        <!-- Sliders will be appended by JS -->
+    </div>
+
+    <div>
+        <div class="tab-header">Render Settings</div>
+        <hr>
+    </div>
+
+    <div id="render-settings-container">
+        <!-- Sliders will be appended by JS -->
+    </div>
 </div>
-
-
-<script src="{{url_for('static', filename='js/ui/tabs/graph-settings.js')}}"></script>

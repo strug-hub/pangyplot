@@ -8,13 +8,13 @@ function switchTab(tabId) {
     // clear all contents
     var contentDivs = document.getElementsByClassName("tab-content");
     for (var i = 0; i < contentDivs.length; i++) {
-        contentDivs[i].classList.remove("active-tab-content"); 
+        contentDivs[i].classList.add("hidden");
     }
 
     // activate chosen tab
     var activeContentDiv = document.getElementById(tabId + "-content");
     if (activeContentDiv) {
-        activeContentDiv.classList.add("active-tab-content");
+        activeContentDiv.classList.remove("hidden");
     }
     var activeTabDiv = document.getElementById(tabId + "-button");
     if (activeTabDiv) {

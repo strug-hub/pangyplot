@@ -3,6 +3,7 @@ import { dragState, isDragging, setDraggedNode, clearDraggedNode } from './drag-
 import dragInfluenceForce from './drag-force.js';
 import { euclideanDist } from '../../utils/node-utils.js';
 import { numberSelected, isSelected, clearSelected, updateHighlighted, getHoverNode } from '../selection/selection-state.js';
+import setUpDragFix from './drag-fix-position.js';
 
 const MAX_DRAG_DISTANCE = 25;
 const MIN_DRAG_DETECT = 5;
@@ -69,7 +70,8 @@ function onDragEnd() {
 
 
 export default function setUpDragEngine(forceGraph, graphElement) {
-
+  setUpDragFix(graphElement);
+  
   forceGraph.d3Force('dragInfluence', dragInfluenceForce(forceGraph));
 
   graphElement.addEventListener('pointerdown', event => {

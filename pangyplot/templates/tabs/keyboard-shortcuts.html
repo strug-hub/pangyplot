@@ -1,97 +1,97 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/keyboard-shortcuts.css') }}">
-<div class="tab-header">Input</div>
-<hr>
 
-<div id="keyboard-shortcuts" class="flex-1">
-    <div class="k-header">Navigation</div>
-    <br>
+<div id="keyboard-shortcuts" class="flex-col">
+  <div>
+    <div class="tab-header">Navigation</div>
+    <hr>
+  </div>
 
-    <div class="k-info">
-        <div class="k-label">Re-center</div>
-        <div class="k-input"><kbd>Space</kbd></div>
-    </div>
-    <br>
+  <div class="k-info">
+    <div class="k-label">Re-center</div>
+    <div class="k-input"><kbd>Space</kbd></div>
+  </div>
 
-    <div class="k-info">
-        <div class="k-label">Pan view</div>
-        <div class="k-input"><kbd class="shift-key">Shift</kbd> + <kbd>Drag</kbd></div>
-    </div>
-    <br>
+  <div class="k-info">
+    <div class="k-label">Pan view</div>
+    <div class="k-input"><kbd class="shift-key">Shift</kbd> + <kbd>Drag</kbd></div>
+  </div>
 
-    <div class="k-info">
-        <div class="k-label">Zoom in/out</div>
-        <div class="k-input"><kbd class="shift-key">Shift</kbd> + <kbd>Scroll</kbd></div>
-    </div>
-    <br>
+  <div class="k-info">
+    <div class="k-label">Zoom in/out</div>
+    <div class="k-input"><kbd class="shift-key">Shift</kbd> + <kbd>Scroll</kbd></div>
+  </div>
 
-    <div class="k-header">Selection</div>
-    <br>
+  <div>
+    <div class="tab-header">Selection</div>
+    <hr>
+  </div>
 
-    <div class="k-info">
-        <div class="k-label">Select segment</div>
-        <div class="k-input"><kbd>Click</kbd></div>
-    </div>
+  <div class="k-info">
+    <div class="k-label">Select segment</div>
+    <div class="k-input"><kbd>Click</kbd></div>
+  </div>
 
-    <br>
+  <div class="k-info">
+    <div class="k-label">Multi-select</div>
+    <div class="k-input"><kbd>Click</kbd> + <kbd>Drag</kbd></div>
+  </div>
 
-    <div class="k-info">
-        <div class="k-label">Multi-select</div>
-        <div class="k-input"><kbd>Click</kbd> + <kbd>Drag</kbd></div>
-    </div>
-    <br>
+  <div class="k-info">
+    <div class="k-label">Zoom to selection</div>
+    <div class="k-input"><kbd>↑</kbd></div>
+  </div>
 
+  <div>
+    <div class="tab-header">Interaction</div>
+    <hr>
+  </div>
 
-    <div class="k-info">
-      <div class="k-label">Zoom to selection</div>
-      <div class="k-input"><kbd>Up Arrow ↑</kbd></div>
-    </div>
-    <br>
+  <div class="k-info">
+    <div class="k-label">Move segment</div>
+    <div class="k-input"><kbd>Click</kbd> + <kbd>Drag</kbd></div>
+  </div>
 
-    <div class="k-header">Interaction</div>
-    <br>
+  <div class="k-info">
+    <div class="k-label">Pop open bubble</div>
+    <div class="k-input"><kbd class="ctrl-key">Ctrl</kbd> + <kbd>Click</kbd></div>
+  </div>
 
-    <div class="k-info">
-        <div class="k-label">Move segment</div>
-        <div class="k-input"><kbd class="shift-key">Click</kbd> + <kbd>Drag</kbd></div>
-    </div>
-    <br>
-
-    <div class="k-info">
-        <div class="k-label">Pop open bubble</div>
-        <div class="k-input"><kbd class="ctrl-key">Ctrl</kbd> + <kbd>Click</kbd></div>
-    </div>
-
+  <div class="k-info">
+    <div class="k-label">Toggle node fix</div>
+    <div class="k-input"><kbd>F</kbd></div>
+  </div>
 
 </div>
 
+
 <script>
 
-function detectOS() {
-  let userAgent = window.navigator.userAgent;
-  if (userAgent.indexOf('Mac') != -1) {
-    return 'Mac';
-  } else if (userAgent.indexOf('Win') != -1) {
-    return 'Windows';
-  } else if (userAgent.indexOf('Linux') != -1) {
-    return 'Linux';
+  function detectOS() {
+    let userAgent = window.navigator.userAgent;
+    if (userAgent.indexOf('Mac') != -1) {
+      return 'Mac';
+    } else if (userAgent.indexOf('Win') != -1) {
+      return 'Windows';
+    } else if (userAgent.indexOf('Linux') != -1) {
+      return 'Linux';
+    }
+    return 'Unknown';
   }
-  return 'Unknown';
-}
 
-function updateKeyboardShortcuts() {
-  const os = detectOS();
-  
-  if (os === 'Mac') {
-    document.querySelectorAll('.shift-key').forEach(function(el) {
-      el.textContent = '⇧';
-    });
+  function updateKeyboardShortcuts() {
+    const os = detectOS();
 
-    document.querySelectorAll('.ctrl-key').forEach(function(el) {
-      el.textContent = '⌘';
-    });
+    if (os === 'Mac') {
+      document.querySelectorAll('.shift-key').forEach(function (el) {
+        el.textContent = '⇧';
+      });
+
+      document.querySelectorAll('.ctrl-key').forEach(function (el) {
+        el.textContent = '⌘';
+      });
+    }
   }
-}
 
-updateKeyboardShortcuts();
+  updateKeyboardShortcuts();
 
 </script>

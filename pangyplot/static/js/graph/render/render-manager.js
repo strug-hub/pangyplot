@@ -1,4 +1,4 @@
-import setUpRenderSettings from './render-settings.js'
+import setUpRenderSettings from './settings/render-settings.js'
 import { getViewport, updateVisibility } from './viewport-utils.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-render.js';
 import { renderGenes} from '../engines/gene-annotation/gene-annotation-gene-render.js';

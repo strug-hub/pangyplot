@@ -20,8 +20,3 @@ kbd {
 .k-label{
     color: var(--text-color);
 }
-
-.k-header{
-    font-size: large;
-    font-weight: bold;
-}

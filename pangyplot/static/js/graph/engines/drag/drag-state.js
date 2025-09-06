@@ -2,7 +2,7 @@ export const dragState = {
   draggedNode: null,
   readyNode: null,
   initialMousePos: { x: null, y: null },
-  fixAfterDrag: true,
+  fixAfterDrag: false,
   previousPos: { x: null, y: null },
   decay: 0.05,
   cache: null
@@ -24,4 +24,8 @@ export function clearDraggedNode() {
 
 export function isDragging() {
   return dragState.draggedNode !== null;
+}
+
+export function setDragFix(value) {
+  dragState.fixAfterDrag = value;
 }

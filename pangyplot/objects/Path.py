@@ -1,5 +1,3 @@
-from collections import deque
-
 class Path:
     def __init__(self):
         self.full_id = None
@@ -55,7 +53,6 @@ class Path:
             new_path.start = self.start
             new_path.length = self.length
             new_path.path = self.path.copy()
-            new_path.bubble_path = self.bubble_path.copy()
         return new_path
 
     def add_step(self, id, direction):

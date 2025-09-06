@@ -1,34 +1,51 @@
-import delLinkForce from './del-link-force.js';
 import bubbleCircularForce from './bubble-circular-force.js';
-import setUpForceSettings from './force-settings/force-settings.js';
+import layoutForce from './layout-force.js';
+import setUpForceSettings from './settings/force-settings.js';
 import bubbleEndForce from './bubble-end-force.js';
+import delLinkForce from './del-link-force.js';
+import defaults from './settings/force-defaults.js';
 
-function centerForce(forceGraph) {
+export function setFriction(forceGraph, value) {
+    forceGraph.d3VelocityDecay(value);
+}
+
+export function setHeatDecay(forceGraph, value) {
+    forceGraph.d3AlphaDecay(value);
+}
+
+function setCenterForce(forceGraph) {
     // Disable center force (no gravitational centering)
     forceGraph.d3Force('center', null);
 }
 
-function linkForce(forceGraph){
+export function setLinkForce(forceGraph, strength) {
 
-    function link_force_distance(link) {
-        return link.length;
+    function linkForceDistance(link) {
+        return link.length * strength;
     }
 
     forceGraph.d3Force('link')
-        .distance(link_force_distance) // target link size
-        //.strength(0.95); // tolerance to the link size is
+        .distance(linkForceDistance) // target link size
+        //.strength(); // based on node degree
 }
 
-function collisionForce(forceGraph) {
-    // Collision force: prevents node overlap
-    //forceGraph.d3Force('collide', d3.forceCollide(50).radius(50));
-    //using default
+export function setCollisionForce(forceGraph, strength, radius) {
+    forceGraph.d3Force('collide', 
+        d3.forceCollide()
+            .strength(strength)
+            .radius(radius));
 }
 
-function chargeForce(forceGraph) {
+export function setChargeForce(forceGraph, strength, distance) {
     forceGraph.d3Force('charge')
-        .strength(-1000)
-        .distanceMax(2000);  // CONTROLS WAVEYNESS
+        .strength(strength)
+        .distanceMax(distance);
+}
+
+export function setLayoutForce(forceGraph, level) {
+    forceGraph.d3Force('layout', 
+        layoutForce()
+            .strengthLevel(level));
 }
 
 function pauseAllForces(forceGraph) {
@@ -43,19 +60,24 @@ export default function setUpForceManager(forceGraph){
 
     setUpForceSettings(forceGraph);
 
-    centerForce(forceGraph);
-    linkForce(forceGraph);
-    collisionForce(forceGraph);
-    chargeForce(forceGraph);
+    setFriction(forceGraph, defaults.FRICTION);
+    setHeatDecay(forceGraph, defaults.HEAT_DECAY);
+
+    setCenterForce(forceGraph);
+    setLinkForce(forceGraph, defaults.LINK_STRENGTH);
+    setCollisionForce(forceGraph, defaults.COLLISION_STRENGTH, defaults.COLLISION_RADIUS);
+    setChargeForce(forceGraph, defaults.CHARGE_STRENGTH, defaults.CHARGE_DISTANCE);
+    setLayoutForce(forceGraph, defaults.LAYOUT_LEVEL);
 
     // --- Force pause toggle (debugging) ---
     //pauseAllForces(forceGraph);
     // --- Force pause toggle (debugging) ---
     
+    forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
+    
     // Custom force to repel from deleted links
     //forceGraph.d3Force('delLinkForce', delLinkForce());
 
-    forceGraph.d3Force('delLinkForce', delLinkForce());
 
     //forceGraph.d3Force('bubbleEndAttraction', bubbleEndForce(1, 50));
 

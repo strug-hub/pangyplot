@@ -3,6 +3,7 @@ import { isDebugMode } from "../../graph/graph-data/graph-state.js";
 var fullSequence = "";
 
 const panel = document.getElementById('info-selected-container');
+const debugOuterContainer = document.getElementById('info-debug-container-outer');
 const debugContainer = document.getElementById('info-debug-container');
 
 function appendRow({ label, valueEl }) {
@@ -62,21 +63,17 @@ panel.addEventListener('click', async (e) => {
 });
 
 export function updateDebugInformation(status) {
+  
   if (!isDebugMode()) {
-    debugContainer.style.display = 'none';
     return;
   }
 
-  debugContainer.style.display = 'block';
+  debugOuterContainer.classList.remove('hidden');
+
   debugContainer.innerHTML = ""; // clear previous
 
   const table = document.createElement("table");
   table.className = "info-table";
-
-  const header = document.createElement("tr");
-  header.className = "info-debug-header";
-  header.textContent = "DEBUG INFO";
-  table.appendChild(header);
 
   Object.entries(status).forEach(([key, value]) => {
     const row = document.createElement("tr");
