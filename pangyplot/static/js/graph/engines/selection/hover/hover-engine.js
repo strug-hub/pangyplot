@@ -11,7 +11,7 @@ const MAX_HOVER_DISTANCE = 40;
 function getHoverLabelText(node) {
   if (isDebugMode()) {
     return faLabel(node.id);
-    return node.nodeId;
+    //return node.iid;
   }
 
   return faLabel(node.id);

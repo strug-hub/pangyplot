@@ -91,7 +91,7 @@ export function renderGeneLabels(ctx, forceGraph, svg = false) {
         if (!node.isVisible || !node.isDrawn) return;
         visibleNodes.push(node);
 
-        const annotations = getNodeAnnotations(node.nodeId);
+        const annotations = getNodeAnnotations(node.iid);
         Object.entries(annotations).forEach(([geneId, annotation]) => {
             if (!annotationGroups[geneId]) annotationGroups[geneId] = [];
             annotation.forEach(exonNumber => {

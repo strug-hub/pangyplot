@@ -6,7 +6,7 @@ export function renderHighlights(ctx, svg = false) {
 
   for (const [sequence, occurrences] of Object.entries(results)) {
     const color = getColor(sequence);
-    for (const { nodeId, positions } of occurrences) {
+    for (const { iid, positions } of occurrences) {
       positions.forEach(() => {
         if (svg) {
           svgData.push({ type: "square", color });

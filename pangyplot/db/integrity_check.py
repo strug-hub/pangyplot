@@ -21,12 +21,12 @@ def deduplicate_nodes(nodes):
         dedup.append(node)
     return dedup
 
-def remove_invalid_links(nodes, links, nodeids=None):
-    if nodeids is None:
-        nodeids={node.id for node in nodes}
+def remove_invalid_links(nodes, links, ids=None):
+    if ids is None:
+        ids={node.id for node in nodes}
     keepLinks = []
     for link in links:
-        if link.to_id not in nodeids or link.from_id not in nodeids:
+        if link.to_id not in ids or link.from_id not in ids:
             continue
         keepLinks.append(link)
     return keepLinks

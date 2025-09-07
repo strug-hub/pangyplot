@@ -26,7 +26,7 @@ function createForceGraph(graph){
     tabContainer.classList.remove("hidden");
 
     forceGraph.graphData(graph)
-        .nodeId("nodeId")
+        .nodeId("iid")
         .enablePointerInteraction(false)
         .autoPauseRedraw(false) // keep drawing after engine has stopped
         .cooldownTicks(Infinity)

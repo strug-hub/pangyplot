@@ -32,7 +32,7 @@ function checkIfDragging(event) {
 
     setDraggedNode(node);
     if (!isSelected(node)) clearSelected();
-    updateHighlighted([node.nodeId]);
+    updateHighlighted([node.iid]);
     eventBus.publish('drag:node', { node });
   }
 }

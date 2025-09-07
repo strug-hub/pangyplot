@@ -17,7 +17,7 @@ export function renderGenes(ctx, forceGraph, svg = false) {
     //todo: cache which nodes have gene annotations to avoid looping through all nodes
     forceGraph.graphData().nodes.forEach(node => {
         if (node.isVisible && node.isDrawn) {
-            const annotations = getNodeAnnotations(node.nodeId);
+            const annotations = getNodeAnnotations(node.iid);
             var n = 1;
 
             Object.entries(annotations).forEach(([geneId, annotation]) => {
@@ -42,8 +42,8 @@ export function renderGenes(ctx, forceGraph, svg = false) {
 
     forceGraph.graphData().links.forEach(link => {
         if (link.isVisible && link.isDrawn) {
-            const sourceAnnotations = getNodeAnnotations(link.source.nodeId)
-            const targetAnnotations = getNodeAnnotations(link.target.nodeId);
+            const sourceAnnotations = getNodeAnnotations(link.source.iid)
+            const targetAnnotations = getNodeAnnotations(link.target.iid);
 
             if (!sourceAnnotations || !targetAnnotations) return;
             const sourceSet = new Set(Object.keys(sourceAnnotations));

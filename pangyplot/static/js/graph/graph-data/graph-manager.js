@@ -6,9 +6,9 @@ import eventBus from '../../utils/event-bus.js';
 let forceGraphRef = null;
 
 const nodeDict = new Map();
-const nodeIdDict = new Map();
+const nodeIidDict = new Map();
 const linkDict = new Map();
-const linkIdDict = new Map();
+const linkIidDict = new Map();
 
 function initializeNodeRecord(id) {
   if (nodeDict.has(id)) return;
@@ -21,14 +21,14 @@ function initializeNodeRecord(id) {
   nodeDict.set(id, record);
 }
 
-export function addNodeRecord(element) {
-  const id = element.id;
+export function addNodeRecord(node) {
+  const id = node.id;
   if (!nodeDict.has(id)) {
     initializeLinkRecord(id);
     initializeNodeRecord(id);
   }
-  nodeDict.get(id).elements.add(element);
-  nodeIdDict.set(id, element);
+  nodeDict.get(id).elements.add(node);
+  nodeIidDict.set(id, node);
 }
 
 export function addInsideContents(id, subgraph) {
@@ -46,9 +46,9 @@ function initializeLinkRecord(id) {
   linkDict.set(id, new Set());
 }
 
-export function addLinkRecord(element) {
-  const toId = element.targetId;
-  const fromId = element.sourceId;
+export function addLinkRecord(link) {
+  const toId = link.targetId;
+  const fromId = link.sourceId;
 
   if (!linkDict.has(toId)) {
     initializeLinkRecord(toId);
@@ -56,17 +56,17 @@ export function addLinkRecord(element) {
   if (!linkDict.has(fromId)) {
     initializeLinkRecord(fromId);
   }
-  linkDict.get(toId).add(element);
-  linkDict.get(fromId).add(element);
+  linkDict.get(toId).add(link);
+  linkDict.get(fromId).add(link);
 
-  linkIdDict.set(element.linkId, element);
+  linkIidDict.set(link.linkIid, link);
 }
 
 export function clearGraphManager() {
   nodeDict.clear();
   linkDict.clear();
-  nodeIdDict.clear();
-  linkIdDict.clear();
+  nodeIidDict.clear();
+  linkIidDict.clear();
 }
 
 export function setUpGraphManager(forceGraph) {
@@ -105,12 +105,12 @@ function getPoppedContents(bubbleId, recursive = false) {
 
 function rescueLinks(subgraph) {
   const nodes = subgraph.nodes;
-  const linkIds = new Set(subgraph.links.map(link => link.linkId));
+  const linkIids = new Set(subgraph.links.map(link => link.linkIid));
   for (const node of nodes) {
     for (const link of getLinkElements(node.id)) {
-      const linkId = link.linkId;
-      if (linkIds.has(linkId)) continue;
-      linkIds.add(linkId);
+      const linkIid = link.linkIid;
+      if (linkIids.has(linkIid)) continue;
+      linkIids.add(linkIid);
       subgraph.links.push(link);
     }
   }
@@ -287,20 +287,18 @@ export function getActiveDeletionLinks() {
   return links;
 }
 
-// by forcegraph id
-export function getNodeElement(nodeId) {
-  return nodeIdDict.get(nodeId) || null;
+export function getNodeElement(iid) {
+  return nodeIidDict.get(iid) || null;
 }
 
-export function getNodeIfActive(nodeId) {
-  return isNodeActive(nodeId) ? nodeIdDict.get(nodeId) : null;
+export function getNodeIfActive(iid) {
+  return isNodeActive(iid) ? nodeIidDict.get(iid) : null;
 }
 
-export function isNodeActive(nodeId) {
-  return nodeDict.has(nodeId) && nodeDict.get(nodeId).active;
+export function isNodeActive(id) {
+  return nodeDict.has(id) && nodeDict.get(id).active;
 }
 
-// by gfa id
 export function getNodeElements(id) {
   return nodeDict.has(id) ? Array.from(nodeDict.get(id).elements) : [];
 }
@@ -319,15 +317,15 @@ export function getLinkElements(id) {
   return linkDict.has(id) ? Array.from(linkDict.get(id)) : [];
 }
 export function getLinkElement(id) {
-  return linkIdDict.get(id) || null;
+  return linkIidDict.get(id) || null;
 }
 
-export function getNodeComponents(nodeId) {
-  if (!isNodeActive(nodeId)) {
+export function getNodeComponents(id) {
+  if (!isNodeActive(id)) {
     return { nodes: [], links: [] };
   }
-  const nodes = getNodeElements(nodeId);
-  const links = getLinkElements(nodeId).filter(link => link.class === 'node');
+  const nodes = getNodeElements(id);
+  const links = getLinkElements(id).filter(link => link.class === 'node');
   
   return {
     nodes,

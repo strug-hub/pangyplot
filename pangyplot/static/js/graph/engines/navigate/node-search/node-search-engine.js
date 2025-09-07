@@ -1,17 +1,17 @@
 import { setUpNodeSearchUi, updateNodeSearchResults } from "./node-search-ui.js";
 import { faLabel } from "../../selection/selection-utils.js";
 
-function isPresent(forceGraph, id, isGraphId=false){
+function isPresent(forceGraph, iid, isGraphId=false){
     return forceGraph.graphData().nodes.some(
-        node => isGraphId ? node.nodeId === id : node.id === id);
+        node => isGraphId ? node.iid === iid : node.id === iid);
 }
 
-function zoom(forceGraph, id, isGraphId=false){
+function zoom(forceGraph, iid, isGraphId=false){
     forceGraph.zoomToFit(200, 100, node => 
-        isGraphId ? node.nodeId === id : node.id === id);
+        isGraphId ? node.iid === iid : node.id === iid);
 }
 
-//todo add support for list
+//todo add support for 
 function nodeSearch(forceGraph, query){
 
     const rawId = query;
@@ -37,13 +37,11 @@ function nodeSearch(forceGraph, query){
         }
     }
 
-
-
     if (nodeType != null){
-        const nodeId = `${nodeType}${nodeInt}`
-        if (isPresent(forceGraph, nodeId)){
-            zoom(forceGraph, nodeId);
-            return [{node:faLabel(nodeId)}];
+        const id = `${nodeType}${nodeInt}`
+        if (isPresent(forceGraph, id)){
+            zoom(forceGraph, id);
+            return [{node:faLabel(id)}];
         }
     }
 

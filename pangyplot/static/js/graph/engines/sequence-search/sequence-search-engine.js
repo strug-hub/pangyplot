@@ -21,7 +21,7 @@ export function runSearch(sequence, forceGraph) {
     const seq = node.data.seq;
     if (!seq || seq.length < sequence.length) return;
 
-    const occurrences = { nodeId: node.nodeId, positions: [] };
+    const occurrences = { iid: node.iid, positions: [] };
 
     let match;
     while ((match = fwdRegex.exec(seq)) !== null) {

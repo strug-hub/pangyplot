@@ -18,9 +18,9 @@ export function setAnimationPath(path) {
     let count = 0;
     for (const step of animationPath) {
         const [segment, bubbles] = step;
-        const [nodeid, direction] = splitSegment(segment);
+        const [id, direction] = splitSegment(segment);
 
-        if (isNodeActive(nodeid)) {
+        if (isNodeActive(id)) {
             count++;
         }
     }
@@ -39,9 +39,9 @@ function resetHighlightStack() {
 
 
 function splitSegment(step) {
-    var nodeid = step.slice(0, -1);
+    var id = step.slice(0, -1);
     const direction = step.slice(-1);
-    return [nodeid, direction];
+    return [id, direction];
 }
 
 function highlightNode(id, direction) {
@@ -77,18 +77,18 @@ function updatePathStep(move) {
     currentStep += move;
     const [segment, bubbles] = animationPath[currentStep];
 
-    const [nodeid, direction] = splitSegment(segment);
+    const [id, direction] = splitSegment(segment);
     console.log(bubbles)
     if (bubbles.length == 0) {
-        highlightNode(nodeid, direction);
-        console.log("Current step:", currentStep, "→", nodeid, direction);
+        highlightNode(id, direction);
+        console.log("Current step:", currentStep, "→", id, direction);
     }
 
     const lastHighlight = highlightStack.length > 0 ?
         highlightStack[highlightStack.length - 1] : null;
 
     if (lastHighlight && bubbles.includes(lastHighlight.id)) {
-        console.log("Current step:", currentStep, "→", nodeid, direction, "(skipping)");
+        console.log("Current step:", currentStep, "→", id, direction, "(skipping)");
         return;
     }
 

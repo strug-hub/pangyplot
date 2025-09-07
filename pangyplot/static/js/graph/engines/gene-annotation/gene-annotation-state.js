@@ -29,20 +29,20 @@ export function clearAllGenes(clearCustom = false) {
     }
 }
 
-export function addNodeGeneAnnotation(nodeId, geneId) {
-    if (!nodeAnnotations[nodeId]) {
-        nodeAnnotations[nodeId] = {};
+export function addNodeGeneAnnotation(iid, geneId) {
+    if (!nodeAnnotations[iid]) {
+        nodeAnnotations[iid] = {};
     }
-    nodeAnnotations[nodeId][geneId] = [];
+    nodeAnnotations[iid][geneId] = [];
 }
-export function addNodeExonAnnotation(nodeId, geneId, exonNumber) {
-    const exons = nodeAnnotations[nodeId][geneId] || [];
+export function addNodeExonAnnotation(iid, geneId, exonNumber) {
+    const exons = nodeAnnotations[iid][geneId] || [];
     exons.push(exonNumber);
-    nodeAnnotations[nodeId][geneId] = exons;
+    nodeAnnotations[iid][geneId] = exons;
 }
 
-export function getNodeAnnotations(nodeId) {
-    return nodeAnnotations[nodeId] || [];
+export function getNodeAnnotations(iid) {
+    return nodeAnnotations[iid] || [];
 }
 
 export function getAllNodeAnnotations() {
@@ -54,25 +54,14 @@ export function clearAllAnnotations() {
 }
 
 export function clearCustomAnnotations() {
-    for (const nodeId in nodeAnnotations) {
-        for (const geneId in nodeAnnotations[nodeId]) {
+    for (const iid in nodeAnnotations) {
+        for (const geneId in nodeAnnotations[iid]) {
             if (customGenes[geneId]) {
-                delete nodeAnnotations[nodeId][geneId];
+                delete nodeAnnotations[iid][geneId];
             }
         }
     }
 }
-
-export function clearNodeAnnotations() {
-    for (const nodeId in nodeAnnotations) {
-        for (const geneId in nodeAnnotations[nodeId]) {
-            if (customGenes[geneId]) {
-                delete nodeAnnotations[nodeId][geneId];
-            }
-        }
-    }
-}
-
 
 export function removeGeneById(geneId) {
     if (genes[geneId]) {

@@ -18,16 +18,16 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
     }
     return graph
 
-def pop_bubble(indexes, nodeid, genome, chrom):
-    if nodeid.startswith("s"):
+def pop_bubble(indexes, id, genome, chrom):
+    if id.startswith("s"):
         return {"nodes": [], "links": []}
 
-    nodeid = int(nodeid.replace("b", ""))
+    id = int(id.replace("b", ""))
 
     stepidx = indexes.step_index[(chrom, genome)]
     bubbleidx = indexes.bubble_index[chrom]
 
-    subgraph = bubbleidx.get_popped_subgraph(nodeid, stepidx)
+    subgraph = bubbleidx.get_popped_subgraph(id, stepidx)
 
     serialized_subgraph = dict()
     serialized_subgraph["nodes"] = [node.serialize() for node in subgraph["nodes"]]
@@ -35,18 +35,18 @@ def pop_bubble(indexes, nodeid, genome, chrom):
     
     return serialized_subgraph
 
-def get_bubble_end(indexes, nodeid, genome, chrom):
+def get_bubble_end(indexes, id, genome, chrom):
     stepidx = indexes.step_index[(chrom, genome)]
     bubbleidx = indexes.bubble_index[chrom]
     gfaidx = indexes.gfa_index[chrom]
 
-    nodeid = nodeid.replace("b", "").split("#")[0]
-    bubble_id = int(nodeid.split(":")[0])
-    side = int(nodeid.split(":")[1])
+    id = id.replace("b", "").split("#")[0]
+    bid = int(id.split(":")[0])
+    side = int(id.split(":")[1])
 
-    print(f"Getting bubble end for {bubble_id} on side {side}...")
+    print(f"Getting bubble end for {bid} on side {side}...")
 
-    bubble = bubbleidx[bubble_id]
+    bubble = bubbleidx[bid]
 
     inside_segments = bubble.source_segments if side == 0 else bubble.sink_segments
 

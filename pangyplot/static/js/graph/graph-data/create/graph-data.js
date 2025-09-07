@@ -42,12 +42,12 @@ function forceGraphNodes(element) {
         nodes.push({
             class: "node",
             id: element.id,
+            iid: `${element.id}#${i}`,
+            idx: i,
             element: element,
             type: element.type,
-            nodeId: `${element.id}#${i}`,
             head: () => `${element.id}#0`,
             tail: () => `${element.id}#${kinks - 1}`,
-            nodeIdx: i,
             kinks: kinks,
             x, y,
             initX: x,
@@ -73,26 +73,26 @@ function forceGraphNodeLinks(element) {
 
     for (let i = 1; i < kinks; i++) {
 
-        const source = `${element.id}#${i - 1}`;
-        const target =  `${element.id}#${i}`;
+        const sourceIid = `${element.id}#${i - 1}`;
+        const targetIid = `${element.id}#${i}`;
 
         nodeLinks.push({
             class: "node",
             id: element.id,
             element: element,
             type: element.type,
-            source: source,
-            target: target,
+            source: sourceIid,
+            target: targetIid,
             sourceId: element.id,
             targetId: element.id,
             isRef: element.ranges.length > 0,
-            sourceNodeId: source,
-            targetNodeId: target,
+            sourceIid: sourceIid,
+            targetIid: targetIid,
             isDrawn: true,
             width: 5,
             length: Math.min(element.seqLength/100, 1000)*LINK_SCALE,
             annotations: [],
-            linkId: `${source}+${target}+`
+            linkIid: `${sourceIid}+${targetIid}+`
         });
     }
     return nodeLinks;
@@ -109,8 +109,8 @@ function forceGraphLinks(element) {
 
     const isRef = sourceElement.element.ranges.length > 0 || targetElement.element.ranges.length > 0;
 
-    const sourceNodeId = element.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
-    const targetNodeId = element.toStrand === "+" ? targetElement.head() : targetElement.tail();
+    const sourceIid = element.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
+    const targetIid = element.toStrand === "+" ? targetElement.head() : targetElement.tail();
 
     var length = 1;
     if (element.seqLength > 0) {
@@ -123,13 +123,13 @@ function forceGraphLinks(element) {
     return {
         class: "link",
         type: element.type,
-        source: sourceNodeId,
-        target: targetNodeId,
+        source: sourceIid,
+        target: targetIid,
         element: element,
         sourceId: sourceId,
-        sourceNodeId: sourceNodeId,
+        sourceIid: sourceIid,
         targetId: targetId,
-        targetNodeId: targetNodeId,
+        targetIid: targetIid,
         isDel: element.isDel,
         isRef: isRef,
         bubbleId: element.bubbleId, //currently only for del-links
@@ -139,7 +139,7 @@ function forceGraphLinks(element) {
         width: isChainLink ? 5 : 1,
         contained: element.contained || [],
         annotations: [],
-        linkId: `${sourceNodeId}${element.fromStrand}${targetNodeId}${element.toStrand}`
+        linkIid: `${sourceIid}${element.fromStrand}${targetIid}${element.toStrand}`
     };
 }
 
@@ -163,10 +163,10 @@ function checkExistingLinkRecords(linkElements) {
     const newLinks = [];
 
     for (const linkElement of linkElements) {
-        if (!linkElement.linkId) {
-            console.warn("Link element does not have a linkId:", linkElement);
+        if (!linkElement.linkIid) {
+            console.warn("Link element does not have a linkIid:", linkElement);
         }
-        const link = getLinkElement(linkElement.linkId);
+        const link = getLinkElement(linkElement.linkIid);
         if (link === null) {
             newLinks.push(linkElement);
         } else {

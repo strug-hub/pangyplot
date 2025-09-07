@@ -75,7 +75,7 @@ function searchSequenceEngineRun(searchString) {
             return;
         }
 
-        const nodeOccurrences = { nodeId: node.nodeId, positions: [] };
+        const nodeOccurrences = { iid: node.iid, positions: [] };
 
         // Search for the forward sequence
         let match;
@@ -113,18 +113,18 @@ function searchSequenceEngineUpdate(ctx, forceGraph, svg=false) {
 
     const segments = {};
     nodes.forEach(node => {
-        if (!segments[node.nodeId]) {
+        if (!segments[node.iid]) {
             const totalKinks = node.data.kinks;
-            segments[node.nodeId] = new Array(totalKinks).fill(null);
+            segments[node.iid] = new Array(totalKinks).fill(null);
         }
-        segments[node.nodeId][node.nodeIdx] = node;
+        segments[node.iid][node.idx] = node;
     });
 
     // Loop over all sequences in SEQUENCE_SEARCH_RESULTS
     for (const [sequence, occurrences] of Object.entries(SEQUENCE_SEARCH_RESULTS)) {
         for (const occurrence of occurrences) {
-            const { nodeId, positions } = occurrence;
-            const segmentNodes = segments[nodeId];
+            const { iid, positions } = occurrence;
+            const segmentNodes = segments[iid];
 
             if (!segmentNodes) continue;
 

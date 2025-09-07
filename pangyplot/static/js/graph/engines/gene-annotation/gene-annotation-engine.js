@@ -18,11 +18,11 @@ function annotateTranscripts(forceGraph) {
         forceGraph.graphData().nodes.forEach(node => {
 
             if (annotationOverlap(transcript, node)) {
-                addNodeGeneAnnotation(node.nodeId, gene.id);
+                addNodeGeneAnnotation(node.iid, gene.id);
 
                 transcript.exons.forEach((exon, index) => {
                     if (annotationOverlap(exon, node)) {
-                        addNodeExonAnnotation(node.nodeId, gene.id, exon.exon_number);
+                        addNodeExonAnnotation(node.iid, gene.id, exon.exon_number);
                     }
                 });
             }

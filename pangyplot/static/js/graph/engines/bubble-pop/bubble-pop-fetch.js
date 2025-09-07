@@ -26,8 +26,8 @@ export function fetchSubgraph(originNode) {
     return fetchChain;
 }
 
-export function fetchBubbleEnd(chainNodeId) {
-    const params = { id: chainNodeId, ...getGraphCoordinates() };
+export function fetchBubbleEnd(chainId) {
+    const params = { id: chainId, ...getGraphCoordinates() };
     const url = buildUrl('/subgraph', params);
     return fetchData(url, 'subgraph');
 }

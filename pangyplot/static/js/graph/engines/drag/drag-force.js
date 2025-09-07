@@ -13,11 +13,11 @@ function buildDragCache(forceGraph, draggedNode) {
 
     const maxDepth = 200;
 
-    const selectedNodeIds = new Set(getSelected().map(n => n.nodeId));
+    const selectedIids = new Set(getSelected().map(n => n.iid));
 
     while (queue.length > 0) {
         const { node, depth } = queue.shift();
-        if (!selectedNodeIds.has(node.nodeId)) {
+        if (!selectedIids.has(node.iid)) {
             cache.push({ node, depth });
         }
 
@@ -51,8 +51,8 @@ export default function dragInfluenceForce(forceGraph) {
 
   return function force(alpha) {
 
-    const selectedNodeIds = new Set(getSelected().map(n => n.nodeId));
-    
+    const selectedIids = new Set(getSelected().map(n => n.iid));
+
     if (!dragState.draggedNode) return;
 
     if (!dragState.cache) {
@@ -77,7 +77,7 @@ export default function dragInfluenceForce(forceGraph) {
       node.x += dx * dampen;
       node.y += dy * dampen;
 
-      if (selectedNodeIds.has(node.nodeId) && node.isFixed) {
+      if (selectedIids.has(node.iid) && node.isFixed) {
         node.fx += dx;
         node.fy += dy;
       }

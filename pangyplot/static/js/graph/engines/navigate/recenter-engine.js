@@ -9,8 +9,8 @@ export default function setUpRecenterEngine(forceGraph, graphElement) {
 
         if (event.code === 'ArrowUp') {
             event.preventDefault();
-            const selectedNodeIds = new Set(getSelected().map(n => n.nodeId));
-            forceGraph.zoomToFit(200, 10, node => selectedNodeIds.has(node.nodeId));
+            const selectedIids = new Set(getSelected().map(n => n.iid));
+            forceGraph.zoomToFit(200, 10, node => selectedIids.has(node.iid));
         }
     });
 }

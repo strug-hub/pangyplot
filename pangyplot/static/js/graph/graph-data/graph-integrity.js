@@ -1,8 +1,8 @@
 function deduplicateNodes(graphData) {
     const uniqueNodes = new Set();
     graphData.nodes = graphData.nodes.filter(n => {
-        if (!uniqueNodes.has(n.nodeId)) {
-            uniqueNodes.add(n.nodeId);
+        if (!uniqueNodes.has(n.iid)) {
+            uniqueNodes.add(n.iid);
             return true;
         }
         return false;
@@ -12,8 +12,8 @@ function deduplicateNodes(graphData) {
 function deduplicateLinks(graphData) {
     const uniqueLinks = new Set();
     graphData.links = graphData.links.filter(l => {
-        if (!uniqueLinks.has(l.linkId)) {
-            uniqueLinks.add(l.linkId);
+        if (!uniqueLinks.has(l.linkIid)) {
+            uniqueLinks.add(l.linkIid);
             return true;
         }
         return false;
@@ -22,11 +22,11 @@ function deduplicateLinks(graphData) {
 
 function removeInvalidLinks(graphData) {
     const nodeSet = new Set(
-        graphData.nodes.map(node => node.nodeId)
+        graphData.nodes.map(node => node.iid)
     );
 
     graphData.links = graphData.links.filter(l =>
-        nodeSet.has(l.sourceNodeId) && nodeSet.has(l.targetNodeId)
+        nodeSet.has(l.sourceIid) && nodeSet.has(l.targetIid)
     );
 }
 

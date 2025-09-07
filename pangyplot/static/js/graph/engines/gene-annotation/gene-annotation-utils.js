@@ -17,17 +17,17 @@ function calculateEffectiveNodeStep(node, step){
 
     const [start, end] = matchedRange;
     
-    if (node.nodeIdx === 0) {
+    if (node.idx === 0) {
         return start;
     }
     if (node.kinks === 1) {
         return (start + end) / 2;
     }
-    if (node.nodeIdx === node.kinks - 1) {
+    if (node.idx === node.kinks - 1) {
         return end;
     }
 
-    return start + (node.nodeIdx * (end - start)) / (node.kinks - 1);
+    return start + (node.idx * (end - start)) / (node.kinks - 1);
 }
 
 export function annotationOverlap(annotation, node) {

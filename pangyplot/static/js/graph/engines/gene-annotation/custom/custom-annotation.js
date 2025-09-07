@@ -16,7 +16,7 @@ export function updateCustomAnnotations() {
     for (const geneId in customCache) {
         const nodes = customCache[geneId];
         nodes.forEach(node => {
-            addNodeGeneAnnotation(node.nodeId, geneId);
+            addNodeGeneAnnotation(node.iid, geneId);
         });
     }
 }
@@ -37,6 +37,6 @@ export function createCustomGeneAnnotation(customName, nodes) {
     customCache[geneData.id] = nodes;
 
     nodes.forEach(node => {
-        addNodeGeneAnnotation(node.nodeId, geneData.id);
+        addNodeGeneAnnotation(node.iid, geneData.id);
     });
 }

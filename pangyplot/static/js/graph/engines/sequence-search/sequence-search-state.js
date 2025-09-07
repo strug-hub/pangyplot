@@ -1,5 +1,5 @@
 let state = {
-  results: {},   // { searchString: [ { nodeId, positions } ] }
+  results: {},   // { searchString: [ { iid, positions } ] }
   colors: {},    // { searchString: color }
   graph: null
 };
