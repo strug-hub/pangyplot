@@ -1,6 +1,6 @@
 import { colorState } from "../../render/color/color-state.js";
 import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
-import { getSelected, getHighlighted, getHoverNode } from "./selection-state.js";
+import { getSelectedNodeSet, getHighlightedNodeSet, getHoverNode } from "./selection-state.js";
 import { getNodeComponents } from "../../graph-data/graph-manager.js";
 
 export function highlightSelection(ctx, graphData) {
@@ -16,8 +16,7 @@ export function highlightSelection(ctx, graphData) {
     outlineNode(hoverNode, ctx, 0, hsize, colorState.selectedColor);
   }
 
-  const selectedNodes = getSelected();
-  const selectedIds = new Set(selectedNodes.map(n => n.id));
+  const selectedIds = getSelectedNodeSet().idList();
 
   for (const id of selectedIds) {
     const components = getNodeComponents(id);
@@ -32,10 +31,9 @@ export function highlightSelection(ctx, graphData) {
     }
   }
 
-  const highlightNode = getHighlighted();
-  const highlightIds = new Set(highlightNode.map(n => n.id));
+  const highlightedIds = getHighlightedNodeSet().idList();
 
-  for (const id of highlightIds) {
+  for (const id of highlightedIds) {
     const components = getNodeComponents(id);
     for (const node of components.nodes) {
       const hsize = node.width + highlightWidth * 0.8;

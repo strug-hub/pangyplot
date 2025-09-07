@@ -1,29 +1,30 @@
 import eventBus from '../../../utils/event-bus.js';
 import { isPanZoomMode } from '../navigate/pan-zoom-engine.js';
 import { isDragging } from '../drag/drag-state.js';
+import NodeSet from '../../utils/node-set.js';
 
 export const selectionState = {
   multiSelectMode: false,
   chainMode: false,
 
   hoverNode: null,
-  highlighted: new Set(),
-  selected: new Set()
+  highlighted: new NodeSet("highlighted"),
+  selected: new NodeSet("selected")
 };
 
 export function updateSelected(nodes) {
   if (isPanZoomMode()) return;
   const oldSelected = selectionState.selected;
-  selectionState.selected = new Set(nodes);
+  selectionState.selected = new NodeSet("selected", nodes);
 
-  if (!setsEqual(oldSelected, selectionState.selected)) {
+  if (!oldSelected.sameNodes(selectionState.selected)) {
     eventBus.publish('selection:changed', selectionState);
   }
 }
 
 export function clearSelected() {
   if (isPanZoomMode()) return;
-  selectionState.selected = new Set();
+  selectionState.selected.clear();
 }
 
 export function updateHoverNode(node) {
@@ -31,27 +32,16 @@ export function updateHoverNode(node) {
 }
 
 export function updateHighlighted(nodes) {
-  //const oldHighlighted = selectionState.highlighted;
-  selectionState.highlighted = new Set(nodes);
-
-  //if (!setsEqual(oldHighlighted, selectionState.highlighted)) {
-  //  eventBus.publish('selection:highlight-changed', selectionState);
-  //}
+  selectionState.highlighted = new NodeSet("highlighted", nodes);
 }
 
 export function clearHighlighted() {
-  selectionState.highlighted = new Set();
+  selectionState.highlighted.clear();
   updateHoverNode(null);
 }
 
 export function numberSelected() {
   return selectionState.selected.size;
-}
-
-function setsEqual(a, b) {
-  if (a.size !== b.size) return false;
-  for (const item of a) if (!b.has(item)) return false;
-  return true;
 }
 
 export function flipChainMode() {
@@ -70,16 +60,16 @@ export function canHighlight() {
   return !selectionState.multiSelectMode && !isPanZoomMode() && !isDragging();
 }
 
-export function getSelected() {
-  return [...selectionState.selected];
+export function getSelectedNodeSet() {
+  return selectionState.selected;
 }
 
 export function isSelected(node) {
   return selectionState.selected.has(node);
 }
 
-export function getHighlighted() {
-  return [...selectionState.highlighted];
+export function getHighlightedNodeSet() {
+  return selectionState.highlighted;
 }
 
 export function getHoverNode() {

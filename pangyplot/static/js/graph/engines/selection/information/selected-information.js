@@ -1,6 +1,6 @@
 import { updateSelectedInfo } from "../../../../ui/tabs/information-panel.js";
 import { faLabel } from '../selection-utils.js';
-import { numberSelected, getSelected } from '../selection-state.js';
+import { numberSelected, getSelectedNodeSet } from '../selection-state.js';
 import { getGraphCoordinates } from "../../../graph-data/graph-state.js";
 
 const blankInfo = {
@@ -26,13 +26,13 @@ export function generateSelectedInfo(){
         return;
     }
 
-    const selected = getSelected();
-    if (selected == null) {
+    const selectedNodeSet = getSelectedNodeSet();
+    if (selectedNodeSet.isEmpty()) {
         updateSelectedInfo(info);
         return;
     }
-    const node = selected[0];
-    
+    const node = selectedNodeSet.getAnyNode();
+    console.log(node)
     info.id = faLabel(node.id) || '';
     info.type = node.type || '';
     info.start = node.start != null ? node.start : '?';

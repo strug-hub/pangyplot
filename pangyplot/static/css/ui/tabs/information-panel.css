@@ -1,6 +1,7 @@
 #info-debug-container {
     padding-left: 1em;
     background-color: lightcoral;
+    font-family: monospace;
 }
 
 #info-selected-container {

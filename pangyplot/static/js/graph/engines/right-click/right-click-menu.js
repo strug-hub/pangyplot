@@ -1,4 +1,4 @@
-import { getSelected } from '../selection/selection-state.js';
+import { getSelectedNodeSet } from '../selection/selection-state.js';
 
 export class RightClickMenu {
     constructor(forceGraph) {
@@ -22,7 +22,7 @@ export class RightClickMenu {
 
     showMenu(x, y) {
         this.menuElement.innerHTML = '';
-        const targetNodes = getSelected();
+        const selectedNodeSet = getSelectedNodeSet();
 
         const categorizedOptions = this.categorizeOptions();
 
@@ -31,9 +31,9 @@ export class RightClickMenu {
             categorizedOptions.general.forEach(option => this.addOptionToMenu(option));
         }
 
-        if (targetNodes.length > 0 && categorizedOptions.node) {
+        if (!selectedNodeSet.isEmpty() && categorizedOptions.node) {
             this.addLabel('Highlighted node actions:');
-            categorizedOptions.node.forEach(option => this.addOptionToMenu(option, targetNodes));
+            categorizedOptions.node.forEach(option => this.addOptionToMenu(option, selectedNodeSet));
         }
 
         if (!this.menuElement.innerHTML.trim()) return;
