@@ -1,4 +1,4 @@
-.custom-context-menu {
+#custom-context-menu {
     position: absolute;
     display: none;
     background-color: var(--tab-box);

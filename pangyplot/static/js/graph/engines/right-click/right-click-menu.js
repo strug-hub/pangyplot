@@ -9,11 +9,10 @@ export class RightClickMenu {
 
     createMenuElement() {
         const menu = document.createElement('div');
-        menu.classList.add('custom-context-menu');
+        menu.id = 'custom-context-menu';
         document.body.appendChild(menu);
         return menu;
     }
-
     addOption(iconName, labelText, category, onClickFunction) {
         this.options.push({ iconName, labelText, category, onClickFunction });
     }
@@ -23,12 +22,10 @@ export class RightClickMenu {
 
         const categorizedOptions = this.categorizeOptions();
 
-        if (categorizedOptions.general) {
-            this.addLabel('Actions:');
-            categorizedOptions.general.forEach(option => this.addOptionToMenu(option));
-        }
+        this.addLabel('Actions:');
+        categorizedOptions.general.forEach(option => this.addOptionToMenu(option));
 
-        if (!this.forceGraph.selected.isEmpty() && categorizedOptions.node) {
+        if (!this.forceGraph.selected.isEmpty()) {
             this.addLabel('Highlighted node actions:');
             const selectedNodes = this.forceGraph.selected.nodeList();
             categorizedOptions.node.forEach(option => this.addOptionToMenu(option, selectedNodes));
@@ -36,32 +33,46 @@ export class RightClickMenu {
 
         if (!this.menuElement.innerHTML.trim()) return;
 
+        this.menuElement.style.display = 'block';
         this.menuElement.style.left = `${x}px`;
         this.menuElement.style.top = `${y}px`;
-        this.menuElement.style.display = 'block';
 
-        const menuRect = this.menuElement.getBoundingClientRect();
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
-
-        let finalX = x;
-        let finalY = y;
-
-        // If menu overflows to the right → align to left
-        if (x + menuRect.width > screenWidth) {
-            finalX = x - menuRect.width;
-        }
-
-        // If menu overflows bottom → align to top
-        if (y + menuRect.height > screenHeight) {
-            finalY = y - menuRect.height;
-        }
-
-        // Apply final position
-        this.menuElement.style.left = `${finalX}px`;
-        this.menuElement.style.top = `${finalY}px`;
+        this.adjustMenuPosition(x, y);
     }
 
+    adjustMenuPosition(pageX, pageY) {
+        // graph in page coordinates
+        const cRect = this.forceGraph.element.getBoundingClientRect();
+        const graphTop    = cRect.top + window.scrollY;
+        const graphBottom = cRect.bottom + window.scrollY;
+        const graphLeft   = cRect.left + window.scrollX;
+        const graphRight  = cRect.right + window.scrollX;
+
+        const mRect = this.menuElement.getBoundingClientRect();
+        const mW = mRect.width;
+        const mH = mRect.height;
+
+        const spaceBelow = graphBottom - pageY;
+        const spaceAbove = pageY - graphTop;
+
+        let top;
+        if (spaceBelow < mH && spaceAbove >= mH) {
+            top = pageY - mH; // flip above
+        } else {
+            top = pageY;      // default: below
+        }
+
+        // clamp horizontally within graph
+        let left = pageX;
+        const overflowRight = (pageX + mW) - graphRight;
+        if (overflowRight > 0) left -= overflowRight;
+        if (left < graphLeft) left = graphLeft;
+
+        this.menuElement.style.left = `${left}px`;
+        this.menuElement.style.top  = `${top}px`;
+    }
+
+    
     categorizeOptions() {
         return this.options.reduce((categories, option) => {
             if (!categories[option.category]) {
