@@ -36,6 +36,7 @@ function createForceGraph(graph){
         .warmupTicks(4)
         //.linkDirectionalParticles(4)
 
+    console.log(forceGraph.graphData());
     setUpGraphManager(forceGraph);
     setCanvasSize(forceGraph);
 

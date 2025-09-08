@@ -23,6 +23,11 @@ function destroySelectionBox() {
 }
 
 function pointerMove(event, forceGraph) {
+
+    if (forceGraph.isDragging()) {
+        destroySelectionBox();
+    }
+    
     if (!selectionAllowed) return;
 
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
@@ -57,14 +62,11 @@ function pointerUp(event, forceGraph) {
 
 export default function setUpMultiSelectionEngine(forceGraph) {
 
-    eventBus.subscribe('drag:node', () => {
-        destroySelectionBox();
-    });
-    eventBus.subscribe('navigation:pan-zoom-mode', () => {
+    eventBus.subscribe('graph:pan-zoom-mode', () => {
         selectionAllowed = false;
         destroySelectionBox();
     });
-    eventBus.subscribe('navigation:selection-mode', () => {
+    eventBus.subscribe('graph:selection-mode', () => {
         selectionAllowed = true;
     });
 

@@ -1,6 +1,6 @@
 import setUpRenderSettings from './settings/render-settings.js'
-import { getViewport, updateVisibility } from './viewport-utils.js';
-import { renderDragInfluenceCircle } from '../engines/drag/drag-render.js';
+import { updateVisibility } from './viewport-utils.js';
+import { renderDragInfluenceCircle } from '../engines/drag/drag-influence/drag-influence-render.js';
 import { renderGenes} from '../engines/gene-annotation/gene-annotation-gene-render.js';
 import { renderGeneLabels} from '../engines/gene-annotation/gene-annotation-label-render.js';
 import { basicLinkPainter } from './painter/basic-link-painter.js';
@@ -15,16 +15,14 @@ function renderPreFrame(ctx, forceGraph, svg=null) {
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
     renderGenes(ctx, forceGraph, svg);
-    highlightSelection(ctx, forceGraph.graphData());
+    highlightSelection(forceGraph);
 }
 
 function renderPostFrame(ctx, forceGraph, svg=null) {
-    const viewport = getViewport(forceGraph);
-
     renderGeneLabels(ctx, forceGraph, svg);
     //searchSequenceEngineUpdate(ctx, forceGraph);
     renderCustomLabels(ctx, forceGraph, svg);
-    renderDragInfluenceCircle(ctx, viewport);
+    renderDragInfluenceCircle(forceGraph);
 }
 
 export function renderFullFrame(ctx, forceGraph, svg=null) {

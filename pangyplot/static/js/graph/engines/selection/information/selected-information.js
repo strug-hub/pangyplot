@@ -1,6 +1,5 @@
 import { updateSelectedInfo } from "../../../../ui/tabs/information-panel.js";
 import { faLabel } from '../../../../utils/node-label.js';
-import { numberSelected, getSelectedNodeSet } from '../selection-state.js';
 import forceGraph from "../../../force-graph.js";
 
 const blankInfo = {
@@ -21,18 +20,17 @@ export function generateSelectedInfo(){
     info.genome = coords.genome || '';
     info.chromosome = coords.chromosome || '';
 
-    if (numberSelected() !== 1) {
+    if (forceGraph.selected.size !== 1) {
         updateSelectedInfo(info);
         return;
     }
 
-    const selectedNodeSet = getSelectedNodeSet();
-    if (selectedNodeSet.isEmpty()) {
+    const node = forceGraph.selected.getAnyNode();
+    if (!node) {
         updateSelectedInfo(info);
         return;
     }
-    const node = selectedNodeSet.getAnyNode();
-    console.log(node)
+    
     info.id = faLabel(node.id) || '';
     info.type = node.type || '';
     info.start = node.start != null ? node.start : '?';

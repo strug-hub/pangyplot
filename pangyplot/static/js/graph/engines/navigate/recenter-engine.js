@@ -1,5 +1,3 @@
-import { getSelectedNodeSet } from '../selection/selection-state.js';
-
 export default function setUpRecenterEngine(forceGraph) {
     forceGraph.element.addEventListener('keydown', (event) => {
 
@@ -9,8 +7,7 @@ export default function setUpRecenterEngine(forceGraph) {
 
         if (event.code === 'ArrowUp') {
             event.preventDefault();
-            const selectedNodeSet = new getSelectedNodeSet();
-            forceGraph.zoomToFit(200, 10, node => selectedNodeSet.has(node));
+            forceGraph.zoomToFit(200, 10, node => forceGraph.selected.has(node));
         }
     });
 }

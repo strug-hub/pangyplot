@@ -1,47 +1,33 @@
-import eventBus from '../../../utils/event-bus.js';
-import { isPanZoomMode } from '../navigate/pan-zoom-engine.js';
-import { isDragging } from '../drag/drag-state.js';
-import NodeSet from '../../utils/node-set.js';
+import forceGraph from '../../force-graph.js';
 
 export const selectionState = {
   multiSelectMode: false,
   chainMode: false,
 
   hoverNode: null,
-  highlighted: new NodeSet("highlighted"),
-  selected: new NodeSet("selected")
 };
 
 export function updateSelected(nodes) {
-  if (isPanZoomMode()) return;
-  const oldSelected = selectionState.selected;
-  selectionState.selected = new NodeSet("selected", nodes);
-
-  if (!oldSelected.sameNodes(selectionState.selected)) {
-    eventBus.publish('selection:changed', selectionState);
-  }
+  if (forceGraph.isPanZoomMode()) return;
+  forceGraph.setSelected(nodes);
 }
 
 export function clearSelected() {
-  if (isPanZoomMode()) return;
-  selectionState.selected.clear();
+  if (forceGraph.isPanZoomMode()) return;
+  forceGraph.selected.clear();
 }
 
 export function updateHoverNode(node) {
-  selectionState.hoverNode = node;
+  forceGraph.setHoveredNode(node);
 }
 
 export function updateHighlighted(nodes) {
-  selectionState.highlighted = new NodeSet("highlighted", nodes);
+  forceGraph.setHighlighted(nodes);
 }
 
 export function clearHighlighted() {
-  selectionState.highlighted.clear();
-  updateHoverNode(null);
-}
-
-export function numberSelected() {
-  return selectionState.selected.size;
+  forceGraph.highlighted.clear();
+  forceGraph.setHoveredNode(null);
 }
 
 export function flipChainMode() {
@@ -53,25 +39,13 @@ export function isInChainMode() {
 }
 
 export function canSingleSelect() {
-  return !selectionState.multiSelectMode && !isPanZoomMode();
+  return !selectionState.multiSelectMode && !forceGraph.isPanZoomMode();
 }
 
 export function canHighlight() {
-  return !selectionState.multiSelectMode && !isPanZoomMode() && !isDragging();
-}
-
-export function getSelectedNodeSet() {
-  return selectionState.selected;
-}
-
-export function isSelected(node) {
-  return selectionState.selected.has(node);
-}
-
-export function getHighlightedNodeSet() {
-  return selectionState.highlighted;
+  return !selectionState.multiSelectMode && !forceGraph.isPanZoomMode() && !forceGraph.isDragging();
 }
 
 export function getHoverNode() {
-  return selectionState.hoverNode;
+  return forceGraph.hoveredNode;
 }

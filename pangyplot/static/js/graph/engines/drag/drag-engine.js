@@ -1,44 +1,45 @@
-import eventBus from '../../../utils/event-bus.js';
-import { dragState, isDragging, setDraggedNode, clearDraggedNode } from './drag-state.js';
-import dragInfluenceForce from './drag-force.js';
+import setUpDragFixEngine from './drag-fix/drag-fix-engine.js';
+import { setUpDragInfluenceEngine } from './drag-influence/drag-influence-engine.js';
 import { euclideanDist } from '../../utils/node-utils.js';
-import { numberSelected, isSelected, clearSelected, updateHighlighted, getHoverNode } from '../selection/selection-state.js';
-import setUpDragFix from './drag-fix-position.js';
 
-const MAX_DRAG_DISTANCE = 25;
-const MIN_DRAG_DETECT = 5;
+const MAX_DISTANCE_DRAG_DETECT_PX = 25;
+const MIN_MOVEMENT_INITIATION_PX = 5;
+
+var initialMousePos = { x: null, y: null };
+var readyNode = null;
 
 function setDragStart(event, forceGraph) {
-    const hoverNode = getHoverNode();
-    if (!hoverNode) return;
+    const hoveredNode = forceGraph.hoveredNode;
+    if (!hoveredNode) return;
 
     const coords = { x: event.offsetX, y: event.offsetY };
-    const screenPos = forceGraph.graph2ScreenCoords(hoverNode.x, hoverNode.y);
+    const screenPos = forceGraph.graph2ScreenCoords(hoveredNode.x, hoveredNode.y);
     const distPx = euclideanDist(coords, screenPos);
 
-    if (distPx > MAX_DRAG_DISTANCE) return;
+    if (distPx > MAX_DISTANCE_DRAG_DETECT_PX) return;
 
-    dragState.readyNode = hoverNode;
-    dragState.initialMousePos = { x: event.offsetX, y: event.offsetY };
+    readyNode = hoveredNode;
+    initialMousePos = { x: event.offsetX, y: event.offsetY };
 }
 
-function checkIfDragging(event) {
+function checkIfDragging(event, forceGraph) {
   const coords = { x: event.offsetX, y: event.offsetY };
-  const distPx = euclideanDist(dragState.initialMousePos, coords);
+  const distPx = euclideanDist(initialMousePos, coords);
 
-  if (distPx > MIN_DRAG_DETECT) {
-    const node = dragState.readyNode;
-    dragState.readyNode = null;
+  if (distPx > MIN_MOVEMENT_INITIATION_PX) {
+    const node = readyNode;
+    readyNode = null;
 
-    setDraggedNode(node);
-    if (!isSelected(node)) clearSelected();
-    updateHighlighted([node.iid]);
-    eventBus.publish('drag:node', { node });
+    if (!forceGraph.selected.has(node)) {
+      forceGraph.setSelected(null);
+    }
+    forceGraph.setHighlighted([node]);
+    forceGraph.setDraggedNode(node);
   }
 }
 
 function updateDrag(event, forceGraph) {
-  const node = dragState.draggedNode;
+  const node = forceGraph.draggedNode;
   if (!node) return;
 
   const { x, y } = forceGraph.screen2GraphCoords(event.offsetX, event.offsetY);
@@ -47,15 +48,14 @@ function updateDrag(event, forceGraph) {
   node.fx = x;
   node.fy = y;
 
-  eventBus.publish('drag:node', { node });
   forceGraph.d3ReheatSimulation();
 }
 
-function onDragEnd() {
-    const node = dragState.draggedNode;
+function onDragEnd(event, forceGraph) {
+    const node = forceGraph.draggedNode;
     if (!node) return;
 
-    if (dragState.fixAfterDrag && numberSelected() < 2) {
+    if (forceGraph.fixOnDrag && forceGraph.selected.size < 2) {
       node.isFixed = true;
       node.fx = node.x;
       node.fy = node.y;
@@ -64,40 +64,31 @@ function onDragEnd() {
       node.fy = undefined;
     }
 
-    clearDraggedNode();
-    eventBus.publish('drag:end', { node });
+    forceGraph.setDraggedNode(null);
 }
 
-
 export default function setUpDragEngine(forceGraph) {
-  setUpDragFix(forceGraph);
   
-  forceGraph.d3Force('dragInfluence', dragInfluenceForce(forceGraph));
+  setUpDragFixEngine(forceGraph);
+  setUpDragInfluenceEngine(forceGraph);
 
   forceGraph.element.addEventListener('pointerdown', event => {
-    if (event.button !== 0) return; // Only left click
+    if (event.button !== 0) return;
     setDragStart(event, forceGraph);
   });
 
   forceGraph.element.addEventListener('pointermove', event => {
-    if (dragState.readyNode != null){
-      checkIfDragging(event);
-    } else if (isDragging()) {
+    if (readyNode != null){
+      checkIfDragging(event, forceGraph);
+    } else if (forceGraph.isDragging()) {
       updateDrag(event, forceGraph);
     }
   });
 
   forceGraph.element.addEventListener('pointerup', event => {
-    dragState.readyNode = null;
-    if (isDragging()) {
-      onDragEnd(event);
+    readyNode = null;
+    if (forceGraph.isDragging()) {
+      onDragEnd(event, forceGraph);
     }
-  });
-
-  document.addEventListener('wheel', e => {
-    if (!dragState.draggedNode) return;
-    dragState.decay = e.deltaY > 0
-      ? Math.max(dragState.decay - 0.005, 0.01)
-      : Math.min(dragState.decay + 0.005, 0.1);
   });
 }

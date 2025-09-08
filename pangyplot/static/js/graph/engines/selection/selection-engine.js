@@ -5,7 +5,6 @@ import { flipChainMode, clearSelected} from './selection-state.js';
 import { generateSelectedInfo } from "./information/selected-information.js";
 import eventBus from '../../../utils/event-bus.js';
 
-var nodesDragged = false;
 var selectionUpdated = false;
 
 export default function setUpSelectionEngine(forceGraph) {
@@ -15,24 +14,21 @@ export default function setUpSelectionEngine(forceGraph) {
     setUpSingleSelectEngine(forceGraph);
     setUpMultiSelectionEngine(forceGraph);
 
-    eventBus.subscribe('drag:node', () => {
-        nodesDragged = true;
-    });
-    eventBus.subscribe('selection:changed', () => {
+
+    eventBus.subscribe('graph:selected-changed', () => {
         selectionUpdated = true;
         generateSelectedInfo();
     });
 
     forceGraph.element.addEventListener('pointerdown', (event) => {
         if (event.button !== 0) return; // Only left click
-        nodesDragged = false;
         selectionUpdated = false;
     });
 
     forceGraph.element.addEventListener('pointerup', (event) => {
         if (event.button !== 0) return; // Only left click
         setTimeout(() => {
-            if (!nodesDragged && !selectionUpdated) {
+            if (!forceGraph.isDragging() && !selectionUpdated) {
                 clearSelected();
             }
         }, 50);

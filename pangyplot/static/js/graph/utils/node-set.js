@@ -2,20 +2,28 @@ class NodeSet {
     constructor(name, nodes = []) {
         this.name = name;
         this.nodes = new Set(nodes);
-        this.nodeValues = new Map(); // node -> {key: value, ...}
+        this.nodeValues = new Map();
     }
 
-    add(node, value = {}) {
+    add(node, value = undefined) {
         this.nodes.add(node);
-        if (value && typeof value === 'object') {
-            this.nodeValues.set(node, { ...value });
-        } else {
-            this.nodeValues.set(node, {});
-        }
+        this.nodeValues.set(node, value);
+    }
+
+    addAll(nodes, values = []) {
+        nodes.forEach((node, index) => {
+            const value = values[index];
+            this.add(node, value);
+        });
     }
 
     getAnyNode() {
+        if (this.nodes.size === 0) return null;
         return this.nodes.values().next().value;
+    }
+
+    nodeList() {
+        return [...this.nodes];
     }
 
     idList() {
@@ -26,21 +34,18 @@ class NodeSet {
         return [...this.nodes].map(node => node.iid);
     }
 
-    setValue(node, key, value) {
+    setValue(node, value) {
         if (this.nodes.has(node)) {
-            let values = this.nodeValues.get(node) || {};
-            values[key] = value;
-            this.nodeValues.set(node, values);
+            this.nodeValues.set(node, value);
         }
     }
 
-    getValue(node, key) {
-        const values = this.nodeValues.get(node);
-        return values ? values[key] : undefined;
+    getValue(node) {
+        return this.nodeValues.get(node);
     }
 
     getAllValues(node) {
-        return this.nodeValues.get(node) || {};
+        return this.nodeValues.get(node);
     }
 
     delete(node) {
@@ -75,16 +80,21 @@ class NodeSet {
         return this.nodes[Symbol.iterator]();
     }
 
-    sameNodes(otherSet) {
-        if (this.size !== otherSet.size) return false;
+    *nodeValuePairs() {
         for (const node of this.nodes) {
-            if (!otherSet.has(node)) {
-                return false;
-            }
+            yield [node, this.nodeValues.get(node)];
+        }
+    }
+
+    contains(nodes){
+        if (!Array.isArray(nodes)) {
+            return this.has(nodes);
+        }
+        for (const node of nodes) {
+            if (!this.has(node)) return false;
         }
         return true;
     }
-
 
 }
 
