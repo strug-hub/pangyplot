@@ -1,8 +1,15 @@
-class GraphNodeData {
+class NodeRecord {
     constructor(rawData, type) {
-        if (new.target === GraphNodeData) {
-            throw new Error("Cannot instantiate abstract class GraphNodeData directly.");
+        if (new.target === NodeRecord) {
+            throw new Error("Cannot instantiate abstract class NodeRecord directly.");
         }
+
+        this.nodeElements = [];
+        this.linkElements = [];
+        this.inside = new Set();
+        this.active = true;
+
+        // -----
 
         this.id = rawData.id;
         this.type = type;
@@ -12,9 +19,10 @@ class GraphNodeData {
         this.gcCount = rawData.gc_count;
         this.nCount = rawData.n_count;
     }
+
 }
 
-class BubbleData extends GraphNodeData {
+class BubbleRecord extends NodeRecord {
     constructor(rawBubble) {
         super(rawBubble, "bubble");
         this.parent = rawBubble.parent;
@@ -25,7 +33,7 @@ class BubbleData extends GraphNodeData {
     }
 }
 
-class BubbleEndData extends GraphNodeData {
+class BubbleEndRecord extends NodeRecord {
     constructor(rawBubbleEnd) {
         super(rawBubbleEnd, "bubble:end");
         this.subtype = rawBubbleEnd.subtype;
@@ -35,7 +43,7 @@ class BubbleEndData extends GraphNodeData {
     }
 }
 
-class SegmentData extends GraphNodeData {
+class SegmentRecord extends NodeRecord {
     constructor(rawSegment) {
         super(rawSegment, "segment");
         this.insideBubble = rawSegment.inside_bubble;
@@ -43,15 +51,15 @@ class SegmentData extends GraphNodeData {
 }
 
 export default function deserializeNodes(rawNodes) {
-    const elements = [];
+    const records = [];
     for (const rawNode of rawNodes) {
         if (rawNode.type === "segment") {
-            elements.push(new SegmentData(rawNode));
+            records.push(new SegmentRecord(rawNode));
         } else if (rawNode.type === "bubble") {
-            elements.push(new BubbleData(rawNode));
+            records.push(new BubbleRecord(rawNode));
         } else if (rawNode.type === "bubble:end") {
-            elements.push(new BubbleEndData(rawNode));
+            records.push(new BubbleEndRecord(rawNode));
         }
     }
-    return elements;
+    return records;
 }

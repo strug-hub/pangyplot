@@ -18,7 +18,7 @@ export function runSearch(sequence, forceGraph) {
   const revRegex = sequenceToRegex(revComp);
 
   nodes.forEach(node => {
-    const seq = node.data.seq;
+    const seq = node.record.seq;
     if (!seq || seq.length < sequence.length) return;
 
     const occurrences = { iid: node.iid, positions: [] };

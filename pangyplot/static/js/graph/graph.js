@@ -1,13 +1,10 @@
 import forceGraph from './force-graph.js';
-import buildGraphData from './data/create/graph-data.js';
 import { setUpRenderManager } from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import setUpForceManager from './forces/force-manager.js';
 import { setCanvasSize } from './render/canvas-utils.js';
 import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotation-engine.js';
-import { anchorEndpointNodes } from './utils/node-utils.js';
-import { clearGraphManager, setUpGraphManager} from './data/graph-manager.js';
-import { fetchData, buildUrl } from '../utils/network-utils.js';
+import { setUpGraphManager} from './data/graph-data-manager.js';
 import { statusUpdate } from './data/graph-status.js';
 import { pathHighlightTick } from './engines/path-highlight/animation/animation-tick.js';
 
@@ -15,7 +12,7 @@ import eventBus from '../utils/event-bus.js';
 
 // todo https://github.com/vasturiano/d3-force-registry
 
-function createForceGraph(graph){
+export function createForceGraph(graph){
     console.log("Creating force graph with data:", graph);
 
     const graphContainer = document.getElementById('graph-container')    
@@ -72,29 +69,6 @@ function hideLoader() {
     document.querySelector('.loader-filter').style.display = 'none';
 }
 hideLoader()
-
-function fetchAndConstructGraph(coordinates){
-    if (forceGraph.equalsCoords(coordinates)) return;
-    forceGraph.coords = coordinates;
-
-    const url = buildUrl('/select', coordinates);
-    fetchData(url, 'graph').then(rawGraph => {
-        console.log("Fetched graph data:", rawGraph);
-        clearGraphManager();
-
-        const graphData = buildGraphData(rawGraph);
-        anchorEndpointNodes(graphData.nodes, graphData.links);
-        createForceGraph(graphData);
-    }).catch(error => {
-        console.warn("Skipping graph construction:", error);
-    });
-}
-
-eventBus.subscribe("ui:construct-graph", function (data) {
-    const { genome, chromosome, start, end } = data;
-    const coordinates = { genome, chromosome, start, end };
-    fetchAndConstructGraph(coordinates);
-});
 
 
 document.addEventListener('DOMContentLoaded', function () {

@@ -17,7 +17,7 @@ export function populateOptions(forceGraph) {
     menu.addOption('dna', 'Show Sequence', 'node', nodes => {
         const nchar = 25;
         nodes.forEach(node => {
-            const fullSequence = node.data.sequence || '';
+            const fullSequence = node.record.sequence || '';
             const truncated = fullSequence.slice(0, nchar);
             node.label = truncated + (fullSequence.length > nchar ? '...' : '');
         });

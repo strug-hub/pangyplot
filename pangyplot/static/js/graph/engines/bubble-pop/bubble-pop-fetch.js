@@ -1,7 +1,7 @@
 import { queueSubgraph, dequeueSubgraph } from './bubble-pop-queue.js';
 import { buildUrl, fetchData } from '../../../utils/network-utils.js';
 import { explodeSubgraph } from './bubble-pop-force.js';
-import { processPoppedSubgraph } from '../../data/graph-manager.js';
+import { processPoppedSubgraph } from '../../data/graph-data-manager.js';
 import forceGraph from '../../force-graph.js';
 
 let fetchChain = Promise.resolve();

@@ -68,7 +68,7 @@ function searchSequenceEngineRun(searchString) {
 
     // Iterate through nodes
     nodes.forEach(node => {
-        const nodeData = node.data;
+        const nodeData = node.record;
         const nodeSequence = nodeData.seq;
 
         if (!nodeSequence || nodeSequence.length < searchString.length) {
@@ -114,7 +114,7 @@ function searchSequenceEngineUpdate(ctx, forceGraph, svg=false) {
     const segments = {};
     nodes.forEach(node => {
         if (!segments[node.iid]) {
-            const totalKinks = node.data.kinks;
+            const totalKinks = node.kinks;
             segments[node.iid] = new Array(totalKinks).fill(null);
         }
         segments[node.iid][node.idx] = node;

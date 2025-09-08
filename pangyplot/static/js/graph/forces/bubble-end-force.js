@@ -1,5 +1,5 @@
 import eventBus from '../../utils/event-bus.js';
-import { getSourceNodeElements, getSinkNodeElements, isNodeActive } from "../data/graph-manager.js";
+import { isNodeActive } from "../data/graph-data-manager.js";
 
 const bubbleEndPairs = []
 var initialized = false;
@@ -33,8 +33,8 @@ export default function bubbleEndForce(strength = 0.1, distance = 50) {
         if (initialized) return;
         eventBus.subscribe("graph:bubble-popped", (bubbleId) => {
 
-            const source = getSourceNodeElements(bubbleId);
-            const sink = getSinkNodeElements(bubbleId);
+            const source = null; //getSourceNodeElements(bubbleId);
+            const sink = null; //getSinkNodeElements(bubbleId);
             if (source.length > 0 || sink.length > 0) {
                 bubbleEndPairs.push([source[0], sink[0]]);
             }

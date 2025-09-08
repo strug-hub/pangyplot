@@ -1,96 +1,90 @@
-import buildGraphData from './create/graph-data.js';
-import { cleanGraph } from './graph-integrity.js';
-import { updateSelected } from '../engines/selection/selection-state.js';
 import eventBus from '../../utils/event-bus.js';
+import deserializeGraph from './deserialize/deserialize-graph.js';
+import forceGraph from '../force-graph.js';
+import { cleanGraph } from './graph-data-integrity.js';
+import { updateSelected } from '../engines/selection/selection-state.js';
+import { anchorEndpointNodes } from '../utils/node-utils.js';
+import { fetchData, buildUrl } from '../../utils/network-utils.js';
 
-let forceGraphRef = null;
+import { getNodeRecord, getConnectingLinkRecords, setAllInactive, setActive } from './records-manager.js';
 
-const nodeDict = new Map();
-const nodeIidDict = new Map();
-const linkDict = new Map();
-const linkIidDict = new Map();
+import { createForceGraph } from '../graph.js';
 
-function initializeNodeRecord(id) {
-  if (nodeDict.has(id)) return;
-  const record = {
-    id,
-    elements: new Set(),
-    inside: new Set(),
-    active: true
-  };
-  nodeDict.set(id, record);
+// TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
+
+
+const nodeElementLookup = new Map();
+const linkElementLookup = new Map();
+const nodeIidToLinkElements = new Map();
+
+export function indexLinkRecord(linkRecord) {
+  const element = linkRecord.linkElement;
+  linkElementLookup.set(element.linkIid, element);
 }
 
-export function addNodeRecord(node) {
-  const id = node.id;
-  if (!nodeDict.has(id)) {
-    initializeLinkRecord(id);
-    initializeNodeRecord(id);
+function deserializeAndIndex(rawGraph) {
+  const graphData = deserializeGraph(rawGraph);
+
+  for (const nodeElement of graphData.nodes) {
+    nodeElementLookup.set(nodeElement.iid, nodeElement);
   }
-  nodeDict.get(id).elements.add(node);
-  nodeIidDict.set(id, node);
+
+  for (const linkElement of graphData.links) {
+    linkElementLookup.set(linkElement.linkIid, linkElement);
+
+    const sourceIid = linkElement.sourceIid;
+    if (!nodeIidToLinkElements.has(sourceIid)) {
+      nodeIidToLinkElements.set(sourceIid, new Set());
+    }
+    nodeIidToLinkElements.get(sourceIid).add(linkElement);
+   
+    const targetIid = linkElement.targetIid;
+    if (!nodeIidToLinkElements.has(targetIid)) {
+      nodeIidToLinkElements.set(targetIid, new Set());
+    }
+    nodeIidToLinkElements.get(targetIid).add(linkElement);
+  }
+  
+  return graphData;
 }
+
+export function clearGraphManager() {
+  nodeElementLookup.clear();
+  linkElementLookup.clear();
+}
+
 
 export function addInsideContents(id, subgraph) {
-  if (!nodeDict.has(id)) {
-    initializeNodeRecord(id);
-  }
-  const insideSet = nodeDict.get(id).inside;
+  const nodeRecord = getNodeRecord(id);
+  if (!nodeRecord) return;
+
+  const insideSet = nodeRecord.inside;
   for (const element of subgraph.nodes) {
     insideSet.add(element);
   }
 }
 
-function initializeLinkRecord(id) {
-  if (linkDict.has(id)) return;
-  linkDict.set(id, new Set());
-}
-
-export function addLinkRecord(link) {
-  const toId = link.targetId;
-  const fromId = link.sourceId;
-
-  if (!linkDict.has(toId)) {
-    initializeLinkRecord(toId);
-  }
-  if (!linkDict.has(fromId)) {
-    initializeLinkRecord(fromId);
-  }
-  linkDict.get(toId).add(link);
-  linkDict.get(fromId).add(link);
-
-  linkIidDict.set(link.linkIid, link);
-}
-
-export function clearGraphManager() {
-  nodeDict.clear();
-  linkDict.clear();
-  nodeIidDict.clear();
-  linkIidDict.clear();
-}
 
 export function setUpGraphManager(forceGraph) {
-  forceGraphRef = forceGraph;
+
 }
 
 function getUnpoppedContents(bubbleId) {
-  const bubble = nodeDict.get(bubbleId);
-  const nodes = Array.from(bubble.elements);
+  const bubbleRecord = getNodeRecord(bubbleId)
+  const nodes = Array.from(bubbleRecord.nodeElements);
   const links = getLinkElements(bubbleId);
 
-  for (const element of bubble.elements) {
-    links.push(...getLinkElements(element.id));
-  }
-  
+  links.push(...bubbleRecord.linkElements);
+
   return { nodes, links };
 }
 
 function getPoppedContents(bubbleId, recursive = false) {
-  const bubble = nodeDict.get(bubbleId);
+  const bubbleRecord = getNodeRecord(bubbleId);
   const nodes = [];
   const links = [];
 
-  for (const element of bubble.inside) {
+  for (const element of bubbleRecord.inside) {
     nodes.push(element);
     links.push(...getLinkElements(element.id));
 
@@ -108,6 +102,7 @@ function rescueLinks(subgraph) {
   const linkIids = new Set(subgraph.links.map(link => link.linkIid));
   for (const node of nodes) {
     for (const link of getLinkElements(node.id)) {
+
       const linkIid = link.linkIid;
       if (linkIids.has(linkIid)) continue;
       linkIids.add(linkIid);
@@ -119,7 +114,7 @@ function rescueLinks(subgraph) {
 }
 
 export function unpopBubble(bubbleId) {
-  const graphData = forceGraphRef.graphData();
+  const graphData = forceGraph.graphData();
 
   const poppedContents = getPoppedContents(bubbleId, true);
   const unpoppedContents = getUnpoppedContents(bubbleId);
@@ -149,15 +144,15 @@ export function unpopBubble(bubbleId) {
     for (const sibId of siblingIds) {
       let flag = false;
 
-      for (const elem of nodeDict.get(sibId).inside) {
-        if (nodeDict.get(elem.id).active) {
+      for (const elem of getNodeRecord(sibId).inside) {
+        if (getNodeRecord(elem.id).active) {
           flag = true;
           break;
         }
       }
 
       if (flag) {
-        if (nodeDict.has(sibId)) {
+        if (getNodeRecord(sibId)) {
           recoverData.nodes.push(...getNodeElements(sibId));
           recoverData.links.push(...getLinkElements(sibId));
         }
@@ -190,7 +185,7 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
 
   for (const link of subgraph.links) {
-    if (link.data.isPopLink) {
+    if (link.record.isPopLink) {
 
       // active nodes are in the graphData we check if they are in the subgraph
       const sourceActive = isNodeActive(link.sourceId) || subgraphNodes.includes(link.sourceId);
@@ -211,7 +206,7 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
 
     fetchPromises.push(
       fetchBubbleEndFn(node1).then(endData => {
-        const endSubgraph = buildGraphData(endData);
+        const endSubgraph = deserializeAndIndex(endData);
         console.log(`Fetched bubble end for ${node1} / ${node2}`, endData);
         subgraph.nodes.push(...endSubgraph.nodes);
         subgraph.links.push(...endSubgraph.links);
@@ -234,9 +229,9 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
 }
 
 export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEndFn) {
-  const graphData = forceGraphRef.graphData();
+  const graphData = forceGraph.graphData();
 
-  const subgraph = buildGraphData(rawSubgraph);
+  const subgraph = deserializeAndIndex(rawSubgraph);
 
   addInsideContents(bubbleId, subgraph);
   //rescueLinks(subgraph);
@@ -262,21 +257,20 @@ export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEn
 export function updateForceGraph(graphData) {
   cleanGraph(graphData);
 
-  for (const node of nodeDict.values()) {
-    node.active = false;
-  }
+  setAllInactive();
+  
   graphData.nodes.forEach(node => {
-    nodeDict.get(node.id).active = true;
+    setActive(node.id);
     //node.fx = node.x;
     //node.fy = node.y;
   });
 
-  forceGraphRef.graphData(graphData);
+  forceGraph.graphData(graphData);
   eventBus.publish("graph:updated", true);
 }
 
 export function getActiveDeletionLinks() {
-  const graphData = forceGraphRef.graphData();
+  const graphData = forceGraph.graphData();
 
   const links = [];
   for (const link of graphData.links) {
@@ -287,35 +281,35 @@ export function getActiveDeletionLinks() {
   return links;
 }
 
-export function getNodeElement(iid) {
-  return nodeIidDict.get(iid) || null;
-}
 
 export function getNodeIfActive(iid) {
   return isNodeActive(iid) ? nodeIidDict.get(iid) : null;
 }
 
 export function isNodeActive(id) {
-  return nodeDict.has(id) && nodeDict.get(id).active;
+  const nodeRecord = getNodeRecord(id);
+  return nodeRecord != null && nodeRecord.active;
 }
 
 export function getNodeElements(id) {
-  return nodeDict.has(id) ? Array.from(nodeDict.get(id).elements) : [];
+    const nodeRecord = getNodeRecord(id);
+  return nodeRecord != null ? Array.from(nodeRecord.nodeElements) : [];
 }
-export function getSourceNodeElements(id) {
-  return nodeDict.has(`${id}:0`) ? Array.from(nodeDict.get(`${id}:0`).elements) : [];
-}
-export function getSinkNodeElements(id) {
-  return nodeDict.has(`${id}:1`) ? Array.from(nodeDict.get(`${id}:1`).elements) : [];
-}
-
 export function getInsideNodeElements(id) {
-  return nodeDict.has(id) ? Array.from(nodeDict.get(id).inside) : [];
+    const nodeRecord = getNodeRecord(id);
+  return nodeRecord != null ? Array.from(nodeRecord.inside) : [];
 }
 
-export function getLinkElements(id) {
-  return linkDict.has(id) ? Array.from(linkDict.get(id)) : [];
+
+export function getLinkElements(nodeId) {
+  const connectingLinks = getConnectingLinkRecords(nodeId);
+  const linkElements = [];  
+  for (const linkRecord of connectingLinks) {
+    linkElements.push(linkRecord.linkElement);
+  }
+  return linkElements;
 }
+
 export function getLinkElement(id) {
   return linkIidDict.get(id) || null;
 }
@@ -333,3 +327,26 @@ export function getNodeComponents(id) {
   };
 
 }
+
+function fetchAndConstructGraph(coordinates){
+    if (forceGraph.equalsCoords(coordinates)) return;
+    forceGraph.coords = coordinates;
+
+    const url = buildUrl('/select', coordinates);
+    fetchData(url, 'graph').then(rawGraph => {
+        console.log("Fetched graph data:", rawGraph);
+        clearGraphManager();
+
+        const graphData = deserializeAndIndex(rawGraph);
+        anchorEndpointNodes(graphData.nodes, graphData.links);
+        createForceGraph(graphData);
+    }).catch(error => {
+        console.warn("Skipping graph construction:", error);
+    });
+}
+
+eventBus.subscribe("ui:construct-graph", function (data) {
+    const { genome, chromosome, start, end } = data;
+    const coordinates = { genome, chromosome, start, end };
+    fetchAndConstructGraph(coordinates);
+});

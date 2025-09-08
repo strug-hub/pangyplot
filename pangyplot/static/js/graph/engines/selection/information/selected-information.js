@@ -36,9 +36,9 @@ export function generateSelectedInfo(){
     info.start = node.start != null ? node.start : '?';
     info.end = node.end != null ? node.end : '?';
     info.position = node.position || '';
-    info.length = node.data.seqLength || '?';
+    info.length = node.record.seqLength || '?';
     info.seq = node.seq || 'N?';
-    info.nInside = node.data.size || '';
+    info.nInside = node.record.size || '';
 
     updateSelectedInfo(info);
 }

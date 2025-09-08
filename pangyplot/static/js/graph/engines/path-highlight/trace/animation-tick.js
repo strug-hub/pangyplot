@@ -1,5 +1,5 @@
 import { tickAnimation, pauseAnimation, resetAnimation } from './animation-state.js';
-import { isNodeActive, getNodeElements } from '../../../gradata/graph-manager.js';
+import { isNodeActive, getNodeElements } from '../../../gradata/graph-data-manager.js';
 import { updateStepDisplay } from '../path-highlight-ui.js';
 
 var animationPath = null;

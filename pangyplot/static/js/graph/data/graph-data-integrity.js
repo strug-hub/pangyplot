@@ -25,9 +25,9 @@ function removeInvalidLinks(graphData) {
         graphData.nodes.map(node => node.iid)
     );
 
-    graphData.links = graphData.links.filter(l =>
-        nodeSet.has(l.sourceIid) && nodeSet.has(l.targetIid)
-    );
+    graphData.links = graphData.links.filter(l => {
+        return nodeSet.has(l.sourceIid) && nodeSet.has(l.targetIid);
+    });
 }
 
 export function cleanGraph(graphData) {

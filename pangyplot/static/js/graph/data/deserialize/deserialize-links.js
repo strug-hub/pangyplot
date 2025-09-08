@@ -1,11 +1,19 @@
-import { getNodeElement } from '../graph-manager.js';
+import { getNodeRecord } from '../records-manager.js';
 
-class GraphLinkData {
-    constructor(rawLink, sourceElement, targetElement) {
+class LinkRecord {
+    constructor(rawLink, sourceRecord, targetRecord) {
+
+        this.sourceRecord = sourceRecord;
+        this.targetRecord = targetRecord;
+        this.linkElement = null;
+        this.active = true;
+        
+        // -----
+
         this.id = rawLink.id;
+        this.sourceId = rawLink.source;
+        this.targetId = rawLink.target;
         this.type = rawLink.type || "link";
-        this.source = sourceElement;
-        this.target = targetElement;
         this.fromStrand = rawLink.from_strand;
         this.toStrand = rawLink.to_strand;
         this.haplotype = rawLink.haplotype;
@@ -15,6 +23,10 @@ class GraphLinkData {
         this.bubbleId = rawLink.bubble_id || null;
         
         this.isPopLink = rawLink.type == "pop"; 
+    }
+
+    isIncomplete() {
+        return !this.sourceRecord || !this.targetRecord;
     }
 
     get isChainLink() {
@@ -36,16 +48,14 @@ class GraphLinkData {
 }
 
 export default function deserializeLinks(rawLinks) {
-    const linkData = [];
-    const failedLinkData = [];
+    const linkRecords = [];
+
     for (const rawLink of rawLinks) {
-        const sourceElement = getNodeElement(rawLink.source);
-        const targetElement = getNodeElement(rawLink.target);
-        if (!sourceElement || !targetElement) {
-            failedLinkData.push(rawLink);
-            continue;
-        }
-        linkData.push(new GraphLinkData(rawLink, sourceElement, targetElement));
+        const sourceRecord = getNodeRecord(rawLink.source);
+        const targetRecord = getNodeRecord(rawLink.target);
+
+        linkRecords.push(new LinkRecord(rawLink, sourceRecord, targetRecord));
     }
-    return [linkData, failedLinkData];
+
+    return linkRecords;
 }
