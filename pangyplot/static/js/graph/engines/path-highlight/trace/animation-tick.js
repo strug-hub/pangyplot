@@ -1,5 +1,5 @@
 import { tickAnimation, pauseAnimation, resetAnimation } from './animation-state.js';
-import { isNodeActive, getNodeElements } from '../../../data/graph-manager.js';
+import { isNodeActive, getNodeElements } from '../../../gradata/graph-manager.js';
 import { updateStepDisplay } from '../path-highlight-ui.js';
 
 var animationPath = null;
@@ -18,9 +18,9 @@ export function setAnimationPath(path) {
     let count = 0;
     for (const step of animationPath) {
         const [segment, bubbles] = step;
-        const [id, direction] = splitSegment(segment);
+        const [nodeid, direction] = splitSegment(segment);
 
-        if (isNodeActive(id)) {
+        if (isNodeActive(nodeid)) {
             count++;
         }
     }
@@ -39,9 +39,9 @@ function resetHighlightStack() {
 
 
 function splitSegment(step) {
-    var id = step.slice(0, -1);
+    var nodeid = step.slice(0, -1);
     const direction = step.slice(-1);
-    return [id, direction];
+    return [nodeid, direction];
 }
 
 function highlightNode(id, direction) {
@@ -77,18 +77,18 @@ function updatePathStep(move) {
     currentStep += move;
     const [segment, bubbles] = animationPath[currentStep];
 
-    const [id, direction] = splitSegment(segment);
+    const [nodeid, direction] = splitSegment(segment);
     console.log(bubbles)
     if (bubbles.length == 0) {
-        highlightNode(id, direction);
-        console.log("Current step:", currentStep, "→", id, direction);
+        highlightNode(nodeid, direction);
+        console.log("Current step:", currentStep, "→", nodeid, direction);
     }
 
     const lastHighlight = highlightStack.length > 0 ?
         highlightStack[highlightStack.length - 1] : null;
 
     if (lastHighlight && bubbles.includes(lastHighlight.id)) {
-        console.log("Current step:", currentStep, "→", id, direction, "(skipping)");
+        console.log("Current step:", currentStep, "→", nodeid, direction, "(skipping)");
         return;
     }
 

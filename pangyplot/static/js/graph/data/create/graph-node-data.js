@@ -1,7 +1,7 @@
-class GraphElementNode {
+class GraphNodeData {
     constructor(rawData, type) {
-        if (new.target === GraphElementNode) {
-            throw new Error("Cannot instantiate abstract class GraphElement directly.");
+        if (new.target === GraphNodeData) {
+            throw new Error("Cannot instantiate abstract class GraphNodeData directly.");
         }
 
         this.id = rawData.id;
@@ -14,7 +14,7 @@ class GraphElementNode {
     }
 }
 
-class Bubble extends GraphElementNode {
+class BubbleData extends GraphNodeData {
     constructor(rawBubble) {
         super(rawBubble, "bubble");
         this.parent = rawBubble.parent;
@@ -25,7 +25,7 @@ class Bubble extends GraphElementNode {
     }
 }
 
-class BubbleEnd extends GraphElementNode {
+class BubbleEndData extends GraphNodeData {
     constructor(rawBubbleEnd) {
         super(rawBubbleEnd, "bubble:end");
         this.subtype = rawBubbleEnd.subtype;
@@ -35,7 +35,7 @@ class BubbleEnd extends GraphElementNode {
     }
 }
 
-class Segment extends GraphElementNode {
+class SegmentData extends GraphNodeData {
     constructor(rawSegment) {
         super(rawSegment, "segment");
         this.insideBubble = rawSegment.inside_bubble;
@@ -46,11 +46,11 @@ export default function deserializeNodes(rawNodes) {
     const elements = [];
     for (const rawNode of rawNodes) {
         if (rawNode.type === "segment") {
-            elements.push(new Segment(rawNode));
+            elements.push(new SegmentData(rawNode));
         } else if (rawNode.type === "bubble") {
-            elements.push(new Bubble(rawNode));
+            elements.push(new BubbleData(rawNode));
         } else if (rawNode.type === "bubble:end") {
-            elements.push(new BubbleEnd(rawNode));
+            elements.push(new BubbleEndData(rawNode));
         }
     }
     return elements;

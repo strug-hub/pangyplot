@@ -1,5 +1,5 @@
 import { popUndoStack } from './bubble-pop-queue.js';
-import { unpopBubble } from '../../graph-data/graph-manager.js';
+import { unpopBubble } from '../../data/graph-manager.js';
 
 export function undoBubblePop(forceGraph) {
     const bubbleId = popUndoStack();

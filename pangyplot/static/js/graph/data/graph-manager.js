@@ -190,7 +190,7 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
 
   for (const link of subgraph.links) {
-    if (link.element.isPopLink) {
+    if (link.data.isPopLink) {
 
       // active nodes are in the graphData we check if they are in the subgraph
       const sourceActive = isNodeActive(link.sourceId) || subgraphNodes.includes(link.sourceId);

@@ -1,5 +1,5 @@
 import eventBus from '../../utils/event-bus.js';
-import { getSourceNodeElements, getSinkNodeElements, isNodeActive } from "../graph-data/graph-manager.js";
+import { getSourceNodeElements, getSinkNodeElements, isNodeActive } from "../data/graph-manager.js";
 
 const bubbleEndPairs = []
 var initialized = false;

@@ -1,5 +1,5 @@
-import deserializeNodes from './graph-element-node.js';
-import deserializeLinks from './graph-element-link.js';
+import deserializeNodes from './graph-node-data.js';
+import deserializeLinks from './graph-link-data.js';
 import { addNodeRecord, addLinkRecord, getNodeElement, getNodeElements, getLinkElement } from '../graph-manager.js';
 
 const LINK_SCALE = 1;
@@ -30,28 +30,28 @@ function getKinkCoordinates(coords, kinks, i=0){
     return {x:x, y:y}
 }
 
-function forceGraphNodes(element) {
+function forceGraphNodes(data) {
     let nodes = [];
     var kinks = 1;
-    if (element.type !== "bubble:end"){
-        kinks = calculateNumberOfKinks(element.seqLength);
+    if (data.type !== "bubble:end"){
+        kinks = calculateNumberOfKinks(data.seqLength);
     }
     
     for (let i = 0; i < kinks; i++) {
-        const { x, y } = getKinkCoordinates(element.coords, kinks, i);
+        const { x, y } = getKinkCoordinates(data.coords, kinks, i);
         nodes.push({
             class: "node",
-            id: element.id,
-            iid: `${element.id}#${i}`,
+            id: data.id,
+            iid: `${data.id}#${i}`,
             idx: i,
-            element: element,
-            type: element.type,
-            head: () => `${element.id}#0`,
-            tail: () => `${element.id}#${kinks - 1}`,
+            data: data,
+            type: data.type,
+            head: () => `${data.id}#0`,
+            tail: () => `${data.id}#${kinks - 1}`,
             kinks: kinks,
             x, y,
             initX: x,
-            isRef: element.ranges.length > 0,
+            isRef: data.ranges.length > 0,
             initY: y,
             isEnd: (i === 0 || i === kinks - 1),
             isSingleton: kinks === 1,
@@ -65,32 +65,32 @@ function forceGraphNodes(element) {
     return nodes;
 }
 
-function forceGraphNodeLinks(element) {
+function forceGraphNodeLinks(data) {
     let nodeLinks = [];
     var kinks = 1;
-    if (element.type !== "bubble:end")
-        kinks = calculateNumberOfKinks(element.seqLength);
+    if (data.type !== "bubble:end")
+        kinks = calculateNumberOfKinks(data.seqLength);
 
     for (let i = 1; i < kinks; i++) {
 
-        const sourceIid = `${element.id}#${i - 1}`;
-        const targetIid = `${element.id}#${i}`;
+        const sourceIid = `${data.id}#${i - 1}`;
+        const targetIid = `${data.id}#${i}`;
 
         nodeLinks.push({
             class: "node",
-            id: element.id,
-            element: element,
-            type: element.type,
+            id: data.id,
+            data: data,
+            type: data.type,
             source: sourceIid,
             target: targetIid,
-            sourceId: element.id,
-            targetId: element.id,
-            isRef: element.ranges.length > 0,
+            sourceId: data.id,
+            targetId: data.id,
+            isRef: data.ranges.length > 0,
             sourceIid: sourceIid,
             targetIid: targetIid,
             isDrawn: true,
             width: 5,
-            length: Math.min(element.seqLength/100, 1000)*LINK_SCALE,
+            length: Math.min(data.seqLength/100, 1000)*LINK_SCALE,
             annotations: [],
             linkIid: `${sourceIid}+${targetIid}+`
         });
@@ -98,77 +98,74 @@ function forceGraphNodeLinks(element) {
     return nodeLinks;
 }
 
-function forceGraphLinks(element) {
+function forceGraphLinks(data) {
 
-    const isChainLink = element.isChainLink;
-    const sourceId = element.source.id;
-    const targetId = element.target.id;
+    const isChainLink = data.isChainLink;
+    const sourceId = data.source.id;
+    const targetId = data.target.id;
 
     const sourceElement = getNodeElements(sourceId)[0];
     const targetElement = getNodeElements(targetId)[0];
 
-    const isRef = sourceElement.element.ranges.length > 0 || targetElement.element.ranges.length > 0;
+    const isRef = sourceElement.data.ranges.length > 0 || targetElement.data.ranges.length > 0;
 
-    const sourceIid = element.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
-    const targetIid = element.toStrand === "+" ? targetElement.head() : targetElement.tail();
+    const sourceIid = data.fromStrand === "+" ? sourceElement.tail() : sourceElement.head();
+    const targetIid = data.toStrand === "+" ? targetElement.head() : targetElement.tail();
 
     var length = 1;
-    if (element.seqLength > 0) {
-        length = Math.min(element.seqLength/10, 100);
+    if (data.seqLength > 0) {
+        length = Math.min(data.seqLength/10, 100);
     }
-    if (element.isDel) {
+    if (data.isDel) {
         length = 2;
     }
 
     return {
         class: "link",
-        type: element.type,
+        type: data.type,
         source: sourceIid,
         target: targetIid,
-        element: element,
+        data: data,
         sourceId: sourceId,
         sourceIid: sourceIid,
         targetId: targetId,
         targetIid: targetIid,
-        isDel: element.isDel,
+        isDel: data.isDel,
         isRef: isRef,
-        bubbleId: element.bubbleId, //currently only for del-links
+        bubbleId: data.bubbleId, //currently only for del-links
         isVisible: true,
         isDrawn: true,
         length: length * LINK_SCALE,
         width: isChainLink ? 5 : 1,
-        contained: element.contained || [],
+        contained: data.contained || [],
         annotations: [],
-        linkIid: `${sourceIid}${element.fromStrand}${targetIid}${element.toStrand}`
+        linkIid: `${sourceIid}${data.fromStrand}${targetIid}${data.toStrand}`
     };
 }
 
-function checkExistingNodeRecords(nodeElements) {
+function checkExistingNodeRecords(nodeData) {
     const existingNodes = [];
-    const newNodeElements = [];
+    const newNodeData = [];
 
-    for (const nodeElement of nodeElements) {
-        const nodes = getNodeElements(nodeElement.id);
+    for (const nd of nodeData) {
+        const nodes = getNodeElements(nd.id);
         if (nodes.length === 0) {
-            newNodeElements.push(nodeElement);
+            newNodeData.push(nd);
         } else {
             existingNodes.push(...nodes);
         }
     }
-    return { existingNodes, newNodeElements };
+    return { existingNodes, newNodeData };
 }
 
-function checkExistingLinkRecords(linkElements) {
+function checkExistingLinkRecords(links) {
     const existingLinks = [];
     const newLinks = [];
 
-    for (const linkElement of linkElements) {
-        if (!linkElement.linkIid) {
-            console.warn("Link element does not have a linkIid:", linkElement);
-        }
-        const link = getLinkElement(linkElement.linkIid);
-        if (link === null) {
-            newLinks.push(linkElement);
+    for (const link of links) {
+        const existingLink = getLinkElement(link.linkIid);
+        if (existingLink === null) {
+            newLinks.push(link);
         } else {
             existingLinks.push(link);
         }
@@ -212,20 +209,20 @@ function retryFailedLinks(newNodes) {
 
 export default function buildGraphData(rawGraph) {
 
-    const nodeElements = deserializeNodes(rawGraph.nodes);
-    const { existingNodes, newNodeElements } = checkExistingNodeRecords(nodeElements);
-    const newNodes = newNodeElements.flatMap(forceGraphNodes);
+    const nodeData = deserializeNodes(rawGraph.nodes);
+    const { existingNodes, newNodeData } = checkExistingNodeRecords(nodeData);
+    const newNodes = newNodeData.flatMap(forceGraphNodes);
     newNodes.forEach(addNodeRecord);
     const nodes = [...existingNodes, ...newNodes];
 
     retryFailedLinks(newNodes);
 
-    const nodeLinks = nodeElements.flatMap(forceGraphNodeLinks);
-    
-    const [linkElements, failedLinks] = deserializeLinks(rawGraph.links);
-    const edgeLinks = linkElements.map(forceGraphLinks);
-    
-    trackFailedLinks(failedLinks);
+    const nodeLinks = nodeData.flatMap(forceGraphNodeLinks);
+
+    const [linkData, failedLinkData] = deserializeLinks(rawGraph.links);
+    const edgeLinks = linkData.map(forceGraphLinks);
+
+    trackFailedLinks(failedLinkData);
 
     const { existingLinks: existingNodeLinks, newLinks: newNodeLinks } = checkExistingLinkRecords(nodeLinks);
     newNodeLinks.forEach(addLinkRecord);

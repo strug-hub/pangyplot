@@ -1,4 +1,4 @@
-import { getActiveDeletionLinks, getInsideNodeElements } from "../graph-data/graph-manager.js";
+import { getActiveDeletionLinks, getInsideNodeElements } from "../data/graph-manager.js";
 import { computeNodeCentroid } from "../utils/node-utils.js";
 
 export default function delLinkForce() {

@@ -1,7 +1,7 @@
 import { colorState } from "../../render/color/color-state.js";
 import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
 import { getHoverNode } from "./selection-state.js";
-import { getNodeComponents } from "../../graph-data/graph-manager.js";
+import { getNodeComponents } from "../../data/graph-manager.js";
 import forceGraph from "../../force-graph.js";
 
 export function highlightSelection(graphData) {

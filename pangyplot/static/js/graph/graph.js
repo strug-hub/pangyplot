@@ -1,14 +1,14 @@
 import forceGraph from './force-graph.js';
-import buildGraphData from './graph-data/create/graph-data.js';
+import buildGraphData from './data/create/graph-data.js';
 import { setUpRenderManager } from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import setUpForceManager from './forces/force-manager.js';
 import { setCanvasSize } from './render/canvas-utils.js';
 import updateGeneAnnotationEngine from './engines/gene-annotation/gene-annotation-engine.js';
 import { anchorEndpointNodes } from './utils/node-utils.js';
-import { clearGraphManager, setUpGraphManager} from './graph-data/graph-manager.js';
+import { clearGraphManager, setUpGraphManager} from './data/graph-manager.js';
 import { fetchData, buildUrl } from '../utils/network-utils.js';
-import { statusUpdate } from './graph-data/graph-status.js';
+import { statusUpdate } from './data/graph-status.js';
 import { pathHighlightTick } from './engines/path-highlight/animation/animation-tick.js';
 
 import eventBus from '../utils/event-bus.js';

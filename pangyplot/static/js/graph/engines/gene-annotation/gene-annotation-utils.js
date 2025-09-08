@@ -1,10 +1,10 @@
 function calculateEffectiveNodeStep(node, step){
-    if (node.element.ranges.length === 0) {
+    if (node.data.ranges.length === 0) {
         return null;
     }
    
     let matchedRange = null;
-    for (const [rangeStart, rangeEnd] of node.element.ranges) {
+    for (const [rangeStart, rangeEnd] of node.data.ranges) {
         if (step >= rangeStart && step <= rangeEnd) {
             matchedRange = [rangeStart, rangeEnd];
             break;
@@ -31,11 +31,11 @@ function calculateEffectiveNodeStep(node, step){
 }
 
 export function annotationOverlap(annotation, node) {
-    if (!node.element || !node.element.ranges) return false;
+    if (!node.data || !node.data.ranges) return false;
 
     const [annotationStart, annotationEnd] = annotation.range;
 
-    for (const [rangeStart, rangeEnd] of node.element.ranges) {
+    for (const [rangeStart, rangeEnd] of node.data.ranges) {
         if (rangeStart <= annotationEnd && rangeEnd >= annotationStart) {
             const point = calculateEffectiveNodeStep(node, rangeStart);
             if (point >= annotationStart && point <= annotationEnd) return true;

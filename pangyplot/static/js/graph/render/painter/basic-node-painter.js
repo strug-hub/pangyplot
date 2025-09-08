@@ -19,7 +19,7 @@ export function basicNodePainter(ctx, node, svg=null) {
     if (! node.isVisible || !node.isDrawn) return;
     
     const scaleFactor = getScaleFactor(ctx);
-    const seqLength = node.element.seqLength || 1;
+    const seqLength = node.data.seqLength || 1;
     var shrinkFactor = shrinkPower(getZoomFactor(ctx), seqLength);
 
     if (node.focused && node.focused > 0) {
