@@ -8,53 +8,55 @@ const cache = new NodeSet("drag-force");
 var cacheValid = false;
 var previousPos = { x: null, y: null };
 
-function influenceDecay(){
+function influenceDecay() {
   return 0.1 - 0.09 * influence;
 }
 
 function buildDragCache(forceGraph) {
-    cache.clear();
-    const draggedNode = forceGraph.draggedNode;
-    if (!draggedNode) return;
+  cache.clear();
+  const draggedNode = forceGraph.draggedNode;
+  if (!draggedNode) return;
 
-    const queue = [{ node: draggedNode, depth: 0 }];
-    const visited = new Set([draggedNode]);
+  const queue = [{ node: draggedNode, depth: 0 }];
+  const visited = new Set([draggedNode]);
 
-    const links = forceGraph.graphData().links;
+  const links = forceGraph.graphData().links;
 
-    while (queue.length > 0) {
-        const { node, depth } = queue.shift();
-        if (!forceGraph.selected.has(node)) {
-            cache.add(node, depth);
-        }
+  while (queue.length > 0) {
+    const { node, depth } = queue.shift();
+    if (!forceGraph.selected.has(node)) {
+      if (node.fx !== undefined) continue;
 
-        if (depth >= MAX_DRAG_DEPTH) continue;
-
-        for (const link of links) {
-            const neighbor =
-                link.source === node ? link.target :
-                link.target === node ? link.source : null;
-
-            if (neighbor && !visited.has(neighbor)) {
-                visited.add(neighbor);
-                queue.push({ node: neighbor, depth: depth + 1 });
-            }
-        }
+      cache.add(node, depth);
     }
 
-    // Add selected nodes as depth=0
-    for (const node of forceGraph.selected) {
-        cache.add(node, 0);
-    }
+    if (depth >= MAX_DRAG_DEPTH) continue;
 
-    cacheValid = true;
+    for (const link of links) {
+      const neighbor =
+        link.source === node ? link.target :
+          link.target === node ? link.source : null;
+
+      if (neighbor && !visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push({ node: neighbor, depth: depth + 1 });
+      }
+    }
+  }
+
+  // Add selected nodes as depth=0
+  for (const node of forceGraph.selected) {
+    cache.add(node, 0);
+  }
+
+  cacheValid = true;
 }
 
 export default function dragInfluenceForce(forceGraph) {
 
-    eventBus.subscribe('graph:selected-changed', () => {
-      cacheValid = false;
-    });
+  eventBus.subscribe('graph:selected-changed', () => {
+    cacheValid = false;
+  });
 
   return function force(alpha) {
 
@@ -62,7 +64,7 @@ export default function dragInfluenceForce(forceGraph) {
       previousPos = { x: null, y: null };
       return;
     }
-    
+
     if (!cacheValid) buildDragCache(forceGraph);
 
     const draggedNode = forceGraph.draggedNode;
@@ -87,9 +89,13 @@ export default function dragInfluenceForce(forceGraph) {
       node.x += dx * dampen;
       node.y += dy * dampen;
 
-      if (forceGraph.selected.has(node) && node.isFixed) {
-        node.fx += dx;
-        node.fy += dy;
+      if (forceGraph.selected.has(node)) {
+        if (node.fx !== undefined) {
+          node.fx += dx;
+        }
+        if (node.fy !== undefined) {
+          node.fy += dy;
+        }
       }
     }
   };

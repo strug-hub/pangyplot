@@ -33,7 +33,6 @@ export function anchorEndpointNodes(nodes, links) {
         const hasIncoming = incoming.has(node.iid);
 
         if (!hasIncoming || !hasOutgoing) {
-            node.isFixed = true;
             node.fx = node.x;
             node.fy = node.y;
             anchoredCount++;

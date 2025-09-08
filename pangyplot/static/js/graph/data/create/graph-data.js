@@ -57,7 +57,6 @@ function forceGraphNodes(data) {
             isSingleton: kinks === 1,
             isVisible: true,
             isDrawn: true,
-            isFixed: false,
             width: 5,
             annotations: []
         });

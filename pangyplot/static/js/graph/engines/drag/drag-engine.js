@@ -56,7 +56,6 @@ function onDragEnd(event, forceGraph) {
     if (!node) return;
 
     if (forceGraph.fixOnDrag && forceGraph.selected.size < 2) {
-      node.isFixed = true;
       node.fx = node.x;
       node.fy = node.y;
     } else {
