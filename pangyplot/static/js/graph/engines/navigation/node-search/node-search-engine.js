@@ -11,7 +11,6 @@ function zoom(forceGraph, iid, isGraphId=false){
         isGraphId ? node.iid === iid : node.id === iid);
 }
 
-//todo add support for 
 function nodeSearch(forceGraph, query){
 
     const rawId = query;
