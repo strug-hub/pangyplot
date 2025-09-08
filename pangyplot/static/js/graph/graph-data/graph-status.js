@@ -1,6 +1,5 @@
 import { updateDebugInformation } from '../../ui/tabs/information-panel.js';
 import { getZoomFactor, getScaleFactor, getDampenedZoomFactor } from '../render/render-scaling.js';
-import { canvasElement } from './graph-state.js';
 
 var frameRate = 0;
 var lastMousePosition = { x: 0, y: 0 };
@@ -25,25 +24,25 @@ function calculateFPS() {
 }
 
 var isMouseListenerSetUp = false;
-function setupMouseListener(graphElement) {
+function setupMouseListener(forceGraph) {
     if (isMouseListenerSetUp) return;
-    graphElement.addEventListener('mousemove', (event) => {
+    forceGraph.element.addEventListener('mousemove', (event) => {
         lastMousePosition.x = event.offsetX;
         lastMousePosition.y = event.offsetY;
     });
     isMouseListenerSetUp = true;
 }
 
-export function statusUpdate(forceGraph, graphElement) {
+export function statusUpdate(forceGraph) {
     calculateFPS();
     updateDebugInformation(getStatus(forceGraph));
-    setupMouseListener(graphElement);
+    setupMouseListener(forceGraph);
 }
 
 function getStatus(forceGraph) {
     const ndigits = 1;
 
-    const ctx = canvasElement.getContext('2d');
+    const ctx = forceGraph.canvas.ctx;
 
     const x = lastMousePosition.x;
     const y = lastMousePosition.y;

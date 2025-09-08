@@ -2,7 +2,6 @@ import { RightClickMenu } from './right-click-menu.js';
 import { popGroupOfBubbles } from '../bubble-pop/bubble-pop-engine.js';
 import { exportGraphToPng } from '../../render/download/render-png.js';
 import { exportGraphToSvg } from '../../render/download/render-svg.js';
-import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 import { createCustomGeneAnnotation } from '../gene-annotation/custom/custom-annotation.js';
 
 var menu = null;
@@ -60,7 +59,7 @@ export function populateOptions(forceGraph) {
     });
 
     menu.addOption('download', 'Download GFA', 'general', () => {
-        const coords = getGraphCoordinates();
+        const coords = forceGraph.coords;
         const url = new URL('/gfa', window.location.origin);
         for (const [key, val] of Object.entries(coords)) {
             url.searchParams.set(key, val);
@@ -79,10 +78,10 @@ export function populateOptions(forceGraph) {
     return menu;
 }
 
-export default function setupRightClickMenu(forceGraph, graphElement) {
+export default function setupRightClickMenu(forceGraph) {
     populateOptions(forceGraph);
 
-    graphElement.addEventListener('contextmenu', event => {
+    forceGraph.element.addEventListener('contextmenu', event => {
         event.preventDefault();
         menu.showMenu(event.pageX, event.pageY);
     });

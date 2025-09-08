@@ -1,5 +1,4 @@
 import { fetchAnnotations } from "./gene-annotation-fetch.js";
-import { getGraphCoordinates } from "../../graph-data/graph-state.js";
 import { getAllGenes } from "./gene-annotation-state.js";
 import { addNodeGeneAnnotation, addNodeExonAnnotation, clearAllAnnotations } from "./gene-annotation-state.js";
 import { annotationOverlap } from "./gene-annotation-utils.js";
@@ -34,13 +33,12 @@ function annotateTranscripts(forceGraph) {
 }
 
 function updateAnnotations(forceGraph){
-    const coordinates = getGraphCoordinates(forceGraph);
-    fetchAnnotations(coordinates).then(result => {
+    fetchAnnotations(forceGraph.coords).then(result => {
         annotateTranscripts(forceGraph);
         populateGeneAnnotationsTable();
     });
 }
-export default function updateGeneAnnotationEngine(forceGraph, graphElement) {
+export default function updateGeneAnnotationEngine(forceGraph) {
     updateAnnotations(forceGraph);
 
     eventBus.subscribe("graph:updated", () => {

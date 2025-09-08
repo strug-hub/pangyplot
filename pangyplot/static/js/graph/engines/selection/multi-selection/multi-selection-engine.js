@@ -3,7 +3,6 @@ import { updateSelected, updateHighlighted, clearHighlighted } from '../selectio
 import { nodesInBox } from '../../../utils/node-utils.js';
 import { selectionState } from '../selection-state.js';
 import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';
-import { isPanZoomMode } from '../../navigate/pan-zoom-engine.js';
 
 const selectionBox = new MultiSelectionBox();
 var overlayElement = null;
@@ -23,14 +22,14 @@ function destroySelectionBox() {
     selectionBox.clearBox();
 }
 
-function pointerMove(event, graphElement, forceGraph) {
+function pointerMove(event, forceGraph) {
     if (!selectionAllowed) return;
 
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
 
     if (bounds) {
         selectionState.multiSelectMode = true;
-        if (!overlayElement) overlayElement = createOverlay(graphElement);
+        if (!overlayElement) overlayElement = createOverlay(forceGraph.element);
         updateOverlay(overlayElement, bounds);
 
         // Highlight nodes
@@ -56,32 +55,31 @@ function pointerUp(event, forceGraph) {
     setTimeout(() => selectionState.multiSelectMode = false, 0);
 }
 
-export default function setUpMultiSelectionEngine(forceGraph, graphElement) {
+export default function setUpMultiSelectionEngine(forceGraph) {
 
     eventBus.subscribe('drag:node', () => {
         destroySelectionBox();
     });
-    eventBus.subscribe('navigation:pan-zoom', () => {
+    eventBus.subscribe('navigation:pan-zoom-mode', () => {
         selectionAllowed = false;
         destroySelectionBox();
     });
-    eventBus.subscribe('navigation:selection', () => {
+    eventBus.subscribe('navigation:selection-mode', () => {
         selectionAllowed = true;
     });
 
-    graphElement.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return; // Only left click
-        pointerDown(e);
+    forceGraph.element.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return; // Only left click
+        pointerDown(event);
     });
 
-    graphElement.addEventListener('pointermove', e => {
-        pointerMove(e, graphElement, forceGraph);
+    forceGraph.element.addEventListener('pointermove', event => {
+        pointerMove(event, forceGraph);
     });
 
-    document.addEventListener('pointerup', e => {
-        if (e.button !== 0) return; // Only left click
-
-        pointerUp(e, forceGraph);
+    document.addEventListener('pointerup', event => {
+        if (event.button !== 0) return; // Only left click
+        pointerUp(event, forceGraph);
     });
 
 }

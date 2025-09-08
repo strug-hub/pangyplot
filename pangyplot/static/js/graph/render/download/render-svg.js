@@ -2,7 +2,6 @@ import { getImageName } from './download-utils.js';
 import { getCenterGraphCoordinates } from '../viewport-utils.js'
 import { getFontCss } from './download-utils.js';
 import { renderFullFrame } from '../render-manager.js'
-import { canvasElement } from '../../graph-data/graph-state.js';
 
 const svgNS = "http://www.w3.org/2000/svg";
 
@@ -68,15 +67,14 @@ function scaleSvg(svg, ctx) {
 }
 
 export async function exportGraphToSvg(forceGraph) {
-    const ctx = canvasElement.getContext('2d');
-    
+    const ctx = forceGraph.canvas.ctx;
 
     const center = getCenterGraphCoordinates(forceGraph);
 
     const svg = await getSvgObject();
 
-    const w = canvasElement.width;
-    const h = canvasElement.height;
+    const w = forceGraph.canvas.width;
+    const h = forceGraph.canvas.height;
 
     svg.setAttribute("width", w);
     svg.setAttribute("height", h);

@@ -1,4 +1,4 @@
-import { setGraphCoordinates, equalCoordinates, forceGraph, graphElement, canvasElement }  from './graph-data/graph-state.js';
+import forceGraph from './force-graph.js';
 import buildGraphData from './graph-data/create/graph-data.js';
 import { setUpRenderManager } from './render/render-manager.js';
 import setUpEngineManager from './engines/engine-manager.js';
@@ -39,17 +39,17 @@ function createForceGraph(graph){
     setUpGraphManager(forceGraph);
     setCanvasSize(forceGraph);
 
-    setUpEngineManager(forceGraph, graphElement);
-    setUpRenderManager(forceGraph, canvasElement);
+    setUpEngineManager(forceGraph);
+    setUpRenderManager(forceGraph);
     setUpForceManager(forceGraph);
 
-    updateGeneAnnotationEngine(forceGraph, graphElement);
+    updateGeneAnnotationEngine(forceGraph);
 
     // todo: pathManagerInitialize();
     // todo: searchSequenceEngineRerun();
 
     forceGraph.onEngineTick(() => {
-        statusUpdate(forceGraph, graphElement);
+        statusUpdate(forceGraph);
 
         pathHighlightTick(forceGraph);
     })
@@ -73,8 +73,8 @@ function hideLoader() {
 hideLoader()
 
 function fetchAndConstructGraph(coordinates){
-    if (equalCoordinates(coordinates)) return;
-    setGraphCoordinates(coordinates);
+    if (forceGraph.equalsCoords(coordinates)) return;
+    forceGraph.coords = coordinates;
 
     const url = buildUrl('/select', coordinates);
     fetchData(url, 'graph').then(rawGraph => {

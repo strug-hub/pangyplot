@@ -1,8 +1,8 @@
 import { queueSubgraph, dequeueSubgraph } from './bubble-pop-queue.js';
-import { getGraphCoordinates } from '../../graph-data/graph-state.js';
 import { buildUrl, fetchData } from '../../../utils/network-utils.js';
 import { explodeSubgraph } from './bubble-pop-force.js';
 import { processPoppedSubgraph } from '../../graph-data/graph-manager.js';
+import forceGraph from '../../force-graph.js';
 
 let fetchChain = Promise.resolve();
 
@@ -13,7 +13,7 @@ export function fetchSubgraph(originNode) {
 
     fetchChain = fetchChain.then(async () => {
         try {
-            const params = { id, ...getGraphCoordinates() };
+            const params = { id, ...forceGraph.coords };
             const url = buildUrl('/subgraph', params);
 
             const fetchedData = await fetchData(url, 'subgraph');
@@ -27,7 +27,7 @@ export function fetchSubgraph(originNode) {
 }
 
 export function fetchBubbleEnd(chainId) {
-    const params = { id: chainId, ...getGraphCoordinates() };
+    const params = { id: chainId, ...forceGraph.coords };
     const url = buildUrl('/subgraph', params);
     return fetchData(url, 'subgraph');
 }

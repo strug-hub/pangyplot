@@ -1,4 +1,4 @@
-import { isDebugMode } from "../../graph/graph-data/graph-state.js";
+import DEBUG_MODE from "../../debug-mode.js";
 
 var fullSequence = "";
 
@@ -64,7 +64,7 @@ panel.addEventListener('click', async (e) => {
 
 export function updateDebugInformation(status) {
   
-  if (!isDebugMode()) {
+  if (!DEBUG_MODE) {
     return;
   }
 

@@ -1,5 +1,5 @@
 import { setUpNodeSearchUi, updateNodeSearchResults } from "./node-search-ui.js";
-import { faLabel } from "../../selection/selection-utils.js";
+import { faLabel } from "../../../../utils/node-label.js";
 
 function isPresent(forceGraph, iid, isGraphId=false){
     return forceGraph.graphData().nodes.some(

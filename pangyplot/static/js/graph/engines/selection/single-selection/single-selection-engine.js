@@ -1,6 +1,6 @@
-import { getHoverNode, canSingleSelect, updateSelected } from './selection-state.js';
-import { euclideanDist } from '../../utils/node-utils.js';
-import { isDebugMode } from '../../graph-data/graph-state.js';
+import DEBUG_MODE from '../../../../debug-mode.js';
+import { getHoverNode, canSingleSelect, updateSelected } from '../selection-state.js';
+import { euclideanDist } from '../../../utils/node-utils.js';
 
 const MAX_SELECT_DISTANCE = 25;
 
@@ -16,7 +16,7 @@ function attemptSelection(event, forceGraph) {
 
     if (distPx > MAX_SELECT_DISTANCE) return;
 
-    if (isDebugMode()) {
+    if (DEBUG_MODE) {
         console.log("clicked:", hoverNode);
         const connectedEdges = forceGraph.graphData().links.filter(link =>
             link.source === hoverNode || link.target === hoverNode
@@ -28,10 +28,10 @@ function attemptSelection(event, forceGraph) {
 }
 
 
-export default function setUpSingleSelectEngine(forceGraph, graphElement) {
+export default function setUpSingleSelectEngine(forceGraph) {
 
-    graphElement.addEventListener('pointerup', (event) => {
-        if (event.button !== 0) return; // Only left click 
+    forceGraph.element.addEventListener('pointerup', (event) => {
+        if (event.button !== 0) return; // Only left click
         attemptSelection(event, forceGraph);
     });
 }

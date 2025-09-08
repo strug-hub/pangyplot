@@ -2,7 +2,7 @@ import { setDragFix } from "./drag-state.js";
 
 const DEFAULT_ANCHOR_STATE = false;
 
-export default function setUpDragFix(graphElement) {    
+export default function setUpDragFix(forceGraph) {
     const checkbox = document.getElementById('anchorToggle');
     checkbox.addEventListener('change', e => {
         setDragFix(e.target.checked);
@@ -11,7 +11,7 @@ export default function setUpDragFix(graphElement) {
     checkbox.checked = DEFAULT_ANCHOR_STATE;
     setDragFix(DEFAULT_ANCHOR_STATE);
 
-    graphElement.addEventListener('keydown', e => {
+    forceGraph.element.addEventListener('keydown', e => {
         if (e.key === 'f') {
             checkbox.checked = !checkbox.checked;
             setDragFix(checkbox.checked);

@@ -14,15 +14,15 @@ export function popGroupOfBubbles(nodes) {
     });
 }
 
-function updateKeyChange(event, graphElement){
+function updateKeyChange(event, forceGraph){
     bubblePopMode = false;
-    if (graphElement.style.cursor === "pointer") {
-        graphElement.style.cursor = "default";
+    if (forceGraph.element.style.cursor === "pointer") {
+        forceGraph.element.style.cursor = "default";
     }
 
     if (event.ctrlKey || event.metaKey) {
         bubblePopMode = true;
-        graphElement.style.cursor = "pointer";
+        forceGraph.element.style.cursor = "pointer";
     }
 }
 function checkUndo(event, forceGraph) {
@@ -52,33 +52,27 @@ function attemptBubblePop(event, forceGraph){
     }
 }
 
-function keyDown(event, forceGraph, graphElement) {
-    updateKeyChange(event, graphElement);
-    checkUndo(event, forceGraph);
-}
+export default function setUpBubblePopEngine(forceGraph) {
 
-function keyUp(event, forceGraph, graphElement) {
+    forceGraph.element.addEventListener('keydown', (event) => {
+        updateKeyChange(event, forceGraph);
+        checkUndo(event, forceGraph);
+    });
 
-    if (bubblePopMode) {
-        bubblePopMode = false;
-        graphElement.style.cursor = "default";
-    }
-}
+    forceGraph.element.addEventListener('keyup', event => {
+        if (bubblePopMode) {
+            bubblePopMode = false;
+            forceGraph.element.style.cursor = "default";
+        }
+    });
+    
+    forceGraph.element.addEventListener('pointermove', event => {
+        updateKeyChange(event, forceGraph);
+    });
 
-function pointerMove(event, forceGraph, graphElement) {
-    updateKeyChange(event, graphElement);
-}
-
-function pointerUp(event, forceGraph, graphElement) {
-    attemptBubblePop(event, forceGraph);
-}
-
-export default function setUpBubblePopEngine(forceGraph, graphElement) {
-
-    graphElement.addEventListener('keydown', event => keyDown(event, forceGraph, graphElement));
-    graphElement.addEventListener('keyup', event => keyUp(event, forceGraph, graphElement));
-    graphElement.addEventListener('pointermove', event => pointerMove(event, forceGraph, graphElement));
-    graphElement.addEventListener('pointerup', event => pointerUp(event, forceGraph, graphElement));
-
+    forceGraph.element.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return;
+        attemptBubblePop(event, forceGraph);
+    });
 }
 

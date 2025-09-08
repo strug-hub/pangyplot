@@ -10,16 +10,16 @@ import setUpRotationEngine from './navigate/rotation-engine.js';
 import setUpPathHighlightEngine from './path-highlight/path-highlight-engine.js';
 import setUpNodeSearchEngine from './navigate/node-search/node-search-engine.js';
 
-export default function setUpEngineManager(forceGraph, graphElement) {
-    setUpDragEngine(forceGraph, graphElement);
-    setUpSelectionEngine(forceGraph, graphElement);
-    setUpPanZoomEngine(forceGraph, graphElement);
-    setUpRecenterEngine(forceGraph, graphElement);
-    setUpRotationEngine(forceGraph, graphElement);
-    setupRightClickMenu(forceGraph, graphElement);
-    setupBubblePopEngine(forceGraph, graphElement);
-    setUpSequenceSearchEngine(forceGraph, graphElement);
-    setUpGeneAnnotationEngine(forceGraph, graphElement);
-    setUpPathHighlightEngine(forceGraph, graphElement);
-    setUpNodeSearchEngine(forceGraph, graphElement);
+export default function setUpEngineManager(forceGraph) {
+    setUpDragEngine(forceGraph);
+    setUpSelectionEngine(forceGraph);
+    setUpPanZoomEngine(forceGraph);
+    setUpRecenterEngine(forceGraph);
+    setUpRotationEngine(forceGraph);
+    setupRightClickMenu(forceGraph);
+    setupBubblePopEngine(forceGraph);
+    setUpSequenceSearchEngine(forceGraph);
+    setUpGeneAnnotationEngine(forceGraph);
+    setUpPathHighlightEngine(forceGraph);
+    setUpNodeSearchEngine(forceGraph);
 }

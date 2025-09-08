@@ -15,16 +15,16 @@ const modeConfig = {
     [InputModes.SELECTION]: {
         enableZoom: false,
         cursor: 'default',
-        event: 'navigation:selection'
+        event: 'navigation:selection-mode'
     },
     [InputModes.PAN_ZOOM]: {
         enableZoom: true,
         cursor: 'grabbing',
-        event: 'navigation:pan-zoom'
+        event: 'navigation:pan-zoom-mode'
     }
 };
 
-export default function setUpPanZoomEngine(forceGraph, graphElement) {
+export default function setUpPanZoomEngine(forceGraph) {
     forceGraph.enableZoomPanInteraction(false);
 
     const setMode = (mode) => {
@@ -33,7 +33,7 @@ export default function setUpPanZoomEngine(forceGraph, graphElement) {
         const { enableZoom, cursor, event } = modeConfig[mode];
 
         forceGraph.enableZoomPanInteraction(enableZoom);
-        graphElement.style.cursor = cursor;
+        forceGraph.element.style.cursor = cursor;
 
         eventBus.publish(event, enableZoom);
         currentMode = mode;
@@ -45,13 +45,11 @@ export default function setUpPanZoomEngine(forceGraph, graphElement) {
         setMode(newMode);
     };
 
-    graphElement.addEventListener('keydown', handleKeyChange);
-    graphElement.addEventListener('keyup', handleKeyChange);
-    graphElement.addEventListener('mousemove', handleKeyChange);
+    forceGraph.element.addEventListener('keydown', handleKeyChange);
+    forceGraph.element.addEventListener('keyup', handleKeyChange);
+    forceGraph.element.addEventListener('mousemove', handleKeyChange);
 
-    graphElement.addEventListener('wheel', (event) => {
-        if (!forceGraph) return;
+    forceGraph.element.addEventListener('wheel', (event) => {
         event.preventDefault();
-
     });
 }

@@ -51,5 +51,5 @@ export function runSearch(sequence, forceGraph) {
 //   render: renderHighlights
 // };
 
-export default function setUpSequenceSearchEngine(forceGraph, graphElement) {
+export default function setUpSequenceSearchEngine(forceGraph) {
 }

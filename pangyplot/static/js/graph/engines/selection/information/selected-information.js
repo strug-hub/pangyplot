@@ -1,7 +1,7 @@
 import { updateSelectedInfo } from "../../../../ui/tabs/information-panel.js";
-import { faLabel } from '../selection-utils.js';
+import { faLabel } from '../../../../utils/node-label.js';
 import { numberSelected, getSelectedNodeSet } from '../selection-state.js';
-import { getGraphCoordinates } from "../../../graph-data/graph-state.js";
+import forceGraph from "../../../force-graph.js";
 
 const blankInfo = {
     id: '',
@@ -17,7 +17,7 @@ const blankInfo = {
 export function generateSelectedInfo(){
     const info = { ...blankInfo };
 
-    const coords = getGraphCoordinates();
+    const coords = forceGraph.coords;
     info.genome = coords.genome || '';
     info.chromosome = coords.chromosome || '';
 

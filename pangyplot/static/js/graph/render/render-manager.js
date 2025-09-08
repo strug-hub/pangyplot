@@ -9,11 +9,8 @@ import { renderCustomLabels } from './annotation/custom-label-renderer.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
 import { highlightSelection } from '../engines/selection/select-render.js';
-import { setZoomFactor } from '../graph-data/graph-state.js';
 
 function renderPreFrame(ctx, forceGraph, svg=null) {
-    const zoomFactor = ctx.canvas.__zoom.k;
-    setZoomFactor(zoomFactor);
 
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
@@ -37,14 +34,13 @@ export function renderFullFrame(ctx, forceGraph, svg=null) {
     renderPostFrame(ctx, forceGraph, svg);
 }
 
-export function setUpRenderManager(forceGraph, canvasElement) {
+export function setUpRenderManager(forceGraph) {
     updateLegend();
     setUpRenderSettings(forceGraph);
-
+    const ctx = forceGraph.canvas.ctx;
     document.fonts.load('700 16px "Rubik"').then(() => {
         return document.fonts.ready;
     }).then(() => {
-        const ctx = canvasElement.getContext('2d');
         ctx.font = `1000px "Rubik", "Comic Sans MS", Arial, sans-serif`;
     });
 

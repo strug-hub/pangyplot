@@ -1,4 +1,10 @@
-export function faLabel(id) {
+export function faLabel(input) {
+    let id = input;
+
+    if (typeof input !== "string") {
+        id = input.id || '';
+    }
+
     if (id.length < 1) return '';
 
     const firstChar = id.charAt(0);
