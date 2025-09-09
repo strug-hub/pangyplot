@@ -1,4 +1,4 @@
-class NodeRecord {
+export class NodeRecord {
     constructor(rawData, type) {
         if (new.target === NodeRecord) {
             throw new Error("Cannot instantiate abstract class NodeRecord directly.");
@@ -21,7 +21,7 @@ class NodeRecord {
     }
 }
 
-class BubbleRecord extends NodeRecord {
+export class BubbleRecord extends NodeRecord {
     constructor(rawBubble) {
         super(rawBubble, "bubble");
         this.parent = rawBubble.parent;
@@ -32,7 +32,7 @@ class BubbleRecord extends NodeRecord {
     }
 }
 
-class BubbleEndRecord extends NodeRecord {
+export class BubbleEndRecord extends NodeRecord {
     constructor(rawBubbleEnd) {
         super(rawBubbleEnd, "bubble:end");
         this.subtype = rawBubbleEnd.subtype;
@@ -42,23 +42,9 @@ class BubbleEndRecord extends NodeRecord {
     }
 }
 
-class SegmentRecord extends NodeRecord {
+export class SegmentRecord extends NodeRecord {
     constructor(rawSegment) {
         super(rawSegment, "segment");
         this.insideBubble = rawSegment.inside_bubble;
     }
-}
-
-export default function deserializeNodes(rawNodes) {
-    const records = [];
-    for (const rawNode of rawNodes) {
-        if (rawNode.type === "segment") {
-            records.push(new SegmentRecord(rawNode));
-        } else if (rawNode.type === "bubble") {
-            records.push(new BubbleRecord(rawNode));
-        } else if (rawNode.type === "bubble:end") {
-            records.push(new BubbleEndRecord(rawNode));
-        }
-    }
-    return records;
 }

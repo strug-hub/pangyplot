@@ -1,11 +1,10 @@
-import { getNodeRecord } from '../records/records-manager.js';
 
-class LinkRecord {
+export class LinkRecord {
     constructor(rawLink, sourceRecord, targetRecord) {
 
         this.sourceRecord = sourceRecord;
         this.targetRecord = targetRecord;
-        this.linkElement = null;
+        this.linkElements = [];
         this.active = true;
         
         // -----
@@ -45,17 +44,4 @@ class LinkRecord {
         }
         return bools;
     }
-}
-
-export default function deserializeLinks(rawLinks) {
-    const linkRecords = [];
-
-    for (const rawLink of rawLinks) {
-        const sourceRecord = getNodeRecord(rawLink.source);
-        const targetRecord = getNodeRecord(rawLink.target);
-
-        linkRecords.push(new LinkRecord(rawLink, sourceRecord, targetRecord));
-    }
-
-    return linkRecords;
 }

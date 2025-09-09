@@ -9,10 +9,10 @@ export async function fetchCoordinateRange(coordinates) {
   try {
     rawGraph = await fetchData(url, 'graph');
     if (DEBUG_MODE) {
-      console.log("Fetched coordinate range:", rawGraph);
+      console.log("[fetch-coordinate-range] range:", rawGraph);
     }
   } catch (error) {
-    console.warn("Error in coordinate range query:", error);
+    console.warn("[fetch-coordinate-range] Error in coordinate range query:", error);
   } finally {
     hideLoader();
     return rawGraph;

@@ -1,5 +1,4 @@
-import { deserializeBubbleSubgraph } from "../../data/deserialize/deserialize-graph.js";
-
+import { deserializeBubbleSubgraph } from "../../data/records/deserializer/deserializer.js";
 export function fetchBubbleEnd(chainId) {
     const params = { id: chainId, ...forceGraph.coords };
     const url = buildUrl('/subgraph', params);

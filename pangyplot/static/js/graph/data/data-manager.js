@@ -1,16 +1,16 @@
 import eventBus from '../../utils/event-bus.js';
 import setUpGraphDataManager from './graph-data/graph-data-manager.js';
-import { deserializeGraph } from './deserialize/deserialize-graph.js';
+import { deserializeGraph } from './records/deserializer/deserializer.js';
 import forceGraph from '../force-graph.js';
 import { cleanGraph } from './graph-data/graph-data-integrity.js';
 import DEBUG_MODE from '../../debug-mode.js';
 import { fetchCoordinateRange } from './fetch/fetch-coordinate-range.js';
-import { getNodeRecord, getConnectingLinkRecords, setAllInactive, setActive } from './records/records-manager.js';
+import { recordsManager } from './records/records-manager.js';
 
 // TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
 
 export function addInsideContents(id, subgraph) {
-  const nodeRecord = getNodeRecord(id);
+  const nodeRecord = recordsManager.getNode(id);
   if (!nodeRecord) return;
 
   const insideSet = nodeRecord.inside;
@@ -23,7 +23,7 @@ export function addInsideContents(id, subgraph) {
 
 
 function getUnpoppedContents(bubbleId) {
-  const bubbleRecord = getNodeRecord(bubbleId)
+  const bubbleRecord = recordsManager.getNode(bubbleId)
   const nodes = Array.from(bubbleRecord.nodeElements);
   const links = getLinkElements(bubbleId);
 
@@ -33,7 +33,7 @@ function getUnpoppedContents(bubbleId) {
 }
 
 function getPoppedContents(bubbleId, recursive = false) {
-  const bubbleRecord = getNodeRecord(bubbleId);
+  const bubbleRecord = recordsManager.getNode(bubbleId);
   const nodes = [];
   const links = [];
 
@@ -97,15 +97,15 @@ export function unpopBubble(bubbleId) {
     for (const sibId of siblingIds) {
       let flag = false;
 
-      for (const elem of getNodeRecord(sibId).inside) {
-        if (getNodeRecord(elem.id).active) {
+      for (const elem of recordsManager.getNode(sibId).inside) {
+        if (recordsManager.getNode(elem.id).active) {
           flag = true;
           break;
         }
       }
 
       if (flag) {
-        if (getNodeRecord(sibId)) {
+        if (recordsManager.getNode(sibId)) {
           recoverData.nodes.push(...getNodeElements(sibId));
           recoverData.links.push(...getLinkElements(sibId));
         }
@@ -187,7 +187,7 @@ export function updateForceGraph(graphData) {
   setAllInactive();
 
   graphData.nodes.forEach(node => {
-    setActive(node.id);
+    //setActive(node.id);
     //node.fx = node.x;
     //node.fy = node.y;
   });
@@ -214,26 +214,28 @@ export function getNodeIfActive(iid) {
 }
 
 export function isNodeActive(id) {
-  const nodeRecord = getNodeRecord(id);
+  const nodeRecord = recordsManager.getNode(id);
   return nodeRecord != null && nodeRecord.active;
 }
 
 export function getNodeElements(id) {
-  const nodeRecord = getNodeRecord(id);
+  const nodeRecord = recordsManager.getNode(id);
   return nodeRecord != null ? Array.from(nodeRecord.nodeElements) : [];
 }
 export function getInsideNodeElements(id) {
-  const nodeRecord = getNodeRecord(id);
+  const nodeRecord = recordsManager.getNode(id);
   return nodeRecord != null ? Array.from(nodeRecord.inside) : [];
 }
 
 
 export function getLinkElements(nodeId) {
-  const connectingLinks = getConnectingLinkRecords(nodeId);
+  const connectingLinks = recordsManager.getLinks(nodeId);
   const linkElements = [];
   for (const linkRecord of connectingLinks) {
-    linkElements.push(linkRecord.linkElement);
+    linkElements.push(...linkRecord.linkElements);
   }
+
+
   return linkElements;
 }
 
@@ -256,9 +258,8 @@ export function getNodeComponents(id) {
 
 function replaceData(forceGraph, rawGraph) {
   const graphData = deserializeGraph(rawGraph);
-
   if (DEBUG_MODE) {
-    console.log("Creating force graph with data:", graphData);
+    console.log("[data-manager] Creating force graph with data:", graphData);
   }
 
   forceGraph.clearGraphData();

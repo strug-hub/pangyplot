@@ -1,4 +1,4 @@
-import { nodeRecordLookup, linkRecordLookup, nodeAdjacencyLookup } from "./records-manager.js";
+import { nodeRecordLookup, linkRecordLookup, nodeAdjacencyLookup } from "./records-manager-implementation.js";
 
 export function installRecordsInspector({ onHighlightNode } = {}) {
   const root = document.createElement('div');

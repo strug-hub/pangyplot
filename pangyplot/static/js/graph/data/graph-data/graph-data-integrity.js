@@ -1,4 +1,4 @@
-import { getChildSubgraph } from "../records/records-manager.js";
+import { recordsManager } from "../records/records-manager.js";
 
 function deduplicateNodes(graphData) {
     const uniqueNodes = new Set();
@@ -37,7 +37,7 @@ export function selfDestructLinks(graphData) {
     graphData.nodes = graphData.nodes.filter(node => !removeIds.includes(node.id));
 
     for (const id of removeIds) {
-        const { nodes, links } = getChildSubgraph(id);
+        const { nodes, links } = recordsManager.getChildSubgraph(id);
         graphData.nodes.push(...nodes);
         graphData.links.push(...links);
     }

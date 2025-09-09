@@ -17,11 +17,11 @@ function attemptSelection(event, forceGraph) {
     if (distPx > MAX_SELECT_DISTANCE) return;
 
     if (DEBUG_MODE) {
-        console.log("clicked:", hoveredNode);
+        console.log("[single-selection-engine] clicked:", hoveredNode);
         const connectedEdges = forceGraph.graphData().links.filter(link =>
             link.source === hoveredNode || link.target === hoveredNode
         );
-        console.log("connected edges:", connectedEdges);
+        console.log("[single-selection-engine] links:", connectedEdges);
     }
 
       forceGraph.setSelected([hoveredNode]);

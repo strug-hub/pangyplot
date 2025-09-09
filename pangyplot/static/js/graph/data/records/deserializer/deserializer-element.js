@@ -1,7 +1,3 @@
-import deserializeNodes from './deserialize-nodes.js';
-import deserializeLinks from './deserialize-links.js';
-import { updateExistingNodeRecords, updateExistingLinkRecords } from '../records/records-manager.js';
-
 const LINK_SCALE = 1;
 
 const SINGLE_NODE_BP_THRESH = 10;
@@ -30,8 +26,7 @@ function getKinkCoordinates(coords, kinks, i = 0) {
     return { x: x, y: y }
 }
 
-function addNodeElements(nodeRecord) {
-    if (nodeRecord.nodeElements.length > 0) return;
+export function createNodeElements(nodeRecord) {
 
     let kinks = 1;
     if (nodeRecord.type !== "bubble:end") {
@@ -92,13 +87,12 @@ function addNodeElements(nodeRecord) {
         });
     }
 
-    nodeRecord.nodeElements = nodes;
-    nodeRecord.linkElements = nodeLinks;
+    return {nodes: nodes, links: nodeLinks};
 }
 
-export function addLinkElement(linkRecord) {
-    if (linkRecord.isIncomplete()) return;
-    if (linkRecord.linkElement != null) return;
+export function createLinkElements(linkRecord) {
+    if (linkRecord.isIncomplete()) 
+        return {nodes: [], links: []};
 
     const isChainLink = linkRecord.isChainLink;
 
@@ -142,39 +136,5 @@ export function addLinkElement(linkRecord) {
         linkIid: `${sourceIid}${linkRecord.fromStrand}${targetIid}${linkRecord.toStrand}`
     };
 
-    linkRecord.linkElement = linkElement;
-}
-
-
-export function deserializeGraph(rawGraph, parentId = null) {
-    const nodes = [];
-    const links = [];
-
-    const newNodeRecords = deserializeNodes(rawGraph.nodes);
-    const nodeRecords = updateExistingNodeRecords(newNodeRecords, parentId);
-
-    for (const nodeRecord of nodeRecords) {
-        addNodeElements(nodeRecord);
-        nodes.push(...nodeRecord.nodeElements);
-        links.push(...nodeRecord.linkElements);
-    }
-
-    const newLinkRecords = deserializeLinks(rawGraph.links);
-    const linkRecords = updateExistingLinkRecords(newLinkRecords);
-    for (const linkRecord of linkRecords) {
-        addLinkElement(linkRecord);
-        if (linkRecord.isIncomplete()) continue;
-        links.push(linkRecord.linkElement);
-    }
-
-    return { nodes, links };
-}
-
-export function deserializeBubbleSubgraph(rawBubbleGraph, bubbleId) {
-
-    const bubbleSubgraph = deserializeGraph(rawBubbleGraph.bubble, bubbleId);
-    const sourceSubgraph = deserializeGraph(rawBubbleGraph.source, `${bubbleId}:0`);
-    const sinkSubgraph = deserializeGraph(rawBubbleGraph.sink, `${bubbleId}:1`);
-
-    return { bubble:bubbleSubgraph, source:sourceSubgraph, sink:sinkSubgraph };
+    return {nodes: [], links: [linkElement]};
 }
