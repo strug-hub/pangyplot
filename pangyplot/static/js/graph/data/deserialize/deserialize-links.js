@@ -1,4 +1,4 @@
-import { getNodeRecord } from '../records-manager.js';
+import { getNodeRecord } from '../records/records-manager.js';
 
 class LinkRecord {
     constructor(rawLink, sourceRecord, targetRecord) {
@@ -21,8 +21,8 @@ class LinkRecord {
         this.contained = rawLink.contained;
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
-        
-        this.isPopLink = rawLink.type == "pop"; 
+
+        this.isSelfDestructLink = rawLink.type == "self-destruct";
     }
 
     isIncomplete() {

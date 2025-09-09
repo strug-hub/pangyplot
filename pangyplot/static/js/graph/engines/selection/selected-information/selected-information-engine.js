@@ -1,6 +1,6 @@
 import { updateSelectedInfo } from "../../../../ui/tabs/information-panel.js";
 import { faLabel } from '../../../../utils/node-label.js';
-import forceGraph from "../../../force-graph.js";
+import eventBus from '../../../../utils/event-bus.js';
 
 const blankInfo = {
     id: '',
@@ -13,7 +13,7 @@ const blankInfo = {
     nInside: ''
 };
 
-export function generateSelectedInfo(){
+function generateSelectedInfo(forceGraph){
     const info = { ...blankInfo };
 
     const coords = forceGraph.coords;
@@ -41,4 +41,11 @@ export function generateSelectedInfo(){
     info.nInside = node.record.size || '';
 
     updateSelectedInfo(info);
+}
+
+export default function setUpSelectedInformationEngine(forceGraph){
+
+    eventBus.subscribe('graph:selected-changed', () => {
+        generateSelectedInfo(forceGraph);
+    });
 }

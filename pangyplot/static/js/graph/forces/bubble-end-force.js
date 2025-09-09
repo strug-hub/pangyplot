@@ -1,5 +1,5 @@
 import eventBus from '../../utils/event-bus.js';
-import { isNodeActive } from "../data/graph-data-manager.js";
+import { isNodeActive } from "../data/data-manager.js";
 
 const bubbleEndPairs = []
 var initialized = false;

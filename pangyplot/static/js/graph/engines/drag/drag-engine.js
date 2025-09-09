@@ -1,3 +1,4 @@
+import eventBus from '../../../utils/event-bus.js';
 import setUpDragFixEngine from './drag-fix/drag-fix-engine.js';
 import { setUpDragInfluenceEngine } from './drag-influence/drag-influence-engine.js';
 import { euclideanDist } from '../../utils/node-utils.js';
@@ -68,6 +69,18 @@ function onDragEnd(event, forceGraph) {
 
 export default function setUpDragEngine(forceGraph) {
   
+  forceGraph.draggedNode = null;
+
+  forceGraph.setDraggedNode = function (node) {
+      if (this.draggedNode === node) return;
+      this.draggedNode = node;
+      eventBus.publish('graph:dragged-changed', node);
+  };
+
+  forceGraph.isDragging = function () {
+      return this.draggedNode !== null;
+  };
+
   setUpDragFixEngine(forceGraph);
   setUpDragInfluenceEngine(forceGraph);
 

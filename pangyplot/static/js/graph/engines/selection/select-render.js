@@ -1,7 +1,6 @@
 import { colorState } from "../../render/color/color-state.js";
 import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
-import { getHoverNode } from "./selection-state.js";
-import { getNodeComponents } from "../../data/graph-data-manager.js";
+import { getNodeComponents } from "../../data/data-manager.js";
 import forceGraph from "../../force-graph.js";
 
 export function highlightSelection(graphData) {
@@ -11,11 +10,11 @@ export function highlightSelection(graphData) {
   const zoomFactor = graphData.getZoomFactor();
   const highlightWidth = 50 + 10 / zoomFactor;
 
-  const hoverNode = getHoverNode();
-  if (hoverNode){
-    const hsize = hoverNode.width + highlightWidth;
-    
-    outlineNode(hoverNode, ctx, 0, hsize, colorState.selectedColor);
+  const hoveredNode = forceGraph.hoveredNode;
+  if (hoveredNode){
+    const hsize = hoveredNode.width + highlightWidth;
+
+    outlineNode(hoveredNode, ctx, 0, hsize, colorState.selectedColor);
   }
 
   const selectedIds = forceGraph.selected.idList();

@@ -218,44 +218,6 @@ class BubbleIndex:
         
         return list(collected)
 
-    def get_popped_subgraph_orig(self, bubble_id, gfaidx, stepidx):
-        bubble = self[bubble_id]
-        all_nodes, all_links = [], []
-
-        if bubble is None:
-            return {"nodes": all_nodes, "links": all_links} 
-
-        #[bubble:end]-[x]
-        bubble_parent = self[bubble.parent] if bubble.parent else None
-        junctions = bubble.emit_junctions(gfaidx, parent_hint=bubble_parent)
-        for junction in junctions:
-            all_nodes.append(junction)
-            all_links.extend(junction.get_links())
-
-        # check for deletion links
-        del_links = junctions[0].get_deletion_links(junctions[1])
-        all_links.extend(del_links)
-
-        # [bubble]-[bubble]
-        inside_bubbles = [self[bid] for bid in bubble.children]
-        chains = self.create_chains(inside_bubbles, parent_bubble=bubble)
-        for chain in chains:
-            bubbles, links = chain.decompose()
-            all_nodes.extend(bubbles)
-            all_links.extend(links)
-
-        #[segment]-[segment]
-        #internal_chain_segments = set()
-        #for chain in chains:
-        #    internal_chain_segments.update(chain.get_internal_segment_ids(as_set=True))
-        #exposed_segments = bubble.inside - internal_chain_segments
-        exposed_segments = bubble.inside
-
-        inside_segments, inside_segment_links = gfaidx.get_subgraph(exposed_segments, stepidx)
-        all_nodes.extend(inside_segments)
-        all_links.extend(inside_segment_links)
-        
-        return {"nodes": all_nodes, "links": all_links}
     
     def get_popped_subgraph(self, bubble_id, stepidx):
         bubble = self[bubble_id]
@@ -270,7 +232,7 @@ class BubbleIndex:
             # when the last bubble in the chain is popped,
             # we also want to pop the chain end
             if junction.is_chain_end:
-                all_links.extend(junction.get_self_destroy_link())
+                all_links.extend(junction.get_self_destruct_link())
             else:
                 all_nodes.append(junction)
 

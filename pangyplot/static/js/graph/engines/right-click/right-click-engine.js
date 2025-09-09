@@ -1,5 +1,4 @@
 import { RightClickMenu } from './right-click-menu.js';
-import { popGroupOfBubbles } from '../bubble-pop/bubble-pop-engine.js';
 import { exportGraphToPng } from '../../render/download/render-png.js';
 import { exportGraphToSvg } from '../../render/download/render-svg.js';
 import { createCustomGeneAnnotation } from '../gene-annotation/custom/custom-annotation.js';
@@ -11,7 +10,7 @@ export function populateOptions(forceGraph) {
 
     // Node-specific actions
     menu.addOption('burst', 'Pop nodes', 'node', nodes => {
-        popGroupOfBubbles(nodes);
+        forceGraph.popBubbles(nodes);
     });
 
     menu.addOption('dna', 'Show Sequence', 'node', nodes => {

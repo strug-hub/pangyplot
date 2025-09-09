@@ -48,18 +48,18 @@ class BubbleJunction:
         destroy_indicator = chain_link.clone()
         destroy_indicator.add_from_suffix("1") if self.is_source else \
             destroy_indicator.add_to_suffix("0")
-        destroy_indicator.update_to_pop_link()
+        destroy_indicator.update_to_self_destruct_link()
 
         return [chain_link, destroy_indicator]
     
-    def get_self_destroy_link(self):
+    def get_self_destruct_link(self):
         destroy_indicator = Link()
         destroy_indicator.from_id = self.id
         destroy_indicator.to_id = self.id
         destroy_indicator.from_type = "b"
         destroy_indicator.to_type = "b"
 
-        destroy_indicator.update_to_pop_link()
+        destroy_indicator.update_to_self_destruct_link()
 
         return [destroy_indicator]
     def get_chain_terminal_link(self):  

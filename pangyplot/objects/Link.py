@@ -13,7 +13,6 @@ class Link:
         self.contained = []
         self.length = 0
         self.deletion_bubble_id = None
-        self.is_pop_link = False
 
     def serialize(self):
         return {
@@ -72,9 +71,9 @@ class Link:
     def set_to_type(self, x):
         self.to_type = x
 
-    def update_to_pop_link(self):
-        self.link_type = "pop"
-        self.is_pop_link = True
+    def update_to_self_destruct_link(self):
+        self.link_type = "self-destruct"
+        self.is_self_destruct_link = True
 
     def is_deletion(self):
         return self.deletion_bubble_id is not None

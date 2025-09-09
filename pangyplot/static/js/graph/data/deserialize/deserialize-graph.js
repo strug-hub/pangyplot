@@ -1,6 +1,6 @@
 import deserializeNodes from './deserialize-nodes.js';
 import deserializeLinks from './deserialize-links.js';
-import { updateExistingNodeRecords, updateExistingLinkRecords } from '../records-manager.js';
+import { updateExistingNodeRecords, updateExistingLinkRecords } from '../records/records-manager.js';
 
 const LINK_SCALE = 1;
 
@@ -96,7 +96,7 @@ function addNodeElements(nodeRecord) {
     nodeRecord.linkElements = nodeLinks;
 }
 
-function addLinkElement(linkRecord) {
+export function addLinkElement(linkRecord) {
     if (linkRecord.isIncomplete()) return;
     if (linkRecord.linkElement != null) return;
 
@@ -145,12 +145,13 @@ function addLinkElement(linkRecord) {
     linkRecord.linkElement = linkElement;
 }
 
-export default function deserializeGraph(rawGraph) {
+
+export function deserializeGraph(rawGraph, parentId = null) {
     const nodes = [];
     const links = [];
 
     const newNodeRecords = deserializeNodes(rawGraph.nodes);
-    const nodeRecords = updateExistingNodeRecords(newNodeRecords);
+    const nodeRecords = updateExistingNodeRecords(newNodeRecords, parentId);
 
     for (const nodeRecord of nodeRecords) {
         addNodeElements(nodeRecord);
@@ -167,4 +168,13 @@ export default function deserializeGraph(rawGraph) {
     }
 
     return { nodes, links };
+}
+
+export function deserializeBubbleSubgraph(rawBubbleGraph, bubbleId) {
+
+    const bubbleSubgraph = deserializeGraph(rawBubbleGraph.bubble, bubbleId);
+    const sourceSubgraph = deserializeGraph(rawBubbleGraph.source, `${bubbleId}:0`);
+    const sinkSubgraph = deserializeGraph(rawBubbleGraph.sink, `${bubbleId}:1`);
+
+    return { bubble:bubbleSubgraph, source:sourceSubgraph, sink:sinkSubgraph };
 }

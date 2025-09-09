@@ -38,10 +38,8 @@ function updateAnnotations(forceGraph){
         populateGeneAnnotationsTable();
     });
 }
-export default function updateGeneAnnotationEngine(forceGraph) {
-    updateAnnotations(forceGraph);
-
-    eventBus.subscribe("graph:updated", () => {
+export default function setUpGeneAnnotationEngine(forceGraph) {
+    eventBus.subscribe("graph:data-replaced", (forceGraph) => {
         updateAnnotations(forceGraph);
     });
 }

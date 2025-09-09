@@ -1,58 +1,13 @@
 import eventBus from '../../utils/event-bus.js';
-import deserializeGraph from './deserialize/deserialize-graph.js';
+import setUpGraphDataManager from './graph-data/graph-data-manager.js';
+import { deserializeGraph } from './deserialize/deserialize-graph.js';
 import forceGraph from '../force-graph.js';
-import { cleanGraph } from './graph-data-integrity.js';
-import { updateSelected } from '../engines/selection/selection-state.js';
-import { anchorEndpointNodes } from '../utils/node-utils.js';
-import { fetchData, buildUrl } from '../../utils/network-utils.js';
-
-import { getNodeRecord, getConnectingLinkRecords, setAllInactive, setActive } from './records-manager.js';
-
-import { createForceGraph } from '../graph.js';
+import { cleanGraph } from './graph-data/graph-data-integrity.js';
+import DEBUG_MODE from '../../debug-mode.js';
+import { fetchCoordinateRange } from './fetch/fetch-coordinate-range.js';
+import { getNodeRecord, getConnectingLinkRecords, setAllInactive, setActive } from './records/records-manager.js';
 
 // TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
-
-
-const nodeElementLookup = new Map();
-const linkElementLookup = new Map();
-const nodeIidToLinkElements = new Map();
-
-export function indexLinkRecord(linkRecord) {
-  const element = linkRecord.linkElement;
-  linkElementLookup.set(element.linkIid, element);
-}
-
-function deserializeAndIndex(rawGraph) {
-  const graphData = deserializeGraph(rawGraph);
-
-  for (const nodeElement of graphData.nodes) {
-    nodeElementLookup.set(nodeElement.iid, nodeElement);
-  }
-
-  for (const linkElement of graphData.links) {
-    linkElementLookup.set(linkElement.linkIid, linkElement);
-
-    const sourceIid = linkElement.sourceIid;
-    if (!nodeIidToLinkElements.has(sourceIid)) {
-      nodeIidToLinkElements.set(sourceIid, new Set());
-    }
-    nodeIidToLinkElements.get(sourceIid).add(linkElement);
-   
-    const targetIid = linkElement.targetIid;
-    if (!nodeIidToLinkElements.has(targetIid)) {
-      nodeIidToLinkElements.set(targetIid, new Set());
-    }
-    nodeIidToLinkElements.get(targetIid).add(linkElement);
-  }
-  
-  return graphData;
-}
-
-export function clearGraphManager() {
-  nodeElementLookup.clear();
-  linkElementLookup.clear();
-}
-
 
 export function addInsideContents(id, subgraph) {
   const nodeRecord = getNodeRecord(id);
@@ -65,9 +20,7 @@ export function addInsideContents(id, subgraph) {
 }
 
 
-export function setUpGraphManager(forceGraph) {
 
-}
 
 function getUnpoppedContents(bubbleId) {
   const bubbleRecord = getNodeRecord(bubbleId)
@@ -135,10 +88,10 @@ export function unpopBubble(bubbleId) {
     const siblingIds = [];
 
     if (link.targetId === bubbleId && link.sourceId.startsWith("b") && link.sourceId.includes(":")) {
-        siblingIds.push(link.sourceId);
-    } 
+      siblingIds.push(link.sourceId);
+    }
     if (link.sourceId === bubbleId && link.targetId.startsWith("b") && link.targetId.includes(":")) {
-        siblingIds.push(link.targetId);
+      siblingIds.push(link.targetId);
     }
 
     for (const sibId of siblingIds) {
@@ -185,7 +138,7 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
 
   for (const link of subgraph.links) {
-    if (link.record.isPopLink) {
+    if (link.record.isSelfDestructLink) {
 
       // active nodes are in the graphData we check if they are in the subgraph
       const sourceActive = isNodeActive(link.sourceId) || subgraphNodes.includes(link.sourceId);
@@ -206,13 +159,13 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
 
     fetchPromises.push(
       fetchBubbleEndFn(node1).then(endData => {
-        const endSubgraph = deserializeAndIndex(endData);
+        const endSubgraph = deserializeGraph(endData);
         console.log(`Fetched bubble end for ${node1} / ${node2}`, endData);
         subgraph.nodes.push(...endSubgraph.nodes);
         subgraph.links.push(...endSubgraph.links);
         addInsideContents(node1, endData);
         if (node2) {
-            addInsideContents(node2, endData);
+          addInsideContents(node2, endData);
         }
       })
     );
@@ -228,37 +181,11 @@ function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
   return fetchPromises;
 }
 
-export async function processPoppedSubgraph(bubbleId, rawSubgraph, fetchBubbleEndFn) {
-  const graphData = forceGraph.graphData();
-
-  const subgraph = deserializeAndIndex(rawSubgraph);
-
-  addInsideContents(bubbleId, subgraph);
-  //rescueLinks(subgraph);
-
-  const fetchPromises = retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn);
-  await Promise.all(fetchPromises);
-
-  removeNode(bubbleId, graphData);
-
-  rescueLinks(subgraph);
-
-  updateSelected(subgraph.nodes);
-
-  graphData.nodes.push(...subgraph.nodes);
-  graphData.links.push(...subgraph.links);
-
-  updateForceGraph(graphData);
-  
-  eventBus.publish("graph:bubble-popped", bubbleId);
-  return subgraph;
-}
-
 export function updateForceGraph(graphData) {
   cleanGraph(graphData);
 
   setAllInactive();
-  
+
   graphData.nodes.forEach(node => {
     setActive(node.id);
     //node.fx = node.x;
@@ -292,18 +219,18 @@ export function isNodeActive(id) {
 }
 
 export function getNodeElements(id) {
-    const nodeRecord = getNodeRecord(id);
+  const nodeRecord = getNodeRecord(id);
   return nodeRecord != null ? Array.from(nodeRecord.nodeElements) : [];
 }
 export function getInsideNodeElements(id) {
-    const nodeRecord = getNodeRecord(id);
+  const nodeRecord = getNodeRecord(id);
   return nodeRecord != null ? Array.from(nodeRecord.inside) : [];
 }
 
 
 export function getLinkElements(nodeId) {
   const connectingLinks = getConnectingLinkRecords(nodeId);
-  const linkElements = [];  
+  const linkElements = [];
   for (const linkRecord of connectingLinks) {
     linkElements.push(linkRecord.linkElement);
   }
@@ -320,33 +247,39 @@ export function getNodeComponents(id) {
   }
   const nodes = getNodeElements(id);
   const links = getLinkElements(id).filter(link => link.class === 'node');
-  
+
   return {
     nodes,
     links
   };
-
 }
 
-function fetchAndConstructGraph(coordinates){
-    if (forceGraph.equalsCoords(coordinates)) return;
-    forceGraph.coords = coordinates;
+function replaceData(forceGraph, rawGraph) {
+  const graphData = deserializeGraph(rawGraph);
 
-    const url = buildUrl('/select', coordinates);
-    fetchData(url, 'graph').then(rawGraph => {
-        console.log("Fetched graph data:", rawGraph);
-        clearGraphManager();
+  if (DEBUG_MODE) {
+    console.log("Creating force graph with data:", graphData);
+  }
 
-        const graphData = deserializeAndIndex(rawGraph);
-        anchorEndpointNodes(graphData.nodes, graphData.links);
-        createForceGraph(graphData);
-    }).catch(error => {
-        console.warn("Skipping graph construction:", error);
-    });
+  forceGraph.clearGraphData();
+  forceGraph.addGraphData(graphData);
+  
+  eventBus.publish("graph:data-replaced", forceGraph);
 }
 
-eventBus.subscribe("ui:construct-graph", function (data) {
+export function setUpDataManager(forceGraph) {
+  setUpGraphDataManager(forceGraph);
+
+  eventBus.subscribe("ui:construct-graph", async function (data) {
     const { genome, chromosome, start, end } = data;
     const coordinates = { genome, chromosome, start, end };
-    fetchAndConstructGraph(coordinates);
-});
+    if (forceGraph.equalsCoords(coordinates)) return;
+
+    const rawGraph = await fetchCoordinateRange(coordinates);
+    if (!rawGraph) return;
+    forceGraph.coords = coordinates;
+    replaceData(forceGraph, rawGraph);
+
+  });
+}
+

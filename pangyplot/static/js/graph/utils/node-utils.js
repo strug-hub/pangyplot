@@ -18,27 +18,6 @@ export function nodesInBox(forceGraph, bounds) {
     return containedNodes;
 }
 
-export function anchorEndpointNodes(nodes, links) {
-    const outgoing = new Set();
-    const incoming = new Set();
-
-    for (const link of links) {
-        outgoing.add(link.source);
-        incoming.add(link.target);
-    }
-
-    let anchoredCount = 0;
-    for (const node of nodes) {
-        const hasOutgoing = outgoing.has(node.iid);
-        const hasIncoming = incoming.has(node.iid);
-
-        if (!hasIncoming || !hasOutgoing) {
-            node.fx = node.x;
-            node.fy = node.y;
-            anchoredCount++;
-        }
-    }
-}
 
 export function resetGraphPositions(graph){
     graph.nodes.forEach(node => {

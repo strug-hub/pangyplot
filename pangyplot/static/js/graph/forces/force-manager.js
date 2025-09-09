@@ -58,6 +58,8 @@ function pauseAllForces(forceGraph) {
 
 export default function setUpForceManager(forceGraph){
 
+    // todo https://github.com/vasturiano/d3-force-registry
+
     setUpForceSettings(forceGraph);
 
     setFriction(forceGraph, defaults.FRICTION);

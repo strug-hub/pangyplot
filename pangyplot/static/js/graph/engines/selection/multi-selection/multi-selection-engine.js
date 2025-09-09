@@ -1,5 +1,4 @@
 import eventBus from '../../../../utils/event-bus.js';
-import { updateSelected, updateHighlighted, clearHighlighted } from '../selection-state.js';
 import { nodesInBox } from '../../../utils/node-utils.js';
 import { selectionState } from '../selection-state.js';
 import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';
@@ -24,7 +23,7 @@ function destroySelectionBox() {
 
 function pointerMove(event, forceGraph) {
 
-    if (forceGraph.isDragging()) {
+    if (!forceGraph.isSelectionMode() || forceGraph.isDragging()) {
         destroySelectionBox();
     }
     
@@ -39,7 +38,7 @@ function pointerMove(event, forceGraph) {
 
         // Highlight nodes
         const hitNodes = nodesInBox(forceGraph, bounds);
-        updateHighlighted(hitNodes);
+        forceGraph.setHighlighted(hitNodes);
 
     } else if (overlayElement) {
         destroySelectionBox()
@@ -52,8 +51,9 @@ function pointerUp(event, forceGraph) {
 
         if (bounds) {
             const hitNodes = nodesInBox(forceGraph, bounds);
-            updateSelected(hitNodes);
-            clearHighlighted();
+            forceGraph.setSelected(hitNodes);
+            forceGraph.setHighlighted(null);
+            forceGraph.setHoveredNode(null);
         }
     }
     destroySelectionBox();

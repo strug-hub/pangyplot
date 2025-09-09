@@ -30,7 +30,6 @@ class Chain:
         ends = []
         for bubble in (self.source_bubble(), self.sink_bubble()):
             for junction in bubble.emit_junctions(self.gfaidx):
-                print(junction, junction.is_chain_end)
                 if junction.is_chain_end:
                     ends.append(junction)
         return ends

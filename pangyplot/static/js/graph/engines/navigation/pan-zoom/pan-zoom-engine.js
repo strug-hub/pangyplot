@@ -1,19 +1,21 @@
-export default function setUpPanZoomEngine(forceGraph) {
+import eventBus from "../../../../utils/event-bus.js";
 
-    const handleKeyChange = (event) => {
-        if (event.shiftKey && !forceGraph.isPanZoomMode()) {
-            forceGraph.setPanZoomMode();
-        } else if (!event.shiftKey && forceGraph.isPanZoomMode()) {
-            forceGraph.setSelectionMode();
-        }
+export default function setUpPanZoomEngine(forceGraph) {
+    forceGraph.enableZoomPanInteraction(false);
+
+    const panZoomMode = {
+        mode: "pan-zoom",
+        keyCheck: e => e.shiftKey,
+        cursor: "grabbing",
     };
 
-    forceGraph.element.addEventListener('keydown', handleKeyChange);
-    forceGraph.element.addEventListener('keyup', handleKeyChange);
-    forceGraph.element.addEventListener('mousemove', handleKeyChange);
+    forceGraph.registerMode(panZoomMode);
 
-    forceGraph.element.addEventListener('wheel', (event) => {
-        event.preventDefault();
+    eventBus.subscribe("graph:mode-changed", (mode) => {
+        if (mode === panZoomMode.mode) {
+            forceGraph.enableZoomPanInteraction(true);
+        } else {
+            forceGraph.enableZoomPanInteraction(false);
+        }
     });
 }
-

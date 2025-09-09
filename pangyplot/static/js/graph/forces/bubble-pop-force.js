@@ -1,4 +1,4 @@
-import { findNodeBounds, computeNodeCentroid } from '../../utils/node-utils.js';
+import { findNodeBounds, computeNodeCentroid } from '../utils/node-utils.js';
 
 export function explodeSubgraph(originNode, subgraph, forceGraph) {
     forceGraph.d3ReheatSimulation();

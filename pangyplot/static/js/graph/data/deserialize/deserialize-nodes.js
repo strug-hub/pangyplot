@@ -19,7 +19,6 @@ class NodeRecord {
         this.gcCount = rawData.gc_count;
         this.nCount = rawData.n_count;
     }
-
 }
 
 class BubbleRecord extends NodeRecord {

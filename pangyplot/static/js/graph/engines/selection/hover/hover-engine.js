@@ -1,7 +1,7 @@
 
-import { clearHighlighted, canHighlight, updateHighlighted, updateHoverNode } from '../selection-state.js';
+import { canHighlight } from '../selection-state.js';
 import { findNearestNode, euclideanDist } from '../../../utils/node-utils.js';
-import { makeHoverLabel} from './hover-label.js';
+import { makeHoverLabel } from './hover-label.js';
 import { faLabel } from '../../../../utils/node-label.js';
 import DEBUG_MODE from '../../../../debug-mode.js';
 
@@ -28,7 +28,8 @@ function attemptHover(event, forceGraph, tooltip) {
 
   const nearestNode = findNearestNode(nodes, graphCoords);
   if (!nearestNode) {
-    clearHighlighted();
+    forceGraph.setHighlighted(null);
+    forceGraph.setHoveredNode(null);
     tooltip.hide();
     return;
   }
@@ -37,19 +38,30 @@ function attemptHover(event, forceGraph, tooltip) {
   const distPx = euclideanDist(coords, screenPos);
 
   if (distPx > MAX_HOVER_DISTANCE) {
-    clearHighlighted();
+    forceGraph.setHighlighted(null);
+    forceGraph.setHoveredNode(null);
     tooltip.hide();
     return;
   }
 
-  updateHighlighted([nearestNode]);
-  updateHoverNode(nearestNode);
+  forceGraph.setHighlighted([nearestNode]);
+  forceGraph.setHoveredNode(nearestNode);
 
   const labelText = getHoverLabelText(nearestNode);
   tooltip.show(labelText, event.clientX, event.clientY);
 }
 
 export default function setUpHoverEngine(forceGraph) {
+
+  forceGraph.hoveredNode = null;
+
+  forceGraph.setHoveredNode = function (node) {
+    //if (this.hoveredNode === node) return;
+    this.hoveredNode = node;
+    //eventBus.publish('graph:hovered-changed', node);
+    
+  };
+
   const container = forceGraph.element.parentElement || forceGraph.element;
   const tooltip = makeHoverLabel(container);
 
