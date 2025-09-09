@@ -1,8 +1,7 @@
-import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
-import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
-import { getScaleFactor } from "../../render/render-scaling.js";
-import { highlightNodePainter } from "../../render/painter/highlight-node-painter.js";
-import { highlightLinkPainter } from "../../render/painter/highlight-link-painter.js";
+import { getNodeAnnotations, getGene } from "../../engines/gene-annotation/gene-annotation-state.js";
+import { getScaleFactor } from "../render-scaling.js";
+import { highlightNodePainter } from "../painter/highlight-node-painter.js";
+import { highlightLinkPainter } from "../painter/highlight-link-painter.js";
 
 const HIGHLIGHT_THICKNESS = 4;
 

@@ -21,6 +21,8 @@ export default function setUpSelectionEngine(forceGraph) {
             this.selected.clear();
             this.selected.addAll(nodes);
         }
+
+        console.log("selected changed", nodes);
         eventBus.publish('graph:selected-changed', nodes);
     };
 

@@ -4,11 +4,6 @@ import { getConnectingLinkRecords } from './records-manager-implementation.js';
 import { fetchCoordinateRange } from './fetch/fetch-coordinate-range.js';
 import { fetchBubbleSubgraph } from './fetch/fetch-bubble-subgraph.js';
 
-//todo: lazily load pangyplot:
-// all queries should be sent to records manager
-//if data is locally available, return it
-//if not, fetch it, store it, then return it
-
 class RecordsManager {
     constructor() {
     }

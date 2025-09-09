@@ -1,5 +1,5 @@
-import { colorState } from "../../render/color/color-state.js";
-import { outlineNode, outlineLink } from "../../render/painter/painter-utils.js";
+import { colorState } from "../color/color-state.js";
+import { outlineNode, outlineLink } from "../painter/painter-utils.js";
 import { getNodeComponents } from "../../data/data-manager.js";
 import forceGraph from "../../force-graph.js";
 

@@ -1,5 +1,5 @@
 import { colorState } from '../../render/color/color-state.js';
-import { getNodeAnnotations, getGene } from "./gene-annotation-state.js";
+import { getNodeAnnotations, getGene } from '../../engines/gene-annotation/gene-annotation-state.js';
 import { labelPainter } from "../../render/painter/label-painter.js";
 
 export const LABEL_SPEED = 0.05;

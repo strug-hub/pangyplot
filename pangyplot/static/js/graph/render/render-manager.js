@@ -1,14 +1,14 @@
 import setUpRenderSettings from './settings/render-settings.js'
 import { updateVisibility } from './viewport-utils.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-influence/drag-influence-render.js';
-import { renderGenes} from '../engines/gene-annotation/gene-annotation-gene-render.js';
-import { renderGeneLabels} from '../engines/gene-annotation/gene-annotation-label-render.js';
+import { renderGeneLabels } from './annotation/gene-annotation-label-render.js';
+import { renderCustomLabels } from './annotation/custom-label-renderer.js';
 import { basicLinkPainter } from './painter/basic-link-painter.js';
 import { basicNodePainter } from './painter/basic-node-painter.js';
-import { renderCustomLabels } from './annotation/custom-label-renderer.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
-import { highlightSelection } from '../engines/selection/select-render.js';
+import { highlightSelection } from './highlight/select-render.js';
+import { renderGenes} from './highlight/gene-annotation-gene-render.js';
 
 function renderPreFrame(ctx, forceGraph, svg=null) {
 

@@ -14,9 +14,10 @@ export function isInChainMode() {
 }
 
 export function canSingleSelect() {
-  return !selectionState.multiSelectMode && !forceGraph.isPanZoomMode();
+  console.log("canSingleSelect", !selectionState.multiSelectMode, forceGraph.isSelectionMode());
+  return !selectionState.multiSelectMode && forceGraph.isSelectionMode();
 }
 
 export function canHighlight() {
-  return !selectionState.multiSelectMode && !forceGraph.isPanZoomMode() && !forceGraph.isDragging();
+  return !selectionState.multiSelectMode && forceGraph.isSelectionMode() && !forceGraph.isDragging();
 }
