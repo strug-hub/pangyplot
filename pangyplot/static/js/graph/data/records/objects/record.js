@@ -10,6 +10,10 @@ export class Record {
         }
         
         this.inside = new Set();
+        Object.defineProperty(this, 'childRecords', {
+            get: function() { return Array.from(this.inside);}
+        });
+
         this.active = true;
 
     }

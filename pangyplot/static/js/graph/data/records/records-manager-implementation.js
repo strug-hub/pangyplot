@@ -117,22 +117,19 @@ export function updateExistingLinkRecords(linkRecords) {
 }
 
 export function getChildSubgraph(nodeId) {
-  const nodeRecord = getNodeRecord(nodeId);
-  if (nodeRecord === null) return { nodes: [], links: [] };
 
-  const targetNodeRecords = Array.from(nodeRecord.inside);
+  //check records first, get bubble if can't find
 
-  // Collect all links connected to the inside children
-  const targetLinkRecords = targetNodeRecords
-    .flatMap(child => getConnectingLinkRecords(child.id, true));
+  const parentRecord = getNodeRecord(nodeId);
+  if (parentRecord === null) return { nodes: [], links: [] };
 
-  const nodes = targetNodeRecords.map(record => record.elements.nodes).flat();
-  const links = [
-    ...targetLinkRecords.map(record => record.elements.links),
-    ...targetNodeRecords.flatMap(record => record.elements.links)
-  ];
+  const nodeRecords = parentRecord.childRecords;
+  const linkRecords = nodeRecords
+    .flatMap(c => getConnectingLinkRecords(c.id));
 
-  console.log("Child subgraph:", nodeId, targetNodeRecords, targetLinkRecords);
+  const nodes = [...nodeRecords, ...linkRecords].map(r => r.elements.nodes).flat();
+  const links = [...nodeRecords, ...linkRecords].map(r => r.elements.links).flat();
+
   return { nodes, links };
 }
 

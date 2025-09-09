@@ -80,6 +80,19 @@ function addGraphData(forceGraph, newData) {
     reindexGraphData(forceGraph);
 }
 
+function replaceRecords(forceGraph, graphRecords) {
+
+    const records = [...graphRecords.nodes, ...graphRecords.links];
+    const graphData = { 
+        nodes: [...records.map(r => r.elements.nodes).flat()],
+        links: [...records.map(r => r.elements.links).flat()] 
+    };
+    
+    forceGraph.graphData(graphData);
+    reindexGraphData(forceGraph);
+}
+
+
 function removeNode(forceGraph, id) {
     const graphData = forceGraph.graphData();
     graphData.nodes = graphData.nodes.filter(node => node.id !== id);
@@ -97,7 +110,9 @@ export default function setUpGraphDataManager(forceGraph){
     forceGraph.addGraphData = function (graphData) {
         addGraphData(this, graphData);
     }
-    
+    forceGraph.replaceRecords = function (records) {
+        replaceRecords(this, records);
+    }
     forceGraph.removeNodeById = function (id) {
         removeNode(this, id);
     }

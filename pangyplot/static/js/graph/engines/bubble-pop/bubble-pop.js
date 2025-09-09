@@ -44,12 +44,3 @@ async function drain() {
     fetching = false;
   }
 }
-
-
-export async function processSubgraphData(rawSubgraph, originNode) {
-    const subgraph = await processPoppedSubgraph(originNode.id, rawSubgraph, fetchBubbleEnd);
-
-    // Now it's safe to update UI
-    // explodeSubgraph(originNode, subgraph, forceGraph);
-}
-

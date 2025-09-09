@@ -4,7 +4,6 @@ import { deserializeGraph } from './records/deserializer/deserializer.js';
 import forceGraph from '../force-graph.js';
 import { cleanGraph } from './graph-data/graph-data-integrity.js';
 import DEBUG_MODE from '../../debug-mode.js';
-import { fetchCoordinateRange } from './fetch/fetch-coordinate-range.js';
 import { recordsManager } from './records/records-manager.js';
 
 // TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
@@ -133,54 +132,6 @@ export function removeNode(id, graphData) {
   );
 }
 
-function retrieveBubbleEnds(graphData, subgraph, fetchBubbleEndFn) {
-  const ends = [];
-  const subgraphNodes = subgraph.nodes.filter(node => node.type === 'bubble:end').map(node => node.id);
-
-  for (const link of subgraph.links) {
-    if (link.record.isSelfDestructLink) {
-
-      // active nodes are in the graphData we check if they are in the subgraph
-      const sourceActive = isNodeActive(link.sourceId) || subgraphNodes.includes(link.sourceId);
-      const targetActive = isNodeActive(link.targetId) || subgraphNodes.includes(link.targetId);
-
-      if (sourceActive && targetActive) {
-        if (link.targetId === link.sourceId) {
-          ends.push([link.sourceId, null]);
-        } else {
-          ends.push([link.targetId, link.sourceId]);
-        }
-      }
-    }
-  }
-
-  const fetchPromises = [];
-  for (const [node1, node2] of ends) {
-
-    fetchPromises.push(
-      fetchBubbleEndFn(node1).then(endData => {
-        const endSubgraph = deserializeGraph(endData);
-        console.log(`Fetched bubble end for ${node1} / ${node2}`, endData);
-        subgraph.nodes.push(...endSubgraph.nodes);
-        subgraph.links.push(...endSubgraph.links);
-        addInsideContents(node1, endData);
-        if (node2) {
-          addInsideContents(node2, endData);
-        }
-      })
-    );
-
-    removeNode(node1, graphData);
-    removeNode(node1, subgraph);
-    if (node2) {
-      removeNode(node2, subgraph);
-      removeNode(node2, graphData);
-    }
-  }
-
-  return fetchPromises;
-}
-
 export function updateForceGraph(graphData) {
   cleanGraph(graphData);
 
@@ -261,17 +212,6 @@ export function getNodeComponents(id) {
   };
 }
 
-function replaceData(forceGraph, rawGraph) {
-  const graphData = deserializeGraph(rawGraph);
-  if (DEBUG_MODE) {
-    console.log("[data-manager] Creating force graph with data:", graphData);
-  }
-
-  forceGraph.clearGraphData();
-  forceGraph.addGraphData(graphData);
-  
-  eventBus.publish("graph:data-replaced", forceGraph);
-}
 
 export function setUpDataManager(forceGraph) {
   setUpGraphDataManager(forceGraph);
@@ -281,10 +221,12 @@ export function setUpDataManager(forceGraph) {
     const coordinates = { genome, chromosome, start, end };
     if (forceGraph.equalsCoords(coordinates)) return;
 
-    const rawGraph = await fetchCoordinateRange(coordinates);
-    if (!rawGraph) return;
+    const graphRecords = await recordsManager.getByCoordinate(coordinates);
+    console.log("Fetched records:", graphRecords);
+    if (!graphRecords) return;
     forceGraph.coords = coordinates;
-    replaceData(forceGraph, rawGraph);
+    forceGraph.replaceRecords(graphRecords);
+    eventBus.publish("graph:data-replaced", forceGraph);
 
   });
 }

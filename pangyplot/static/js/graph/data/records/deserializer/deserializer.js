@@ -32,8 +32,6 @@ function deserializeNodes(rawNodes) {
 }
 
 export function deserializeGraph(rawGraph, parentId = null) {
-    const nodes = [];
-    const links = [];
 
     const newNodeRecords = deserializeNodes(rawGraph.nodes);
     const nodeRecords = updateExistingNodeRecords(newNodeRecords, parentId);
@@ -41,8 +39,6 @@ export function deserializeGraph(rawGraph, parentId = null) {
     for (const nodeRecord of nodeRecords) {
         const elements = createNodeElements(nodeRecord);
         nodeRecord.elements = elements;
-        nodes.push(...nodeRecord.elements.nodes);
-        links.push(...nodeRecord.elements.links);
     }
 
     const newLinkRecords = deserializeLinks(rawGraph.links);
@@ -50,10 +46,9 @@ export function deserializeGraph(rawGraph, parentId = null) {
     for (const linkRecord of linkRecords) {
         const elements = createLinkElements(linkRecord);
         linkRecord.elements = elements;
-        links.push(...linkRecord.elements.links);
     }
 
-    return { nodes, links };
+    return { nodes: nodeRecords, links: linkRecords.filter(l => !l.isIncomplete()) };
 }
 
 export function deserializeBubbleSubgraph(rawBubbleGraph, bubbleId) {

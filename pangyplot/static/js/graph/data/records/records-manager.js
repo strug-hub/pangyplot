@@ -1,6 +1,7 @@
 import { getChildSubgraph } from './records-manager-implementation.js';
 import { getNodeRecord, getLinkRecord } from './records-manager-implementation.js';
 import { getConnectingLinkRecords } from './records-manager-implementation.js';
+import { fetchCoordinateRange } from './fetch/fetch-coordinate-range.js';
 
 //todo: lazily load pangyplot:
 // all queries should be sent to records manager
@@ -11,7 +12,15 @@ class RecordsManager {
     constructor() {
     }
 
+    async getByCoordinate(coords){
+        return await fetchCoordinateRange(coords);
+    }
 
+    async getChildSubgraph(nodeId) {
+        return await getChildSubgraph(nodeId);
+    }
+
+    
     getNode(id) {
         return getNodeRecord(id);
     }
@@ -24,9 +33,7 @@ class RecordsManager {
         return getConnectingLinkRecords(id);
     }
 
-    getChildSubgraph(nodeId) {
-        return getChildSubgraph(nodeId);
-    }
+
 }
 
 export const recordsManager = new RecordsManager();
