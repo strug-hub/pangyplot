@@ -1,5 +1,6 @@
 import { getChildSubgraph } from './records-manager-implementation.js';
-import { getNodeRecord, getConnectingLinkRecords, linkRecordLookup, nodeAdjacencyLookup } from './records-manager-implementation.js';
+import { getNodeRecord, getLinkRecord } from './records-manager-implementation.js';
+import { getConnectingLinkRecords } from './records-manager-implementation.js';
 
 //todo: lazily load pangyplot:
 // all queries should be sent to records manager
@@ -13,6 +14,10 @@ class RecordsManager {
 
     getNode(id) {
         return getNodeRecord(id);
+    }
+
+    getLink(id) {
+        return getLinkRecord(id);
     }
 
     getLinks(id) {

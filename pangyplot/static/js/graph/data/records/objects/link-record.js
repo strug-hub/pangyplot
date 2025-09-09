@@ -1,12 +1,16 @@
+import { Record } from './record.js';
 
-export class LinkRecord {
+export class LinkRecord extends Record {
     constructor(rawLink, sourceRecord, targetRecord) {
 
-        this.sourceRecord = sourceRecord;
-        this.targetRecord = targetRecord;
-        this.linkElements = [];
-        this.active = true;
-        
+        super();
+
+        this.sourceRecord = sourceRecord || null;
+        this.targetRecord = targetRecord || null;
+        this.isIncomplete = function() {
+            return this.sourceRecord === null || this.targetRecord === null;
+        }
+
         // -----
 
         this.id = rawLink.id;
@@ -24,9 +28,6 @@ export class LinkRecord {
         this.isSelfDestructLink = rawLink.type == "self-destruct";
     }
 
-    isIncomplete() {
-        return !this.sourceRecord || !this.targetRecord;
-    }
 
     get isChainLink() {
         return this.type === "chain";

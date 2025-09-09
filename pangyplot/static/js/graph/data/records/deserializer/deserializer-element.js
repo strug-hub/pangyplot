@@ -102,9 +102,9 @@ export function createLinkElements(linkRecord) {
     const isRef = sourceRecord.ranges.length > 0 || targetRecord.ranges.length > 0;
 
     const sourceIid = linkRecord.fromStrand === "+" ?
-        sourceRecord.nodeElements[0].tail() : sourceRecord.nodeElements[0].head();
+        sourceRecord.elements.nodes[0].tail() : sourceRecord.elements.nodes[0].head();
     const targetIid = linkRecord.toStrand === "+" ? 
-        targetRecord.nodeElements[0].head() : targetRecord.nodeElements[0].tail();
+        targetRecord.elements.nodes[0].head() : targetRecord.elements.nodes[0].tail();
 
     var length = 1;
     if (linkRecord.seqLength > 0) {

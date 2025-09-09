@@ -220,11 +220,15 @@ export function isNodeActive(id) {
 
 export function getNodeElements(id) {
   const nodeRecord = recordsManager.getNode(id);
-  return nodeRecord != null ? Array.from(nodeRecord.nodeElements) : [];
+  return nodeRecord != null ? Array.from(nodeRecord.elements.nodes) : [];
 }
 export function getInsideNodeElements(id) {
   const nodeRecord = recordsManager.getNode(id);
-  return nodeRecord != null ? Array.from(nodeRecord.inside) : [];
+  const insideElements = [];
+  for (const record of nodeRecord.inside) {
+    insideElements.push(...record.elements.nodes);
+  }
+  return insideElements;
 }
 
 
@@ -232,7 +236,8 @@ export function getLinkElements(nodeId) {
   const connectingLinks = recordsManager.getLinks(nodeId);
   const linkElements = [];
   for (const linkRecord of connectingLinks) {
-    linkElements.push(...linkRecord.linkElements);
+
+    linkElements.push(...linkRecord.elements.links);
   }
 
 

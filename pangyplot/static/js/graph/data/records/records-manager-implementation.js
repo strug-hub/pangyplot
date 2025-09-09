@@ -20,8 +20,8 @@ export function getNodeRecord(id) {
 export function getLinkRecord(id) {
   const linkRecord = linkRecordLookup.get(id) || null;
   if (!linkRecord || linkRecord.isIncomplete()) return null;
-  if (linkRecord.linkElements.length === 0) {
-    linkRecord.linkElements = createLinkElements(linkRecord);
+  if (!linkRecord.hasElements()) {
+    linkRecord.elements = createLinkElements(linkRecord);
   }
   return linkRecord;
 }
@@ -126,10 +126,10 @@ export function getChildSubgraph(nodeId) {
   const targetLinkRecords = targetNodeRecords
     .flatMap(child => getConnectingLinkRecords(child.id, true));
 
-  const nodes = targetNodeRecords.map(record => record.nodeElements).flat();
+  const nodes = targetNodeRecords.map(record => record.elements.nodes).flat();
   const links = [
-    ...targetLinkRecords.map(record => record.linkElement),
-    ...targetNodeRecords.flatMap(record => record.linkElements)
+    ...targetLinkRecords.map(record => record.elements.links),
+    ...targetNodeRecords.flatMap(record => record.elements.links)
   ];
 
   console.log("Child subgraph:", nodeId, targetNodeRecords, targetLinkRecords);

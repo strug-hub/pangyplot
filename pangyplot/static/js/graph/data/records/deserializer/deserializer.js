@@ -1,6 +1,6 @@
 import { updateExistingNodeRecords, updateExistingLinkRecords } from '../records-manager-implementation.js';
-import { SegmentRecord, BubbleRecord, BubbleEndRecord } from "../node-record.js";
-import { LinkRecord } from "../link-record.js";
+import { SegmentRecord, BubbleRecord, BubbleEndRecord } from "../objects/node-record.js";
+import { LinkRecord } from "../objects/link-record.js";
 import { createNodeElements, createLinkElements } from './deserializer-element.js';
 import { recordsManager } from '../records-manager.js';
 
@@ -40,18 +40,17 @@ export function deserializeGraph(rawGraph, parentId = null) {
 
     for (const nodeRecord of nodeRecords) {
         const elements = createNodeElements(nodeRecord);
-        nodeRecord.nodeElements = elements.nodes;
-        nodeRecord.linkElements = elements.links;
-        nodes.push(...nodeRecord.nodeElements);
-        links.push(...nodeRecord.linkElements);
+        nodeRecord.elements = elements;
+        nodes.push(...nodeRecord.elements.nodes);
+        links.push(...nodeRecord.elements.links);
     }
 
     const newLinkRecords = deserializeLinks(rawGraph.links);
     const linkRecords = updateExistingLinkRecords(newLinkRecords);
     for (const linkRecord of linkRecords) {
         const elements = createLinkElements(linkRecord);
-        linkRecord.linkElements = elements.links;
-        links.push(...linkRecord.linkElements);
+        linkRecord.elements = elements;
+        links.push(...linkRecord.elements.links);
     }
 
     return { nodes, links };

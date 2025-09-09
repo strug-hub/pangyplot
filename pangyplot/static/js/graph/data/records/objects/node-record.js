@@ -1,15 +1,12 @@
-export class NodeRecord {
+import { Record } from './record.js';
+
+export class NodeRecord extends Record {
     constructor(rawData, type) {
         if (new.target === NodeRecord) {
             throw new Error("Cannot instantiate abstract class NodeRecord directly.");
         }
 
-        this.nodeElements = [];
-        this.linkElements = [];
-        this.inside = new Set();
-        this.active = true;
-
-        // -----
+        super();
 
         this.id = rawData.id;
         this.type = type;
