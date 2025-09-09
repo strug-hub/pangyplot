@@ -1,4 +1,4 @@
-import { recordsManager } from "../records/records-manager.js";
+import recordsManager from "../records/records-manager.js";
 
 function deduplicateNodes(graphData) {
     const uniqueNodes = new Set();

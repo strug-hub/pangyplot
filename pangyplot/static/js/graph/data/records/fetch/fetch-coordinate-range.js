@@ -22,7 +22,7 @@ export async function fetchCoordinateRange(coords) {
     }
 
   } catch (error) {
-    console.warn("[fetch-coordinate-range] Error in coordinate range query:", error);
+    console.warn("[fetch-coordinate-range] error:", error);
   } finally {
     hideLoader();
     return graphRecords;

@@ -116,9 +116,13 @@ export function updateExistingLinkRecords(linkRecords) {
   return records;
 }
 
-export function getChildSubgraph(nodeId) {
+export async function getChildSubgraph(nodeId) {
 
   //check records first, get bubble if can't find
+  //await fetchBubbleSubgraph(nodeId);
+
+  const bubbleData = await fetchBubbleSubgraph(nodeId);
+  if (bubbleData) return bubbleData;
 
   const parentRecord = getNodeRecord(nodeId);
   if (parentRecord === null) return { nodes: [], links: [] };

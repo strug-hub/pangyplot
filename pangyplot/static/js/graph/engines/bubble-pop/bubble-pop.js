@@ -1,5 +1,5 @@
 import { buildUrl, fetchData } from '../../../utils/network-utils.js';
-import { processBubbleContents } from './bubble-pop-data.js';
+import recordsManager from '../../data/records/records-manager.js';
 import forceGraph from '../../force-graph.js';
 
 let queue = [];
@@ -31,13 +31,31 @@ async function drain() {
       const bubble = queue.shift();
       enqueued.delete(bubble.id);
 
+      recordsManager.getBubbleSubgraph(bubble.id);
+
       try {
-        const params = { id: bubble.id, ...forceGraph.coords };
-        const url = buildUrl('/pop', params);
-        const data = await fetchData(url, 'subgraph');
-        await processBubbleContents(forceGraph, bubble.id, data);
+
+        const graphBubbleRecords = await recordsManager.getBubbleSubgraph(bubble.id, forceGraph.coords);
+        
+        if (!graphBubbleRecords)
+          throw new Error("No data returned");
+          
+        const nodes = [...graphBubbleRecords.bubble.nodes].map(r => r.elements.nodes).flat();
+        const links = [...graphBubbleRecords.bubble.nodes, //nodeLinks in NodeRecords
+                       ...graphBubbleRecords.bubble.links,
+                       ...graphBubbleRecords.source.links,
+                       ...graphBubbleRecords.sink.links].map(r => r.elements.links).flat();
+
+        console.log("[bubble-pop] deserialized ", { nodes, links });
+
+        forceGraph.removeNodeById(bubble.id);
+        forceGraph.addGraphData({ nodes, links });
+
+        forceGraph.setSelected(nodes);
+
+
       } catch (err) {
-        console.warn('[bubble-pop] failed', bubble.id, err);
+        console.warn('[bubble-pop] failed:', bubble.id, err);
       }
     }
   } finally {

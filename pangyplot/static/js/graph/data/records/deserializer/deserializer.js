@@ -2,7 +2,7 @@ import { updateExistingNodeRecords, updateExistingLinkRecords } from '../records
 import { SegmentRecord, BubbleRecord, BubbleEndRecord } from "../objects/node-record.js";
 import { LinkRecord } from "../objects/link-record.js";
 import { createNodeElements, createLinkElements } from './deserializer-element.js';
-import { recordsManager } from '../records-manager.js';
+import recordsManager from '../records-manager.js';
 
 function deserializeLinks(rawLinks) {
     const linkRecords = [];

@@ -1,10 +1,8 @@
 import eventBus from '../../utils/event-bus.js';
 import setUpGraphDataManager from './graph-data/graph-data-manager.js';
-import { deserializeGraph } from './records/deserializer/deserializer.js';
 import forceGraph from '../force-graph.js';
 import { cleanGraph } from './graph-data/graph-data-integrity.js';
-import DEBUG_MODE from '../../debug-mode.js';
-import { recordsManager } from './records/records-manager.js';
+import recordsManager  from './records/records-manager.js';
 
 // TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
 
