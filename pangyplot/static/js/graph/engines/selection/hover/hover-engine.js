@@ -9,8 +9,9 @@ const MAX_HOVER_DISTANCE = 40;
 
 function getHoverLabelText(node) {
   if (DEBUG_MODE) {
-    return faLabel(node.id);
-    //return node.iid;
+    const nodeLabel = faLabel(node.id);
+    const label = `ID: ${nodeLabel} (x: ${node.x.toFixed(1)}, y: ${node.y.toFixed(1)})`;
+    return label;
   }
 
   return faLabel(node.id);
@@ -45,7 +46,7 @@ function attemptHover(event, forceGraph, tooltip) {
     tooltip.hide();
     return;
   }
-
+  
   forceGraph.setHighlighted([nearestNode]);
   forceGraph.setHoveredNode(nearestNode);
 

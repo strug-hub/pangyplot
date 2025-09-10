@@ -55,6 +55,8 @@ function colorByType(type){
             return colorState.nodeColors[0];
         case "bubble":
             return colorState.nodeColors[1];
+        case "bubble:end":
+            return colorState.nodeColors[2];
         case "chain":
             return colorState.nodeColors[2];
         case "link":

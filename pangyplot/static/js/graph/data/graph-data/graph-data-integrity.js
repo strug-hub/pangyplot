@@ -42,9 +42,19 @@ export function removeInvalidLinks(graphData) {
     graphData.links = graphData.links.filter(l => nids.has(l.sourceIid) && nids.has(l.targetIid));
 }
 
+export function sortLinks(graphData) {
+  graphData.links.sort((a, b) => {
+    if (a.class === "node" && b.class !== "node") return 1;
+    if (a.class !== "node" && b.class === "node") return -1;
+    return 0; // otherwise keep their relative order
+  });
+}
+
+
 export function cleanUpGraphData(graphData) {
     selfDestructLinks(graphData);
     deduplicateNodes(graphData);
     deduplicateLinks(graphData);
     removeInvalidLinks(graphData);
+    sortLinks(graphData);
 }

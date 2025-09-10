@@ -173,7 +173,7 @@ export function setUpDataManager(forceGraph) {
     forceGraph.coords = coordinates;
 
     const graphData = recordsManager.extractElementsFromRecords(graphRecords);
-    forceGraph.graphData(graphData);
+    forceGraph.replaceGraphData(graphData);
 
     eventBus.publish("graph:data-replaced", forceGraph);
 

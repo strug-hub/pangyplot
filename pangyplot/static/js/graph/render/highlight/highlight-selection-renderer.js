@@ -1,7 +1,6 @@
 import eventBus from "../../../utils/event-bus.js";
 import recordsManager from "../../data/records/records-manager.js";
 import { colorState } from "../color/color-state.js";
-import { getNodeComponents } from "../../data/data-manager.js";
 import { highlightNodePainter, outlineNodePainter } from "../painter/highlight-node-painter.js";
 import { highlightLinkPainter } from "../painter/highlight-link-painter.js";
 
@@ -48,12 +47,17 @@ export function renderHighlightEffect(forceGraph) {
 
 export function setUpHighlightSelectionRenderer(forceGraph) {
 
-  function cache(nodes) {
-    if (nodes === null) return {nodes: [], links: []};
-    const ids = nodes.map(n => n.id);
-    const nodeRecords = recordsManager.getNodes(ids)
-    return recordsManager.extractElementsFromRecords(nodeRecords);
-  }
+function cache(nodes) {
+  if (nodes === null) return { nodes: [], links: [] };
+
+  const ids = nodes.map(n => n.id);
+  const nodeRecords = recordsManager.getNodes(ids);
+
+  const graphData = recordsManager.extractElementsFromRecords(nodeRecords);
+
+  return { nodes: nodes, links: graphData.links };
+}
+
 
   eventBus.subscribe('graph:selection-changed', (nodes) => {
     selectionCache = cache(nodes);

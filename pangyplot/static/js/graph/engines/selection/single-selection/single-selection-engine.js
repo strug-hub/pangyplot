@@ -25,7 +25,8 @@ function attemptSelection(event, forceGraph) {
     }
 
       forceGraph.setSelected([hoveredNode]);
-}
+      forceGraph.setHighlighted(null);
+    }
 
 export default function setUpSingleSelectEngine(forceGraph) {
 

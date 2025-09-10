@@ -7,11 +7,6 @@ function addGraphData(forceGraph, newData) {
     graphData.nodes.push(...newData.nodes);
     graphData.links.push(...newData.links);
 
-    forceGraph.graphData({
-        nodes: [...graphData.nodes, ...newData.nodes],
-        links: [...graphData.links, ...newData.links]
-    });
-
     cleanUpGraphData(graphData);
     forceGraph.graphData(graphData);
 }
@@ -26,8 +21,16 @@ function removeNode(forceGraph, id) {
     );
 }
 
+function replaceGraphData(forceGraph, graphData) {
+    cleanUpGraphData(graphData)   
+    forceGraph.graphData(graphData);
+}
+
 export default function setUpGraphDataManager(forceGraph) {
 
+    forceGraph.replaceGraphData = function (graphData) {
+        replaceGraphData(this, graphData);
+    }
 
     forceGraph.addGraphData = function (graphData) {
         addGraphData(this, graphData);

@@ -16,8 +16,10 @@ function renderPreFrame(ctx, forceGraph, svg=null) {
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
     renderGenes(ctx, forceGraph, svg);
-    renderSelectionEffect(forceGraph);
+
+    //select after highlight
     renderHighlightEffect(forceGraph);
+    renderSelectionEffect(forceGraph);
 
 }
 

@@ -26,8 +26,8 @@ class NodeSet {
         return [...this.nodes];
     }
 
-    idList() {
-        return [...this.nodes].map(node => node.id);
+    idSet() {
+        return new Set([...this.nodes].map(node => node.id));
     }
 
     iidList() {
