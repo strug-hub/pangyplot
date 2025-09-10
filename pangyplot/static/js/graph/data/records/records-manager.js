@@ -17,7 +17,11 @@ class RecordsManager {
     //todo: getChildSubgraph to try records first, then fetch if needed
     return await fetchBubbleSubgraph(bubbleId);
   }
-
+  
+  getChildSubgraph(nodeId) {
+    return getChildSubgraph(nodeId);
+    //possibly fetch if not in records? - does this ever happen?
+  }
 
   getNode(id) {
     return getNodeRecord(id);
@@ -31,8 +35,8 @@ class RecordsManager {
     return getLinkRecord(id);
   }
 
-  getLinks(id) {
-    return getConnectingLinkRecords(id);
+  getLinks(nodeId) {
+    return getConnectingLinkRecords(nodeId);
   }
 
   extractElementsFromRecords(recordObj) {

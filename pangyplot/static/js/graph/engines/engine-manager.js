@@ -9,6 +9,8 @@ import setUpGeneAnnotationEngine from './gene-annotation/gene-annotation-engine.
 import setUpPathHighlightEngine from './path-highlight/path-highlight-engine.js';
 import setUpAnchorEndsEngine from './anchor-ends/anchor-ends-engine.js';
 import setUpInformationEngine from './information/information-engine.js';
+import setUpReheatEngine from './reheat/reheat-engine.js';
+
 import { debugStatusUpdate } from './information/debug/debug-information-engine.js';
 import { pathHighlightTick } from './path-highlight/animation/animation-tick.js';
 
@@ -30,7 +32,8 @@ export default function setUpEngineManager(forceGraph) {
     setUpPathHighlightEngine(forceGraph);
     setUpAnchorEndsEngine(forceGraph);
     setUpInformationEngine(forceGraph);
-
+    setUpReheatEngine(forceGraph);
+    
     forceGraph.onEngineTick(() => {
         //todo: create abstract system for adding ticks, sent to each engine above.
         debugStatusUpdate(forceGraph);

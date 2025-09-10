@@ -104,25 +104,16 @@ export function updateExistingLinkRecords(linkRecords) {
   return records;
 }
 
-export async function getChildSubgraph(nodeId) {
-
-  //check records first, get bubble if can't find
-  //await fetchBubbleSubgraph(nodeId);
-
-  const bubbleData = await fetchBubbleSubgraph(nodeId);
-  if (bubbleData) return bubbleData;
+export function getChildSubgraph(nodeId) {
 
   const parentRecord = getNodeRecord(nodeId);
-  if (parentRecord === null) return { nodes: [], links: [] };
+  if (parentRecord === null) return null;
 
   const nodeRecords = parentRecord.childRecords;
   const linkRecords = nodeRecords
     .flatMap(c => getConnectingLinkRecords(c.id));
 
-  const nodes = [...nodeRecords, ...linkRecords].map(r => r.elements.nodes).flat();
-  const links = [...nodeRecords, ...linkRecords].map(r => r.elements.links).flat();
-
-  return { nodes, links };
+  return { nodes: nodeRecords, links: linkRecords};
 }
 
 const inspector = installRecordsInspector({

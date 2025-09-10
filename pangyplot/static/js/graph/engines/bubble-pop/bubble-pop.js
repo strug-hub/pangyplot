@@ -1,4 +1,3 @@
-import { buildUrl, fetchData } from '../../../utils/network-utils.js';
 import recordsManager from '../../data/records/records-manager.js';
 import forceGraph from '../../force-graph.js';
 
@@ -52,7 +51,7 @@ async function drain() {
         forceGraph.addGraphData({ nodes, links });
 
         forceGraph.setSelected(nodes);
-
+        forceGraph.setHighlighted(null);
 
       } catch (err) {
         console.warn('[bubble-pop] failed:', bubble.id, err);

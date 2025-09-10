@@ -1,25 +1,27 @@
 import recordsManager from "../records/records-manager.js";
 
 export function selfDestructLinks(graphData) {
-    const nids = new Set(
-        graphData.nodes.map(node => node.iid)
-    );
+    const nids = new Set(graphData.nodes.map(node => node.iid));
 
     const selfDestruct = graphData.links.filter(link => 
         link.record.isSelfDestructLink && nids.has(link.sourceIid) && nids.has(link.targetIid));
     
     if (selfDestruct.length === 0) return;
 
-    const removeIds = [...selfDestruct.map(link => link.sourceId), ...selfDestruct.map(link => link.targetId)];
-    console.log("Removing nodes:", removeIds);
-    graphData.nodes = graphData.nodes.filter(node => !removeIds.includes(node.id));
+    const removeIds = new Set([
+        ...selfDestruct.map(link => link.sourceId), 
+        ...selfDestruct.map(link => link.targetId)
+    ]);
 
     for (const id of removeIds) {
-        const { nodes, links } = recordsManager.getChildSubgraph(id);
+        const subgraphRecords = recordsManager.getChildSubgraph(id);
+        const { nodes, links } = recordsManager.extractElementsFromRecords(subgraphRecords);
         graphData.nodes.push(...nodes);
         graphData.links.push(...links);
     }
 
+    console.log("Removing nodes:", removeIds);
+    graphData.nodes = graphData.nodes.filter(node => !removeIds.has(node.id));
     // links will be handled by removeInvalidLinks
 
     return true;

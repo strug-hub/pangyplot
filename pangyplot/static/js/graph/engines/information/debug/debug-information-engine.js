@@ -8,6 +8,7 @@ var frameTimes = [];
 var frameRate = 0;
 
 var lastMousePosition = { x: 0, y: 0 };
+var lastAlpha = 0;
 
 function calculateFPS() {
     const now = Date.now();
@@ -41,6 +42,7 @@ function getDebugStatus(forceGraph) {
         screenY: y.toFixed(ndigits),
         graphX: coordinates.x.toFixed(ndigits),
         graphY: coordinates.y.toFixed(ndigits),
+        alpha: lastAlpha.toFixed(3),
         zoom: `${getZoomFactor(ctx).toFixed(3)}`,
         scale: `${getScaleFactor(ctx).toFixed(3)}`,
         dampzoom: `${getDampenedZoomFactor(ctx).toFixed(3)}`
@@ -57,6 +59,8 @@ export function debugStatusUpdate(forceGraph) {
 
 export function setUpDebugInformationEngine(forceGraph) {
     if (!DEBUG_MODE) return;
+
+    forceGraph.d3Force('getAlpha', alpha => lastAlpha = alpha);
 
     forceGraph.element.addEventListener('mousemove', (event) => {
         lastMousePosition.x = event.offsetX;
