@@ -7,7 +7,8 @@ import { basicLinkPainter } from './painter/basic-link-painter.js';
 import { basicNodePainter } from './painter/basic-node-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
-import { highlightSelection } from './highlight/select-render.js';
+import { setUpHighlightSelectionRenderer } from './highlight/highlight-selection-renderer.js';
+import { renderHoverEffect, renderHighlightEffect, renderSelectionEffect } from './highlight/highlight-selection-renderer.js';
 import { renderGenes} from './highlight/gene-annotation-gene-render.js';
 
 function renderPreFrame(ctx, forceGraph, svg=null) {
@@ -15,7 +16,9 @@ function renderPreFrame(ctx, forceGraph, svg=null) {
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
     renderGenes(ctx, forceGraph, svg);
-    highlightSelection(forceGraph);
+    renderSelectionEffect(forceGraph);
+    renderHighlightEffect(forceGraph);
+
 }
 
 function renderPostFrame(ctx, forceGraph, svg=null) {
@@ -23,6 +26,7 @@ function renderPostFrame(ctx, forceGraph, svg=null) {
     //searchSequenceEngineUpdate(ctx, forceGraph);
     renderCustomLabels(ctx, forceGraph, svg);
     renderDragInfluenceCircle(forceGraph);
+    renderHoverEffect(forceGraph);
 }
 
 export function renderFullFrame(ctx, forceGraph, svg=null) {
@@ -41,6 +45,8 @@ export function setUpRenderManager(forceGraph) {
     }).then(() => {
         ctx.font = `1000px "Rubik", "Comic Sans MS", Arial, sans-serif`;
     });
+
+    setUpHighlightSelectionRenderer(forceGraph);
 
     forceGraph
         .onRenderFramePre((ctx) => renderPreFrame(ctx, forceGraph))

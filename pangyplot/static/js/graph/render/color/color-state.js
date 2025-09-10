@@ -1,7 +1,8 @@
 export const colorState = {
-    highlightColor: "#FAB3AE", // #FAB3AE,
-    selectedColor: "#F44336", // #F1A307
+    hoverColor: "#aca9a6",
+    selectedColor: "#F44336",
 
+    highlightColor: "#FAB3AE",
     highlightLink: "#FF0000",
 
     background: "#373737",

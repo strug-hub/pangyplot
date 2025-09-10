@@ -14,7 +14,6 @@ export function isInChainMode() {
 }
 
 export function canSingleSelect() {
-  console.log("canSingleSelect", !selectionState.multiSelectMode, forceGraph.isSelectionMode());
   return !selectionState.multiSelectMode && forceGraph.isSelectionMode();
 }
 

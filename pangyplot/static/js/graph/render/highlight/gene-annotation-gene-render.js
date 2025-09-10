@@ -1,5 +1,4 @@
 import { getNodeAnnotations, getGene } from "../../engines/gene-annotation/gene-annotation-state.js";
-import { getScaleFactor } from "../render-scaling.js";
 import { highlightNodePainter } from "../painter/highlight-node-painter.js";
 import { highlightLinkPainter } from "../painter/highlight-link-painter.js";
 
