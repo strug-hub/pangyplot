@@ -14,6 +14,27 @@
     pointer-events: none;
 }
 
+.graph-container-empty-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: xx-large;
+    color: var(--lighter-green);
+    text-shadow:
+        -1px -1px 0 var(--light-green),
+         1px -1px 0 var(--light-green),
+        -1px  1px 0 var(--light-green),
+         1px  1px 0 var(--light-green);
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
+
+
 .graph-container-empty{
     height: 500px;
     background-color: var(--lighter-green);

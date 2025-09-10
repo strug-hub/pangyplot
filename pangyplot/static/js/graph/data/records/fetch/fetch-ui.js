@@ -1,9 +1,20 @@
+let showTimeout = null;
 export function showLoader() {
-    document.querySelector('.loader').style.display = 'block';
-    //document.querySelector('.loader-filter').style.display = 'block';
+  if (showTimeout) clearTimeout(showTimeout);
+
+  showTimeout = setTimeout(() => {
+    document.querySelector('.loader')?.classList.remove("hidden");
+    document.querySelector('.loader-filter')?.classList.remove("hidden");
+    showTimeout = null; // reset
+  }, 100);
 }
 
 export function hideLoader() {
-    document.querySelector('.loader').style.display = 'none';
-    document.querySelector('.loader-filter').style.display = 'none';
+  if (showTimeout) {
+    clearTimeout(showTimeout);
+    showTimeout = null;
+  }
+
+  document.querySelector('.loader')?.classList.add("hidden");
+  document.querySelector('.loader-filter')?.classList.add("hidden");
 }

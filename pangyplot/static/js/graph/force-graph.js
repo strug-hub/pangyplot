@@ -7,11 +7,13 @@ import { setUpDataManager} from './data/data-manager.js';
 
 const forceGraphElement = document.getElementById("graph");
 const forceGraph = ForceGraph()(forceGraphElement);
-const forceGraphCanvas = document.querySelector('#graph-container canvas');
 
 document.addEventListener("DOMContentLoaded", function () {
 
+    const forceGraphCanvas = document.querySelector('#graph-container canvas');
+
     forceGraph.element = forceGraphElement;
+    forceGraph.element.classList.add("hidden");
     forceGraph.canvas = forceGraphCanvas;
 
     // Helper function to get the drawing context
@@ -48,9 +50,9 @@ document.addEventListener("DOMContentLoaded", function () {
     setUpUiManager(forceGraph);
 
     // wide muc4/20 region
-    let chrom="chr3"
-    let start=198347210
-    let end=198855552 // start+100000
+    let chrom="chr3";
+    let start=198347210;
+    let end=198855552; // start+100000
     
     // narrow muc4/20 region
     start=198543540;
@@ -61,8 +63,8 @@ document.addEventListener("DOMContentLoaded", function () {
     end=198595149;
 
     // inversion region
-    start=198376687
-    end=198692934
+    start=198376687;
+    end=198692934;
     
     const SERPINB5 = {genome: "GRCh38", chromosome:"chr18", start:63466958, end:63515085, genome: "GRCh38"};
     const PRSS2 = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000, genome: "GRCh38"};
@@ -71,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const BRCA2 = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
     const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
     const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010, genome: "GRCh38"};
-    
+
     eventBus.publish("ui:construct-graph", DAZ1);
 
 });
