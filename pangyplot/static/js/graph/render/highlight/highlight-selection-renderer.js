@@ -55,7 +55,7 @@ export function setUpHighlightSelectionRenderer(forceGraph) {
     return recordsManager.extractElementsFromRecords(nodeRecords);
   }
 
-  eventBus.subscribe('graph:selected-changed', (nodes) => {
+  eventBus.subscribe('graph:selection-changed', (nodes) => {
     selectionCache = cache(nodes);
   });
 

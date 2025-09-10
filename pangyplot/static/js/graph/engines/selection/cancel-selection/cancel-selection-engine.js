@@ -9,7 +9,7 @@ export default function setUpCancelSelectionEngine(forceGraph){
         selectionUpdated = false;
     });
 
-    eventBus.subscribe('graph:selected-changed', () => {
+    eventBus.subscribe('graph:selection-changed', () => {
         selectionUpdated = true;
     });
 

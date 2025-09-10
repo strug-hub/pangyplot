@@ -54,7 +54,7 @@ function buildDragCache(forceGraph) {
 
 export default function dragInfluenceForce(forceGraph) {
 
-  eventBus.subscribe('graph:selected-changed', () => {
+  eventBus.subscribe('graph:selection-changed', () => {
     cacheValid = false;
   });
 

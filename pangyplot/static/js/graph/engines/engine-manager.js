@@ -8,7 +8,8 @@ import setUpSequenceSearchEngine from './sequence-search/sequence-search-engine.
 import setUpGeneAnnotationEngine from './gene-annotation/gene-annotation-engine.js';
 import setUpPathHighlightEngine from './path-highlight/path-highlight-engine.js';
 import setUpAnchorEndsEngine from './anchor-ends/anchor-ends-engine.js';
-import { statusUpdate } from '../data/graph-status.js';
+import setUpInformationEngine from './information/information-engine.js';
+import { debugStatusUpdate } from './information/debug/debug-information-engine.js';
 import { pathHighlightTick } from './path-highlight/animation/animation-tick.js';
 
 export default function setUpEngineManager(forceGraph) {
@@ -28,9 +29,11 @@ export default function setUpEngineManager(forceGraph) {
     setUpGeneAnnotationEngine(forceGraph);
     setUpPathHighlightEngine(forceGraph);
     setUpAnchorEndsEngine(forceGraph);
+    setUpInformationEngine(forceGraph);
 
     forceGraph.onEngineTick(() => {
-        statusUpdate(forceGraph);
+        //todo: create abstract system for adding ticks, sent to each engine above.
+        debugStatusUpdate(forceGraph);
         pathHighlightTick(forceGraph);
         // todo: searchSequenceEngineRerun();
     });

@@ -19,6 +19,8 @@ function getHoverLabelText(node) {
 function attemptHover(event, forceGraph, tooltip) {
   if (!canHighlight()) {
     tooltip.hide();
+    forceGraph.setHighlighted(null);
+    forceGraph.setHoveredNode(null);
     return;
   }
 

@@ -1,7 +1,6 @@
 import setUpMultiSelectionEngine from './multi-selection/multi-selection-engine.js';
 import setUpHoverEngine from './hover/hover-engine.js';
 import setUpSingleSelectEngine from './single-selection/single-selection-engine.js';
-import setUpSelectedInformationEngine from './selected-information/selected-information-engine.js';
 import setUpCancelSelectionEngine from './cancel-selection/cancel-selection-engine.js';
 import { flipChainMode } from './selection-state.js';
 import eventBus from '../../../utils/event-bus.js';
@@ -22,7 +21,7 @@ export default function setUpSelectionEngine(forceGraph) {
             this.selected.addAll(nodes);
         }
 
-        eventBus.publish('graph:selected-changed', nodes);
+        eventBus.publish('graph:selection-changed', nodes);
     };
 
     forceGraph.setHighlighted = function (nodes) {
@@ -40,7 +39,6 @@ export default function setUpSelectionEngine(forceGraph) {
     setUpSingleSelectEngine(forceGraph);
     setUpMultiSelectionEngine(forceGraph);
     setUpCancelSelectionEngine(forceGraph);
-    setUpSelectedInformationEngine(forceGraph);
 
     forceGraph.element.addEventListener('keydown', (event) => {
         if (event.key === 'c' || event.key === 'C') {

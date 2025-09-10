@@ -18,5 +18,5 @@ export function canSingleSelect() {
 }
 
 export function canHighlight() {
-  return !selectionState.multiSelectMode && forceGraph.isSelectionMode() && !forceGraph.isDragging();
+  return !selectionState.multiSelectMode && !forceGraph.isPanZoomMode() && !forceGraph.isDragging();
 }

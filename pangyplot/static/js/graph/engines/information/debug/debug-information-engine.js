@@ -1,14 +1,15 @@
-import { updateDebugInformation } from '../../ui/tabs/information-panel.js';
-import { getZoomFactor, getScaleFactor, getDampenedZoomFactor } from '../render/render-scaling.js';
+import DEBUG_MODE from '../../../../debug-mode.js';
 
-var frameRate = 0;
-var lastMousePosition = { x: 0, y: 0 };
+import { updateDebugInformation } from '../../../../ui/tabs/information-panel.js';
+import { getZoomFactor, getScaleFactor, getDampenedZoomFactor } from '../../../render/render-scaling.js';
 
 //average across last frames
 var frameTimes = [];
+var frameRate = 0;
+
+var lastMousePosition = { x: 0, y: 0 };
 
 function calculateFPS() {
-
     const now = Date.now();
     frameTimes.push(now);
 
@@ -23,23 +24,7 @@ function calculateFPS() {
     }
 }
 
-var isMouseListenerSetUp = false;
-function setupMouseListener(forceGraph) {
-    if (isMouseListenerSetUp) return;
-    forceGraph.element.addEventListener('mousemove', (event) => {
-        lastMousePosition.x = event.offsetX;
-        lastMousePosition.y = event.offsetY;
-    });
-    isMouseListenerSetUp = true;
-}
-
-export function statusUpdate(forceGraph) {
-    calculateFPS();
-    updateDebugInformation(getStatus(forceGraph));
-    setupMouseListener(forceGraph);
-}
-
-function getStatus(forceGraph) {
+function getDebugStatus(forceGraph) {
     const ndigits = 1;
 
     const ctx = forceGraph.canvas.ctx;
@@ -60,4 +45,21 @@ function getStatus(forceGraph) {
         scale: `${getScaleFactor(ctx).toFixed(3)}`,
         dampzoom: `${getDampenedZoomFactor(ctx).toFixed(3)}`
     };
+}
+
+export function debugStatusUpdate(forceGraph) {
+    if (!DEBUG_MODE) return;
+
+    calculateFPS();
+    const status = getDebugStatus(forceGraph);
+    updateDebugInformation(status);
+}
+
+export function setUpDebugInformationEngine(forceGraph) {
+    if (!DEBUG_MODE) return;
+
+    forceGraph.element.addEventListener('mousemove', (event) => {
+        lastMousePosition.x = event.offsetX;
+        lastMousePosition.y = event.offsetY;
+    });
 }

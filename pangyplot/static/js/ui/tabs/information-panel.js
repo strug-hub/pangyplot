@@ -35,7 +35,7 @@ function makeCopyable(value, { allowHTML = false, monospace = false, copyString 
   return el;
 }
 
-export function updateSelectedInfo(info) {
+export function updateSelectionInfo(info) {
   panel.innerHTML = ''; 
 
   appendRow({ label: 'Node:', valueEl: makeCopyable(info.id, { allowHTML: true }) });

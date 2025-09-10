@@ -1,4 +1,4 @@
-import { updateSelectedInfo } from "../../../../ui/tabs/information-panel.js";
+import { updateSelectionInfo } from "../../../../ui/tabs/information-panel.js";
 import { faLabel } from '../../../../utils/node-label.js';
 import eventBus from '../../../../utils/event-bus.js';
 
@@ -13,7 +13,7 @@ const blankInfo = {
     nInside: ''
 };
 
-function generateSelectedInfo(forceGraph){
+function generateSelectionInfo(forceGraph){
     const info = { ...blankInfo };
 
     const coords = forceGraph.coords;
@@ -21,13 +21,13 @@ function generateSelectedInfo(forceGraph){
     info.chromosome = coords.chromosome || '';
 
     if (forceGraph.selected.size !== 1) {
-        updateSelectedInfo(info);
+        updateSelectionInfo(info);
         return;
     }
 
     const node = forceGraph.selected.getAnyNode();
     if (!node) {
-        updateSelectedInfo(info);
+        updateSelectionInfo(info);
         return;
     }
     
@@ -40,12 +40,13 @@ function generateSelectedInfo(forceGraph){
     info.seq = node.seq || 'N?';
     info.nInside = node.record.size || '';
 
-    updateSelectedInfo(info);
+    updateSelectionInfo(info);
 }
 
-export default function setUpSelectedInformationEngine(forceGraph){
+export default function setUpSelectionInformationEngine(forceGraph){
 
-    eventBus.subscribe('graph:selected-changed', () => {
-        generateSelectedInfo(forceGraph);
+    //todo: allow for multiple selection
+    eventBus.subscribe('graph:selection-changed', () => {
+        generateSelectionInfo(forceGraph);
     });
 }
