@@ -1,23 +1,10 @@
 import eventBus from '../../utils/event-bus.js';
 import setUpGraphDataManager from './graph-data/graph-data-manager.js';
 import forceGraph from '../force-graph.js';
-import { cleanGraph } from './graph-data/graph-data-integrity.js';
+import { cleanUpGraphData } from './graph-data/graph-data-integrity.js';
 import recordsManager  from './records/records-manager.js';
 
 // TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
-
-export function addInsideContents(id, subgraph) {
-  const nodeRecord = recordsManager.getNode(id);
-  if (!nodeRecord) return;
-
-  const insideSet = nodeRecord.inside;
-  for (const element of subgraph.nodes) {
-    insideSet.add(element);
-  }
-}
-
-
-
 
 function getUnpoppedContents(bubbleId) {
   const bubbleRecord = recordsManager.getNode(bubbleId)
@@ -45,22 +32,6 @@ function getPoppedContents(bubbleId, recursive = false) {
     }
   }
   return { nodes, links };
-}
-
-function rescueLinks(subgraph) {
-  const nodes = subgraph.nodes;
-  const linkIids = new Set(subgraph.links.map(link => link.linkIid));
-  for (const node of nodes) {
-    for (const link of getLinkElements(node.id)) {
-
-      const linkIid = link.linkIid;
-      if (linkIids.has(linkIid)) continue;
-      linkIids.add(linkIid);
-      subgraph.links.push(link);
-    }
-  }
-
-  return subgraph;
 }
 
 export function unpopBubble(bubbleId) {
@@ -111,39 +82,17 @@ export function unpopBubble(bubbleId) {
   }
 
   for (const node of poppedContents.nodes) {
-    removeNode(node.id, graphData);
+    forceGraph.removeNodeById(node.id);
   }
 
   unpoppedContents.nodes.forEach(node => node.isActive = true);
   graphData.nodes.push(...unpoppedContents.nodes, ...recoverData.nodes);
   graphData.links.push(...unpoppedContents.links, ...recoverData.links);
 
-  updateForceGraph(graphData);
-}
-
-export function removeNode(id, graphData) {
-  graphData.nodes = graphData.nodes.filter(node => node.id !== id);
-
-  graphData.links = graphData.links.filter(link =>
-    (link.class === "node" && link.id !== id) ||
-    (link.class === "link" && link.source.id !== id && link.target.id !== id)
-  );
-}
-
-export function updateForceGraph(graphData) {
-  cleanGraph(graphData);
-
-  setAllInactive();
-
-  graphData.nodes.forEach(node => {
-    //setActive(node.id);
-    //node.fx = node.x;
-    //node.fy = node.y;
-  });
-
+  cleanUpGraphData(graphData);
   forceGraph.graphData(graphData);
-  eventBus.publish("graph:updated", true);
 }
+
 
 export function getActiveDeletionLinks() {
   const graphData = forceGraph.graphData();
@@ -210,7 +159,6 @@ export function getNodeComponents(id) {
   };
 }
 
-
 export function setUpDataManager(forceGraph) {
   setUpGraphDataManager(forceGraph);
 
@@ -223,7 +171,10 @@ export function setUpDataManager(forceGraph) {
     console.log("Fetched records:", graphRecords);
     if (!graphRecords) return;
     forceGraph.coords = coordinates;
-    forceGraph.replaceRecords(graphRecords);
+
+    const graphData = recordsManager.extractElementsFromRecords(graphRecords);
+    forceGraph.graphData(graphData);
+
     eventBus.publish("graph:data-replaced", forceGraph);
 
   });

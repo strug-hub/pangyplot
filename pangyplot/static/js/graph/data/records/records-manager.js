@@ -35,11 +35,31 @@ class RecordsManager {
     return getConnectingLinkRecords(id);
   }
 
-  extractElementsFromRecords(records) {
-    return {
-      nodes: records.flatMap(r => r.elements?.nodes ?? []),
-      links: records.flatMap(r => r.elements?.links ?? [])
-    };
+  extractElementsFromRecords(recordObj) {
+    if (!recordObj) {
+      return { nodes: [], links: [] };
+    }
+
+    // list of records
+    if (Array.isArray(recordObj)) {
+      return {
+        nodes: recordObj.flatMap(r => r.elements?.nodes ?? []),
+        links: recordObj.flatMap(r => r.elements?.links ?? [])
+      };
+    }
+
+    // graphRecord-like object
+    if (typeof recordObj === "object") {
+      const nodeParts = this.extractElementsFromRecords(recordObj.nodes ?? []);
+      const linkParts = this.extractElementsFromRecords(recordObj.links ?? []);
+
+      return {
+        nodes: [...nodeParts.nodes, ...linkParts.nodes],
+        links: [...nodeParts.links, ...linkParts.links]
+      };
+    }
+
+    return { nodes: [], links: [] };
   }
 }
 

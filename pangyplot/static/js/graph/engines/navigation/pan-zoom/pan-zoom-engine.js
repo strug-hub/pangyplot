@@ -6,7 +6,7 @@ export default function setUpPanZoomEngine(forceGraph) {
     const panZoomMode = {
         mode: "pan-zoom",
         keyCheck: e => e.shiftKey,
-        cursor: "grabbing",
+        cursor: "move",
     };
 
     forceGraph.registerMode(panZoomMode);

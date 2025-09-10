@@ -1,27 +1,5 @@
 import recordsManager from "../records/records-manager.js";
 
-function deduplicateNodes(graphData) {
-    const uniqueNodes = new Set();
-    graphData.nodes = graphData.nodes.filter(n => {
-        if (!uniqueNodes.has(n.iid)) {
-            uniqueNodes.add(n.iid);
-            return true;
-        }
-        return false;
-    });
-}
-
-function deduplicateLinks(graphData) {
-    const uniqueLinks = new Set();
-    graphData.links = graphData.links.filter(l => {
-        if (!uniqueLinks.has(l.linkIid)) {
-            uniqueLinks.add(l.linkIid);
-            return true;
-        }
-        return false;
-    });
-}
-
 export function selfDestructLinks(graphData) {
     const nids = new Set(
         graphData.nodes.map(node => node.iid)
@@ -47,17 +25,23 @@ export function selfDestructLinks(graphData) {
     return true;
 }
 
-export function removeInvalidLinks(graphData) {
-    const nids = new Set(
-        graphData.nodes.map(node => node.iid)
-    );
-
-    graphData.links = graphData.links.filter(l => 
-        nids.has(l.sourceIid) && nids.has(l.targetIid)
-    );
+function deduplicateNodes(graphData) {
+    const seen = new Set();
+    graphData.nodes = graphData.nodes.filter(n => !seen.has(n.iid) && seen.add(n.iid));
 }
 
-export function cleanGraph(graphData) {
+function deduplicateLinks(graphData) {
+    const seen = new Set();
+    graphData.links = graphData.links.filter(l => !seen.has(l.linkIid) && seen.add(l.linkIid));
+}
+
+export function removeInvalidLinks(graphData) {
+    const nids = new Set(graphData.nodes.map(n => n.iid));
+    graphData.links = graphData.links.filter(l => nids.has(l.sourceIid) && nids.has(l.targetIid));
+}
+
+export function cleanUpGraphData(graphData) {
+    selfDestructLinks(graphData);
     deduplicateNodes(graphData);
     deduplicateLinks(graphData);
     removeInvalidLinks(graphData);

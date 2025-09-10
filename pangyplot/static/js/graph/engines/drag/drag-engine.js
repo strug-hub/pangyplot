@@ -5,6 +5,7 @@ import { euclideanDist } from '../../utils/node-utils.js';
 
 const MAX_DISTANCE_DRAG_DETECT_PX = 25;
 const MIN_MOVEMENT_INITIATION_PX = 5;
+const DRAG_CURSOR = 'grabbing';
 
 var initialMousePos = { x: null, y: null };
 var readyNode = null;
@@ -31,6 +32,8 @@ function checkIfDragging(event, forceGraph) {
     const node = readyNode;
     readyNode = null;
 
+    forceGraph.element.style.cursor = DRAG_CURSOR;
+
     if (!forceGraph.selected.has(node)) {
       forceGraph.setSelected(null);
     }
@@ -53,6 +56,10 @@ function updateDrag(event, forceGraph) {
 }
 
 function onDragEnd(event, forceGraph) {
+
+    if (forceGraph.element.style.cursor === DRAG_CURSOR)
+      forceGraph.element.style.cursor = 'default';
+
     const node = forceGraph.draggedNode;
     if (!node) return;
 

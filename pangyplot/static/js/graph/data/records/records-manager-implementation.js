@@ -26,18 +26,6 @@ export function getLinkRecord(id) {
   return linkRecord;
 }
 
-export function setAllInactive() {
-  for (const record of nodeRecordLookup.values()) {
-    record.active = false;
-  }
-}
-export function setActive(id) {
-  const record = getNodeRecord(id);
-  if (record) {
-    record.active = true;
-  }
-}
-
 export function getConnectingLinkRecords(nodeId) {
   const linkIds = nodeAdjacencyLookup.get(nodeId);
   if (!linkIds) return [];
