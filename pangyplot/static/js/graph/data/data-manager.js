@@ -142,10 +142,6 @@ export function getLinkElements(nodeId) {
   return linkElements;
 }
 
-export function getLinkElement(id) {
-  return linkIidDict.get(id) || null;
-}
-
 export function getNodeComponents(id) {
   if (!isNodeActive(id)) {
     return { nodes: [], links: [] };

@@ -1,16 +1,27 @@
-import { getTableData, setGeneVisibility, setGeneExonVisibility, setGeneColor } from "./gene-annotation-state.js";
-import { deleteCustomAnnotation } from "./custom/custom-annotation.js";
+import { GeneRecord, CustomAnnotationRecord } from "../../data/records/objects/annotation-record.js";
 
-//example
-//const geneAnnotations = [
-//    { id: 1, name: "Gene 1", hasExon: true, isCustom: false, color: "#ff0000", visible: true },
-//    { id: 2, name: "Gene 2", hasExon: false, isCustom: true, color: "#00ff00", visible: false },
-//    { id: 3, name: "Gene 3", hasExon: true, isCustom: false, color: "#0000ff", visible: true },
-//];
+var allRecords = [];
 
-export function populateGeneAnnotationsTable() {
+function getTableData(forceGraph) {
+    const tableData = [];
+    for (const record of forceGraph.getRenderRecords()) {
+        tableData.push({
+            id: record.id,
+            name: record.name,
+            hasExon: record instanceof GeneRecord && record.hasExons(),
+            isCustom: record instanceof CustomAnnotationRecord,
+            color: record.color,
+            visible: record.isVisible,
+            record: record
+        });
+    }
+    return tableData;
+}
 
-    const annotations = getTableData();
+export function populateGeneAnnotationsTable(forceGraph) {
+
+    const annotations = getTableData(forceGraph);
+    allRecords = annotations.map(a => a.record);
 
     const tableBody = document.getElementById("gene-annotations-body");
     tableBody.innerHTML = ""; // Clear previous content
@@ -36,9 +47,9 @@ export function populateGeneAnnotationsTable() {
         geneButton.setAttribute("data-id", annotation.id);
         geneButton.classList.add("button-style", "gene-toggle-annotation-row");
         if (annotation.visible) {
-            geneButton.classList.add("button-selected"); // Mark as selected if visible
+            geneButton.classList.add("button-selected");
         }
-        geneButton.onclick = () => toggleGeneSelection(annotation.id, geneButton);
+        geneButton.onclick = () => toggleGeneSelection(annotation.record, geneButton);
         geneNameCell.appendChild(geneButton);
         row.appendChild(geneNameCell);
 
@@ -50,10 +61,9 @@ export function populateGeneAnnotationsTable() {
         if (!annotation.hasExon) {
             exonButton.disabled = true;
         }
-        exonButton.onclick = () => toggleExonSelection(annotation.id, exonButton);
+        exonButton.onclick = () => toggleExonSelection(annotation.record, exonButton);
         exonCell.appendChild(exonButton);
         row.appendChild(exonCell);
-
 
         // Delete row button
         if (annotation.isCustom) {
@@ -61,7 +71,7 @@ export function populateGeneAnnotationsTable() {
             const deleteButton = document.createElement("button");
             deleteButton.innerHTML = '<i class="fa-solid fa-trash"></i>';
             deleteButton.classList.add("button-style", "delete-annotation-row");
-            deleteButton.onclick = () => deleteCustomAnnotation(annotation.id);
+            deleteButton.onclick = () => forceGraph.deleteCustomAnnotation(annotation.id);
             deleteCell.appendChild(deleteButton);
             row.appendChild(deleteCell);
         } else {
@@ -76,7 +86,7 @@ export function populateGeneAnnotationsTable() {
         colorPicker.value = annotation.color;
         colorPicker.setAttribute("data-id", annotation.id);
         colorPicker.classList.add("color-picker-annotation-row", "color-picker");
-        colorPicker.onchange = () => handleColorChange(annotation.id, colorPicker.value);
+        colorPicker.onchange = () => handleColorChange(annotation.record, colorPicker.value);
 
         colorCell.appendChild(colorPicker);
         row.appendChild(colorCell);
@@ -84,46 +94,47 @@ export function populateGeneAnnotationsTable() {
         tableBody.appendChild(row);
     });
 }
-
-function toggleGeneSelection(id, button) {
+function toggleGeneSelection(record, button) {
     button.classList.toggle("button-selected");
     const isSelected = button.classList.contains("button-selected");
-    setGeneVisibility(id, isSelected);
+    record.setVisibility(isSelected);
 }
 
-function toggleExonSelection(id, button) {
+function toggleExonSelection(record, button) {
     button.classList.toggle("button-selected");
     const isSelected = button.classList.contains("button-selected");
-    setGeneExonVisibility(id, isSelected);
+    record.setShowExons(isSelected);
 }
 
-function handleColorChange(id, color) {
-    setGeneColor(id, color);
+function handleColorChange(record, color) {
+    record.setColor(color);
 }
 
 function selectAllGenes() {
     document.querySelectorAll(".gene-toggle-annotation-row").forEach(button => {
         button.classList.add("button-selected");
-        const id = button.dataset.id;
-        setGeneVisibility(id, true);
+        for (const record of allRecords) {
+            record.setVisibility(true);
+        }
     });
 }
 
 function deselectAllGenes() {
     document.querySelectorAll(".gene-toggle-annotation-row").forEach(button => {
         button.classList.remove("button-selected");
-        const id = button.dataset.id;
-        setGeneVisibility(id, false);
+        for (const record of allRecords) {
+            record.setVisibility(false);
+        }
     });
 }
 
-// Set all colors to the same value
 function setAllColors() {
     const color = document.getElementById("set-color-picker-gene-annotations").value;
     document.querySelectorAll(".color-picker-annotation-row").forEach(picker => {
         picker.value = color;
-        const id = picker.dataset.id;
-        handleColorChange(id, color);
+        for (const record of allRecords) {
+            record.setColor(color);
+        }
     });
 }
 

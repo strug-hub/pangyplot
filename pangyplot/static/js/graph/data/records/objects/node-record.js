@@ -1,6 +1,6 @@
-import { Record } from './record.js';
+import GraphObjectRecord from './graph-object-record.js';
 
-export class NodeRecord extends Record {
+export class NodeRecord extends GraphObjectRecord {
     constructor(rawData, type) {
         if (new.target === NodeRecord) {
             throw new Error("Cannot instantiate abstract class NodeRecord directly.");

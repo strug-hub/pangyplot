@@ -1,6 +1,6 @@
-import { Record } from './record.js';
+import GraphObjectRecord from './graph-object-record.js';
 
-export class LinkRecord extends Record {
+export class LinkRecord extends GraphObjectRecord {
     constructor(rawLink, sourceRecord, targetRecord) {
 
         super();

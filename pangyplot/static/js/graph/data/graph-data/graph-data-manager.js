@@ -43,8 +43,8 @@ export default function setUpGraphDataManager(forceGraph) {
     forceGraph.getNode = function (iid) {
         return nodeElementLookup.get(iid) || null;
     }
-    forceGraph.getLink = function (linkIid) {
-        return linkElementLookup.get(linkIid) || null;
+    forceGraph.getLink = function (iid) {
+        return linkElementLookup.get(iid) || null;
     }
 
 

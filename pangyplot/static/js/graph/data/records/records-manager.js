@@ -3,6 +3,7 @@ import { getNodeRecord, getLinkRecord } from './records-manager-implementation.j
 import { getConnectingLinkRecords } from './records-manager-implementation.js';
 import { fetchCoordinateRange } from './fetch/fetch-coordinate-range.js';
 import { fetchBubbleSubgraph } from './fetch/fetch-bubble-subgraph.js';
+import { fetchGeneAnnotations } from './fetch/fetch-gene-annotation.js';
 
 class RecordsManager {
   constructor() {
@@ -10,6 +11,11 @@ class RecordsManager {
 
   async getByCoordinate(coords) {
     return await fetchCoordinateRange(coords);
+  }
+
+  async getGenesByCoordinate(coords) {
+    // could look at records first but we won't know if something is missing
+    return await fetchGeneAnnotations(coords);
   }
 
   async getBubbleSubgraph(bubbleId) {

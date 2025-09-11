@@ -1,4 +1,5 @@
 const LINK_SCALE = 1;
+const LINK_BASE_LENGTH = 10;
 
 const SINGLE_NODE_BP_THRESH = 10;
 const KINK_SIZE = 2000;
@@ -38,6 +39,8 @@ export function createNodeElements(nodeRecord) {
     for (let i = 0; i < kinks; i++) {
         const { x, y } = getKinkCoordinates(nodeRecord.coords, kinks, i);
         nodes.push({
+            isNode: true,
+            isLink: false,
             class: "node",
             id: nodeRecord.id,
             iid: `${nodeRecord.id}#${i}`,
@@ -68,8 +71,11 @@ export function createNodeElements(nodeRecord) {
         const targetIid = `${nodeRecord.id}#${i}`;
 
         nodeLinks.push({
+            isNode: false,
+            isLink: true,
             class: "node",
             id: nodeRecord.id,
+            iid: `${sourceIid}+${targetIid}+`,
             record: nodeRecord,
             type: nodeRecord.type,
             source: sourceIid,
@@ -82,8 +88,7 @@ export function createNodeElements(nodeRecord) {
             isDrawn: true,
             width: 5,
             length: Math.min(nodeRecord.seqLength / 100, 1000) * LINK_SCALE,
-            annotations: [],
-            linkIid: `${sourceIid}+${targetIid}+`
+            annotations: []
         });
     }
 
@@ -106,16 +111,19 @@ export function createLinkElements(linkRecord) {
     const targetIid = linkRecord.toStrand === "+" ? 
         targetRecord.elements.nodes[0].head() : targetRecord.elements.nodes[0].tail();
 
-    var length = 1;
+    var length = LINK_BASE_LENGTH;
     if (linkRecord.seqLength > 0) {
-        length = Math.min(linkRecord.seqLength / 10, 100);
+        length = Math.min(linkRecord.seqLength / 100, 1000) * LINK_SCALE;
     }
     if (linkRecord.isDel) {
-        length = 2;
+        length = LINK_BASE_LENGTH*2;
     }
 
     const linkElement = {
+        isNode: false,
+        isLink: true,
         class: "link",
+        iid: `${sourceIid}${linkRecord.fromStrand}${targetIid}${linkRecord.toStrand}`,
         type: linkRecord.type,
         source: sourceIid,
         target: targetIid,
@@ -132,8 +140,7 @@ export function createLinkElements(linkRecord) {
         length: length * LINK_SCALE,
         width: isChainLink ? 5 : 1,
         contained: linkRecord.contained || [],
-        annotations: [],
-        linkIid: `${sourceIid}${linkRecord.fromStrand}${targetIid}${linkRecord.toStrand}`
+        annotations: []
     };
 
     return {nodes: [], links: [linkElement]};

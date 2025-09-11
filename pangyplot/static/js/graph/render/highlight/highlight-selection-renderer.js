@@ -4,10 +4,10 @@ import { colorState } from "../color/color-state.js";
 import { highlightNodePainter, outlineNodePainter } from "../painter/highlight-node-painter.js";
 import { highlightLinkPainter } from "../painter/highlight-link-painter.js";
 
-const HIGHLIGHT_THICKNESS = 6;
-const SELECTION_THICKNESS = 6;
+const HIGHLIGHT_THICKNESS = 10;
+const SELECTION_THICKNESS = 10;
 
-const HOVER_WIDTH = 3;
+const HOVER_WIDTH = 12;
 const HOVER_THICKNESS = 1.5;
 
 export function renderHoverEffect(forceGraph) {

@@ -7,7 +7,7 @@ export function highlightNodePainter(ctx, node, color, thickness, svg=null) {
     if (! node.isVisible || !node.isDrawn) return;
     
     const scaleFactor = getScaleFactor(ctx);
-    const width = (node.width+thickness) * scaleFactor;
+    const width = thickness * scaleFactor;
 
     if (svg) {
         drawCircleSvg(svg, node.x, node.y, width, color);
@@ -16,13 +16,12 @@ export function highlightNodePainter(ctx, node, color, thickness, svg=null) {
     }
 }
 
-
 export function outlineNodePainter(ctx, node, color, size, thickness, svg=null) {
 
     if (! node.isVisible || !node.isDrawn) return;
     
     const scaleFactor = getScaleFactor(ctx);
-    const width = (node.width+size) * scaleFactor;
+    const width = size * scaleFactor;
     const lineThickness = thickness * scaleFactor;
 
     if (svg) {

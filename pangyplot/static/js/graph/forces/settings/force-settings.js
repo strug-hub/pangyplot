@@ -41,7 +41,6 @@ function sliderProperties(forceGraph) {
             label: "Link Size", icon:"arrows-left-right", min: -10, max: 10, step: 1, default: 0,
             onChange: (value) => {
                 const transform = Math.pow(1.3, value)*defaults.LINK_STRENGTH;
-                console.log("Link Size Transform:", transform);
                 setLinkForce(forceGraph, transform);
                 forceGraph.d3ReheatSimulation();
             }

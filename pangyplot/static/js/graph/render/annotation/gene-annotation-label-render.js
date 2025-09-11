@@ -1,13 +1,10 @@
 import { colorState } from '../../render/color/color-state.js';
-import { getNodeAnnotations, getGene } from '../../engines/gene-annotation/gene-annotation-state.js';
 import { labelPainter } from "../../render/painter/label-painter.js";
 
 export const LABEL_SPEED = 0.05;
 export const GRID_SIZE = 30;
 
-//todo move this functionality to the /render directory
-
-const labelCache = {};
+const cache = {};
 
 export const splitScreenIntoGrid = (viewport, N) => {
     const grid = [];
@@ -83,80 +80,57 @@ function findSpiralPosition(anchor, labelWidth, labelHeight, placedLabels, nodes
     return anchor; // fallback if no space found
 }
 
-export function renderGeneLabels(ctx, forceGraph, svg = false) {
-    const visibleNodes = [];
-    const annotationGroups = {};
+export function renderGeneLabels(forceGraph, svg=false) {
+    const ctx = forceGraph.canvas.ctx;
+    
+    const { annotationToElements, layerCounters } = forceGraph.buildRenderIndex(true);
+    
+    const renderRecords = forceGraph.getRenderRecords();
+    const recordLookup = {};
+    renderRecords.forEach(r => { recordLookup[r.id] = r; });
 
-    forceGraph.graphData().nodes.forEach(node => {
-        if (!node.isVisible || !node.isDrawn) return;
-        visibleNodes.push(node);
+    let annotationGroups = Object.entries(annotationToElements).map(([annId, elements]) => {
+        const group = {key: annId, nodes: elements.filter(e => e.isNode)};
+        
+        if (annId.startsWith("exon:")) {
+            const [pref, number, recordId] = annId.split(":");
+            group.isExon = true;
+            group.record = recordLookup[recordId] || null;
+            if (!group.record) return null;
+            group.label = `${group.record.name} [exon:${number}]`;
+        } else {
+            group.isExon = false;
+            group.record = recordLookup[annId] || null;
+            if (!group.record) return null;
+            group.label = group.record.name;
+        }
 
-        const annotations = getNodeAnnotations(node.iid);
-        Object.entries(annotations).forEach(([geneId, annotation]) => {
-            if (!annotationGroups[geneId]) annotationGroups[geneId] = [];
-            annotation.forEach(exonNumber => {
-                annotationGroups[geneId].push({ node, exonNumber });
-            });
-        });
-    });
+        return group;
+    }).filter(group => group != null);
 
     const labels = [];
     const placedLabels = [];
 
-    Object.entries(annotationGroups).forEach(([geneId, groupNodes]) => {
-        const gene = getGene(geneId);
-        if (!gene) return;
+    for(const group of annotationGroups) {
+        const record = group.record;
+        const centroid = findGroupCentroid(group.nodes);
 
-        if (gene.showExons) {
-            const exonGroups = {};
-            groupNodes.forEach(({ node, exonNumber }) => {
-                if (exonNumber) {
-                    if (!exonGroups[exonNumber]) exonGroups[exonNumber] = [];
-                    exonGroups[exonNumber].push(node);
-                }
-            });
+        const cached = cache[group.key] || centroid;
 
-            Object.entries(exonGroups).forEach(([exon, nodes]) => {
-                const centroid = findGroupCentroid(nodes);
-                const key = `${geneId}#${exon}`;
-                const cached = labelCache[key] || centroid;
+        const width = (record.name.length + 2) * 20; // rough width
+        const height = 20; // rough height
 
-                labelCache[key] = {
-                    x: interpolate(cached.x, centroid.x, LABEL_SPEED),
-                    y: interpolate(cached.y, centroid.y, LABEL_SPEED)
-                };
+        const targetPos = findSpiralPosition(centroid, width, height, placedLabels, group.nodes);
 
-                const width = (gene.name.length + 6) * 12; // rough width
-                const height = 12; // rough height
+        const pos = { x: interpolate(cached.x, targetPos.x, LABEL_SPEED),
+                      y: interpolate(cached.y, targetPos.y, LABEL_SPEED) };
 
-                const pos = findSpiralPosition(labelCache[key], width, height, placedLabels, visibleNodes);
-                placedLabels.push({ ...pos, width, height });
-
-                labels.push({ text: `${gene.name}:exon${exon}`, ...pos, color: gene.color, size: "medium" });
-            });
-        } else {
-            const nodesOnly = groupNodes.map(({ node }) => node);
-            const centroid = findGroupCentroid(nodesOnly);  // <-- current position of group
-            const cached = labelCache[geneId] || centroid;
-
-            const width = (gene.name.length + 2) * 20; // rough width
-            const height = 20; // rough height
-
-            // Spiral search around centroid, not cached
-            const targetPos = findSpiralPosition(centroid, width, height, placedLabels, visibleNodes);
-
-            // Smooth interpolation toward target spiral position
-            labelCache[geneId] = {
-                x: interpolate(cached.x, targetPos.x, LABEL_SPEED),
-                y: interpolate(cached.y, targetPos.y, LABEL_SPEED)
-            };
-
-            placedLabels.push({ ...labelCache[geneId], width, height });
-
-            labels.push({ text: gene.name, ...labelCache[geneId], color: gene.color, size: "large" });
-        }
-
-    });
+        cache[group.key] = pos;
+        placedLabels.push({ ...pos, width, height });
+        
+        const size = group.isExon ? "medium" : "large";
+        labels.push({ text: group.label, ...pos, color: record.color, size });
+    }
 
     labels.forEach(l => labelPainter(ctx, l.text, l.x, l.y, l.size, l.color, colorState.background, svg));
 };

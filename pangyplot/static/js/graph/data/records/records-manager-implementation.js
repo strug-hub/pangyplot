@@ -6,6 +6,8 @@ export const linkRecordLookup = new Map();
 export const nodeAdjacencyLookup = new Map();
 const danglingLinks = new Map();
 
+export const geneRecordLookup = new Map();
+
 export function clearRecordsManager() {
   nodeRecordLookup.clear();
   linkRecordLookup.clear();
@@ -17,13 +19,17 @@ export function getNodeRecord(id) {
   return nodeRecordLookup.get(id) || null;
 }
 
-export function getLinkRecord(id) {
+export function getLinkRecord(id, allowIncomplete = false) {
   const linkRecord = linkRecordLookup.get(id) || null;
-  if (!linkRecord || linkRecord.isIncomplete()) return null;
+  if (!linkRecord || (linkRecord.isIncomplete() && !allowIncomplete)) return null;
   if (!linkRecord.hasElements()) {
     linkRecord.elements = createLinkElements(linkRecord);
   }
   return linkRecord;
+}
+
+export function getGeneRecord(id) {
+  return geneRecordLookup.get(id) || null;
 }
 
 export function getConnectingLinkRecords(nodeId) {
@@ -95,12 +101,18 @@ function tryToCompleteLinkRecord(linkRecord) {
 }
 
 export function updateExistingLinkRecords(linkRecords) {
-  const records = linkRecords;
+  const records = linkRecords.map(r => getLinkRecord(r.id, true) || r);
   records.forEach(r => linkRecordLookup.set(r.id, r));
   records.forEach(r => ensureNodeAdjacency(r));
 
   records.forEach(r => { tryToCompleteLinkRecord(r); });
 
+  return records;
+}
+
+export function updateExistingGeneRecords(geneRecords) {
+  const records = geneRecords.map(r => getGeneRecord(r.id) || r);
+  records.forEach(r => geneRecordLookup.set(r.id, r));
   return records;
 }
 

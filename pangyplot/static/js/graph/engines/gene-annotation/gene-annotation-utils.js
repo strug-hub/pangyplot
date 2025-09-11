@@ -1,7 +1,5 @@
 function calculateEffectiveNodeStep(node, step){
-    if (node.record.ranges.length === 0) {
-        return null;
-    }
+    if (node.record.ranges.length === 0) return null;
    
     let matchedRange = null;
     for (const [rangeStart, rangeEnd] of node.record.ranges) {
@@ -11,9 +9,7 @@ function calculateEffectiveNodeStep(node, step){
         }
     }
 
-    if (!matchedRange) {
-        return null;  // No matching range found
-    }
+    if (!matchedRange) return null;
 
     const [start, end] = matchedRange;
     

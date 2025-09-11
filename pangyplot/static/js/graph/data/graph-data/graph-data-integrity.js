@@ -27,15 +27,12 @@ export function selfDestructLinks(graphData) {
     return true;
 }
 
-function deduplicateNodes(graphData) {
+function deduplicate(graphData) {
     const seen = new Set();
     graphData.nodes = graphData.nodes.filter(n => !seen.has(n.iid) && seen.add(n.iid));
+    graphData.links = graphData.links.filter(l => !seen.has(l.iid) && seen.add(l.iid));
 }
 
-function deduplicateLinks(graphData) {
-    const seen = new Set();
-    graphData.links = graphData.links.filter(l => !seen.has(l.linkIid) && seen.add(l.linkIid));
-}
 
 export function removeInvalidLinks(graphData) {
     const nids = new Set(graphData.nodes.map(n => n.iid));
@@ -53,8 +50,7 @@ export function sortLinks(graphData) {
 
 export function cleanUpGraphData(graphData) {
     selfDestructLinks(graphData);
-    deduplicateNodes(graphData);
-    deduplicateLinks(graphData);
+    deduplicate(graphData);
     removeInvalidLinks(graphData);
     sortLinks(graphData);
 }

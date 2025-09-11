@@ -1,8 +1,9 @@
-import { updateExistingNodeRecords, updateExistingLinkRecords } from '../records-manager-implementation.js';
+import { updateExistingNodeRecords, updateExistingLinkRecords, updateExistingGeneRecords } from '../records-manager-implementation.js';
 import { SegmentRecord, BubbleRecord, BubbleEndRecord } from "../objects/node-record.js";
 import { LinkRecord } from "../objects/link-record.js";
 import { createNodeElements, createLinkElements } from './deserializer-element.js';
 import recordsManager from '../records-manager.js';
+import { GeneRecord } from '../objects/annotation-record.js';
 
 function deserializeLinks(rawLinks) {
     const linkRecords = [];
@@ -58,4 +59,12 @@ export function deserializeBubbleSubgraph(rawBubbleGraph, bubbleId) {
     const sinkSubgraph = deserializeGraph(rawBubbleGraph.sink, `${bubbleId}:1`);
 
     return { bubble:bubbleSubgraph, source:sourceSubgraph, sink:sinkSubgraph };
+}
+
+export function deserializeGenes(rawGenes) {
+    // possibly do something different with exons and transcripts later
+    let geneRecords = rawGenes.map(rawGene => new GeneRecord(rawGene));
+    geneRecords = updateExistingGeneRecords(geneRecords);
+
+    return geneRecords;
 }

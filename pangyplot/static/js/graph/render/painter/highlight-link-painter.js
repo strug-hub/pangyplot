@@ -5,7 +5,7 @@ import { getScaleFactor } from '../render-scaling.js';
 export function highlightLinkPainter(ctx, link, color, thickness, svg=null){
     if (! link.isVisible || !link.isDrawn) return;
 
-    const width = (link.width+thickness) * getScaleFactor(ctx);
+    const width = thickness * getScaleFactor(ctx);
 
     const x1 = link.source.x;
     const y1 = link.source.y;

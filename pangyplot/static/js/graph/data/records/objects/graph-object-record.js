@@ -1,7 +1,7 @@
-export class Record {
+export default class GraphObjectRecord {
     constructor() {
-        if (new.target === Record) {
-            throw new Error("Cannot instantiate abstract class Record directly.");
+        if (new.target === GraphObjectRecord) {
+            throw new Error("Cannot instantiate abstract class GraphObjectRecord directly.");
         }
 
         this.elements = {nodes: [], links: []};

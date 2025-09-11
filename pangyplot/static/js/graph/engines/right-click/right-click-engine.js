@@ -1,7 +1,6 @@
 import { RightClickMenu } from './right-click-menu.js';
 import { exportGraphToPng } from '../../render/download/render-png.js';
 import { exportGraphToSvg } from '../../render/download/render-svg.js';
-import { createCustomGeneAnnotation } from '../gene-annotation/custom/custom-annotation.js';
 
 var menu = null;
 
@@ -30,7 +29,7 @@ export function populateOptions(forceGraph) {
     menu.addOption('tag', 'Add Custom Annotation', 'node', nodes => {
         const name = prompt('Enter a custom annotation name for the nodes:');
         if (name) {
-            createCustomGeneAnnotation(name, nodes);
+            forceGraph.createCustomAnnotation(name, nodes);
         }
     });
 

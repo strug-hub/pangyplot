@@ -3,19 +3,19 @@ import { updateVisibility } from './viewport-utils.js';
 import { renderDragInfluenceCircle } from '../engines/drag/drag-influence/drag-influence-render.js';
 import { renderGeneLabels } from './annotation/gene-annotation-label-render.js';
 import { renderCustomLabels } from './annotation/custom-label-renderer.js';
+import { renderGeneHighlights } from './annotation/gene-annotation-highlight-renderer.js';
 import { basicLinkPainter } from './painter/basic-link-painter.js';
 import { basicNodePainter } from './painter/basic-node-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
 import { updateLegend } from './color/legend/legend-manager.js';
 import { setUpHighlightSelectionRenderer } from './highlight/highlight-selection-renderer.js';
 import { renderHoverEffect, renderHighlightEffect, renderSelectionEffect } from './highlight/highlight-selection-renderer.js';
-import { renderGenes} from './highlight/gene-annotation-gene-render.js';
 
-function renderPreFrame(ctx, forceGraph, svg=null) {
+function renderPreFrame(forceGraph, svg=null) {
 
     updateBackgroundColor(forceGraph);
     updateVisibility(forceGraph);
-    renderGenes(ctx, forceGraph, svg);
+    renderGeneHighlights(forceGraph, svg);
 
     //select after highlight
     renderHighlightEffect(forceGraph);
@@ -24,7 +24,7 @@ function renderPreFrame(ctx, forceGraph, svg=null) {
 }
 
 function renderPostFrame(ctx, forceGraph, svg=null) {
-    renderGeneLabels(ctx, forceGraph, svg);
+    renderGeneLabels(forceGraph, svg);
     //searchSequenceEngineUpdate(ctx, forceGraph);
     renderCustomLabels(ctx, forceGraph, svg);
     renderDragInfluenceCircle(forceGraph);
@@ -32,7 +32,7 @@ function renderPostFrame(ctx, forceGraph, svg=null) {
 }
 
 export function renderFullFrame(ctx, forceGraph, svg=null) {
-    renderPreFrame(ctx, forceGraph, svg);
+    renderPreFrame(forceGraph, svg);
     forceGraph.graphData().links.forEach(link => { basicLinkPainter(ctx, link, svg); });
     forceGraph.graphData().nodes.forEach(node => { basicNodePainter(ctx, node, svg); });
     renderPostFrame(ctx, forceGraph, svg);
@@ -51,7 +51,7 @@ export function setUpRenderManager(forceGraph) {
     setUpHighlightSelectionRenderer(forceGraph);
 
     forceGraph
-        .onRenderFramePre((ctx) => renderPreFrame(ctx, forceGraph))
+        .onRenderFramePre((ctx) => renderPreFrame(forceGraph))
         .onRenderFramePost((ctx) => renderPostFrame(ctx, forceGraph))
         .nodeCanvasObject((node, ctx) => basicNodePainter(ctx, node))
         .linkCanvasObject((link, ctx) => basicLinkPainter(ctx, link));
