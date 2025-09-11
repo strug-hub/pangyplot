@@ -1,3 +1,4 @@
+import DEBUG_MODE from '../../../../debug-mode.js';
 import { tickAnimation, pauseAnimation, resetAnimation } from './animation-state.js';
 import { isNodeActive, getNodeElements } from '../../../data/data-manager.js';
 import { updateStepDisplay } from '../path-highlight-ui.js';
@@ -24,7 +25,9 @@ export function setAnimationPath(path) {
             count++;
         }
     }
-    console.log("Animation path set with", animationPath.length, "steps,", count, "active nodes ", count / animationPath.length * 100, "%");
+    if (DEBUG_MODE) {
+        console.log("Animation path set with", animationPath.length, "steps,", count, "active nodes ", count / animationPath.length * 100, "%");
+    }
 }
 
 function resetHighlightStack() {
@@ -61,7 +64,7 @@ function highlightNode(id, direction) {
 }
 
 function updateNodeHighlight() {
-
+    //todo: fade on tick!
     for (let i = highlightStack.length - 1; i >= 0; i--) {
         const { id, direction, nodes } = highlightStack[i];
         const alpha = i / highlightStack.length;
@@ -73,7 +76,20 @@ function updateNodeHighlight() {
 }
 
 
-function updatePathStep(move) {
+function updatePathStep(forceGraph, move, nodeIdSet = null) {
+    
+    let activeNodeIds;
+
+    if (nodeIdSet) {
+        activeNodeIds = nodeIdSet;
+    } else {
+        // todo: create a forcegraph method to create the set, update on data change only
+        activeNodeIds = forceGraph.graphData().nodes.reduce((set, node) => {
+            set.add(node.id);
+            return set;
+        }, new Set());
+    }
+        
     currentStep += move;
     const [segment, bubbles] = animationPath[currentStep];
 
@@ -81,21 +97,19 @@ function updatePathStep(move) {
     console.log(bubbles)
     if (bubbles.length == 0) {
         highlightNode(id, direction);
-        console.log("Current step:", currentStep, "→", id, direction);
     }
 
     const lastHighlight = highlightStack.length > 0 ?
         highlightStack[highlightStack.length - 1] : null;
 
     if (lastHighlight && bubbles.includes(lastHighlight.id)) {
-        console.log("Current step:", currentStep, "→", id, direction, "(skipping)");
+        updatePathStep(forceGraph, move, activeNodeIds);
         return;
     }
 
     for (const bid of bubbles) {
-        if (isNodeActive(bid)) {
+        if (activeNodeIds.has(bid)) {
             highlightNode(bid, "+");
-            console.log("Current step:", currentStep, "→", bid, "+", "(skipping)");
             break;
         }
     }
@@ -134,5 +148,5 @@ export function pathHighlightTick(forceGraph) {
         return;
     }
     
-    updatePathStep(move);
+    updatePathStep(forceGraph, move);
 }

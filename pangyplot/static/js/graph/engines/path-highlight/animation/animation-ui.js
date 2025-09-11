@@ -1,5 +1,5 @@
-import { playAnimation, pauseAnimation, frameAdvance, frameBackward } from './animation-state.js';
-import { changeAnimationSpeed } from './animation-state.js';
+import { playAnimation, pauseAnimation, frameAdvance, frameBackward, } from './animation-state.js';
+import { changeAnimationSpeed, resetAnimation} from './animation-state.js';
 
 export default function setupAnimationUi(){
 
@@ -16,7 +16,9 @@ export default function setupAnimationUi(){
     document.getElementById("path-frame-reverse-button").addEventListener("click", function () {
         frameBackward();
     });
-
+    document.getElementById("path-reset-button").addEventListener("click", function () {
+        resetAnimation();
+    });
     const speedSlider = document.getElementById("path-speed-slider");
     const speedValue = document.getElementById("path-speed-value");
     speedSlider.addEventListener("input", function() {
