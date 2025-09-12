@@ -33,11 +33,16 @@ export function checkForObjectMismatch(graphData=null) {
 
 
 // Audit circular refs: element.record <-> record.elements
-export function auditRecordElementCircular(forceGraph, { requireGraphCanonical = true } = {}) {
+export function auditRecordElementCircular(graphData=null, requireGraphCanonical = true) {
   const issues = [];
+    
+    let data = graphData;
 
-  const data = forceGraph.graphData();
-  const allElements = [...data.nodes, ...data.links];
+    if (!graphData) {
+        data = forceGraph.graphData();
+    }
+    
+    const allElements = [...data.nodes, ...data.links];
 
   // Fast lookup for canonical graph elements by iid
   const byIid = new Map(allElements.map(e => [String(e.iid), e]));
