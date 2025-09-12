@@ -26,7 +26,6 @@ function highlightNode(id, direction) {
     const nodes = nodeRecord.elements.nodes;
 
     for (const node of nodes) {
-        console.log("Highlighting node", node.id, direction);
         highlightList.push(node);
         node.focused = 1;
         node.colorOverride = direction === "+" ? "#000000" : "#FF0000";
@@ -50,61 +49,65 @@ export function updateNodeHighlight() {
         }
     }
 }
-
 function updatePathStep(forceGraph, move, nodeIdSet = null) {
-
     let activeNodeIds;
 
     if (nodeIdSet) {
         activeNodeIds = nodeIdSet;
     } else {
-        // todo: create a forcegraph method to create the set, update on data change only
         activeNodeIds = new Set();
-
         forceGraph.graphData().nodes.forEach(element => {
             activeNodeIds.add(element.id);
         });
     }
 
-    currentStep += move;
-    if (animationPath.length <= currentStep) return;
+    while (move !== 0) {
+        const oneMove = move > 0 ? 1 : -1;
+        currentStep += oneMove;
 
-    const [segment, bubbles] = animationPath[currentStep];
+        if (animationPath.length <= currentStep) return;
 
-    const [id, direction] = splitSegment(segment);
+        const [segment, bubbles] = animationPath[currentStep];
+        const [id, direction] = splitSegment(segment);
 
-    if (bubbles.length == 0) {
-        if (activeNodeIds.has(id)) {
-            highlightNode(id, direction);
+        if (bubbles.length == 0) {
+            if (activeNodeIds.has(id)) {
+                highlightNode(id, direction);
+            } else {
+                continue; // skip to next iteration
+            }
         }
-        else {
-            updatePathStep(forceGraph, move, activeNodeIds);
+
+        const lastHighlight = highlightList.length > 0 ?
+            highlightList[highlightList.length - 1] : null;
+
+        if (lastHighlight && bubbles.includes(lastHighlight.id)) {
+            continue; // skip to next iteration
+        }
+
+        let bubbleHighlighted = false;
+        for (const bid of bubbles) {
+            if (activeNodeIds.has(bid)) {
+                highlightNode(bid, "+");
+                bubbleHighlighted = true;
+                break;
+            }
+        }
+
+        move -= oneMove;
+
+        if (move === 0) {
+            updateStepDisplay(currentStep);
+            return;
         }
     }
-
-    const lastHighlight = highlightList.length > 0 ?
-        highlightList[highlightList.length - 1] : null;
-
-    if (lastHighlight && bubbles.includes(lastHighlight.id)) {
-        updatePathStep(forceGraph, move, activeNodeIds);
-        return;
-    }
-
-    for (const bid of bubbles) {
-        if (activeNodeIds.has(bid)) {
-            highlightNode(bid, "+");
-            break;
-        }
-    }
-
-    updateStepDisplay(currentStep);
 }
 
 
 export function pathHighlightTick(forceGraph) {
     if (!animationPath) return;
 
-    const move = tickAnimation();
+    let move = tickAnimation();
 
     //reset state
     if (move == null) {
@@ -117,13 +120,18 @@ export function pathHighlightTick(forceGraph) {
     if (move === 0) return;
 
     // end of animation
-    if (move > 0 && currentStep >= animationPath.length - 1) {
-        pauseAnimation();
-        return;
+    if (currentStep + move >= animationPath.length - 1) {
+        const finalMove = animationPath.length - currentStep;
+        move = finalMove;
     }
     // start of animation
-    if (move < 0 && currentStep <= 0) {
-        currentStep = 0;
+    if (currentStep + move <= 0) {
+        const finalMove = -currentStep;
+        move = finalMove
+    }
+
+    // should pause
+    if (move === 0) {
         pauseAnimation();
         return;
     }

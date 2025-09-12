@@ -21,9 +21,14 @@ export default function setupAnimationUi(){
     });
     const speedSlider = document.getElementById("path-speed-slider");
     const speedValue = document.getElementById("path-speed-value");
+
     speedSlider.addEventListener("input", function() {
-        const speed = speedSlider.value;
-        speedValue.textContent = speed;
+        const unscaledSpeed = Number(speedSlider.value);
+        // Equation: speed = 2 ^ unscaledSpeed
+        const speed = Math.pow(2, unscaledSpeed);
+        const num = Math.pow(2, Math.abs(unscaledSpeed));
+        const sign = unscaledSpeed < 0 ? "-" : "+";
+        speedValue.textContent = `${sign}${num}x`;
         changeAnimationSpeed(speed);
     });
 

@@ -9,9 +9,10 @@ class Chain:
         self._sort_bubbles()
 
     def serialize(self):
+        bubbles, links = self.decompose()
         return {
-            "nodes": [bubble.serialize() for bubble in self.bubbles] + self.get_chain_ends(),
-            "links": [link.serialize() for link in self.get_chain_links()]
+            "nodes": [bubble.serialize() for bubble in bubbles],
+            "links": [link.serialize() for link in links]
         }
     
     def __getitem__(self, i):
