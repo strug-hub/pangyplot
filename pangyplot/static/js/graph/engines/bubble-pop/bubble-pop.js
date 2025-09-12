@@ -1,6 +1,7 @@
 import eventBus from '../../../utils/event-bus.js';
 import recordsManager from '../../data/records/records-manager.js';
 import forceGraph from '../../force-graph.js';
+import { checkForObjectMismatch, auditRecordElementCircular } from "../../../debug/check-for-object-mismatch.js";
 
 let queue = [];
 let enqueued = new Set();
@@ -30,8 +31,6 @@ async function drain() {
     while (queue.length) {
       const bubble = queue.shift();
       enqueued.delete(bubble.id);
-
-      recordsManager.getBubbleSubgraph(bubble.id);
 
       try {
 

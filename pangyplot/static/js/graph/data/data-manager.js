@@ -93,33 +93,11 @@ export function unpopBubble(bubbleId) {
   forceGraph.graphData(graphData);
 }
 
-
-export function getActiveDeletionLinks() {
-  const graphData = forceGraph.graphData();
-
-  const links = [];
-  for (const link of graphData.links) {
-    if (link.isDel) {
-      links.push(link);
-    }
-  }
-  return links;
-}
-
-
-export function getNodeIfActive(iid) {
-  return isNodeActive(iid) ? nodeIidDict.get(iid) : null;
-}
-
 export function isNodeActive(id) {
   const nodeRecord = recordsManager.getNode(id);
   return nodeRecord != null && nodeRecord.active;
 }
 
-export function getNodeElements(id) {
-  const nodeRecord = recordsManager.getNode(id);
-  return nodeRecord != null ? Array.from(nodeRecord.elements.nodes) : [];
-}
 export function getInsideNodeElements(id) {
   const nodeRecord = recordsManager.getNode(id);
   const insideElements = [];
@@ -127,32 +105,6 @@ export function getInsideNodeElements(id) {
     insideElements.push(...record.elements.nodes);
   }
   return insideElements;
-}
-
-
-export function getLinkElements(nodeId) {
-  const connectingLinks = recordsManager.getLinks(nodeId);
-  const linkElements = [];
-  for (const linkRecord of connectingLinks) {
-
-    linkElements.push(...linkRecord.elements.links);
-  }
-
-
-  return linkElements;
-}
-
-export function getNodeComponents(id) {
-  if (!isNodeActive(id)) {
-    return { nodes: [], links: [] };
-  }
-  const nodes = getNodeElements(id);
-  const links = getLinkElements(id).filter(link => link.class === 'node');
-
-  return {
-    nodes,
-    links
-  };
 }
 
 export function setUpDataManager(forceGraph) {

@@ -1,45 +1,19 @@
-import DEBUG_MODE from '../../../../debug-mode.js';
-import { tickAnimation, pauseAnimation, resetAnimation } from './animation-state.js';
-import { isNodeActive, getNodeElements } from '../../../data/data-manager.js';
+import { tickAnimation, pauseAnimation, resetAnimation, isAnimationPlaying } from './animation-state.js';
 import { updateStepDisplay } from '../path-highlight-ui.js';
+import recordsManager from '../../../data/records/records-manager.js';
+import forceGraph from '../../../force-graph.js';
 
 var animationPath = null;
 var currentStep = -1;
-var highlightStack = [];
-const maxHighlightStackLength = 150;
+var highlightList = [];
+const highlightTime = 150;
 
 export function setAnimationPath(path) {
-    resetHighlightStack();
     animationPath = path.path;
     resetAnimation();
     currentStep = -1;
-    highlightStack = [];
     updateStepDisplay(null);
-
-    let count = 0;
-    for (const step of animationPath) {
-        const [segment, bubbles] = step;
-        const [id, direction] = splitSegment(segment);
-
-        if (isNodeActive(id)) {
-            count++;
-        }
-    }
-    if (DEBUG_MODE) {
-        console.log("Animation path set with", animationPath.length, "steps,", count, "active nodes ", count / animationPath.length * 100, "%");
-    }
 }
-
-function resetHighlightStack() {
-    for (const highlight of highlightStack) {
-        for (const node of highlight.nodes) {
-            node.focused = 0;
-            node.colorOverride = null;
-        }
-    }
-    highlightStack = [];
-}
-
 
 function splitSegment(step) {
     var id = step.slice(0, -1);
@@ -48,59 +22,68 @@ function splitSegment(step) {
 }
 
 function highlightNode(id, direction) {
-    const nodes = getNodeElements(id);
-    highlightStack.push({ id, direction, nodes });
+    const nodeRecord = recordsManager.getNode(id);
+    const nodes = nodeRecord.elements.nodes;
 
-    if (highlightStack.length > maxHighlightStackLength) {
-
-        const { id, direction, nodes } = highlightStack[0];
-        for (const node of nodes) {
-            node.focused = 0;
-            node.colorOverride = null;
-        }
-
-        highlightStack.shift();
+    for (const node of nodes) {
+        console.log("Highlighting node", node.id, direction);
+        highlightList.push(node);
+        node.focused = 1;
+        node.colorOverride = direction === "+" ? "#000000" : "#FF0000";
     }
-}
 
-function updateNodeHighlight() {
-    //todo: fade on tick!
-    for (let i = highlightStack.length - 1; i >= 0; i--) {
-        const { id, direction, nodes } = highlightStack[i];
-        const alpha = i / highlightStack.length;
-        for (const node of nodes) {
-            node.focused = alpha;
+    for (const node of forceGraph.graphData().nodes) {
+        if (node.id === id) {
+            node.focused = 1;
             node.colorOverride = direction === "+" ? "#000000" : "#FF0000";
         }
     }
 }
 
+export function updateNodeHighlight() {
+    if (!isAnimationPlaying()) return;
+    for (let i = highlightList.length - 1; i >= 0; i--) {
+        const node = highlightList[i];
+        node.focused -= 1 / highlightTime;
+        if (node.focused <= 0) {
+            highlightList.splice(i, 1);
+        }
+    }
+}
 
 function updatePathStep(forceGraph, move, nodeIdSet = null) {
-    
+
     let activeNodeIds;
 
     if (nodeIdSet) {
         activeNodeIds = nodeIdSet;
     } else {
         // todo: create a forcegraph method to create the set, update on data change only
-        activeNodeIds = forceGraph.graphData().nodes.reduce((set, node) => {
-            set.add(node.id);
-            return set;
-        }, new Set());
+        activeNodeIds = new Set();
+
+        forceGraph.graphData().nodes.forEach(element => {
+            activeNodeIds.add(element.id);
+        });
     }
-        
+
     currentStep += move;
+    if (animationPath.length <= currentStep) return;
+
     const [segment, bubbles] = animationPath[currentStep];
 
     const [id, direction] = splitSegment(segment);
-    console.log(bubbles)
+
     if (bubbles.length == 0) {
-        highlightNode(id, direction);
+        if (activeNodeIds.has(id)) {
+            highlightNode(id, direction);
+        }
+        else {
+            updatePathStep(forceGraph, move, activeNodeIds);
+        }
     }
 
-    const lastHighlight = highlightStack.length > 0 ?
-        highlightStack[highlightStack.length - 1] : null;
+    const lastHighlight = highlightList.length > 0 ?
+        highlightList[highlightList.length - 1] : null;
 
     if (lastHighlight && bubbles.includes(lastHighlight.id)) {
         updatePathStep(forceGraph, move, activeNodeIds);
@@ -114,10 +97,7 @@ function updatePathStep(forceGraph, move, nodeIdSet = null) {
         }
     }
 
-    updateNodeHighlight();
-
     updateStepDisplay(currentStep);
-
 }
 
 
@@ -147,6 +127,6 @@ export function pathHighlightTick(forceGraph) {
         pauseAnimation();
         return;
     }
-    
+
     updatePathStep(forceGraph, move);
 }

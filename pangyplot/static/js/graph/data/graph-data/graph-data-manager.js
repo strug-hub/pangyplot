@@ -1,14 +1,26 @@
 import { cleanUpGraphData } from "./graph-data-integrity.js";
+import { checkForObjectMismatch, auditRecordElementCircular } from "../../../debug/check-for-object-mismatch.js";
 
 function addGraphData(forceGraph, newData) {
 
+    for (const n of newData.nodes) {
+    const existing = forceGraph.graphData().nodes.find(x => x.iid === n.iid);
+    if (existing && existing !== n) {
+        console.warn("Different object for same iid BEFORE push", n.iid, existing, n);
+    }
+    }
+
     const graphData = forceGraph.graphData();
+    checkForObjectMismatch(newData);
 
     graphData.nodes.push(...newData.nodes);
     graphData.links.push(...newData.links);
 
+    checkForObjectMismatch(graphData);
+
     cleanUpGraphData(graphData);
     forceGraph.graphData(graphData);
+
 }
 
 function removeNode(forceGraph, id) {

@@ -1,4 +1,4 @@
-import { getActiveDeletionLinks, getInsideNodeElements } from "../data/data-manager.js";
+import { getInsideNodeElements } from "../data/data-manager.js";
 import { computeNodeCentroid } from "../utils/node-utils.js";
 import forceGraph from "../force-graph.js";
 

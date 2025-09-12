@@ -47,7 +47,6 @@ export function sortLinks(graphData) {
   });
 }
 
-
 export function cleanUpGraphData(graphData) {
     selfDestructLinks(graphData);
     deduplicate(graphData);
