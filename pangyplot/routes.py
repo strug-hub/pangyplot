@@ -33,9 +33,9 @@ def inject_default_genome():
 def inject_organism():
     organism = current_app.cytoband["organism"]
     emoji = organisms.VALID_ORGANISMS.get(organism, "")
-    if organism in {organisms.NO_ORGANISM, organisms.CUSTOM_ORGANISM, organisms.DEFAULT_ORGANISM}:
-        return {}
-    return { "organism": organism, "organism_emoji": emoji }
+    genome = organisms.ORGANISM_TO_GENOME.get(organism, "")
+    print("GENOME", genome)
+    return { "organism": organism, "organism_emoji": emoji, "organism_genome": genome }
 
 @bp.route('/chromosomes', methods=["GET"])
 def chromosomes():

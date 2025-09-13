@@ -1,5 +1,6 @@
 import pangyplot.db.db_utils as utils
 from pangyplot.objects.Annotation import Annotation
+import sqlite3
 
 DB_NAME = "annotations.db"
 
@@ -34,24 +35,34 @@ def create_annotation_table(dir):
     return conn
 
 def insert_annotation(cur, annotation):
-    cur.execute("""
-        INSERT INTO annotations (id, type, chrom, start, end, strand, source, gene_name, exon_number, parent, tag, ensembl_canonical, mane_select)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        annotation.id,
-        annotation.type,
-        annotation.chrom,
-        annotation.start,
-        annotation.end,
-        annotation.strand,
-        annotation.source,
-        annotation.gene_name,
-        annotation.exon_number,
-        annotation.parent,
-        annotation.tag,
-        annotation.ensembl_canonical,
-        annotation.mane_select
-    ))
+    try:
+        cur.execute("""
+            INSERT INTO annotations (
+                id, type, chrom, start, end, strand, source,
+                gene_name, exon_number, parent, tag,
+                ensembl_canonical, mane_select
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            annotation.id,
+            annotation.type,
+            annotation.chrom,
+            annotation.start,
+            annotation.end,
+            annotation.strand,
+            annotation.source,
+            annotation.gene_name,
+            annotation.exon_number,
+            annotation.parent,
+            annotation.tag,
+            annotation.ensembl_canonical,
+            annotation.mane_select
+        ))
+    except sqlite3.IntegrityError:
+        print(f"[WARNING] Duplicate ID, skipping: '{annotation.id}' "
+              f"(type={annotation.type}, chrom={annotation.chrom}, "
+              f"start={annotation.start}, end={annotation.end})")
+
 
 def annotation_from_row(row, step_index=None):
     a = Annotation()

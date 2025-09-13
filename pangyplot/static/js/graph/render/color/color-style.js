@@ -1,17 +1,42 @@
 import { colorState } from './color-state.js';
 import { getGradientColor } from './color-utils.js';
 
-export function getLinkColor(link){
+export function getLinkColor(link) {
 
-    if (link.type === "link"){
-        return colorState.linkColor;
+    if (link.type === "link") {
+        switch (colorState.style) {
+            case "node_type":
+                return colorByType(link.type);
+
+            case "ref_alt":
+                return colorByRef(link);
+            case "solid":
+                return colorState.linkColor;
+            default:
+                return colorState.linkColor;
+        }
     }
 
-    //todo: average out both ends for chain
+    if (link.type === "chain") {
+        switch (colorState.style) {
+            case "node_type":
+                return colorByType(link.type);
+            case "ref_alt":
+                return colorByRef(link);
+            case "node_type":
+                return colorByType(link.type);
+            case "node_length":
+                //todo: calculate chain length
+                return colorByLength(link.record.seqLength);
+            default:
+                return colorState.nullColor;
+
+        }
+    }
 
     switch (colorState.style) {
         case "node_type":
-            return colorByType(link.type);        
+            return colorByType(link.type);
         case "bubble_size":
             return colorBySize(link.source.size);
         case "node_length":
@@ -21,15 +46,15 @@ export function getLinkColor(link){
         case "gc_content":
             return colorByGC(link.record.gcCount, link.record.seqLength);
         case "position":
-            return colorByPosition(link.record.start, link.record.end);  
+            return colorByPosition(link.record.start, link.record.end);
         case "solid":
             return colorState.nodeColors[0];
         default:
-            return colorByType(link.type);        
+            return colorState.nullColor;
     }
 }
 
-export function getNodeColor(node){
+export function getNodeColor(node) {
 
     switch (colorState.style) {
         case "node_type":
@@ -40,18 +65,18 @@ export function getNodeColor(node){
             return colorByLength(node.record.seqLength);
         case "ref_alt":
             return colorByRef(node);
-        case "gc_content": 
+        case "gc_content":
             return colorByGC(node.record.gcCount, node.record.seqLength);
         case "position":
             return colorByPosition(node.record.start, node.record.end);
         case "solid":
-                return colorState.nodeColors[0]; 
+            return colorState.nodeColors[0];
         default:
             return colorByType(node.type);
     }
 }
 
-function colorByType(type){
+function colorByType(type) {
     switch (type) {
         case "segment":
             return colorState.nodeColors[0];
@@ -65,10 +90,10 @@ function colorByType(type){
             return colorState.linkColor;
         default:
             return colorState.nullColor;
-    }    
+    }
 }
 
-function colorBySize(size){
+function colorBySize(size) {
     const low = 0;
     const high = 12;
 
@@ -81,30 +106,30 @@ function colorBySize(size){
     return color;
 }
 
-function colorByGC(count, total){
+function colorByGC(count, total) {
     if (count == null || isNaN(count) || count < 0) {
         return colorState.nullColor;
     } if (total == null || isNaN(total) || total <= 0) {
         return colorState.nullColor;
     }
 
-    const pcGC = count/total;
+    const pcGC = count / total;
     const color = getGradientColor(pcGC, 0, 1, colorState.nodeColors);
 
     return color;
 }
 
-function colorByPosition(start, end){
+function colorByPosition(start, end) {
     //TODO
     return colorState.nullColor;
-    if ( start == null || isNaN(start) || end == null || isNaN(end)) {
+    if (start == null || isNaN(start) || end == null || isNaN(end)) {
         return colorState.nullColor;
     }
-    const position = (start+end)/2;
+    const position = (start + end) / 2;
     return getGradientColor(position, GRAPH_START_POS, GRAPH_END_POS, colorState.nodeColors[0]);
 }
 
-function colorByRef(obj){
+function colorByRef(obj) {
     return obj.isRef ? colorState.nodeColors[0] : colorState.nodeColors[2];
 }
 
@@ -117,9 +142,8 @@ function colorByLength(length) {
     }
 
     const logLength = Math.log10(length);
-    const color = getGradientColor(logLength, low, high, colorState.nodeColors[0]);
+    const color = getGradientColor(logLength, low, high, colorState.nodeColors);
 
     return color;
 }
 
-  

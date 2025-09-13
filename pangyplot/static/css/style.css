@@ -38,15 +38,23 @@ body {
 }
 
 #organism-indicator{
-    font-size: xx-large;
-    text-shadow: 1px 1px 2px var(--text-color);
     position: absolute;
-    top: 1.5em;
+    user-select: none;
+    top: 3em;
     right: 1.5em;
     padding: 5px 10px;
     border-radius: 5px;
     background: var(--light-green);
-
+}
+#organism-emoji {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: xx-large;
+    text-shadow: 1px 1px 2px var(--text-color);
+}
+#organism-genome{
+    font-size: small;
 }
 
 #gene-search-container{

@@ -104,7 +104,7 @@ export function createLinkElements(linkRecord) {
     const sourceRecord = linkRecord.sourceRecord;
     const targetRecord = linkRecord.targetRecord;
 
-    const isRef = sourceRecord.ranges.length > 0 || targetRecord.ranges.length > 0;
+    const isRef = sourceRecord.ranges.length > 0 && targetRecord.ranges.length > 0;
 
     const sourceIid = linkRecord.fromStrand === "+" ?
         sourceRecord.elements.nodes[0].tail() : sourceRecord.elements.nodes[0].head();

@@ -9,7 +9,7 @@ from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.AnnotationIndex import AnnotationIndex
-
+import pangyplot.organisms as organisms
 import pangyplot.preprocess.parser.parse_cytoband as cytoband_parser
 
 def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
@@ -69,37 +69,28 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 def setup_cytoband(app):
     load_dotenv()
 
-    organism_to_genome = {
-        "human": "hg38",
-        "dog": "canFam3",
-        "mouse": "mm39",
-        "fruitfly": "dm6",
-        "zebrafish": "danRer11",
-        "chicken": "galGal6",
-        "rabbit": "oryCun2",
-    }
 
     app.cytoband = dict()
-    
-    organism = os.getenv("ORGANISM", "human")
+
+    organism = os.getenv("ORGANISM", organisms.DEFAULT_ORGANISM)
     cytoband_path = os.getenv("CYTOBAND_PATH", None)
     canonical_path = os.getenv("CANONICAL_PATH", None)
     
     if organism == "custom":
         if not cytoband_path or not canonical_path:
-            print("No information about CYTOBAND_PATH or CANONICAL_PATH was found in .env")
-            print("Using default organism: human")
-            organism = "human"
+            print("A 'custom' organism was specified, but no information about CYTOBAND_PATH or CANONICAL_PATH was found in .env")
+            print(f"Using default organism: {organisms.DEFAULT_ORGANISM}")
+            organism = organisms.DEFAULT_ORGANISM
     else:
         cytoband_path = None
         canonical_path = None
 
     app.cytoband['organism'] = organism
-    genome = organism_to_genome.get(organism, None)
+    genome = organisms.ORGANISM_TO_GENOME.get(organism, None)
     app.cytoband['genome'] = genome
 
     if not cytoband_path:
-        genome = organism_to_genome.get(organism, None)
+        genome = organisms.ORGANISM_TO_GENOME.get(organism, None)
         if genome:
             ORGANISM=organism
             script_dir = os.path.dirname(os.path.realpath(__file__))
