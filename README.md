@@ -1,8 +1,8 @@
 # PangyPlot - a pangenome reference browser
 
 <p style="flex" align="center">
-  <img src="images/pangyplot_pangy.svg" alt="PangyPlot circle" height="144">
-  <img src="images/pangyplot_text_outline.svg" alt="PangyPlot header" height="144">
+  <img src="images/readme/pangyplot_pangy.svg" alt="PangyPlot circle" height="144">
+  <img src="images/readme/pangyplot_text_outline.svg" alt="PangyPlot header" height="144">
 </p>
 
                 Mastromatteo, Scott. 
