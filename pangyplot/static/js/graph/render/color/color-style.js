@@ -28,6 +28,8 @@ export function getLinkColor(link) {
             case "node_length":
                 //todo: calculate chain length
                 return colorByLength(link.record.seqLength);
+            case "solid":
+                return colorState.nodeColors[0];
             default:
                 return colorState.nullColor;
 
