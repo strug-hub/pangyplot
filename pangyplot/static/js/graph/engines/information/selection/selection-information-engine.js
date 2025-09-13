@@ -31,14 +31,16 @@ function generateSelectionInfo(forceGraph){
         return;
     }
     
+
     info.id = faLabel(node.id) || '';
+    info.range = String(node.record.ranges) || '';
     info.type = node.type || '';
     info.start = node.start != null ? node.start : '?';
     info.end = node.end != null ? node.end : '?';
     info.position = node.position || '';
     info.length = node.record.seqLength || '?';
-    info.seq = node.seq || 'N?';
-    info.nInside = node.record.size || '';
+    info.seq = node.record.seq || 'N?';
+    info.nInside = node.record.inside.length || '';
 
     updateSelectionInfo(info);
 }

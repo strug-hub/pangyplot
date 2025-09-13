@@ -2,8 +2,8 @@ import os
 import shutil
 from sqlite3 import OperationalError
 
-from pangyplot.parser.parse_gfa import parse_gfa
-from pangyplot.parser.parse_layout import parse_layout
+from pangyplot.preprocess.parser.parse_gfa import parse_gfa
+from pangyplot.preprocess.parser.parse_layout import parse_layout
 import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex

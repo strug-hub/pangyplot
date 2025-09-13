@@ -10,7 +10,7 @@ from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.AnnotationIndex import AnnotationIndex
 
-import pangyplot.parser.parse_cytoband as cytoband_parser
+import pangyplot.preprocess.parser.parse_cytoband as cytoband_parser
 
 def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
 

@@ -1,26 +1,59 @@
 import eventBus from "../../../../utils/event-bus.js";
 import recordsManager from "../../../data/records/records-manager.js";
 import { populateGeneAnnotationsTable } from "../gene-annotation-ui.js"
-import { annotationOverlap } from "../gene-annotation-utils.js";
 
 const GFF_QUEUE_NAME = "gff-gene";
 
-function annotateTranscripts(forceGraph, graphData) {
+function annotationOverlap(annotation, node) {
+    if (!node.record || !node.record.ranges) return null;
+    if (node.record.ranges.length < 1) return;
 
+    const [annotationStart, annotationEnd] = annotation.range;
+
+    for (const [rangeStart, rangeEnd] of node.record.ranges) {
+        // Find overlap interval
+        const overlapStart = Math.max(rangeStart, annotationStart);
+        const overlapEnd   = Math.min(rangeEnd, annotationEnd);
+
+        if (overlapStart <= overlapEnd) {
+            // Normalize to [0,1] relative to node range
+            const span = rangeEnd - rangeStart;
+
+            if (span === 0) {
+                // Treat point range as "fully overlapped"
+                return [0, 1];
+            }
+            const fracStart = (overlapStart - rangeStart) / span;
+            const fracEnd   = (overlapEnd - rangeStart) / span;
+            return [fracStart, fracEnd];
+        }
+    }
+
+    return null;
+}
+
+function annotateTranscripts(forceGraph, graphData) {
     forceGraph.getRenderRecords(GFF_QUEUE_NAME).forEach(record => {
 
         //todo: handle different transcripts
         if (!record.hasTranscripts()) return;
         const transcript = record.getPrimaryTranscript();
 
-        graphData.nodes.forEach(node => {
+        let overlap;
 
-            if (annotationOverlap(transcript, node)) {
-                node.annotations.push(record.id);
+        graphData.nodes.forEach(node => {
+            if (node.annotations.some(a => a.id === record.id)) return;
+
+            overlap = annotationOverlap(transcript, node);
+
+            if (overlap) {
+                node.annotations.push({id: record.id, overlap});
 
                 transcript.exons.forEach((exon) => {
-                    if (annotationOverlap(exon, node)) {
-                        node.annotations.push(`exon:${exon.exon_number}:${record.id}`);
+                    overlap = annotationOverlap(exon, node);
+
+                    if (overlap) {
+                        node.annotations.push({id: `exon:${exon.exon_number}:${record.id}`, overlap});
                     }
                 });
             }

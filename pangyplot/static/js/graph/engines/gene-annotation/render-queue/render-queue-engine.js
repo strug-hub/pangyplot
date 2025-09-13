@@ -48,6 +48,7 @@ export default function setUpRenderQueueEngine(forceGraph) {
         const layerCounters = {};
         const recordLookup = {};
 
+        // build record lookup
         for (const record of this.getRenderRecords()) {
             if (record.isVisible) {
                 recordLookup[record.id] = record;
@@ -61,7 +62,8 @@ export default function setUpRenderQueueEngine(forceGraph) {
             let count = 0;
             let record;
             let isExon;
-            for (let annId of item.annotations) {
+            for (let annotation of item.annotations) {
+                let annId = annotation.id; // <-- use object property now
                 if (annId.startsWith("exon:")) {
                     isExon = true;
                     const [pref, number, recordId] = annId.split(":");
@@ -72,10 +74,13 @@ export default function setUpRenderQueueEngine(forceGraph) {
                     record = recordLookup[annId] || null;
                 }
                 if (!record) continue;
-                if (record.showExons != undefined) {
+
+                // respect showExons toggle
+                if (record.showExons !== undefined) {
                     if (isExon && !record.showExons) continue;
                     if (!isExon && record.showExons) continue;
                 }
+
                 if (!annotationToElements[annId]) annotationToElements[annId] = [];
                 annotationToElements[annId].push(item);
                 count++;
@@ -85,5 +90,6 @@ export default function setUpRenderQueueEngine(forceGraph) {
 
         return { annotationToElements, layerCounters };
     };
+
 
 }

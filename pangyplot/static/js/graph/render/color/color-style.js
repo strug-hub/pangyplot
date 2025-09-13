@@ -7,19 +7,21 @@ export function getLinkColor(link){
         return colorState.linkColor;
     }
 
+    //todo: average out both ends for chain
+
     switch (colorState.style) {
         case "node_type":
             return colorByType(link.type);        
         case "bubble_size":
             return colorBySize(link.source.size);
         case "node_length":
-            return colorByLength(link.source.seqLen);
+            return colorByLength(link.record.seqLength);
         case "ref_alt":
             return colorByRef(link);
         case "gc_content":
-            return colorByGC(link.source.gcCount, link.source.seqLen);
+            return colorByGC(link.record.gcCount, link.record.seqLength);
         case "position":
-            return colorByPosition(link.source.start, link.source.end);  
+            return colorByPosition(link.record.start, link.record.end);  
         case "solid":
             return colorState.nodeColors[0];
         default:
@@ -35,13 +37,13 @@ export function getNodeColor(node){
         case "bubble_size":
             return colorBySize(node.size);
         case "node_length":
-            return colorByLength(node.seqLen);
+            return colorByLength(node.record.seqLength);
         case "ref_alt":
             return colorByRef(node);
         case "gc_content": 
-            return colorByGC(node.gcCount, node.seqLen);
+            return colorByGC(node.record.gcCount, node.record.seqLength);
         case "position":
-            return colorByPosition(node.start, node.end);
+            return colorByPosition(node.record.start, node.record.end);
         case "solid":
                 return colorState.nodeColors[0]; 
         default:
@@ -74,7 +76,7 @@ function colorBySize(size){
         return colorState.nullColor;
     }
 
-    const color = getGradientColor(size, low, high, colorState.nodeColors[0]);
+    const color = getGradientColor(size, low, high, colorState.nodeColors);
 
     return color;
 }
@@ -87,7 +89,7 @@ function colorByGC(count, total){
     }
 
     const pcGC = count/total;
-    const color = getGradientColor(pcGC, 0, 1, colorState.nodeColors[0]);
+    const color = getGradientColor(pcGC, 0, 1, colorState.nodeColors);
 
     return color;
 }

@@ -1,5 +1,5 @@
 from collections import defaultdict
-import pangyplot.parser.gfa.parse_utils as utils
+import pangyplot.preprocess.parser.gfa.parse_utils as utils
 import pangyplot.db.sqlite.path_db as db
 from pangyplot.db.indexes.PathIndex import PathIndex
 from pangyplot.objects.Path import Path

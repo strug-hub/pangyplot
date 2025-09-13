@@ -1,4 +1,5 @@
 import recordsManager from "../records/records-manager.js";
+import eventBus from '../../../utils/event-bus.js';
 
 export function selfDestructLinks(graphData) {
     const nids = new Set(graphData.nodes.map(node => node.iid));
@@ -18,6 +19,8 @@ export function selfDestructLinks(graphData) {
         const { nodes, links } = recordsManager.extractElementsFromRecords(subgraphRecords);
         graphData.nodes.push(...nodes);
         graphData.links.push(...links);
+
+        eventBus.publish('graph:bubble-popped', { id, graphData: { nodes, links } });
     }
 
     console.log("Removing nodes:", removeIds);

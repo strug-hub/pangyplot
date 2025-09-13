@@ -37,7 +37,7 @@ function informGraphElements(annotationId, nodes, action) {
 
         if (action === "add") {
             for (const element of elements) {
-                element.annotations.push(annotationId);
+                element.annotations.push({id: annotationId});
             }
         } else if (action === "delete") {
             for (const element of elements) {
@@ -50,7 +50,7 @@ function informGraphElements(annotationId, nodes, action) {
 function respondToBubblePop(forceGraph, bubbleId, graphData) {
     const bubbleRecord = recordsManager.getNode(bubbleId);
 
-    const customAnnotations = bubbleRecord.elements.nodes.flatMap(node => node.annotations);
+    const customAnnotations = bubbleRecord.elements.nodes.flatMap(node => node.annotations.map(ann => ann.id));
     const uniqueAnnotations = Array.from(new Set(customAnnotations));
     
     for (const annotationId of uniqueAnnotations) {

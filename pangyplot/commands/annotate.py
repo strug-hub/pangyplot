@@ -1,5 +1,5 @@
 import os
-from pangyplot.parser.parse_gff3 import parse_gff3
+from pangyplot.preprocess.parser.parse_gff3 import parse_gff3
 import shutil
 
 def pangyplot_annotate(args):

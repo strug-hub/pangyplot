@@ -39,6 +39,11 @@ export function updateSelectionInfo(info) {
   panel.innerHTML = ''; 
 
   appendRow({ label: 'Node:', valueEl: makeCopyable(info.id, { allowHTML: true }) });
+
+  if (DEBUG_MODE) {
+    appendRow({ label: 'Range', valueEl: makeCopyable(info.range, { allowHTML: true }) });
+  }
+  
   appendRow({ label: 'Class:', valueEl: makeCopyable(info.type) });
 
   const positionText = `${info.genome}#${info.chromosome}:${info.start}-${info.end}`;
