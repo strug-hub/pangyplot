@@ -1,5 +1,6 @@
 import pangyplot.db.db_utils as utils
 from pangyplot.objects.Segment import Segment
+import statistics
 
 DB_NAME="segments.db"
 
@@ -93,3 +94,52 @@ def count_segments(dir):
     cur.execute("SELECT COUNT(*) FROM segments")
     return int(cur.fetchone()[0])
 
+
+def summarize_segments(dir):
+    cur = get_connection(dir).cursor()
+
+    # Basic counts
+    cur.execute("SELECT COUNT(*), MIN(id), MAX(id) FROM segments")
+    n_segments, min_id, max_id = cur.fetchone()
+
+    # Length stats
+    cur.execute("SELECT length FROM segments")
+    lengths = [row["length"] for row in cur.fetchall()]
+    min_len = min(lengths)
+    max_len = max(lengths)
+    mean_len = sum(lengths) / len(lengths)
+    median_len = statistics.median(lengths)
+
+    # GC/N stats
+    cur.execute("SELECT SUM(gc_count), SUM(n_count), SUM(length) FROM segments")
+    gc_sum, n_sum, total_len = cur.fetchone()
+    gc_percent = (gc_sum / total_len) * 100 if total_len > 0 else 0
+    n_percent = (n_sum / total_len) * 100 if total_len > 0 else 0
+
+    # Layout bounding box
+    cur.execute("SELECT MIN(x1), MAX(x1), MIN(y1), MAX(y1), MIN(x2), MAX(x2), MIN(y2), MAX(y2) FROM segments")
+    x1_min, x1_max, y1_min, y1_max, x2_min, x2_max, y2_min, y2_max = cur.fetchone()
+
+    return {
+        "n_segments": n_segments,
+        "id_range": (min_id, max_id),
+        "lengths": {
+            "min": min_len,
+            "max": max_len,
+            "mean": mean_len,
+            "median": median_len,
+        },
+        "bases": {
+            "total_length": total_len,
+            "gc_count": gc_sum,
+            "n_count": n_sum,
+            "gc_percent": gc_percent,
+            "n_percent": n_percent,
+        },
+        "layout": {
+            "x1_range": (x1_min, x1_max),
+            "y1_range": (y1_min, y1_max),
+            "x2_range": (x2_min, x2_max),
+            "y2_range": (y2_min, y2_max),
+        }
+    }

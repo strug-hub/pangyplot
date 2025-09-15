@@ -86,3 +86,56 @@ def get_all(dir):
     cur = get_connection(dir).cursor()
     for row in cur.execute("SELECT * FROM links"):
         yield create_link(row)
+
+def summarize_links(dir, top_n=10):
+    cur = get_connection(dir).cursor()
+
+    # Basic counts
+    cur.execute("SELECT COUNT(*) FROM links")
+    n_links = cur.fetchone()[0]
+
+    # Haplotype distribution (limit to top_n)
+    cur.execute("""
+        SELECT haplotype, COUNT(*) as n
+        FROM links
+        GROUP BY haplotype
+        ORDER BY n DESC
+    """)
+    rows = cur.fetchall()
+    haplotype_counts = {}
+    other_count = 0
+    for i, row in enumerate(rows):
+        if i < top_n:
+            haplotype_counts[row["haplotype"]] = row["n"]
+        else:
+            other_count += row["n"]
+    if other_count > 0:
+        haplotype_counts["__other__"] = other_count
+
+    # Strand orientation distribution
+    cur.execute("""
+        SELECT from_strand || to_strand AS orientation, COUNT(*) as n
+        FROM links
+        GROUP BY orientation
+        ORDER BY n DESC
+    """)
+    orientations = {row["orientation"]: row["n"] for row in cur.fetchall()}
+
+    # Reverse flag distribution
+    cur.execute("SELECT reverse, COUNT(*) as n FROM links GROUP BY reverse")
+    reverse_counts = {row["reverse"]: row["n"] for row in cur.fetchall()}
+
+    # Frequency stats
+    cur.execute("SELECT MIN(frequency), MAX(frequency), AVG(frequency) FROM links")
+    min_freq, max_freq, mean_freq = cur.fetchone()
+
+    return {
+        "n_links": n_links,
+        "haplotypes_top": haplotype_counts,
+        "orientations": orientations,
+        "frequency": {
+            "min": min_freq,
+            "max": max_freq,
+            "mean": mean_freq,
+        }
+    }

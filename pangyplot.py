@@ -24,6 +24,8 @@ def parse_args():
     
     parser_status = subparsers.add_parser('status', help='Check the database status.')
     parser_status.add_argument('--dir', help='Directory where the database files are', default=DEFAULT_DB_FOLDER)
+    parser_status.add_argument('--db', help='Check specific database', default=None, required=False)
+    parser_status.add_argument('--table', help='Check specific table (eg. segment)', default=None, required=False)
 
     parser_run = subparsers.add_parser('run', help='Launch the software (development mode).')
     parser_run.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)

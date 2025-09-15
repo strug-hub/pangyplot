@@ -49,33 +49,21 @@ document.addEventListener("DOMContentLoaded", function () {
     setUpDataManager(forceGraph);
     setUpUiManager(forceGraph);
 
-    // wide muc4/20 region
-    let chrom="chr3";
-    let start=198347210;
-    let end=198855552; // start+100000
-    
-    // narrow muc4/20 region
-    start=198543540;
-    end=198660739;
-    
-    // repeat region
-    start=198563043;
-    end=198595149;
+    const WIDE_MUC420 = {genome:"GRCh38", chromosome:"chr3", start:198347210, end:198855552}
+    const NARROW_MUC420 = {genome:"GRCh38", chromosome:"chr3", start:198543540, end:198660739};
+    const REPEAT_REGION = {genome:"GRCh38", chromosome:"chr3", start:198563043, end:198595149};
+    const INVERSION_REGION = {genome:"GRCh38", chromosome:"chr3", start:198376687, end:198692934};
 
-    // inversion region
-    start=198376687;
-    end=198692934;
-    
-    const SERPINB5 = {genome: "GRCh38", chromosome:"chr18", start:63466958, end:63515085, genome: "GRCh38"};
-    const PRSS2 = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000, genome: "GRCh38"};
-    const CFTR = {genome: "GRCh38", chromosome:"chr7", start:117287120, end:117715971, genome: "GRCh38"};
-    const SLC9A3 = {genome: "GRCh38", chromosome:"chr5", start:470456, end:524449, genome: "GRCh38"};
-    const FULL_CHR7 = {genome: "GRCh38", chromosome:"chr7", start:1, end:1427745640, genome: "GRCh38"};
+    const SERPINB5 = {genome: "GRCh38", chromosome:"chr18", start:63466958, end:63515085};
+    const PRSS2 = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000};
+    const CFTR = {genome: "GRCh38", chromosome:"chr7", start:117287120, end:117715971};
+    const SLC9A3 = {genome: "GRCh38", chromosome:"chr5", start:470456, end:524449};
+    const FULL_CHR7 = {genome: "GRCh38", chromosome:"chr7", start:1, end:1427745640};
     const BRCA2 = {genome: "GRCh38", chromosome:"chr13", start:32315086-1000, end:32400268+1000};
-    const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942, genome: "GRCh38"};
-    const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010, genome: "GRCh38"};
+    const KDM5D = {genome: "GRCh38", chromosome:"chrY", start:19693650, end:19754942};
+    const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010};
 
-    eventBus.publish("ui:construct-graph", CFTR);
+    eventBus.publish("ui:construct-graph", PRSS2);
 
 });
 

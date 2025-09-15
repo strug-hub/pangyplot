@@ -54,6 +54,10 @@ body {
     text-shadow: 1px 1px 2px var(--text-color);
 }
 #organism-genome{
+        display: flex;
+    justify-content: center;
+    align-items: center;
+
     font-size: small;
 }
 

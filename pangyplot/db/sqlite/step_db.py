@@ -55,3 +55,23 @@ def get_genomes(dir):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT DISTINCT genome FROM step_index")
     return [row["genome"] for row in cur.fetchall()]
+
+
+def summarize_steps(dir):
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT COUNT(*), COUNT(DISTINCT genome), MIN(step), MAX(step) FROM step_index")
+    n_steps, n_genomes, min_step, max_step = cur.fetchone()
+
+    cur.execute("SELECT genome, COUNT(*) AS n FROM step_index GROUP BY genome ORDER BY n DESC")
+    per_genome = {row["genome"]: row["n"] for row in cur.fetchall()}
+
+    cur.execute("SELECT COUNT(DISTINCT seg_id) FROM step_index")
+    n_segments = cur.fetchone()[0]
+
+    return {
+        "total_steps": n_steps,
+        "genomes": n_genomes,
+        "step_range": (min_step, max_step),
+        "segments_indexed": n_segments,
+        "steps_per_genome": per_genome
+    }

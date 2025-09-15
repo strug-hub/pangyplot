@@ -18,6 +18,7 @@ class Annotation:
         self.range = None
 
     def serialize(self):
+        self.sort_transcripts()
         return {
             "id": self.id,
             "type": self.type,
@@ -41,6 +42,25 @@ class Annotation:
         if self.start is None or self.end is None:
             return
         self.range = step_index.query_coordinates(self.start, self.end, exact=True)
+
+    def sort_transcripts(self):
+        def transcript_priority(t, idx):
+            return (
+                int(bool(t.mane_select)),                 # MANE_Select first
+                int(bool(t.ensembl_canonical)),           # then Ensembl canonical
+                1 if t.tag and "GENCODE_Primary" in t.tag else 0,
+                1 if t.tag and "CCDS" in t.tag else 0,
+                -idx  # preserve original order on ties (stable sort)
+            )
+
+        self.transcripts = [
+            t for _, t in sorted(
+                enumerate(self.transcripts),
+                key=lambda pair: transcript_priority(pair[1], pair[0]),
+                reverse=True
+            )
+        ]
+
 
     def __str__(self):
         tp = self.type

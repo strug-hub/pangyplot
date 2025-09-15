@@ -9,6 +9,7 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
         raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
     start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
+    print(start_step, end_step, "!!!!!!!")
     bubble_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
 
     serialized_chains = [chain.serialize() for chain in bubble_chains]

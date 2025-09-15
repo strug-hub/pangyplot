@@ -2,6 +2,7 @@ import json
 from pangyplot.objects.Bubble import Bubble
 from pangyplot.db.db_utils import get_connection
 import pangyplot.db.db_utils as utils
+import statistics
 
 DB_NAME = "bubbles.db"
 
@@ -163,3 +164,72 @@ def count_bubbles(chr_dir):
     cur.execute("SELECT COUNT(*) FROM bubbles")
     return int(cur.fetchone()[0])
 
+
+import statistics
+
+def summarize_bubbles(dir, top_chains=10):
+    cur = get_connection(dir).cursor()
+
+    # Basic counts
+    cur.execute("SELECT COUNT(*), MIN(id), MAX(id) FROM bubbles")
+    n_bubbles, min_id, max_id = cur.fetchone()
+
+    # Length stats
+    cur.execute("SELECT length FROM bubbles")
+    lengths = [row["length"] for row in cur.fetchall()]
+    min_len = min(lengths) if lengths else 0
+    max_len = max(lengths) if lengths else 0
+    mean_len = (sum(lengths) / len(lengths)) if lengths else 0
+    median_len = statistics.median(lengths) if lengths else 0
+
+    # GC/N stats
+    cur.execute("SELECT SUM(gc_count), SUM(n_count), SUM(length) FROM bubbles")
+    gc_sum, n_sum, total_len = cur.fetchone()
+    gc_percent = (gc_sum / total_len) * 100 if total_len and gc_sum else 0
+    n_percent = (n_sum / total_len) * 100 if total_len and n_sum else 0
+
+    # Subtype distribution
+    cur.execute("SELECT subtype, COUNT(*) as n FROM bubbles GROUP BY subtype ORDER BY n DESC")
+    subtype_counts = {row["subtype"]: row["n"] for row in cur.fetchall()}
+
+    # Parent/child counts
+    cur.execute("SELECT COUNT(*) FROM bubbles WHERE parent IS NOT NULL")
+    n_with_parent = cur.fetchone()[0]
+    n_root = n_bubbles - n_with_parent
+
+    # Chain distribution (limit to top_chains)
+    cur.execute("SELECT chain, COUNT(*) as n FROM bubbles GROUP BY chain ORDER BY n DESC")
+    rows = cur.fetchall()
+    chain_counts = {}
+    other_count = 0
+    for i, row in enumerate(rows):
+        if i < top_chains:
+            chain_counts["c" + str(row["chain"])] = row["n"]
+        else:
+            other_count += row["n"]
+    if other_count > 0:
+        chain_counts["__other__"] = other_count
+
+    return {
+        "n_bubbles": n_bubbles,
+        "id_range": (min_id, max_id),
+        "lengths": {
+            "min": min_len,
+            "max": max_len,
+            "mean": mean_len,
+            "median": median_len,
+        },
+        "bases": {
+            "total_length": total_len,
+            "gc_count": gc_sum,
+            "n_count": n_sum,
+            "gc_percent": gc_percent,
+            "n_percent": n_percent,
+        },
+        "subtypes": subtype_counts,
+        "hierarchy": {
+            "roots": n_root,
+            "with_parent": n_with_parent,
+        },
+        "chains_top": chain_counts,
+    }

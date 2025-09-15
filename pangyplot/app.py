@@ -68,8 +68,6 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
 def setup_cytoband(app):
     load_dotenv()
-
-
     app.cytoband = dict()
 
     organism = os.getenv("ORGANISM", organisms.DEFAULT_ORGANISM)
