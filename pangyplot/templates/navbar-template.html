@@ -13,7 +13,7 @@
 
         <nav class="flex-row flex-1">
 
-            <img id="navbar-logo" alt="PangyPlot" class="flex-1" src="{{ url_for('static', filename='images/pangyplot_logo.svg') }}">
+            <img id="navbar-logo" alt="PangyPlot" src="{{ url_for('static', filename='images/pangyplot_logo.svg') }}">
 
             {{ navbar_item('navbar-button-docs', 'Docs', 'fa-solid fa-book', 'https://pangyplot-docs.readthedocs.io/en/latest/', "_blank") }}
             {{ navbar_item('navbar-button-github', 'GitHub', 'fa-brands fa-github', 'https://github.com/ScottMastro/pangyplot', "_blank") }}
@@ -22,10 +22,10 @@
             {{ navbar_item('navbar-button-example', 'Example', 'fa-solid fa-vial', '#example', "_self") }}
             {{ navbar_item('navbar-button-example2', 'Example 2', 'fa-solid fa-vial', '#example2', "_self") }}
             {{ navbar_item('navbar-button-example3', 'Example 3', 'fa-solid fa-vial', '#example3', "_self") }}
+            <div class="navbar-blank flex-6"></div>
 
         </nav>
 
-        <div class="navbar-blank flex-1"></div>
 
     </div>
 </nav>

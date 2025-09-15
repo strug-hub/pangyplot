@@ -7,16 +7,13 @@
 }
 
 .option-button-unselected {
-    background-color: var(--light-green);
     box-shadow: 3px 3px 5px rgba(0, 0, 0, 0);
-    mix-blend-mode: multiply;
-    filter: grayscale(100%);
-    opacity: 0.5;
+    background-color: var(--unselected-green);
+    color: var(--unselected-text);
+
 }.option-button-unselected:hover {
     background-color: var(--highlight);
-    mix-blend-mode: normal;
-    filter: none;
-    opacity: 1;
+    color: var(--text-color);
 }
 .option-button-selected {
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
