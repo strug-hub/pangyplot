@@ -19,13 +19,10 @@ export class LinkRecord extends GraphObjectRecord {
         this.type = rawLink.type || "link";
         this.fromStrand = rawLink.from_strand;
         this.toStrand = rawLink.to_strand;
-
-        console.log(rawLink.haplotype, "LinkRecord:", rawLink);
         this.haplotype = rawLink.haplotype;
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
         
-
         // chain link properties
         this.seqLength = rawLink.length;
         this.contained = rawLink.contained;
