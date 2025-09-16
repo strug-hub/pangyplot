@@ -117,8 +117,15 @@ class Bubble:
             chain_link.combine_links(link)
 
         length = sum([gfaidx.segment_length(sid) for sid in self.sink_segments])
+        gc_count = 0
+        n_count = 0
+        for sid in self.sink_segments:
+            gc,n = gfaidx.segment_gc_n_count(sid)
+            gc_count += gc
+            n_count += n
+
         new_ids = (self.siblings[0], self.id) if source else (self.id, self.siblings[1])
-        chain_link.update_to_chain_link(new_ids, self.sink_segments, length)
+        chain_link.update_to_chain_link(new_ids, self.sink_segments, length, gc_count, n_count)
         chain_link.make_bubble_to_bubble()
         return chain_link
     

@@ -20,10 +20,16 @@ export class LinkRecord extends GraphObjectRecord {
         this.fromStrand = rawLink.from_strand;
         this.toStrand = rawLink.to_strand;
         this.haplotype = rawLink.haplotype;
-        this.seqLength = rawLink.length;
-        this.contained = rawLink.contained;
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
+        
+
+        // chain link properties
+        this.seqLength = rawLink.length;
+        this.contained = rawLink.contained;
+        this.gcCount = rawLink.gc_count;
+        this.nCount = rawLink.n_count;
+
 
         this.isSelfDestructLink = rawLink.type == "self-destruct";
     }

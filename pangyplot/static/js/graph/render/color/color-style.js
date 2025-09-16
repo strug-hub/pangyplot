@@ -7,7 +7,6 @@ export function getLinkColor(link) {
         switch (colorState.style) {
             case "node_type":
                 return colorByType(link.type);
-
             case "ref_alt":
                 return colorByRef(link);
             case "solid":
@@ -25,6 +24,8 @@ export function getLinkColor(link) {
                 return colorByRef(link);
             case "node_type":
                 return colorByType(link.type);
+            case "gc_content":
+                return colorByGC(link.record.gcCount, link.record.seqLength);
             case "node_length":
                 //todo: calculate chain length
                 return colorByLength(link.record.seqLength);

@@ -21,6 +21,9 @@ class GFAIndex:
     def segment_length(self, seg_id):
         return self.segment_index.segment_length(seg_id)
     
+    def segment_gc_n_count(self, seg_id):
+        return self.segment_index.segment_gc_n_count(seg_id)
+
     def get_links(self, seg_id):
         return self.link_index[seg_id]
     

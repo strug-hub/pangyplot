@@ -12,6 +12,8 @@ class Link:
         self.link_type = "link"
         self.contained = []
         self.length = 0
+        self.gc_count = 0
+        self.n_count = 0
         self.deletion_bubble_id = None
 
     def serialize(self):
@@ -27,6 +29,8 @@ class Link:
             "frequency": self.frequency,
             "contained": self.contained,
             "length": self.length,
+            "gc_count": self.gc_count,
+            "n_count": self.n_count,
             "is_deletion": self.deletion_bubble_id is not None,
             "bubble_id": f"b{self.deletion_bubble_id}" if self.deletion_bubble_id is not None else None
         }
@@ -94,11 +98,13 @@ class Link:
         if type(self.from_id) is str:
             self.from_id = self.from_id.split(":")[0]
 
-    def update_to_chain_link(self, new_ids=None, contained=[], length=0):
+    def update_to_chain_link(self, new_ids=None, contained=[], length=0, gc_count=0, n_count=0):
         if new_ids is not None:
             self.from_id = new_ids[0]
             self.to_id = new_ids[1]
         self.contained = contained
+        self.gc_count = gc_count
+        self.n_count = n_count
         self.length = length
         self.link_type = "chain"
 

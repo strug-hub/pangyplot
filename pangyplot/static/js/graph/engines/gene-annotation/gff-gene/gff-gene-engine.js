@@ -62,7 +62,7 @@ function annotateTranscripts(forceGraph, graphData) {
 }
 
 export function setUpGffGeneEngine(forceGraph) {
-
+    
     forceGraph.addRenderQueue(GFF_QUEUE_NAME, 1);
 
     eventBus.subscribe("graph:data-replaced", async (forceGraph) => {
@@ -77,7 +77,7 @@ export function setUpGffGeneEngine(forceGraph) {
     });
 
 
-    eventBus.subscribe('graph:bubble-popped', ({ bubbleId, graphData }) => {
+    eventBus.subscribe('graph:bubble-popped', ({ id: bubbleId, graphData }) => {
         annotateTranscripts(forceGraph, graphData);
     });
 }

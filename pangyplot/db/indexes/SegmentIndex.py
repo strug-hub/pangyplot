@@ -46,6 +46,9 @@ class SegmentIndex:
     def segment_length(self, seg_id):
         return self.length[seg_id] if seg_id < len(self.length) else 0
 
+    def segment_gc_n_count(self, seg_id):
+        return db.get_segment_gc_n_count(self.dir, seg_id)
+
     def serialize(self):
         return {
             #"id": self.id.tolist(),
