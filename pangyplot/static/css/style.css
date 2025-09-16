@@ -8,6 +8,8 @@
     --lighter-green: #BCCCC2;
     --text-color: #384034;
     --tab-box: rgba(225, 225, 225, 0.8);
+    --unselected-green: #9ba8a0;
+    --unselected-text: #747e77;
 
     --title-height: 20px;
     --fixed-height-1: 120px;
@@ -25,6 +27,7 @@ body {
 } .navbar-height{
     height: 120px;
 }
+
 
 #version-overlay {
     font-size: x-small;
@@ -54,10 +57,15 @@ body {
     text-shadow: 1px 1px 2px var(--text-color);
 }
 #organism-genome{
+<<<<<<< HEAD
         display: flex;
     justify-content: center;
     align-items: center;
 
+=======
+    display: flex;
+    justify-content: center;
+>>>>>>> eb601f6b1d21c7b987441974051d9c256a91358f
     font-size: small;
 }
 

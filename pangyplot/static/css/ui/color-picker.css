@@ -1,7 +1,5 @@
 
-.color-style-option {
-    color: var(--text-color);
-} .color-style-option i{
+.color-style-option i{
     pointer-events:none;
 }
 
@@ -43,3 +41,10 @@ input[type="color"] {
     justify-content: center;
 }
 
+.color-style-icon{
+    font-size: xx-large;
+}
+
+.color-style-label {
+font-size: small;
+}

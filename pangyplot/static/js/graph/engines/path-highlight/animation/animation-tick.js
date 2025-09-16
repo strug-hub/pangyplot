@@ -28,13 +28,15 @@ function highlightNode(id, direction) {
     for (const node of nodes) {
         highlightList.push(node);
         node.focused = 1;
-        node.colorOverride = direction === "+" ? "#000000" : "#FF0000";
+        node.colorOverride = "#000000";
+        //direction === "+" ? "#000000" : "#FF0000";
     }
 
     for (const node of forceGraph.graphData().nodes) {
         if (node.id === id) {
             node.focused = 1;
-            node.colorOverride = direction === "+" ? "#000000" : "#FF0000";
+            node.colorOverride = "#000000";
+            //direction === "+" ? "#000000" : "#FF0000";
         }
     }
 }
@@ -70,12 +72,10 @@ function updatePathStep(forceGraph, move, nodeIdSet = null) {
         const [segment, bubbles] = animationPath[currentStep];
         const [id, direction] = splitSegment(segment);
 
-        if (bubbles.length == 0) {
-            if (activeNodeIds.has(id)) {
-                highlightNode(id, direction);
-            } else {
-                continue; // skip to next iteration
-            }
+        if (activeNodeIds.has(id)) {
+            highlightNode(id, direction);
+        } else if (bubbles.length == 0) {
+            continue; // skip to next iteration
         }
 
         const lastHighlight = highlightList.length > 0 ?
