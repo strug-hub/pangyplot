@@ -9,10 +9,17 @@ async function fetchPathData(forceGraph) {
     return await fetchData(url, "path-order");
 }
 
-
 export default async function setupLinkColorEngine(forceGraph) {
 
     const pathSelector = document.getElementById('path-selector');
+
+    pathSelector.addEventListener('change', function () {
+        const selectedOption = pathSelector.options[pathSelector.selectedIndex];
+        if (!selectedOption) return;
+        const optionsContainer = document.getElementById("path-select-container");
+        optionsContainer.classList.remove("hidden");
+
+    });
 
     const pathSelectButton = document.getElementById('path-select-button');
     pathSelectButton.addEventListener('click', async function () {
@@ -25,14 +32,31 @@ export default async function setupLinkColorEngine(forceGraph) {
         const selectedSample = pathSelector.value;
         selectedSampleIdx = pathOrderData[selectedSample];
 
+        const idxToPath = {};
+        for (const [path, idx] of Object.entries(pathOrderData)) {
+            idxToPath[idx] = path;
+        }
+
         for (const link of forceGraph.graphData().links) {
-            if (link.record && typeof link.record.hasSample === "function") {
-                if (link.record.hasSample(selectedSampleIdx)) {
-                    link.colorOverride = colorState.selectedColor;
-                    console.log(link.colorOverride);
-                }else{
-                    link.colorOverride = undefined;
+            if (link.class === "node") continue;
+            
+            const mask = link.record.decodeHaplotypeMask();
+            const list = [];
+            const idxs = [];
+
+            for (let i = 0; i < mask.length; i++) {
+                if (mask[i]) {
+                    list.push(idxToPath[i]);
+                    idxs.push(i);
                 }
+            }
+            console.log(link, link.record.haplotype, idxs, list);
+
+            if (link.record.hasSample(selectedSampleIdx)) {
+                link.colorOverride = colorState.selectedColor;
+                console.log(link.colorOverride);
+            } else {
+                link.colorOverride = undefined;
             }
         }
     });
@@ -49,13 +73,13 @@ export default async function setupLinkColorEngine(forceGraph) {
     eventBus.subscribe('graph:bubble-popped', ({ id: bubbleId, graphData }) => {
         if (selectedSampleIdx >= 0) {
             for (const link of graphData.links) {
-                console.log("newlink:", link);
-                if (link.record && typeof link.record.hasSample === "function") {
+                if (link.class == "node") continue;
+                console.log("newlink:", link.record.haplotype);
 
-                    if (link.record.hasSample(selectedSampleIdx))
-                        link.colorOverride = colorState.selectedColor;
-                }
+                if (link.record.hasSample(selectedSampleIdx))
+                    link.colorOverride = colorState.selectedColor;
             }
+
         } else {
             for (const link of graphData.links) {
                 link.colorOverride = undefined;

@@ -57,15 +57,8 @@ body {
     text-shadow: 1px 1px 2px var(--text-color);
 }
 #organism-genome{
-<<<<<<< HEAD
-        display: flex;
-    justify-content: center;
-    align-items: center;
-
-=======
     display: flex;
     justify-content: center;
->>>>>>> eb601f6b1d21c7b987441974051d9c256a91358f
     font-size: small;
 }
 

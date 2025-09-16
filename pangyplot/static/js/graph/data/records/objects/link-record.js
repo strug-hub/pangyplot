@@ -19,7 +19,8 @@ export class LinkRecord extends GraphObjectRecord {
         this.type = rawLink.type || "link";
         this.fromStrand = rawLink.from_strand;
         this.toStrand = rawLink.to_strand;
-        console.log(rawLink.haplotype)
+
+        console.log(rawLink.haplotype, "LinkRecord:", rawLink);
         this.haplotype = rawLink.haplotype;
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
@@ -41,15 +42,18 @@ export class LinkRecord extends GraphObjectRecord {
     }
 
     decodeHaplotypeMask() {
-        if (!this.haplotype) return [0];
+        if (!this.haplotype) return [];
 
         const mask = BigInt("0x" + this.haplotype.replace(/^0x/, ""));
         const bools = [];
         let i = 0n;
-        while ((mask >> i) > 0) {
-            bools.push((mask >> i) & 1n ? true : false);
+
+        while ((mask >> i) > 0n) {
+            bools.push(((mask >> i) & 1n) === 1n);
             i += 1n;
         }
+
+
         return bools;
     }
 

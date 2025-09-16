@@ -28,7 +28,7 @@ export function updateStepDisplay(step){
 }
 
 export function createPathList(paths){
-    const optionsContainer = document.getElementById("path-options-container");
+    const optionsContainer = document.getElementById("path-animation-container");
     optionsContainer.classList.add("hidden");
 
     const pathContainer = document.getElementById("path-table-container");

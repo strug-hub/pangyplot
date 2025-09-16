@@ -110,12 +110,14 @@ class LinkIndex:
             return []
         offset = self.seg_index_offsets[seg_id]
         count = self.seg_index_counts[seg_id]
-        return [self.get_link_by_index(self.seg_index_flat[offset + j]) for j in range(count)]
-    
-    def _get_link_id(self, i):
-        return f"{self.from_ids[i]}{self.from_strands[i]}{self.to_ids[i]}{self.to_strands[i]}"
+        links = [self.get_link_by_index(self.seg_index_flat[offset + j]) for j in range(count)]
+        return links
 
-    def get_link_by_index(self, i, full=False):
+    def _get_link_id(self, i):
+        return f"{self.from_ids[i]}{self.rev_strand_map[self.from_strands[i]]}" \
+            f"{self.to_ids[i]}{self.rev_strand_map[self.to_strands[i]]}"
+    
+    def get_link_by_index(self, i, full=True):
         if full:
             return db.get_link(self.dir, self._get_link_id(i))
 
