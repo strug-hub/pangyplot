@@ -9,6 +9,9 @@ class PathIndex:
 
     def get_samples(self):
         return [sample for sample in self.samples]
+    
+    def get_sample_idx(self):
+        return self.sample_idx
 
     def get_paths(self, sample):
         return path_db.retrieve_paths(self.dir, sample)

@@ -33,6 +33,9 @@ class GFAIndex:
     def get_samples(self):
         return self.path_index.get_samples()
     
+    def get_sample_idx(self):
+        return self.path_index.get_sample_idx()
+
     def get_paths(self, sample):
         return self.path_index.get_paths(sample)
     

@@ -149,6 +149,7 @@ def pop():
 
 @bp.route('/path', methods=["GET"])
 def path():
+    
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
     start = int(request.args.get("start"))
@@ -163,6 +164,22 @@ def path():
         return jsonify({"error": str(e)}), 404
 
     return jsonify(path)
+
+@bp.route('/pathorder', methods=["GET"])
+def path_order():
+
+    genome = request.args.get("genome")
+    chrom = request.args.get("chromosome")
+    print(genome, chrom)
+    print(f"Getting path order...")
+    try:
+        order = query.get_path_order(current_app, genome, chrom)
+    except ValueError as e:
+        print(f"Path order query failed: {e}")
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify(order)
+
 
 @bp.route('/gfa', methods=["GET"])
 def gfa():

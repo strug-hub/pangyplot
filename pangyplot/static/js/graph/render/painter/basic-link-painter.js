@@ -20,7 +20,10 @@ export function basicLinkPainter(ctx, link, svg=null){
     const x2 = target.x;
     const y2 = target.y;
 
-    if (source.focused && target.focused) {
+    if (link.colorOverride) {
+        color = link.colorOverride;
+    }
+    else if (source.focused && target.focused) {
         if (source.focused > 0 && target.focused > 0) {
             const focused = (source.focused + target.focused) / 2;
             color = mixColors(color, source.colorOverride, focused);

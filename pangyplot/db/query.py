@@ -72,3 +72,8 @@ def get_path(indexes, genome, chrom, start, end, sample):
         all_subpaths.extend(subpaths)
 
     return [p.serialize(bubbleidx) for p in all_subpaths]
+
+def get_path_order(indexes, genome, chrom):
+    gfaidx = indexes.gfa_index[chrom]
+    print(gfaidx.get_sample_idx())
+    return gfaidx.get_sample_idx()
