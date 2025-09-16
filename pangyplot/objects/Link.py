@@ -17,7 +17,6 @@ class Link:
         self.deletion_bubble_id = None
 
     def serialize(self):
-        print(self.haplotype, "Link:", self)
         return {
             "id": self.id(),
             "type": self.link_type,
@@ -85,7 +84,11 @@ class Link:
         
     def id(self):
         return f"{self.from_type}{self.from_id}{self.from_strand}{self.to_type}{self.to_id}{self.to_strand}"
-    def reverse_id(self):
+    
+    def gfa_id(self):
+        return f"{self.from_id}{self.from_strand}{self.to_id}{self.to_strand}"
+    
+    def reverse_gfa_id(self):
         return f"{self.to_id}{'-' if self.to_strand == '+' else '+'}{self.from_id}{'-' if self.from_strand == '+' else '+'}"
 
     def add_to_suffix(self, suffix):

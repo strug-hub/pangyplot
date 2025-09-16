@@ -49,10 +49,9 @@ export class LinkRecord extends GraphObjectRecord {
         let i = 0n;
 
         while ((mask >> i) > 0n) {
-            bools.push(((mask >> i) & 1n) === 1n);
+            bools.unshift(((mask >> i) & 1n) === 1n); // insert at start
             i += 1n;
         }
-
 
         return bools;
     }

@@ -44,7 +44,7 @@ def get_bubble_end(indexes, id, genome, chrom):
     bid = int(id.split(":")[0])
     side = int(id.split(":")[1])
 
-    print(f"Getting bubble end for {bid} on side {side}...")
+    #print(f"Getting bubble end for {bid} on side {side}...")
 
     bubble = bubbleidx[bid]
 

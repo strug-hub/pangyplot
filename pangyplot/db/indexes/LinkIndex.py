@@ -116,15 +116,6 @@ class LinkIndex:
     def _get_link_id(self, i):
         return f"{self.from_ids[i]}{self.rev_strand_map[self.from_strands[i]]}" \
             f"{self.to_ids[i]}{self.rev_strand_map[self.to_strands[i]]}"
-    
-    def get_link_by_index(self, i, full=True):
-        if full:
-            return db.get_link(self.dir, self._get_link_id(i))
 
-        link = Link()
-        link.from_id = self.from_ids[i]
-        link.from_strand = self.rev_strand_map[self.from_strands[i]]
-        link.to_id = self.to_ids[i]
-        link.to_strand = self.rev_strand_map[self.to_strands[i]]
-        return link
-
+    def get_link_by_index(self, i):
+        return db.get_link(self.dir, self._get_link_id(i))
