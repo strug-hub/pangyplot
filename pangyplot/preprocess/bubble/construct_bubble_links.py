@@ -1,6 +1,5 @@
 from itertools import product
 from collections import defaultdict
-from wsgiref import types
 import pangyplot.db.sqlite.bubble_db as db
 
 def classify_link(link, from_bubbles, to_bubbles, bubble_dict):
