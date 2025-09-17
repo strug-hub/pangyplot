@@ -1,5 +1,6 @@
 import recordsManager from "../records/records-manager.js";
 import eventBus from '../../../utils/event-bus.js';
+import { centerGraphData } from "../../graph-coordinate-manager.js";
 
 export function selfDestructLinks(graphData) {
     const nids = new Set(graphData.nodes.map(node => node.iid));
@@ -16,11 +17,13 @@ export function selfDestructLinks(graphData) {
 
     for (const id of removeIds) {
         const subgraphRecords = recordsManager.getChildSubgraph(id);
-        const { nodes, links } = recordsManager.extractElementsFromRecords(subgraphRecords);
-        graphData.nodes.push(...nodes);
-        graphData.links.push(...links);
+        const newData = recordsManager.extractElementsFromRecords(subgraphRecords);
 
-        eventBus.publish('graph:bubble-popped', { id, graphData: { nodes, links } });
+        centerGraphData(newData);
+        graphData.nodes.push(...newData.nodes);
+        graphData.links.push(...newData.links);
+
+        eventBus.publish('graph:bubble-popped', { id, graphData: newData });
     }
 
     console.log("Removing nodes:", removeIds);

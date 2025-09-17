@@ -1,5 +1,6 @@
 import { cleanUpGraphData } from "./graph-data-integrity.js";
 import { checkForObjectMismatch } from "../../../debug/check-for-object-mismatch.js";
+import { recenterGraphData, centerGraphData } from "../../graph-coordinate-manager.js";
 
 function addGraphData(forceGraph, newData) {
 
@@ -9,6 +10,7 @@ function addGraphData(forceGraph, newData) {
     graphData.links.push(...newData.links);
   
     checkForObjectMismatch(graphData);
+    centerGraphData(newData);
 
     cleanUpGraphData(graphData);
     forceGraph.graphData(graphData);
@@ -26,7 +28,8 @@ function removeNode(forceGraph, id) {
 }
 
 function replaceGraphData(forceGraph, graphData) {
-    cleanUpGraphData(graphData)   
+    cleanUpGraphData(graphData);
+    recenterGraphData(graphData);
     forceGraph.graphData(graphData);
 }
 

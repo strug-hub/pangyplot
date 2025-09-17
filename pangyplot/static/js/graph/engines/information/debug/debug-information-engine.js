@@ -1,7 +1,7 @@
 import DEBUG_MODE from '../../../../debug-mode.js';
 
 import { updateDebugInformation } from '../../../../ui/tabs/information-panel.js';
-import { getZoomFactor, getScaleFactor, getDampenedZoomFactor } from '../../../render/render-scaling.js';
+import { getZoomFactor,getZoomLevel, getScaleFactor } from '../../../render/render-scaling.js';
 
 //average across last frames
 var frameTimes = [];
@@ -44,8 +44,8 @@ function getDebugStatus(forceGraph) {
         graphY: coordinates.y.toFixed(ndigits),
         alpha: lastAlpha.toFixed(3),
         zoom: `${getZoomFactor(ctx).toFixed(3)}`,
-        scale: `${getScaleFactor(ctx).toFixed(3)}`,
-        dampzoom: `${getDampenedZoomFactor(ctx).toFixed(3)}`
+        zoomLevel: `${getZoomLevel(ctx)}:${getZoomLevel(ctx,true).toFixed(3)}`,
+        scale: `${getScaleFactor(ctx).toFixed(3)}`
     };
 }
 

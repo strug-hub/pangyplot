@@ -37,8 +37,6 @@ document.addEventListener("DOMContentLoaded", function () {
         .autoPauseRedraw(false) // keep drawing after engine has stopped
         .cooldownTicks(Infinity)
         .cooldownTime(Infinity)
-        .minZoom(1e-6) //default = 0.01
-        .maxZoom(10) //default = 1000
         .warmupTicks(4)
         //.linkDirectionalParticles(4)
 
@@ -68,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010};
     const EXOC3 = {genome: "GRCh38", chromosome:"chr5", start:321714, end:471937};
     
-    eventBus.publish("ui:construct-graph", SUBTELOMERE);
+    eventBus.publish("ui:construct-graph", CFTR_T2T);
 
 });
 

@@ -18,36 +18,6 @@ export function nodesInBox(forceGraph, bounds) {
     return containedNodes;
 }
 
-
-export function resetGraphPositions(graph){
-    graph.nodes.forEach(node => {
-        node.x = node.initX;
-        node.y = node.initY;
-    });
-}
-
-export function findNodeBoundsInit(nodes) {
-    let bounds = {
-        minX: Infinity,
-        maxX: -Infinity,
-        minY: Infinity,
-        maxY: -Infinity
-    };
-
-    nodes.forEach(node => {
-        if (node.class != "text") {
-            if (node.initX < bounds.minX) bounds.minX = node.initX;
-            if (node.initX > bounds.maxX) bounds.maxX = node.initX;
-            if (node.initY < bounds.minY) bounds.minY = node.initY;
-            if (node.initY > bounds.maxY) bounds.maxY = node.initY;
-        }
-    });
-
-    return { x: bounds.minX, y: bounds.minY, 
-        width: bounds.maxX - bounds.minX, 
-        height: bounds.maxY - bounds.minY };
-}
-
 export function findNodeBounds(nodes) {
     let bounds = {
         minX: Infinity,

@@ -9,8 +9,8 @@ const strengthLevels = {
 
 export default function layoutForce(strengthLevel = 2) {
   let nodes = [];
-  let getTx = d => (d.initX ?? d.x);   // default target x
-  let getTy = d => (d.initY ?? d.y);   // default target y
+  let getTx = d => (d.homeX ?? d.x);   // default target x
+  let getTy = d => (d.homeY ?? d.y);   // default target y
   let getStrength = d => strengthLevels[strengthLevel] ?? 0;
 
   function force(alpha) {

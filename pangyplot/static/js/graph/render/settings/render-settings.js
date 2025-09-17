@@ -1,4 +1,4 @@
-import { updateWidthMultiplier, updateTextSizeMultiplier } from '../render-scaling.js';
+import { updateWidthMultiplier, updateTextMultiplier } from '../render-scaling.js';
 import createSliderSet from "../../../ui/utils/slider-set.js";
 
 const settings = [
@@ -11,7 +11,7 @@ const settings = [
     {
         id: "font-size-slider", icon:"text-width", label: "Font Size", min: -1, max: 1, step: 0.1, default: 0,
         onChange: (value) => {
-            updateTextSizeMultiplier(1 + value); // -1 to 1
+            updateTextMultiplier(1 + value); // -1 to 1
         }
     }
 ];

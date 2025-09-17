@@ -6,8 +6,7 @@ export function highlightNodePainter(ctx, node, color, thickness, svg=null) {
 
     if (! node.isVisible || !node.isDrawn) return;
     
-    const scaleFactor = getScaleFactor(ctx);
-    const width = thickness * scaleFactor;
+    const width = thickness * getScaleFactor(ctx);
 
     if (svg) {
         drawCircleSvg(svg, node.x, node.y, width, color);
