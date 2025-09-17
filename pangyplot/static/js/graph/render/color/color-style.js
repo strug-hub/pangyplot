@@ -1,5 +1,6 @@
 import { colorState } from './color-state.js';
 import { getGradientColor } from './color-utils.js';
+import { calculateGCNode, calculateGCLink } from './color-smooth.js'
 
 export function getLinkColor(link) {
 
@@ -7,6 +8,8 @@ export function getLinkColor(link) {
         switch (colorState.style) {
             case "node_type":
                 return colorByType(link.type);
+            case "gc_content":
+                return colorState.linkColor;
             case "ref_alt":
                 return colorByRef(link);
             case "solid":
@@ -25,6 +28,10 @@ export function getLinkColor(link) {
             case "node_type":
                 return colorByType(link.type);
             case "gc_content":
+                if (colorState.smoothGC) {
+                    const gc = calculateGCLink(link);
+                    return colorByGC(gc.gcCount, gc.seqLength);
+                }
                 return colorByGC(link.record.gcCount, link.record.seqLength);
             case "node_length":
                 //todo: calculate chain length
@@ -69,6 +76,10 @@ export function getNodeColor(node) {
         case "ref_alt":
             return colorByRef(node);
         case "gc_content":
+            if (colorState.smoothGC) {
+                const gc = calculateGCNode(node);
+                return colorByGC(gc.gcCount, gc.seqLength);
+            }
             return colorByGC(node.record.gcCount, node.record.seqLength);
         case "position":
             return colorByPosition(node.record.start, node.record.end);
@@ -108,6 +119,8 @@ function colorBySize(size) {
 
     return color;
 }
+
+
 
 function colorByGC(count, total) {
     if (count == null || isNaN(count) || count < 0) {

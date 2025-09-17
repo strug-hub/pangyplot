@@ -29,12 +29,6 @@ def parse_links(gfa, path_idx, path_dict, dir):
             mask |= path_dict[key]
         if keyReverse in path_dict:
             mask |= path_dict[keyReverse]
-            
-        # Example: check for node 77506 explicitly
-        if link.from_id == 77506 or link.to_id == 77506:
-            print(f"[SANITY CHECK] Link {key} (node 77506) mask={hex(mask)} "
-                f"indices={[i for i in range(mask.bit_length()) if (mask >> i) & 1]}")
-
 
         # We store the haplotype bitmask as a hex string (e.g., '0x2fa')
         link.haplotype = hex(mask)[2:]  # e.g., '2fa'

@@ -7,6 +7,7 @@ import { renderGeneHighlights } from './annotation/gene-annotation-highlight-ren
 import { basicLinkPainter } from './painter/basic-link-painter.js';
 import { basicNodePainter } from './painter/basic-node-painter.js';
 import { updateBackgroundColor } from './color/color-manager.js';
+import { setUpColorState } from "./color/color-state.js";
 import { updateLegend } from './color/legend/legend-manager.js';
 import { setUpHighlightSelectionRenderer } from './highlight/highlight-selection-renderer.js';
 import { renderHoverEffect, renderHighlightEffect, renderSelectionEffect } from './highlight/highlight-selection-renderer.js';
@@ -41,6 +42,8 @@ export function renderFullFrame(ctx, forceGraph, svg=null) {
 export function setUpRenderManager(forceGraph) {
     updateLegend();
     setUpRenderSettings(forceGraph);
+    setUpColorState(forceGraph);
+    
     const ctx = forceGraph.canvas.ctx;
     document.fonts.load('700 16px "Rubik"').then(() => {
         return document.fonts.ready;

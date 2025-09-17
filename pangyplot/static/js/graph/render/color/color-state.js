@@ -14,8 +14,10 @@ export const colorState = {
 
     textFill: "#FFFFFF",
     textOutline: "#000000",
+    style: "node_type",
 
-    style: "node_type"
+    smoothGC: false
+
 };
 
 export function setNodeColors(c1, c2, c3) {
@@ -40,4 +42,32 @@ export function setHighlightNodeColor(color) {
 
 export function setSelectedNodeColor(color) {
     colorState.selectedNode = color;
+}
+
+export function setUpColorState(forceGraph) {
+    document.getElementById("gcSmoothToggle").addEventListener("change", (event) => {
+        colorState.smoothGC = event.target.checked;
+    });
+
+    document.getElementById("color-picker-node-1").addEventListener("change", (event) => {
+        colorState.nodeColors[0] = event.target.value;
+    });
+
+    document.getElementById("color-picker-node-2").addEventListener("change", (event) => {
+        colorState.nodeColors[1] = event.target.value;
+    });
+
+    document.getElementById("color-picker-node-3").addEventListener("change", (event) => {
+        colorState.nodeColors[2] = event.target.value;
+    });
+
+    document.getElementById("color-picker-link").addEventListener("change", (event) => {
+        colorState.linkColor = event.target.value;
+    });
+
+    document.getElementById("color-picker-bg").addEventListener("change", (event) => {
+        colorState.background = event.target.value;
+    });
+
+
 }

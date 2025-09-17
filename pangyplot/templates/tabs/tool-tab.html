@@ -1,12 +1,18 @@
 <script type="module" src="{{ url_for('static', filename='js/ui/tabs/tool-tab.js') }}"></script>
 
-<div class="tab-header">Tools</div>
+<div class="tab-header">Settings</div>
 <hr>
 
-<div>
+<div class="flex-col">
     <label class="flex-row">
-        <input type="checkbox" id="anchorToggle">
-        <i class="fa fa-anchor"></i>
-        Anchor on drag
+        <input type="checkbox" class="flex-1" id="anchorToggle">
+        <i class="fa fa-anchor flex-1"></i>
+        <div class="flex-5">Anchor on drag</div>
+    </label>
+
+    <label class="flex-row">
+        <input type="checkbox" class="flex-1" id="gcSmoothToggle">
+        <i class="fa fa-paint-roller flex-1"></i>
+        <div class="flex-5">Smooth GC colors</div>
     </label>
 </div>
