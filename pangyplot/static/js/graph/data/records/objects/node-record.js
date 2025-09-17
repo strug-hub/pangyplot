@@ -43,5 +43,7 @@ export class SegmentRecord extends NodeRecord {
     constructor(rawSegment) {
         super(rawSegment, "segment");
         this.insideBubble = rawSegment.inside_bubble;
+        this.seq = rawSegment.seq;
+
     }
 }

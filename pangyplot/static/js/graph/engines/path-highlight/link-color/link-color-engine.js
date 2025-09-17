@@ -39,18 +39,6 @@ export default async function setupLinkColorEngine(forceGraph) {
 
         for (const link of forceGraph.graphData().links) {
             if (link.class === "node") continue;
-            
-            const mask = link.record.decodeHaplotypeMask();
-            const list = [];
-            const idxs = [];
-
-            for (let i = 0; i < mask.length; i++) {
-                if (mask[i]) {
-                    list.push(idxToPath[i]);
-                    idxs.push(i);
-                }
-            }
-            console.log(link, link.record.haplotype, idxs, list);
 
             if (link.record.hasSample(selectedSampleIdx)) {
                 link.colorOverride = colorState.selectedColor;
