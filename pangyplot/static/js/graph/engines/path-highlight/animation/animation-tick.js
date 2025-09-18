@@ -6,7 +6,7 @@ import forceGraph from '../../../force-graph.js';
 var animationPath = null;
 var currentStep = -1;
 var highlightList = [];
-const highlightTime = 150;
+const highlightTime = 50;
 
 export function setAnimationPath(path) {
     animationPath = path.path;
@@ -43,6 +43,15 @@ function highlightNode(id, direction) {
 
 export function updateNodeHighlight() {
     if (!isAnimationPlaying()) return;
+
+    for (const node of forceGraph.graphData().nodes){
+        if (node.focused){
+            node.focused -= 1 / highlightTime;
+        }
+
+    }
+    return;
+    console.log(highlightList)
     for (let i = highlightList.length - 1; i >= 0; i--) {
         const node = highlightList[i];
         node.focused -= 1 / highlightTime;
@@ -51,6 +60,7 @@ export function updateNodeHighlight() {
         }
     }
 }
+
 function updatePathStep(forceGraph, move, nodeIdSet = null) {
     let activeNodeIds;
 

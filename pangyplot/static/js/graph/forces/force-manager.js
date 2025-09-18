@@ -71,6 +71,8 @@ export default function setUpForceManager(forceGraph){
     setChargeForce(forceGraph, defaults.CHARGE_STRENGTH, defaults.CHARGE_DISTANCE);
     setLayoutForce(forceGraph, defaults.LAYOUT_LEVEL);
 
+    //good force idea: charge but only for bubble children
+
     // --- Force pause toggle (debugging) ---
     //pauseAllForces(forceGraph);
     // --- Force pause toggle (debugging) ---

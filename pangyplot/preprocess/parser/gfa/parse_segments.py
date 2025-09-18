@@ -17,15 +17,22 @@ def parse_segments(gfa, layout_coords, dir):
     conn = db.create_segment_table(dir)
     cur = conn.cursor()
 
+    layout = layout_coords["layout"]
+    layout_type = layout_coords["type"]
+    
     counter = 0
     for line in gfa:
         if line[0] == "S":
             segment = parse_line_S(line)
-            
-            segment.x1 = layout_coords[counter]["x1"]
-            segment.y1 = layout_coords[counter]["y1"]
-            segment.x2 = layout_coords[counter]["x2"]
-            segment.y2 = layout_coords[counter]["y2"]
+            if layout_type == "odgi":
+                coords = layout[counter]
+            elif layout_type == "bandage":
+                coords = layout[segment.id]
+
+            segment.x1 = coords["x1"]
+            segment.y1 = coords["y1"]
+            segment.x2 = coords["x2"]
+            segment.y2 = coords["y2"]
 
             db.insert_segment(cur, segment)
             counter += 1
