@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const PRSS2 = {genome: "GRCh38", chromosome:"chr7", start:142760398-15000, end:142774564+1000};
     const CFTR = {genome: "GRCh38", chromosome:"chr7", start:117287120, end:117715971};
     const CFTR_T2T = {genome: "CHM13", chromosome:"chr7", start:118602456, end:119031369};
-    const SUBTELOMERE = {genome: "CHM13", chromosome:"chr5", start:313451, end:430298+5000};
+    const SUBTELOMERE = {genome: "GRCh38", chromosome:"chr5", start:321714, end:438291+35000};
     
     const CFTR_10_11 = {genome: "GRCh38", chromosome:"chr7", start:117542131, end:117567102};
     const SLC9A3 = {genome: "GRCh38", chromosome:"chr5", start:470456, end:524449};
@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010};
     const EXOC3 = {genome: "GRCh38", chromosome:"chr5", start:321714, end:471937};
     
-    eventBus.publish("ui:construct-graph", PRSS2);
+    eventBus.publish("ui:construct-graph", SUBTELOMERE);
 
 });
 
