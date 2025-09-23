@@ -47,9 +47,6 @@ def pangyplot_setup(args):
         prompt_env_var("CYTOBAND_PATH", "Path to custom cytoband file")
         prompt_env_var("CANONICAL_PATH", "Path to canonical chromosome file")
 
-    with open(env_path, "w") as f:
-        for k, v in new_env_values.items():
-            f.write(f"{k}={v}\n")
 
     print("PangyPlot Production Environment Setup...")
     # Database setup
@@ -59,5 +56,8 @@ def pangyplot_setup(args):
     prompt_env_var("PANGYPLOT_REF", "Reference genome", default="None", optional=True)
     prompt_env_var("PANGYPLOT_PORT", "Port for the app", default="5700")
 
+    with open(env_path, "w") as f:
+        for k, v in new_env_values.items():
+            f.write(f"{k}={v}\n")
 
     print(f"Environment file written to {env_path}")
