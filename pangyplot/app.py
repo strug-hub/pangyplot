@@ -13,7 +13,6 @@ import pangyplot.organisms as organisms
 import pangyplot.preprocess.parser.parse_cytoband as cytoband_parser
 
 def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
-
     app = Flask(__name__)
 
     setup_cytoband(app)
