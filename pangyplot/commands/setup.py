@@ -23,9 +23,14 @@ def pangyplot_setup(args):
 
         final_value = value or existing or default
 
+        # Skip optional values if empty or "None"
         if optional and (not final_value or final_value.lower() == "none"):
-            return 
-        
+            return
+
+        # Skip non-optional if explicitly None
+        if final_value is None or str(final_value).lower() == "none":
+            return
+
         new_env_values[var_name] = final_value
 
     # Analytics
