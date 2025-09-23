@@ -50,7 +50,7 @@ def pangyplot_setup(args):
 
     print("PangyPlot Production Environment Setup...")
     # Database setup
-    prompt_env_var("PANGYPLOT_DATA", "Path to database directory", default="./datastore")
+    prompt_env_var("PANGYPLOT_DATA", "Absolute path to database directory", default=None)  
     prompt_env_var("PANGYPLOT_DB", "Database name", default="_default_")
     prompt_env_var("PANGYPLOT_ANNOTATION", "Annotation dataset name", default="None", optional=True)
     prompt_env_var("PANGYPLOT_REF", "Reference genome", default="None", optional=True)
