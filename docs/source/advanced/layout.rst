@@ -24,6 +24,16 @@ From the odgi documentation:
    `Graph Drawing by Stochastic Gradient Descent <https://arxiv.org/abs/1710.04626>`_. 
    The force-directed graph drawing algorithm minimizes the graph's energy function or stress level.
 
+To do the one-dimensional sort of the graph:
+
+.. code-block:: bash
+
+    odgi sort -i ${INPUT}.og -o ${OUTPUT}.og --optimize -Y -H paths.txt
+
+We highly recommend the ``-H`` flag to specify which paths to prioritize. The ``paths.txt`` file contains one path name per line, the path priority. 
+The primary reference path should be set as the first path in this file.
+The ``--optimize`` flag is also needed for optimizing node IDs.
+
 The command used to calculate the layout:
 
 .. code-block:: bash
@@ -31,11 +41,19 @@ The command used to calculate the layout:
     odgi layout -i ${INPUT}.og -o ${OUTPUT}.lay -T ${OUTPUT}.lay.tsv
 
 
-RECOMMENDED PARAMS?
-
 .. note::
-    The ``--gpu`` flag can be added if odgi was built with CUDA support, available, which speeds up the layout calculation significantly.
-    https://arxiv.org/abs/2409.00876
+    The ``-t`` flag can be used to specify the number of threads to use.
+
+    The ``-P`` flag can be used to enable progress output.
+
+    The ``--gpu`` flag can be added for ``odgi layout`` if odgi was built with CUDA support. This speeds up the layout calculation significantly (https://arxiv.org/abs/2409.00876).
+
+
+To convert back to GFA for ingestion into |tool|:
+
+.. code-block:: bash
+
+    odgi view -i ${INPUT}.og -g > ${OUTPUT}.gfa
 
 
 The ``*.lay.tsv`` output is structured as follows:
@@ -75,6 +93,6 @@ Bandage Layout
 
 
 `Bandage <https://github.com/asl/BandageNG>`_ can also be used to calculate the 2D layout of nodes.
-After opening the GFA file in Bandage, the layout can be exported via ``File -> Export Layout`` in the Bandage layout format (``*.layout``). The graph has to be fully opened in Bandage, which is not always possible since Bandage loads the entire graph into memory.
+After opening the GFA file in Bandage, the layout can be exported via ``File -> Export Layout`` in the Bandage layout format (``*.layout``). The graph has to be small enough to be opened in Bandage, which is not always possible since Bandage loads the entire graph into memory.
 
 

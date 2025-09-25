@@ -1,34 +1,57 @@
 .. include:: ../substitutions.rst
 
-Graph Structures: BubbleGun
+Calculating Bubbles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 `BubbleGun <https://github.com/fawaz-dabbaghieh/bubble_gun>`_ is a tool that identifies topological structures in a graph (GFA file).
 These topological structures can be nested within each other, forming a hierarchical chain of superstructures.
-The BubbleGun source code has been integrated into the |tool| back-end code.
+
+.. note::
+    BubbleGun is automatically run within |tool|. This section is for informational purposes.
 
 Structure Definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-``Segment`` - a contiguous chunk of sequence with no variation. Basic nodes that make up a graph genome.
+.. raw:: html
 
-``SuperBubble`` - an acyclic, directed subgraph where nodes *s* and *t* are the source and sink nodes, respectively.
-All paths that start at *s* end up at *t*.
-
-``Bubble`` - a specific type of ``SuperBubble`` where there are only two disjoint paths between *s* and *t*. 
-Ex. a simple bialleleic SNP or indel.
-
-``BubbleChain`` - a subgraph containing one or more ``Bubble`` such that the sink node of one is the source node of the next.
-
-The figure below is from the `BubbleGun publication <https://doi.org/10.1093/bioinformatics/btac448>`_.
+  <div class="icon-list">
+    <div class="icon-item">
+      <i class="fa-regular fa-square"></i>
+      <div class="icon-text">
+        <div class="icon-label">Segment</div>
+        <div class="icon-description">a contiguous chunk of sequence with no variation. Basic nodes that make up a graph genome.</div>
+      </div>
+    </div>
+    <div class="icon-item">
+      <i class="fa-regular fa-circle"></i>
+      <div class="icon-text">
+        <div class="icon-label">Bubble</div>
+        <div class="icon-description">An acyclic, directed subgraph with source and sink nodes. All paths through the bubble must touch the source and sink nodes.</div>
+      </div>
+    </div>
+    <div class="icon-item">
+      <i class="fa-solid fa-chain"></i>
+      <div class="icon-text">
+        <div class="icon-label">Bubble Chain</div>
+        <div class="icon-description">A sequence of bubbles where the sink of one directly connects to the source of the next, forming a larger structure.</div>
+      </div>
+    </div>
+    <div class="icon-item">
+      <i class="fa-solid fa-boxes-stacked"></i>
+      <div class="icon-text">
+        <div class="icon-label">Compacted Graph</div>
+        <div class="icon-description">A genome graph simplified by merging consecutive, non-branching segments into single nodes while preserving all variation points.</div>
+      </div>
+    </div>
+  </div>
 
 .. figure:: ../_images/bubblegun_figure.png
    :alt: figure from BubbleGun paper 
    :align: center
 
-   A short ``BubbleChain`` composed of two simple SNP ``Bubble`` structures and one ``SuperBubble`` with another ``Bubble`` nested inside.
+   From the `BubbleGun publication <https://doi.org/10.1093/bioinformatics/btac448>`_. 
 
-.. note:: 
-    These definitions are used by BubbleGun. In |tool|, we refer to both types of bubbles simply as a |bubble|.
-    We define subtypes |simple| and |super| to differentiate between a ``Bubble`` and a ``SuperBubble``, respectively.
-    We also refer to a ``BubbleChain`` as simply |chain|.
+#todo:
+why we compact the graph
+#maybe:
+the significance of source and sink nodes
