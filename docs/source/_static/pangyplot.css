@@ -1,0 +1,139 @@
+:root {
+    --highlight: #FFE268;
+    --dark-grey: #D6D6D6;
+    --grey: #F2F2F2;
+    --darker-green: #384034;
+    --dark-green: #5D6C53;
+    --light-green: #93AC9D;
+    --lighter-green: #BCCCC2;
+    --font-color: #384034;
+    --canvas-bg: #373737;
+}
+
+/* Override main theme color */
+.wy-side-nav-search {
+    background-color: var(--dark-green) !important;
+}
+
+/* Override link color */
+.wy-menu .caption-text {
+    color: var(--highlight) !important;
+}
+.wy-nav-side{
+    background: var(--darker-green) !important;
+}
+.wy-nav-content-wrap{
+    background: var(--lighter-green) !important;
+}
+
+/* Override Note/Warning color */
+.admonition-title{
+    background: var(--darker-green) !important;
+    color: var(--highlight) !important;
+}
+.admonition{
+    background: var(--lighter-green) !important;
+}
+.highlight{
+    background: var(--grey) !important;
+}
+
+.xxl{
+    font-size:xx-large;
+} .xl{
+    font-size:x-large;
+}
+
+
+blockquote{
+    border-left: solid var(--dark-grey);
+    background: var(--grey);
+    padding-left: 24px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    margin-left: 0px !important;
+    font-style: italic;
+}
+
+blockquote p {
+    margin: 0;
+}
+
+code.literal{
+    color: var(--dark-green) !important;
+}
+
+.color-swatch{
+    border: solid var(--canvas-bg);
+    width:80px;
+    height:30px;
+}
+
+.color-swatch-gradient {
+    border: solid var(--canvas-bg);
+    width:120px;
+    height:30px;
+}
+
+.tool-bar {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1em 0;
+}
+
+.tool-bar a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background-color: var(--light-green);
+  text-decoration: none;
+  font-size: xx-large;
+  padding: 10px;
+  color: var(--color-link, var(--font-color));
+}
+
+.tool-bar a:hover {
+  background-color: var(--highlight);
+}
+
+
+.icon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  margin-bottom: 1em;
+}
+
+.icon-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75em;
+}
+
+.icon-item i {
+  font-size:x-large;
+  color: var(--font-color);
+  flex-shrink: 0;
+}
+
+.icon-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.icon-label {
+  font-weight: 600;
+  margin-bottom: 0.25em;
+}
+
+.icon-description {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+
+h2 {
+  clear: both;
+}

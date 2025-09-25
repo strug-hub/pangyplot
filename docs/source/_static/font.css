@@ -1,0 +1,49 @@
+@font-face {
+  font-family: 'Rubik';
+  src: url('../_static/fonts/Rubik-Regular.woff2') format('woff2'),
+       url('../_static/fonts/Rubik-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  src: url('../_static/fonts/Rubik-Bold.woff2') format('woff2'),
+       url('../_static/fonts/Rubik-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  src: url('../_static/fonts/Rubik-Italic.woff2') format('woff2'),
+       url('../_static/fonts/Rubik-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+.wy-nav-content .document,
+.rst-content {
+  font-family: 'Rubik', sans-serif !important;
+}
+
+body {
+  font-family: 'Rubik', sans-serif !important;
+}
+
+.rst-content h1,
+.rst-content h2,
+.rst-content h3,
+.rst-content h4,
+.rst-content h5,
+.rst-content h6,
+.rst-content legend {
+  font-family: 'Rubik', sans-serif !important;
+}
+
+.rst-content p,
+.rst-content li,
+.rst-content td,
+.rst-content th {
+  font-family: 'Rubik', sans-serif !important;
+}
