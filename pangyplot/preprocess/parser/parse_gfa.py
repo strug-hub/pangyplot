@@ -17,27 +17,28 @@ def verify_reference(ref_path, matching_refs):
         sys.exit(1)
     elif len(matching_refs) > 1:
         print(f"   ❌ ERROR: Reference sample string '{ref_path}' matched multiple samples:")
-        for name in matching_refs:
-            print(f"     - {name}")
+        for full_name, sample_name in matching_refs:
+            print(f"     - {full_name}")
         print("   Please provide a more specific reference name.")
         sys.exit(1)
 
-    print(f"   🎯 Found reference path {matching_refs[0]}.")
+    full_name, sample_name = matching_refs[0]
+    print(f"   🎯 Found reference path {full_name} -> {sample_name}.")
 
-def parse_gfa(gfa_file, ref, path, ref_offset, layout_coords, dir):
+def parse_gfa(gfa_file, ref, path, ref_offset, path_sep, layout_coords, dir):
     print(f"→ Parsing GFA file: {gfa_file}.")
     
     if path:
         print(f"   🔍 Looking for path: {ref} (reference genome = {ref})")
         ref_path = path
     else:
-        print(f"   🔎 Looking for reference genome: {ref}")
+        print(f"   🔎 Looking for reference path with name: {ref}")
         ref_path = ref
 
     # ==== PATHS ====
     print("   🧵 Gathering paths from GFA...", end="", flush=True)
     start_time = time.time()
-    path_idx, path_dict, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset, dir)
+    path_idx, path_dict, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset, path_sep, dir)
     reference_path, matching_refs = reference_info
     end_time = time.time()
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")

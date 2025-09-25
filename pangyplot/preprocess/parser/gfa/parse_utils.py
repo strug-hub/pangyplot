@@ -26,7 +26,7 @@ def parse_reference_string(str, ref):
 
 def pound_separated(reference_str, start=0):
     genome = None
-    chrom = None
+    contig = None
     start = start
     hap = None
 
@@ -41,16 +41,16 @@ def pound_separated(reference_str, start=0):
 
     if len(parts) == 2:
         hap = None
-        chrom = parts[1]
+        contig = parts[1]
 
     elif len(parts) > 2:
         hap = parts[1]
-        chrom = parts[2]
+        contig = parts[2]
 
-    return {"chrom": chrom, "genome": genome, "hap":hap, "start": start}
+    return {"contig": contig, "genome": genome, "hap":hap, "start": start}
 
 def parse_id_string(reference_str):
-    chrom = None
+    contig = None
     genome = None
     hap = None
     start = 0
@@ -64,13 +64,7 @@ def parse_id_string(reference_str):
     if "#" in reference_str:
         return pound_separated(reference_str, start)
     else:
-        if "|" in reference_str:
-            chrom = reference_str.split("|")[-1]
-            genome = reference_str.split("|")[0]
-            if genome.startswith("id="):
-                genome = genome[3:]
-        else:
-            genome = reference_str
-            chrom = reference_str
+        genome = reference_str
+        contig = reference_str
     
-    return {"chrom": chrom, "genome": genome, "hap": hap, "start": start}
+    return {"contig": contig, "genome": genome, "hap": hap, "start": start}

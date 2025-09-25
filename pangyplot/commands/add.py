@@ -42,7 +42,7 @@ def pangyplot_add(args):
         print("→ Reusing existing GFA index.")
     except OperationalError:
         layout_coords = parse_layout(args.layout)
-        path_idx, segment_idx, link_idx = parse_gfa(args.gfa, args.ref, args.path, args.offset, layout_coords, chr_path)
+        path_idx, segment_idx, link_idx = parse_gfa(args.gfa, args.ref, args.path, args.offset, args.sep, layout_coords, chr_path)
 
     bubble_gun.shoot(segment_idx, link_idx, chr_path, args.ref)
 

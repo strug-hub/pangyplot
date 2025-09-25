@@ -4,7 +4,7 @@ import pangyplot.db.sqlite.path_db as db
 from pangyplot.db.indexes.PathIndex import PathIndex
 from pangyplot.objects.Path import Path
 
-def parse_line_P(line):
+def parse_line_P(line, path_sep=None):
     path = dict()
     cols = line.strip().split("\t")
 
@@ -13,7 +13,11 @@ def parse_line_P(line):
     sampleInfo = utils.parse_id_string(cols[1])
 
     path.sample = sampleInfo["genome"]
-    path.contig = sampleInfo["chrom"]
+
+    if path_sep:
+        path.sample = sampleInfo["genome"].split(path_sep)[0]
+
+    path.contig = sampleInfo["contig"]
     path.hap = sampleInfo["hap"]
     path.start = sampleInfo["start"]
     path.path = cols[2].split(",")
@@ -36,12 +40,16 @@ def path_from_W(path_str):
     path.append(strand + seg_id)
     return path
 
-def parse_line_W(line):
+def parse_line_W(line, path_sep=None):
     path = dict()
     cols = line.strip().split("\t")
 
     path = Path()
     path.sample = cols[1]
+
+    if path_sep:
+        path.sample = cols[1].split(path_sep)[0]
+
     path.full_id = cols[1]
     path.hap = cols[2]
     path.contig = cols[3]
@@ -51,7 +59,7 @@ def parse_line_W(line):
 
     return path
 
-def parse_paths(gfa, ref_path, ref_offset, dir):
+def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
     sample_idx = dict()
     next_idx = 0
     path_dict = defaultdict(int)
@@ -79,13 +87,13 @@ def parse_paths(gfa, ref_path, ref_offset, dir):
 
     for line in gfa:
         if line[0] in "PW":
-            path = parse_line_P(line) if line[0] == "P" else parse_line_W(line)
+            path = parse_line_P(line, path_sep) if line[0] == "P" else parse_line_W(line, path_sep)
 
             collapse_binary(path)
 
             path.is_ref = False
             if path.id_like(ref_path):
-                matching_refs.append(path.full_id)
+                matching_refs.append([path.full_id, path.sample])
                 if ref_offset:
                     path.apply_offset(ref_offset)
                 reference_path = path
