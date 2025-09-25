@@ -9,7 +9,7 @@ Quick Example
    :width: 120px
    :target: layout.html
 
-   **Prerequisite**: `odgi <layout.html>`_ installed to calculate graph layout.
+   **Prerequisite**: `odgi <https://github.com/pangenome/odgi>`_ installed to calculate graph layout.
 
 
 
