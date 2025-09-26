@@ -12,44 +12,56 @@ Prerequisites
 - `odgi <https://github.com/pangenome/odgi>`_ required to prepare custom data.
 
 
+.. code-block:: bash
+
+   git clone https://github.com/ScottMastro/pangyplot.git
+   cd pangyplot
+
 
 Quick Start - Running |tool|
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   git clone https://github.com/ScottMastro/pangyplot.git
-   cd pangyplot
-
-.. code-block:: bash
-
    python pangyplot.py run --db hprc.clip --ref GRCh38 --annotations gencode48.chrY
 
 
-This should launch a local web server at http://127.0.0.1:5700 with chrY data.
+This should launch a local web server at http://127.0.0.1:5700 with chrY data that is included with the codebase.
 
 
 .. dropdown:: What is it doing?
 
-    ``pangyplot run`` loads the specified database (``--db``) and launches the Flask web server.
+   ``pangyplot run`` loads the specified database (``--db``) and launches the Flask web server.
 
-    The database is loaded from ``datastore/graphs/{db}``. The directory at this location is assumed to be filled with chromosome-specific subdirectories (i.e. ``datastore/graphs/hprc.clip/chrY``).
-    Each chromosome directory holds the database files created from a GFA file.
-    
-    The reference path (``--ref``) is used to specify the primary reference path. 
+   The database is loaded from ``datastore/graphs/{db}``. The directory at this location is assumed to be filled with chromosome-specific subdirectories (i.e. ``datastore/graphs/hprc.clip/chrY``).
+   Each chromosome directory holds the database files created from a GFA file.
+   
+   The reference path (``--ref``) is used to specify the primary reference path. 
 
-    The optional gene annotation file (``--annotations``) is similarily loaded from ``datastore/annotations/{ref}/{annotations}`` (i.e. ``datastore/annotations/GRCh38/gencode48.chrY``).
+   The optional gene annotation file (``--annotations``) is similarily loaded from ``datastore/annotations/{ref}/{annotations}`` (i.e. ``datastore/annotations/GRCh38/gencode48.chrY``).
 
 Quick Start - Loading Prepared Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   cd pangyplot
+   wget https://zenodo.org/records/17173731/files/chrY.zip
+   unzip chrY.zip
+
+   mkdir -p datastore/graphs/hprc.prepared
+   mv chrY datastore/graphs/hprc.prepared/chrY
+
+   python pangyplot.py run --db hprc.clip --ref GRCh38
+
+.. dropdown:: What is it doing?
+
+   HPRC chromosome data has been preprocessed and available at: https://doi.org/10.5281/zenodo.17173731
+   Here we manually set up the directory structure to store the prepared data.
+
+   Zipping up the directory structure is a convenient way to share prepared |tool| data.
 
 
-
-Quick Start - Preparing Custom Data
+Quick Start - Preparing Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
@@ -76,63 +88,8 @@ Quick Start - Preparing Custom Data
    python pangyplot.py status --db hprc.test
    python pangyplot.py run --db hprc.test --ref GRCh38
 
+.. dropdown:: What is it doing?
 
-
-To run |tool| from scratch locally or on a remote server, you’ll need the following:
-
-1. The |tool| `source code`_.
-2. A GFA graph file.
-3. An odgi layout file.
-4. Gene annotation file [optional].
-
-.. _source code: https://github.com/scottmastro/pangyplot
-
-
-
-Setting up with HPRC data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To test |tool| with Human Pangenome Reference Consortium (HPRC) data, follow the steps below.
-
-- **Resource**: `https://github.com/human-pangenomics/hpp_pangenome_resources <https://github.com/human-pangenomics/hpp_pangenome_resources>`_
-- **Download directory**: `hprc-v1.1-mc-grch38.chroms <https://s3-us-west-2.amazonaws.com/human-pangenomics/index.html?prefix=pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.chroms>`_
-
-**Example: Setup for chromosome 7**
-
-.. code-block:: bash
-
-   THREADS=16
-
-   OUT=./data
-   mkdir -p $OUT
-   PREFIX=./${OUT}/chr7.d9
-
-   wget https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.chroms/chr7.d9.vg 
-   mv chr7.d9.vg ${PREFIX}.vg
-
-   vg convert ${PREFIX}.vg -W -f > ${PREFIX}.gfa
-
-   odgi build -t $THREADS -g ${PREFIX}.gfa -O -o ${PREFIX}.unsorted.og
-   odgi sort -t $THREADS -Y -i ${PREFIX}.unsorted.og -o ${PREFIX}.sorted.og
-   odgi normalize -t $THREADS -i ${PREFIX}.sorted.og -o ${PREFIX}.og
-
-   # --------------- LAYOUT FILE ----------------------------
-   odgi layout -t $THREADS -i ${PREFIX}.og --tsv ${PREFIX}.lay.tsv -o ${PREFIX}.lay
-
-   # --------------- GFA FILE ----------------------------
-   odgi view -t $THREADS -i ${PREFIX}.og -g > ${PREFIX}.gfa
-
-   cat ${PREFIX}.gfa | grep ^P | cut -f 2 | grep CHM13 > ${OUT}/reference_paths.txt
-   cat ${PREFIX}.gfa | grep ^S | cut -f2 > ${OUT}/segment_starts.txt
-   cat ${PREFIX}.gfa | grep ^S | awk '{print $2 "," length($3)-1}' > ${OUT}/segment_ends.txt
-
-   odgi position -t $THREADS -i ${PREFIX}.og --ref-paths ${OUT}/reference_paths.txt --graph-pos-file ${OUT}/segment_starts.txt > ${OUT}/start_positions.txt
-   odgi position -t $THREADS -i ${PREFIX}.og --ref-paths ${OUT}/reference_paths.txt --graph-pos-file ${OUT}/segment_ends.txt > ${OUT}/end_positions.txt
-
-   awk -F"[,\t]" '{print $1 "\t" $4 ":" $5+1}' ${OUT}/start_positions.txt | grep -v ^"#" | sort -k1,1 > tmp1.txt
-   awk -F"[,\t]" '{print $1 "\t" $4 ":" $5+1}' ${OUT}/end_positions.txt | grep -v ^"#" | sort -k1,1 > tmp2.txt
-
-   # --------------- POSITION FILE ----------------------------
-   join -t $'\t' tmp1.txt tmp2.txt > ${OUT}/node_positions.txt
-   rm tmp1.txt ; rm tmp2.txt
-
+   This is how the data was prepared for the previous example. 
+   |tool| requires a GFA file and an layout file to create the database.
+   Here we optimize the graph for the primary reference path GRCh38 during the 1D sort.

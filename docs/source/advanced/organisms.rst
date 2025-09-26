@@ -81,7 +81,7 @@ To add a custom organism, you need to provide a two files:
 - A cytoband file in the UCSC format
 - A text file specifying the main canonical chromosomes (one per line)
 
-url to subcommands.rst:
+Once these files are prepared, you can specify them during the interactive `setup process <subcommands/pangyplot-setup.html>`_.
 
 Examples can be found in ``pangyplot/static/cytoband``. Use ``pangyplot setup`` to specify the cytoband files.
 
