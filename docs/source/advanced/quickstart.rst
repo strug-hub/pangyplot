@@ -13,7 +13,7 @@ Prerequisites
 
 
 
-Quick Start With Preprocessed Data
+Quick Start - Running |tool|
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
@@ -40,27 +40,41 @@ This should launch a local web server at http://127.0.0.1:5700 with chrY data.
 
     The optional gene annotation file (``--annotations``) is similarily loaded from ``datastore/annotations/{ref}/{annotations}`` (i.e. ``datastore/annotations/GRCh38/gencode48.chrY``).
 
-Quick Start With Custom Data
+Quick Start - Loading Prepared Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-cd pangyplot
-cp example/DRB1-3123_unsorted.gfa .
+.. code-block:: bash
 
-odgi build -g DRB1-3123_unsorted.gfa -o DRB1-3123_unsorted.og
+   cd pangyplot
 
-# one-dimensional sort
-odgi paths -L -i DRB1-3123_unsorted.og
-echo "gi|28212470:131613-146345" > path_sort_order.txt
-odgi sort -t 4 --optimize -Y -H path_sort_order.txt -i DRB1-3123_unsorted.og -o DRB1-3123.og -P
 
-# create layout file
-odgi layout -t 4 -i DRB1-3123.og --tsv DRB1-3123.lay.tsv -P
 
-# create GFA file
-odgi view -i DRB1-3123.og -g > DRB1-3123.gfa
+Quick Start - Preparing Custom Data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-python pangyplot.py add --ref "gi|28212470" --chr DRB1-3123 --db DRB1 --gfa DRB1-3123.gfa --layout DRB1-3123.lay.tsv
-python pangyplot.py run --db DRB1 --ref "gi|28212470"
+.. code-block:: bash
+
+   cd pangyplot
+   wget https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.chroms/chrY.vg
+
+   # convert to odgi format - odgi cannot read GFA files with W-lines
+   vg convert --no-wline chrY.vg -f > chrY_unsorted.gfa
+   odgi build -O -g chrY_unsorted.gfa -o chrY_unsorted.og
+
+   # one-dimensional sort
+   odgi paths -L -i chrY_unsorted.og | grep GRCh38 > path_sort_order.txt
+   odgi paths -L -i chrY_unsorted.og | grep CHM13 >> path_sort_order.txt
+   odgi sort -t 4 --optimize -Y -H path_sort_order.txt -i chrY_unsorted.og -o chrY.og -P
+
+   # create layout file
+   odgi layout -t 4 -i chrY.og --tsv chrY.lay.tsv -P
+
+   # create GFA file
+   odgi view -i chrY.og -g > chrY.gfa
+
+   python pangyplot.py add --ref GRCh38 --chr chrY --db hprc.test --gfa chrY.gfa --layout chrY.lay.tsv
+   python pangyplot.py status --db hprc.test
+   python pangyplot.py run --db hprc.test --ref GRCh38
 
 
 
