@@ -19,7 +19,7 @@ Built-in Organisms
    * - .. raw:: html
 
           <span style="font-size:2rem;">🧍</span>
-     - human-hg38
+     - human-hg38 [default]
      - hg38
    * - .. raw:: html
 
@@ -61,6 +61,11 @@ Built-in Organisms
           <span style="font-size:2rem;">❓</span>
      - custom
      - 
+   * - .. raw:: html
+
+          <span style="font-size:2rem;">❌</span>
+     - none
+     -
 
 .. note::
 
@@ -70,3 +75,13 @@ Built-in Organisms
 
 Custom Organisms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To add a custom organism, you need to provide a two files:
+
+- A cytoband file in the UCSC format
+- A text file specifying the main canonical chromosomes (one per line)
+
+url to subcommands.rst:
+
+Examples can be found in ``pangyplot/static/cytoband``. Use ``pangyplot setup`` to specify the cytoband files.
+

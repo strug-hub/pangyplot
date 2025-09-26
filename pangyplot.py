@@ -52,7 +52,6 @@ def parse_args():
     parser_annotate.add_argument('--gff3', help='Path to a GFF3 file', default=None, required=False)
     parser_annotate.add_argument('--bed', help='Path to a BED file (NOT YET SUPPORTED)', default=None, required=False)
     parser_annotate.add_argument('--force', help='Overwrite existing files', action='store_true')
-
     parser_annotate.add_argument('--name', help='Name for the annotation set', default=None, required=True)
     parser_annotate.add_argument('--dir', help='Directory to store database files', default=DEFAULT_DB_FOLDER)
 

@@ -56,7 +56,7 @@ export function populateOptions(forceGraph) {
         forceGraph.zoomToFit(200, 10, () => true);
     });
 
-    menu.addOption('download', 'Download GFA', 'general', () => {
+    menu.addOption('file-export', 'Download GFA', 'general', () => {
         const coords = forceGraph.coords;
         const url = new URL('/gfa', window.location.origin);
         for (const [key, val] of Object.entries(coords)) {
