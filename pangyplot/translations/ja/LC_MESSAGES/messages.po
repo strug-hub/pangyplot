@@ -204,7 +204,7 @@ msgstr "引用"
 
 #: pangyplot/templates/navbar-template.html:24
 msgid "Example"
-msgstr "例"
+msgstr "例 1"
 
 #: pangyplot/templates/navbar-template.html:25
 msgid "Example 2"
