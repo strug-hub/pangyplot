@@ -1,5 +1,4 @@
 .. _pangyplot-setup:
-.. include:: ../../substitutions.rst
 
 ###############
 pangyplot setup
@@ -15,5 +14,5 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-Initializes the environment by generating a ``.env`` file used to configure variables for running |tool|.
+Initializes the environment by generating a ``.env`` file used to configure variables for running PangyPlot.
 You will be prompted for details.

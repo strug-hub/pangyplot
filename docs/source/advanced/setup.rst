@@ -1,10 +1,11 @@
-.. include:: ../substitutions.rst
 .. _setup:
 
 Dotenv Setup
 ==============================
 
-The |tool| setup utility configures the environment by generating a ``.env`` file.
+``pangyplot setup`` is a utility to configure the PangyPlot environment.
+
+This configures the environment by generating a ``.env`` file.
 This file contains key variables that define application parameters.
 
 If a ``.env`` file already exists, you will be prompted whether to overwrite it.

@@ -1,6 +1,4 @@
 .. _interface:
-.. include:: ../substitutions.rst
-
 
 User Interface
 ---------------

@@ -1,5 +1,4 @@
 .. _subcommands:
-.. include:: ../substitutions.rst
 
 Subcommands
 ==================

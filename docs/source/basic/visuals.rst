@@ -1,5 +1,4 @@
 .. _visuals:
-.. include:: ../substitutions.rst
 
 Viewing the Pangenome
 ==================================
@@ -22,10 +21,10 @@ Node Types
    A chain of bubbles. Each bubble in the chain is shown in yellow, the chain links are orange. 
 
 
-|tool| First displays top-level bubbles. Bubbles can be popped to reveal finer-scale details.
+PangyPlot First displays top-level bubbles. Bubbles can be popped to reveal finer-scale details.
 
 .. figure:: ../_images/graph/bubble_pop.svg
-   :alt: Bubbles in |tool|
+   :alt: Bubbles in PangyPlot
    :width: 100%
    :align: center
 
@@ -34,7 +33,7 @@ Node Types
 Gene Annotations
 ~~~~~~~~~~~~~~~~~~~
 
-The gene annotations are provided during setup up |tool|. The HPRC live instance uses annotations from `GENCODE <https://www.gencodegenes.org/human/>`_ (any GFF3 file can be used).
+The gene annotations are provided during setup up PangyPlot. The HPRC live instance uses annotations from `GENCODE <https://www.gencodegenes.org/human/>`_ (any GFF3 file can be used).
 
 Annotations are rendered as outlines around nodes and edges:
 

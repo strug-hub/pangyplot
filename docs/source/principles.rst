@@ -1,11 +1,10 @@
 .. _principles:
-.. include:: substitutions.rst
 
 Core Concepts
 ==================================
 
-Motivation for |tool|
----------------------
+Motivation for PangyPlot
+------------------------
 
 A visual interface is fundamental for detecting patterns and gaining meaningful insights into large, complex genomic datasets.
 Pangenomes typically rely on a graph-based data structure, which is very difficult to navigate without a visualization of the graph topology.
@@ -43,17 +42,17 @@ These applications hide unnecessary details based on the user's zoom level, focu
    Genetic variation has a hierarchical relationship. The level of detail needed also depends on the goal.
  
 Likewise, analysis of genetic variation can happen at very different scales from the chromosomal level, to structural variation to indivdual SNPs.
-|tool| aims to capture common topological patterns in graph genomes and builds a hierarchical structure of the variation in the genome.
+PangyPlot aims to capture common topological patterns in graph genomes and builds a hierarchical structure of the variation in the genome.
 This allows users to control the level of detail visible and also limits the computation necessary to view large regions by abstracting the details.
 
 
 
-Pangenome visualization is challenging due to the scale and complexity inherent in genomic graph data. Below we outline the core obstacles and how |tool| approaches them.
+Pangenome visualization is challenging due to the scale and complexity inherent in genomic graph data. Below we outline the core obstacles and how PangyPlot approaches them.
 
 Managing Billions of Nodes and Edges
 ------------------------------------
 
-Pangenome graphs contain massive volumes of data, often billions of segments and links. |tool| uses [database info]
+Pangenome graphs contain massive volumes of data, often billions of segments and links. PangyPlot uses [database info]
 
 
 
@@ -79,13 +78,13 @@ Balancing Large and Small Variants
 
 Complex variation such as structural variants (SVs) coexists with smaller variants like SNPs and indels, and it can be difficult to visualize them together.
 
-`BubbleGun`_ identifies "bubbles", "superbubbles", and "bubble chains" within GFA data. These bubble structures can be collapsed to simplify the graph and reduce clutter. Users can selectively "pop" open bubbles to explore fine-scale variation when needed. An implementation of this algorithm is included in |tool|.
+`BubbleGun`_ identifies "bubbles", "superbubbles", and "bubble chains" within GFA data. These bubble structures can be collapsed to simplify the graph and reduce clutter. Users can selectively "pop" open bubbles to explore fine-scale variation when needed. An implementation of this algorithm is included in PangyPlot.
 
 
 Coordinate Systems and Annotations
 ----------------------------------
 
-Genomic coordinate systems are essential for querying and aligning biological features. While pangenomic data does not inherently have a primary coordinate system, |tool| was developed under a design philosophy that requires one. When uploading a graph, users designate a primary path to serve as the coordinate reference system.
+Genomic coordinate systems are essential for querying and aligning biological features. While pangenomic data does not inherently have a primary coordinate system, PangyPlot was developed under a design philosophy that requires one. When uploading a graph, users designate a primary path to serve as the coordinate reference system.
 
 `odgi position`_ is used to establish the start and end positions of segments. Segments that are not part of the primary coordinate system are anchored to the nearest segment on the primary path.
 

@@ -1,5 +1,4 @@
 .. _tools:
-.. include:: ../substitutions.rst
 
 Tools
 ==================================

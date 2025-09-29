@@ -1,5 +1,4 @@
 .. _navbar:
-.. include:: ../substitutions.rst
 
 Navigation Bar
 ==================================
@@ -77,4 +76,4 @@ Instance Information
 
    Instance information is shown on the right side.
 
-Version number of |tool| is shown along with genome build used for the cytoband display. Organism and genome build is specified during setup. 
+Version number of PangyPlot is shown along with genome build used for the cytoband display. Organism and genome build is specified during setup. 

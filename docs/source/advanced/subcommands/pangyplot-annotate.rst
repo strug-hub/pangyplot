@@ -1,5 +1,4 @@
 .. _pangyplot-annotate:
-.. include:: ../../substitutions.rst
 
 ##################
 pangyplot annotate

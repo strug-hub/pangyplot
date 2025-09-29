@@ -1,5 +1,4 @@
 .. _regions:
-.. include:: ../substitutions.rst
 
 Choosing a Region
 ==================================
@@ -45,7 +44,7 @@ Gene annotations data is specified during setup. The gene search bar will search
 Selecting by Coordinate
 --------------------------
 
-|tool| uses a coordinate system based on one of the reference paths embedded in the sequence graph. The primary coordinate system is specified during setup — typically using a reference genome such as hg38 or t2t for humans.
+PangyPlot uses a coordinate system based on one of the reference paths embedded in the sequence graph. The primary coordinate system is specified during setup — typically using a reference genome such as hg38 or t2t for humans.
 
 .. raw:: html
 
