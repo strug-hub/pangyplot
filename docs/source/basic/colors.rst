@@ -1,5 +1,4 @@
 .. _colors:
-.. include:: ../substitutions.rst
 
 Colors
 -----------------------
@@ -21,7 +20,7 @@ Color Selection
 
    Preset color gradients available for nodes.
 
-|tool| provides different methods of coloring the nodes in the visualization.
+PangyPlot provides different methods of coloring the nodes in the visualization.
 Node colors are selected on a 3-color scale that can form a gradient. Link and background colors can be also be changed.
 A set of predefined color palettes are available.
 

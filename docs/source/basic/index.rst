@@ -1,6 +1,4 @@
 .. _basic_usage:
-.. include:: ../substitutions.rst
-
 
 Basic Usage
 ===========

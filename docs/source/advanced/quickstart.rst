@@ -1,5 +1,4 @@
 .. _quickstart:
-.. include:: ../substitutions.rst
 
 Quick Start
 ==============================
@@ -18,7 +17,7 @@ Prerequisites
    cd pangyplot
 
 
-Quick Start - Running |tool|
+Quick Start - Running PangyPlot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
@@ -58,7 +57,7 @@ Quick Start - Loading Prepared Data
    HPRC chromosome data has been preprocessed and available at: https://doi.org/10.5281/zenodo.17173731
    Here we manually set up the directory structure to store the prepared data.
 
-   Zipping up the directory structure is a convenient way to share prepared |tool| data.
+   Zipping up the directory structure is a convenient way to share prepared PangyPlot data.
 
 
 Quick Start - Preparing Data
@@ -91,5 +90,5 @@ Quick Start - Preparing Data
 .. dropdown:: What is it doing?
 
    This is how the data was prepared for the previous example. 
-   |tool| requires a GFA file and an layout file to create the database.
+   PangyPlot requires a GFA file and an layout file to create the database.
    Here we optimize the graph for the primary reference path GRCh38 during the 1D sort.

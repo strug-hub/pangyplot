@@ -1,5 +1,4 @@
 .. _layout:
-.. include:: ../substitutions.rst
 
 Calculating Graph Layout
 ==============================
@@ -13,7 +12,7 @@ odgi Layout
     :align: left
 
 
-|tool| relies on `odgi <https://github.com/pangenome/odgi>`_ to calculate the 2D layout of nodes.
+PangyPlot relies on `odgi <https://github.com/pangenome/odgi>`_ to calculate the 2D layout of nodes.
 The GFA file is therefore needs to be converted into odgi format ``*.og``.
 
 
@@ -49,7 +48,7 @@ The command used to calculate the layout:
     The ``--gpu`` flag can be added for ``odgi layout`` if odgi was built with CUDA support. This speeds up the layout calculation significantly (https://arxiv.org/abs/2409.00876).
 
 
-To convert back to GFA for ingestion into |tool|:
+To convert back to GFA for ingestion into PangyPlot:
 
 .. code-block:: bash
 
@@ -80,7 +79,7 @@ The ``*.lay.tsv`` output is structured as follows:
 | ... | ...    | ...               | ...       |
 +-----+--------+-------------------+-----------+
 
-For each ``S`` line in the GFA file, two coordinate pairs are calculate, representing the coordinates for the start position and end position of each |segment|.
+For each ``S`` line in the GFA file, two coordinate pairs are calculate, representing the coordinates for the start position and end position of each segment.
 For example, for the first ``S`` line, the start position is given by line ``idx = 0`` and the end position by ``idx = 1``.
 
 Bandage Layout

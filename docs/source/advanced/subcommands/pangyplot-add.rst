@@ -1,5 +1,4 @@
 .. _pangyplot-add:
-.. include:: ../../substitutions.rst
 
 #############
 pangyplot add

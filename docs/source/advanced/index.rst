@@ -1,5 +1,4 @@
 .. _advanced_usage:
-.. include:: ../substitutions.rst
 
 Advanced Usage
 ==============

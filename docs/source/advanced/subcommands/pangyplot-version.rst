@@ -1,5 +1,4 @@
 .. _pangyplot-version:
-.. include:: ../../substitutions.rst
 
 #################
 pangyplot version

@@ -1,11 +1,10 @@
-.. include:: substitutions.rst
 .. figure:: _images/logo/pangyplot_header.svg
    :target: index.html
    :width: 500px
    :alt: PangyPlot
 
 
-|tool| is a browser that enables visualization of pangenomic data. 
+PangyPlot is a browser that enables visualization of pangenomic data. 
 
 Quick Links
 ----------------------------------------------
@@ -53,7 +52,7 @@ Documentation
 Citation
 ----------------------------------------------
 
-If you use |tool| in your research, please cite:
+If you use PangyPlot in your research, please cite:
 
 .. code-block:: text
 

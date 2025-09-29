@@ -1,5 +1,4 @@
 .. _organisms:
-.. include:: ../substitutions.rst
 
 Organisms and Cytobands
 ==================================
@@ -7,7 +6,7 @@ Organisms and Cytobands
 Built-in Organisms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-|tool| has built-in cytobands for the following:
+PangyPlot has built-in cytobands for the following:
 
 .. list-table:: 
    :header-rows: 1

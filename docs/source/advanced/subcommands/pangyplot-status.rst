@@ -1,5 +1,4 @@
 .. _pangyplot-status:
-.. include:: ../../substitutions.rst
 
 ################
 pangyplot status

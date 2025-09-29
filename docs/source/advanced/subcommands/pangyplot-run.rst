@@ -1,5 +1,4 @@
 .. _pangyplot-run:
-.. include:: ../../substitutions.rst
 
 #############
 pangyplot run
