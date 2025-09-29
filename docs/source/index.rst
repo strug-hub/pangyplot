@@ -17,7 +17,17 @@ Quick Links
           <div class="icon-text">
           <div class="icon-label"><a href="https://pangyplot.research.sickkids.ca/">Live Instance</a></div>
           <div class="icon-description">
-            Preloaded with <a href="https://github.com/human-pangenomics/hpp_pangenome_resources">HPRC data</a>
+            Preloaded with <a href="https://github.com/human-pangenomics/hpp_pangenome_resources">HPRC data</a>  
+            [<a href="https://doi.org/10.5281/zenodo.17174109">database files</a>]
+          </div>
+          </div>
+      </div>
+      <div class="icon-item">
+          <i class="fa-solid fa-table"></i>
+          <div class="icon-text">
+          <div class="icon-label"> <a href="https://doi.org/10.5281/zenodo.17173731">Prepared Data</a></div>
+          <div class="icon-description">
+            HPRC data hosted above.
           </div>
           </div>
       </div>
