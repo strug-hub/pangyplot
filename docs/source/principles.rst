@@ -7,91 +7,57 @@ Motivation for PangyPlot
 ------------------------
 
 A visual interface is fundamental for detecting patterns and gaining meaningful insights into large, complex genomic datasets.
-Pangenomes typically rely on a graph-based data structure, which is very difficult to navigate without a visualization of the graph topology.
+Pangenomes typically rely on a graph-based data structure, which is very difficult to interpret without a visualization of the graph topology.
 
 .. figure:: _images/principles/graph.svg
    :alt: Graph example
    :width: 400px
    :align: left
 
-   caption here
+   Contrasting linear alignments to a variation graph.
 
 
 Graph genomes are particularly challenging to analyze because they include billions of base pairs and encompass all the potential variations within them.
 The range of variation size is also large. For instance, examining the relationship between a SNP and a 20kb structural variant represents a 20,000-fold difference in scale.
 
-To overcome these issues, consider the system used for structuring physical locations:
-
-.. figure:: _images/principles/graph.svg
-   :alt: Units ➜ Buildings ➜ Streets ➜ Cities ➜ ...
-   :width: 500px
-   :align: center
-
-   Physical locations have a hierarchical relationship. The level of detail needed depends on the goal.
- 
-
-Online map applications need to meet a diverse set of demands: from navigating between countries, finding an intersection, directions to the front door of a building. 
-These applications hide unnecessary details based on the user's zoom level, focusing on major highways or rail lines when zoomed out and only showing the name of tiny side streets when zoomed all the way in.
+Ideally, a visualization tool should allow users to explore the entire graph at multiple levels of detail, from a high-level overview down to individual nucleotides similar to how map applications can handle both global and street-level views.
 
 
-.. figure:: _images/principles/graph.svg
-   :alt: Base Pair ➜ SNP ➜ Locus ➜ Structural Variant ➜ ...
-   :width: 400px
-   :align: center
-
-   Genetic variation has a hierarchical relationship. The level of detail needed also depends on the goal.
- 
-Likewise, analysis of genetic variation can happen at very different scales from the chromosomal level, to structural variation to indivdual SNPs.
-PangyPlot aims to capture common topological patterns in graph genomes and builds a hierarchical structure of the variation in the genome.
-This allows users to control the level of detail visible and also limits the computation necessary to view large regions by abstracting the details.
-
-
-
-Pangenome visualization is challenging due to the scale and complexity inherent in genomic graph data. Below we outline the core obstacles and how PangyPlot approaches them.
-
-Managing Billions of Nodes and Edges
+Managing Millions of Nodes and Edges
 ------------------------------------
 
-Pangenome graphs contain massive volumes of data, often billions of segments and links. PangyPlot uses [database info]
-
-
+Pangenome graphs contain massive volumes of data, often hundreds of millions of segments and links. 
+PangyPlot uses a combination of SQLite databases and in-memory data structures to efficiently manage and query this information, see :ref:`schema`.
 
 
 Optimizing Layout
 -----------------
 
-Visualizing pangenome graphs requires organizing the graph into two dimensions.
-
-- The initial x-coordinate and y-coordinate positions are computed via `odgi layout`_.
-- Dynamic web-based graph rendering and physics are powered by `force-graph`_ (based on `D3.js`_).
+Visualizing pangenome graphs requires organizing the graph into two dimensions. 
+The initial x-coordinate and y-coordinate positions are computed in advance, see :ref:`layout`.
+Dynamic web-based graph rendering and physics are powered by a force-directed graph engine, see :ref:`forcegraph`.
 
 Balancing Large and Small Variants
 ----------------------------------
 
+PangyPlot captures common topological patterns in graph genomes and builds a hierarchical structure of the variation in the genome.
+This allows users to control the level of detail visible and also limits the computation necessary to view large regions by abstracting the details.
+
+Complex variation such as structural variants (SVs) coexists with smaller variants like SNPs and indels, and it can be difficult to visualize them together, see :ref:`bubbles`.
+
 .. figure:: _images/principles/superbubble.svg
    :alt: Bubbles and Superbubbles
-   :width: 400px
-   :align: left
+   :width: 500px
+   :align: center
 
-   caption here
-
-
-Complex variation such as structural variants (SVs) coexists with smaller variants like SNPs and indels, and it can be difficult to visualize them together.
-
-`BubbleGun`_ identifies "bubbles", "superbubbles", and "bubble chains" within GFA data. These bubble structures can be collapsed to simplify the graph and reduce clutter. Users can selectively "pop" open bubbles to explore fine-scale variation when needed. An implementation of this algorithm is included in PangyPlot.
+   Bubble and bubble chain structures in a pangenome graph.
 
 
 Coordinate Systems and Annotations
 ----------------------------------
 
-Genomic coordinate systems are essential for querying and aligning biological features. While pangenomic data does not inherently have a primary coordinate system, PangyPlot was developed under a design philosophy that requires one. When uploading a graph, users designate a primary path to serve as the coordinate reference system.
+Genomic coordinate systems are essential for querying and aligning biological features. 
+While pangenomic data does not inherently have a primary coordinate system, PangyPlot was developed under a design philosophy that requires one. 
+When uploading a graph, users designate a primary path to serve as the coordinate reference system, see :ref:`pangyplot-add`.
 
-`odgi position`_ is used to establish the start and end positions of segments. Segments that are not part of the primary coordinate system are anchored to the nearest segment on the primary path.
-
-With coordinates established, standard GFF3 annotation files can be imported to enable feature visualization and biological interpretation.
-
-.. _force-graph: https://github.com/vasturiano/force-graph
-.. _D3.js: https://d3js.org/
-.. _BubbleGun: https://github.com/fawaz-dabbaghieh/bubble_gun
-.. _odgi layout: https://pangenome.github.io/odgi.github.io/rst/commands/odgi_layout.html
-.. _odgi position: https://pangenome.github.io/odgi.github.io/rst/commands/odgi_position.html
+With coordinates established, standard GFF3 annotation files can be imported to enable feature visualization and biological interpretation, see :ref:`pangyplot-annotate`.

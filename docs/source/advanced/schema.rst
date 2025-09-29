@@ -1,6 +1,6 @@
 .. _schema:
 
-Storing data with SQLite
+Storing Data with SQLite
 ==============================
 
 `SQLite <https://www.sqlite.org/>`_ is a lightweight, file-based database that is easy to set up and use.
@@ -248,3 +248,60 @@ For example, ``segments.quickindex.json`` contains:
 
 for each segment. This enables quick lookup of segment positioning without needing to query the full database.
 These quick indices read and held in memory when starting up PangyPlot.
+
+Annotations
+~~~~~~~~~~~~~
+
+Annotations/genomic features (e.g., genes, transcripts, exons) are stored in genome-specific folders in ``datastore/annotations/``.
+Inside each genome directory is a SQLite database that roughly follows the GFF3 specification.
+
+annotations.db
+---------------
+
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 10 70
+
+   * - Property
+     - Type
+     - Description
+   * - **id**
+     - text
+     - Primary key. Unique identifier for the annotation feature.
+   * - **type**
+     - text
+     - Feature type (e.g., gene, transcript, exon).
+   * - **chrom**
+     - text
+     - Chromosome or contig name.
+   * - **start**
+     - integer
+     - Genomic start coordinate (1-based, inclusive).
+   * - **end**
+     - integer
+     - Genomic end coordinate (1-based, inclusive).
+   * - **strand**
+     - text
+     - Feature strand: ``+`` or ``-``.
+   * - **source**
+     - text
+     - Origin of the annotation (e.g., GENCODE, RefSeq).
+   * - **gene_name**
+     - text
+     - Associated gene symbol/name.
+   * - **exon_number**
+     - integer
+     - Exon number (if feature is an exon).
+   * - **parent**
+     - text
+     - Parent feature ID (e.g., transcript for an exon).
+   * - **tag**
+     - text
+     - Free-form tag or attribute from source annotation.
+   * - **ensembl_canonical**
+     - boolean
+     - Flag indicating Ensembl canonical transcript (default 0 = false).
+   * - **mane_select**
+     - boolean
+     - Flag indicating MANE Select transcript (default 0 = false).

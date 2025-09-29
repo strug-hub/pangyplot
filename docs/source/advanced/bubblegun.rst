@@ -1,5 +1,7 @@
+.. _bubbles:
+
 Calculating Bubbles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+====================
 
 `BubbleGun <https://github.com/fawaz-dabbaghieh/bubble_gun>`_ is a tool that identifies topological structures in a graph (GFA file).
 These topological structures can be nested within each other, forming a hierarchical chain of superstructures.
