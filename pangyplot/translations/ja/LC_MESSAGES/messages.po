@@ -1,0 +1,382 @@
+# Japanese translations for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# Translated by ChatGPT (OpenAI), 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-09-29 18:32-0400\n"
+"PO-Revision-Date: 2025-09-29 18:23-0400\n"
+"Last-Translator: ChatGPT (OpenAI) <noreply@openai.com>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: pangyplot/templates/color-picker.html:4
+msgid "Color Style"
+msgstr "カラースタイル"
+
+#: pangyplot/templates/color-picker.html:10
+msgid "Node Type"
+msgstr "ノードタイプ"
+
+#: pangyplot/templates/color-picker.html:15
+msgid "Bubble Size"
+msgstr "バブルサイズ"
+
+#: pangyplot/templates/color-picker.html:20
+msgid "Node Length"
+msgstr "ノードの長さ"
+
+#: pangyplot/templates/color-picker.html:25
+msgid "Ref/Alt"
+msgstr "参照/代替"
+
+#: pangyplot/templates/color-picker.html:30
+msgid "Position"
+msgstr "位置"
+
+#: pangyplot/templates/color-picker.html:35
+msgid "GC Content"
+msgstr "GC 含量"
+
+#: pangyplot/templates/color-picker.html:40
+msgid "Solid"
+msgstr "ソリッド"
+
+#: pangyplot/templates/color-picker.html:47
+msgid "Colors"
+msgstr "色"
+
+#: pangyplot/templates/color-picker.html:52
+msgid "Node:"
+msgstr "ノード:"
+
+#: pangyplot/templates/color-picker.html:61
+msgid "Link:"
+msgstr "リンク:"
+
+#: pangyplot/templates/color-picker.html:66
+msgid "Background:"
+msgstr "背景:"
+
+#: pangyplot/templates/color-picker.html:77
+msgid "Preset Colors"
+msgstr "プリセットカラー"
+
+#: pangyplot/templates/color-picker.html:81
+msgid "Primary"
+msgstr "プライマリ"
+
+#: pangyplot/templates/color-picker.html:83
+msgid "Peach"
+msgstr "ピーチ"
+
+#: pangyplot/templates/color-picker.html:85
+msgid "Mystic"
+msgstr "ミスティック"
+
+#: pangyplot/templates/color-picker.html:87
+msgid "Purples"
+msgstr "パープル"
+
+#: pangyplot/templates/color-picker.html:89
+msgid "Greens"
+msgstr "グリーン"
+
+#: pangyplot/templates/color-picker.html:91
+msgid "Blues"
+msgstr "ブルー"
+
+#: pangyplot/templates/color-picker.html:93
+msgid "Heat"
+msgstr "ヒート"
+
+#: pangyplot/templates/color-picker.html:95
+msgid "GoldenTide"
+msgstr "ゴールデンタイド"
+
+#: pangyplot/templates/color-picker.html:97
+msgid "Iris"
+msgstr "アイリス"
+
+#: pangyplot/templates/color-picker.html:99
+msgid "Sorbet"
+msgstr "ソルベ"
+
+#: pangyplot/templates/color-picker.html:101
+msgid "CoralSky"
+msgstr "コーラルスカイ"
+
+#: pangyplot/templates/color-picker.html:103
+msgid "Viridis"
+msgstr "ヴィリディス"
+
+#: pangyplot/templates/color-picker.html:105
+msgid "Mako"
+msgstr "マコ"
+
+#: pangyplot/templates/color-picker.html:107
+msgid "Magma"
+msgstr "マグマ"
+
+#: pangyplot/templates/color-picker.html:109
+msgid "Rocket"
+msgstr "ロケット"
+
+#: pangyplot/templates/coordinate-template.html:4
+msgid "Finalize Coordinates"
+msgstr "座標を確定"
+
+#: pangyplot/templates/coordinate-template.html:35
+msgid "flanking region"
+msgstr "隣接領域"
+
+#: pangyplot/templates/coordinate-template.html:44
+msgid "Go"
+msgstr "実行"
+
+#: pangyplot/templates/cytoband-template.html:6
+msgid "Chromosome Selector"
+msgstr "染色体セレクター"
+
+#: pangyplot/templates/cytoband-template.html:26
+msgid "Locus Selector"
+msgstr "遺伝子座セレクター"
+
+#: pangyplot/templates/cytoband-template.html:30
+msgid "No known chromosome data."
+msgstr "既知の染色体データがありません。"
+
+#: pangyplot/templates/gene-search-template.html:4
+msgid "Select by Gene"
+msgstr "遺伝子で選択"
+
+#: pangyplot/templates/gene-search-template.html:10
+msgid "Search genes..."
+msgstr "遺伝子を検索..."
+
+#: pangyplot/templates/index.html:28
+msgid "PangyPlot"
+msgstr "パンジープロット"
+
+#: pangyplot/templates/index.html:34
+msgid "Locale"
+msgstr "言語"
+
+#: pangyplot/templates/index.html:70
+msgid "Waiting for query..."
+msgstr "クエリを待機中..."
+
+#: pangyplot/templates/modal-template.html:43
+msgid "Supporting work"
+msgstr "関連する作業"
+
+#: pangyplot/templates/modal-template.html:105
+msgid "Welcome to PangyPlot"
+msgstr "パンジープロットへようこそ"
+
+#: pangyplot/templates/navbar-template.html:18
+msgid "Docs"
+msgstr "ドキュメント"
+
+#: pangyplot/templates/navbar-template.html:19
+msgid "GitHub"
+msgstr "GitHub"
+
+#: pangyplot/templates/navbar-template.html:20
+msgid "Report Bug"
+msgstr "バグを報告"
+
+#: pangyplot/templates/navbar-template.html:21
+msgid "Info"
+msgstr "情報"
+
+#: pangyplot/templates/navbar-template.html:22
+msgid "Citation"
+msgstr "引用"
+
+#: pangyplot/templates/navbar-template.html:24
+msgid "Example"
+msgstr "例"
+
+#: pangyplot/templates/navbar-template.html:25
+msgid "Example 2"
+msgstr "例 2"
+
+#: pangyplot/templates/navbar-template.html:26
+msgid "Example 3"
+msgstr "例 3"
+
+#: pangyplot/templates/tabs/graph-annotation.html:2
+msgid "Gene Annotations"
+msgstr "遺伝子注釈"
+
+#: pangyplot/templates/tabs/graph-annotation.html:7
+msgid "No annotations to show"
+msgstr "表示する注釈がありません"
+
+#: pangyplot/templates/tabs/graph-annotation.html:12
+msgid "Gene Name"
+msgstr "遺伝子名"
+
+#: pangyplot/templates/tabs/graph-annotation.html:13
+msgid "Exons"
+msgstr "エクソン"
+
+#: pangyplot/templates/tabs/graph-annotation.html:15
+#: pangyplot/templates/tabs/search-tab.html:15
+msgid "Color"
+msgstr "色"
+
+#: pangyplot/templates/tabs/graph-annotation.html:27
+msgid "Show All"
+msgstr "すべて表示"
+
+#: pangyplot/templates/tabs/graph-annotation.html:30
+msgid "Hide All"
+msgstr "すべて非表示"
+
+#: pangyplot/templates/tabs/graph-annotation.html:36
+msgid "Set All Colors"
+msgstr "すべての色を設定"
+
+#: pangyplot/templates/tabs/graph-info.html:6
+msgid "Graph Information"
+msgstr "グラフ情報"
+
+#: pangyplot/templates/tabs/graph-info.html:17
+msgid "Debugging Information"
+msgstr "デバッグ情報"
+
+#: pangyplot/templates/tabs/graph-settings.html:3
+msgid "Force Settings"
+msgstr "力の設定"
+
+#: pangyplot/templates/tabs/graph-settings.html:12
+msgid "Render Settings"
+msgstr "レンダー設定"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:5
+msgid "Navigation"
+msgstr "ナビゲーション"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:10
+msgid "Re-center"
+msgstr "中央に戻す"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:15
+msgid "Pan view"
+msgstr "ビュー移動"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:20
+msgid "Zoom in/out"
+msgstr "ズームイン/アウト"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:25
+msgid "Selection"
+msgstr "選択"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:30
+msgid "Select segment"
+msgstr "セグメントを選択"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:35
+msgid "Multi-select"
+msgstr "複数選択"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:40
+msgid "Zoom to selection"
+msgstr "選択範囲にズーム"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:45
+msgid "Interaction"
+msgstr "操作"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:50
+msgid "Move segment"
+msgstr "セグメントを移動"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:56
+msgid "Click"
+msgstr "クリック"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+msgid "Drag"
+msgstr "ドラッグ"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:55
+msgid "Pop open bubble"
+msgstr "バブルを開く"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:60
+msgid "Toggle node fix"
+msgstr "ノード固定の切替"
+
+#: pangyplot/templates/tabs/path-selector.html:2
+msgid "Path Selector"
+msgstr "パスセレクター"
+
+#: pangyplot/templates/tabs/path-selector.html:12
+msgid "Show All Paths"
+msgstr "すべてのパスを表示"
+
+#: pangyplot/templates/tabs/path-selector.html:15
+msgid "Clear"
+msgstr "クリア"
+
+#: pangyplot/templates/tabs/path-selector.html:30
+msgid "Path Animation"
+msgstr "パスアニメーション"
+
+#: pangyplot/templates/tabs/path-selector.html:54
+msgid "Speed"
+msgstr "速度"
+
+#: pangyplot/templates/tabs/path-selector.html:60
+msgid "Current Step"
+msgstr "現在のステップ"
+
+#: pangyplot/templates/tabs/search-tab.html:4
+msgid "Sequence Search"
+msgstr "配列検索"
+
+#: pangyplot/templates/tabs/search-tab.html:8
+msgid "Enter short sequence (ATCGN only)"
+msgstr "短い配列を入力 (ATCGNのみ)"
+
+#: pangyplot/templates/tabs/search-tab.html:9
+msgid "Add"
+msgstr "追加"
+
+#: pangyplot/templates/tabs/search-tab.html:16
+msgid "Sequence"
+msgstr "配列"
+
+#: pangyplot/templates/tabs/search-tab.html:27
+msgid "Node Search"
+msgstr "ノード検索"
+
+#: pangyplot/templates/tabs/search-tab.html:31
+msgid "Enter node ID"
+msgstr "ノードIDを入力"
+
+#: pangyplot/templates/tabs/tool-tab.html:3
+msgid "Settings"
+msgstr "設定"
+
+#: pangyplot/templates/tabs/tool-tab.html:10
+msgid "Anchor on drag"
+msgstr "ドラッグ時に固定"
+
+#: pangyplot/templates/tabs/tool-tab.html:16
+msgid "Smooth GC colors"
+msgstr "GCカラーを滑らかに"
+

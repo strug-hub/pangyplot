@@ -1,19 +1,19 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/search-tab.css') }}">
 
 <div style="display: none;">
-        <div class="tab-header">Sequence Search</div>
+        <div class="tab-header">{{ _('Sequence Search') }}</div>
         <hr>
 
         <div class="flex-row">
-            <input type="text" id="search-tab-bar" class="flex-4" placeholder="Enter short sequence (ATCGN only)" />
-            <button id="add-search-button" class="button-style flex-1">Add</button>
+            <input type="text" id="search-tab-bar" class="flex-4" placeholder="{{ _('Enter short sequence (ATCGN only)') }}" />
+            <button id="add-search-button" class="button-style flex-1">{{ _('Add') }}</button>
         </div>
         <br>
         <table id="search-table">
             <thead>
                 <tr>
-                    <th>Color</th>
-                    <th>Sequence</th>
+                    <th>{{ _('Color') }}</th>
+                    <th>{{ _('Sequence') }}</th>
                     <th></th>
                 </tr>
             </thead>
@@ -24,11 +24,11 @@
 
 </div>
 
-<div class="tab-header">Node Search</div>
+<div class="tab-header">{{ _('Node Search') }}</div>
 <hr>
 
 <div class="flex-row">
-    <input type="text" id="node-search-bar" class="flex-4" placeholder="Enter node ID" />
+    <input type="text" id="node-search-bar" class="flex-4" placeholder="{{ _('Enter node ID') }}" />
     <button id="node-search-button" class="button-style flex-1"><i class="fa-solid fa-search"></i></button>
 </div>
 

@@ -1,5 +1,6 @@
 import os
 from flask import Blueprint, current_app, render_template, request, jsonify, make_response
+from flask_babel import _,get_locale
 from dotenv import load_dotenv
 from pangyplot.version import __version__,__version_name__
 import pangyplot.organisms as organisms
@@ -24,6 +25,10 @@ def inject_version():
         "version": __version__,
         "version_name": __version_name__
     }
+
+@bp.context_processor
+def inject_locale():
+    return dict(current_locale=get_locale())
 
 @bp.context_processor
 def inject_default_genome():

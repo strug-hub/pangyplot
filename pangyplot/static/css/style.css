@@ -28,23 +28,56 @@ body {
     height: 120px;
 }
 
+#info-corner {
+    position: absolute;
+    top: 1em;
+    right: 1em;
+}
 
 #version-overlay {
     font-size: x-small;
-    position: absolute;
-    top: 1.5em;
-    right: 1.5em;
     background: var(--light-green);
     padding: 5px 10px;
     border-radius: 5px;
     font-family: monospace;
 }
 
+#language-button {
+    i{
+        font-size: x-large;
+    }
+    div{
+        font-size: small;
+    }
+}
+
+.lang-dropdown {
+  position: absolute;
+  margin-top: 5px;
+  right: 10px;
+  background: var(--site-background);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 9999;
+}
+
+.lang-option {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.lang-option:hover {
+  background: var(--highlight);
+}
+
+.lang-option.selected {
+  font-weight: bold;
+  background: var(--highlight);
+}
+
 #organism-indicator{
-    position: absolute;
     user-select: none;
-    top: 3em;
-    right: 1.5em;
     padding: 5px 10px;
     border-radius: 5px;
     background: var(--light-green);

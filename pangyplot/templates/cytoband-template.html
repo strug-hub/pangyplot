@@ -3,8 +3,8 @@
 <div id="cytoband" class="flex-row">
 
     <div class="container flex-1">
-        <div class="container-title">Chromosome Selector</div>
-        
+        <div class="container-title">{{ _('Chromosome Selector') }}</div>
+
             <div class="container-content flex-col">
                 <div id="cytoband-genome-canvas-container">
                     <!-- The figure will be appended here by JavaScript -->
@@ -23,11 +23,11 @@
     </div>
 
     <div class="container flex-2">
-        <div class="container-title">Locus Selector</div>
+        <div class="container-title">{{ _('Locus Selector') }}</div>
 
         <div class="container-content flex-col">
             <div id="cytoband-chromosome-no-info">
-                <i class="fas fa-question-circle"></i> No known chromosome data.
+                <i class="fas fa-question-circle"></i> {{ _('No known chromosome data.') }}
             </div>               
 
             <div id="cytoband-chromosome-canvas-container">

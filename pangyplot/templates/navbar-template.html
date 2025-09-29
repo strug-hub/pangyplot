@@ -3,7 +3,7 @@
 {% macro navbar_item(id, text, icon_class, href, target) %}
 <a id="{{ id }}" tabindex="0" class="navbar-button button-style flex-col flex-1" href="{{ href }}" target="{{ target }}">
     <i class="{{ icon_class }}"></i>
-    <div class="navbar-button-text">{{ text }}</div>
+    <div class="navbar-button-text">{{ _(text) }}</div>
 </a>
 {% endmacro %}
 
@@ -15,21 +15,18 @@
 
             <img id="navbar-logo" alt="PangyPlot" src="{{ url_for('static', filename='images/pangyplot_logo.svg') }}">
 
-            {{ navbar_item('navbar-button-docs', 'Docs', 'fa-solid fa-book', 'https://pangyplot-docs.readthedocs.io/en/latest/', "_blank") }}
-            {{ navbar_item('navbar-button-github', 'GitHub', 'fa-brands fa-github', 'https://github.com/ScottMastro/pangyplot', "_blank") }}
-            {{ navbar_item('navbar-button-bug', 'Report Bug', 'fa-solid fa-bug', 'https://github.com/ScottMastro/pangyplot/issues', "_blank") }}
-            {{ navbar_item('navbar-button-information', 'Info', 'fa-solid fa-circle-info', '#information', "_self") }}
-            {{ navbar_item('navbar-button-citation', 'Citation', 'fa-solid fa-quote-right', '#citations', "_self") }}
-            {{ navbar_item('navbar-button-citation', 'Citation', 'fa-solid fa-quote-right', '#citations', "_self") }}
+            {{ navbar_item('navbar-button-docs', _('Docs'), 'fa-solid fa-book', 'https://pangyplot-docs.readthedocs.io/en/latest/', "_blank") }}
+            {{ navbar_item('navbar-button-github', _('GitHub'), 'fa-brands fa-github', 'https://github.com/ScottMastro/pangyplot', "_blank") }}
+            {{ navbar_item('navbar-button-bug', _('Report Bug'), 'fa-solid fa-bug', 'https://github.com/ScottMastro/pangyplot/issues', "_blank") }}
+            {{ navbar_item('navbar-button-information', _('Info'), 'fa-solid fa-circle-info', '#information', "_self") }}
+            {{ navbar_item('navbar-button-citation', _('Citation'), 'fa-solid fa-quote-right', '#citations', "_self") }}
 
-            {{ navbar_item('navbar-button-example', 'Example', 'fa-solid fa-vial', '#example', "_self") }}
-            {{ navbar_item('navbar-button-example2', 'Example 2', 'fa-solid fa-vial', '#example2', "_self") }}
-            {{ navbar_item('navbar-button-example3', 'Example 3', 'fa-solid fa-vial', '#example3', "_self") }}
+            {{ navbar_item('navbar-button-example', _('Example'), 'fa-solid fa-vial', '#example', "_self") }}
+            {{ navbar_item('navbar-button-example2', _('Example 2'), 'fa-solid fa-vial', '#example2', "_self") }}
+            {{ navbar_item('navbar-button-example3', _('Example 3'), 'fa-solid fa-vial', '#example3', "_self") }}
             <div class="navbar-blank flex-6"></div>
 
         </nav>
-
-
     </div>
 </nav>
 

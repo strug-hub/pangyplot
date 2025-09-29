@@ -1,7 +1,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/coordinates-style.css') }}">
 
 <div id="coordinate-go" class="container flex-3">
-    <div class="container-title">Finalize Coordinates</i></div>
+    <div class="container-title">{{ _('Finalize Coordinates') }}</div>
 
     <div class="container-content flex-row">
 
@@ -32,7 +32,7 @@
 
                 <i class="fa-solid fa-plus-minus fa-min-width"></i>
                 <div id="go-flanking" class="border-emphasis important-text flex-row flex-4">
-                    flanking region
+                    {{ _('flanking region') }}
                 </div>
                 <div class="flex-row flex-1">
                     <button id="go-flanking-minus-button" class="button-style button-selected highlighted flex-1"><i class="fa-solid fa-minus"></i></button>
@@ -41,7 +41,7 @@
             </div>
         </div>
 
-        <button id="go-button" class="button-style">Go <i class="fa-solid fa-bolt-lightning flex-1"></i></button>
+        <button id="go-button" class="button-style">{{ _('Go') }} <i class="fa-solid fa-bolt-lightning flex-1"></i></button>
 
     </div>
 </div>
