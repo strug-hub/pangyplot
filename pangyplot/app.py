@@ -1,7 +1,9 @@
 import os
 from pympler.asizeof import asizeof
 
-from flask import Flask
+from flask import Flask, request
+from flask_babel import Babel
+
 from dotenv import load_dotenv
 from pangyplot.routes import bp as routes_bp
 
@@ -12,8 +14,25 @@ from pangyplot.db.indexes.AnnotationIndex import AnnotationIndex
 import pangyplot.organisms as organisms
 import pangyplot.preprocess.parser.parse_cytoband as cytoband_parser
 
+
+babel = Babel()
+
+def get_locale():
+    # Check ?lang= query param first
+    lang = request.args.get("lang")
+    print("LOCALE", lang)
+    return lang or "en"
+
+
 def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
     app = Flask(__name__)
+
+    app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+    app.config['BABEL_SUPPORTED_LOCALES'] = [
+        'en', 'fr', 'es', 'de', 'it',
+        'pt_BR', 'ru', 'zh_CN', 'ja', 'ko', 'ar'
+    ]
+    babel.init_app(app, locale_selector=get_locale)
 
     setup_cytoband(app)
     load_indexes(app, data_dir, db_name, annotation_name, ref)
@@ -25,6 +44,7 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
         app.run(port=port)
 
     return app
+
 
 def load_indexes(app, data_dir, db_name, annotation_name, ref):
     app.gfa_index = dict()

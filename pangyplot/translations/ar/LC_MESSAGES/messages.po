@@ -1,0 +1,383 @@
+# Arabic translations for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# Translated by ChatGPT (OpenAI), 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-09-29 18:32-0400\n"
+"PO-Revision-Date: 2025-09-29 18:23-0400\n"
+"Last-Translator: ChatGPT (OpenAI) <noreply@openai.com>\n"
+"Language: ar\n"
+"Language-Team: ar <LL@li.org>\n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : "
+"n%100>=3 && n%100<=10 ? 3 : n%100>=0 && n%100<=2 ? 4 : 5);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: pangyplot/templates/color-picker.html:4
+msgid "Color Style"
+msgstr "نمط الألوان"
+
+#: pangyplot/templates/color-picker.html:10
+msgid "Node Type"
+msgstr "نوع العقدة"
+
+#: pangyplot/templates/color-picker.html:15
+msgid "Bubble Size"
+msgstr "حجم الفقاعة"
+
+#: pangyplot/templates/color-picker.html:20
+msgid "Node Length"
+msgstr "طول العقدة"
+
+#: pangyplot/templates/color-picker.html:25
+msgid "Ref/Alt"
+msgstr "مرجع/بديل"
+
+#: pangyplot/templates/color-picker.html:30
+msgid "Position"
+msgstr "الموضع"
+
+#: pangyplot/templates/color-picker.html:35
+msgid "GC Content"
+msgstr "محتوى GC"
+
+#: pangyplot/templates/color-picker.html:40
+msgid "Solid"
+msgstr "صلب"
+
+#: pangyplot/templates/color-picker.html:47
+msgid "Colors"
+msgstr "الألوان"
+
+#: pangyplot/templates/color-picker.html:52
+msgid "Node:"
+msgstr "العقدة:"
+
+#: pangyplot/templates/color-picker.html:61
+msgid "Link:"
+msgstr "الرابط:"
+
+#: pangyplot/templates/color-picker.html:66
+msgid "Background:"
+msgstr "الخلفية:"
+
+#: pangyplot/templates/color-picker.html:77
+msgid "Preset Colors"
+msgstr "الألوان الجاهزة"
+
+#: pangyplot/templates/color-picker.html:81
+msgid "Primary"
+msgstr "أساسي"
+
+#: pangyplot/templates/color-picker.html:83
+msgid "Peach"
+msgstr "خوخي"
+
+#: pangyplot/templates/color-picker.html:85
+msgid "Mystic"
+msgstr "غامض"
+
+#: pangyplot/templates/color-picker.html:87
+msgid "Purples"
+msgstr "بنفسجي"
+
+#: pangyplot/templates/color-picker.html:89
+msgid "Greens"
+msgstr "أخضر"
+
+#: pangyplot/templates/color-picker.html:91
+msgid "Blues"
+msgstr "أزرق"
+
+#: pangyplot/templates/color-picker.html:93
+msgid "Heat"
+msgstr "حرارة"
+
+#: pangyplot/templates/color-picker.html:95
+msgid "GoldenTide"
+msgstr "موجة ذهبية"
+
+#: pangyplot/templates/color-picker.html:97
+msgid "Iris"
+msgstr "قزحية"
+
+#: pangyplot/templates/color-picker.html:99
+msgid "Sorbet"
+msgstr "سوربيه"
+
+#: pangyplot/templates/color-picker.html:101
+msgid "CoralSky"
+msgstr "سماء مرجانية"
+
+#: pangyplot/templates/color-picker.html:103
+msgid "Viridis"
+msgstr "فيريديس"
+
+#: pangyplot/templates/color-picker.html:105
+msgid "Mako"
+msgstr "ماكو"
+
+#: pangyplot/templates/color-picker.html:107
+msgid "Magma"
+msgstr "ماغما"
+
+#: pangyplot/templates/color-picker.html:109
+msgid "Rocket"
+msgstr "صاروخ"
+
+#: pangyplot/templates/coordinate-template.html:4
+msgid "Finalize Coordinates"
+msgstr "تثبيت الإحداثيات"
+
+#: pangyplot/templates/coordinate-template.html:35
+msgid "flanking region"
+msgstr "منطقة محيطة"
+
+#: pangyplot/templates/coordinate-template.html:44
+msgid "Go"
+msgstr "اذهب"
+
+#: pangyplot/templates/cytoband-template.html:6
+msgid "Chromosome Selector"
+msgstr "محدد الكروموسوم"
+
+#: pangyplot/templates/cytoband-template.html:26
+msgid "Locus Selector"
+msgstr "محدد الموقع"
+
+#: pangyplot/templates/cytoband-template.html:30
+msgid "No known chromosome data."
+msgstr "لا توجد بيانات كروموسوم معروفة."
+
+#: pangyplot/templates/gene-search-template.html:4
+msgid "Select by Gene"
+msgstr "اختر حسب الجين"
+
+#: pangyplot/templates/gene-search-template.html:10
+msgid "Search genes..."
+msgstr "ابحث عن الجينات..."
+
+#: pangyplot/templates/index.html:28
+msgid "PangyPlot"
+msgstr "بانجي بلوت"
+
+#: pangyplot/templates/index.html:34
+msgid "Locale"
+msgstr "اللغة"
+
+#: pangyplot/templates/index.html:70
+msgid "Waiting for query..."
+msgstr "في انتظار الاستعلام..."
+
+#: pangyplot/templates/modal-template.html:43
+msgid "Supporting work"
+msgstr "العمل الداعم"
+
+#: pangyplot/templates/modal-template.html:105
+msgid "Welcome to PangyPlot"
+msgstr "مرحبًا بك في بانجي بلوت"
+
+#: pangyplot/templates/navbar-template.html:18
+msgid "Docs"
+msgstr "الوثائق"
+
+#: pangyplot/templates/navbar-template.html:19
+msgid "GitHub"
+msgstr "جيت هاب"
+
+#: pangyplot/templates/navbar-template.html:20
+msgid "Report Bug"
+msgstr "الإبلاغ عن خطأ"
+
+#: pangyplot/templates/navbar-template.html:21
+msgid "Info"
+msgstr "معلومات"
+
+#: pangyplot/templates/navbar-template.html:22
+msgid "Citation"
+msgstr "الاقتباس"
+
+#: pangyplot/templates/navbar-template.html:24
+msgid "Example"
+msgstr "مثال"
+
+#: pangyplot/templates/navbar-template.html:25
+msgid "Example 2"
+msgstr "مثال 2"
+
+#: pangyplot/templates/navbar-template.html:26
+msgid "Example 3"
+msgstr "مثال 3"
+
+#: pangyplot/templates/tabs/graph-annotation.html:2
+msgid "Gene Annotations"
+msgstr "تعليقات الجينات"
+
+#: pangyplot/templates/tabs/graph-annotation.html:7
+msgid "No annotations to show"
+msgstr "لا توجد تعليقات للعرض"
+
+#: pangyplot/templates/tabs/graph-annotation.html:12
+msgid "Gene Name"
+msgstr "اسم الجين"
+
+#: pangyplot/templates/tabs/graph-annotation.html:13
+msgid "Exons"
+msgstr "الإكسونات"
+
+#: pangyplot/templates/tabs/graph-annotation.html:15
+#: pangyplot/templates/tabs/search-tab.html:15
+msgid "Color"
+msgstr "لون"
+
+#: pangyplot/templates/tabs/graph-annotation.html:27
+msgid "Show All"
+msgstr "إظهار الكل"
+
+#: pangyplot/templates/tabs/graph-annotation.html:30
+msgid "Hide All"
+msgstr "إخفاء الكل"
+
+#: pangyplot/templates/tabs/graph-annotation.html:36
+msgid "Set All Colors"
+msgstr "تعيين جميع الألوان"
+
+#: pangyplot/templates/tabs/graph-info.html:6
+msgid "Graph Information"
+msgstr "معلومات الرسم البياني"
+
+#: pangyplot/templates/tabs/graph-info.html:17
+msgid "Debugging Information"
+msgstr "معلومات التصحيح"
+
+#: pangyplot/templates/tabs/graph-settings.html:3
+msgid "Force Settings"
+msgstr "إعدادات القوى"
+
+#: pangyplot/templates/tabs/graph-settings.html:12
+msgid "Render Settings"
+msgstr "إعدادات العرض"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:5
+msgid "Navigation"
+msgstr "التنقل"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:10
+msgid "Re-center"
+msgstr "إعادة التمركز"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:15
+msgid "Pan view"
+msgstr "عرض بانورامي"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:20
+msgid "Zoom in/out"
+msgstr "تكبير/تصغير"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:25
+msgid "Selection"
+msgstr "التحديد"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:30
+msgid "Select segment"
+msgstr "تحديد جزء"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:35
+msgid "Multi-select"
+msgstr "تحديد متعدد"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:40
+msgid "Zoom to selection"
+msgstr "تكبير إلى التحديد"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:45
+msgid "Interaction"
+msgstr "تفاعل"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:50
+msgid "Move segment"
+msgstr "نقل الجزء"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:56
+msgid "Click"
+msgstr "نقرة"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+msgid "Drag"
+msgstr "سحب"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:55
+msgid "Pop open bubble"
+msgstr "فتح الفقاعة"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:60
+msgid "Toggle node fix"
+msgstr "تبديل تثبيت العقدة"
+
+#: pangyplot/templates/tabs/path-selector.html:2
+msgid "Path Selector"
+msgstr "محدد المسار"
+
+#: pangyplot/templates/tabs/path-selector.html:12
+msgid "Show All Paths"
+msgstr "إظهار جميع المسارات"
+
+#: pangyplot/templates/tabs/path-selector.html:15
+msgid "Clear"
+msgstr "مسح"
+
+#: pangyplot/templates/tabs/path-selector.html:30
+msgid "Path Animation"
+msgstr "تحريك المسار"
+
+#: pangyplot/templates/tabs/path-selector.html:54
+msgid "Speed"
+msgstr "السرعة"
+
+#: pangyplot/templates/tabs/path-selector.html:60
+msgid "Current Step"
+msgstr "الخطوة الحالية"
+
+#: pangyplot/templates/tabs/search-tab.html:4
+msgid "Sequence Search"
+msgstr "بحث التسلسل"
+
+#: pangyplot/templates/tabs/search-tab.html:8
+msgid "Enter short sequence (ATCGN only)"
+msgstr "أدخل تسلسل قصير (ATCGN فقط)"
+
+#: pangyplot/templates/tabs/search-tab.html:9
+msgid "Add"
+msgstr "إضافة"
+
+#: pangyplot/templates/tabs/search-tab.html:16
+msgid "Sequence"
+msgstr "تسلسل"
+
+#: pangyplot/templates/tabs/search-tab.html:27
+msgid "Node Search"
+msgstr "بحث العقدة"
+
+#: pangyplot/templates/tabs/search-tab.html:31
+msgid "Enter node ID"
+msgstr "أدخل معرف العقدة"
+
+#: pangyplot/templates/tabs/tool-tab.html:3
+msgid "Settings"
+msgstr "الإعدادات"
+
+#: pangyplot/templates/tabs/tool-tab.html:10
+msgid "Anchor on drag"
+msgstr "تثبيت عند السحب"
+
+#: pangyplot/templates/tabs/tool-tab.html:16
+msgid "Smooth GC colors"
+msgstr "ألوان GC ناعمة"
+

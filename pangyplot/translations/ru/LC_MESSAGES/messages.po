@@ -1,0 +1,383 @@
+# Russian translations for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# Translated by ChatGPT (OpenAI), 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-09-29 18:32-0400\n"
+"PO-Revision-Date: 2025-09-29 18:23-0400\n"
+"Last-Translator: ChatGPT (OpenAI) <noreply@openai.com>\n"
+"Language: ru\n"
+"Language-Team: ru <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: pangyplot/templates/color-picker.html:4
+msgid "Color Style"
+msgstr "Стиль цвета"
+
+#: pangyplot/templates/color-picker.html:10
+msgid "Node Type"
+msgstr "Тип узла"
+
+#: pangyplot/templates/color-picker.html:15
+msgid "Bubble Size"
+msgstr "Размер пузыря"
+
+#: pangyplot/templates/color-picker.html:20
+msgid "Node Length"
+msgstr "Длина узла"
+
+#: pangyplot/templates/color-picker.html:25
+msgid "Ref/Alt"
+msgstr "Реф/Альт"
+
+#: pangyplot/templates/color-picker.html:30
+msgid "Position"
+msgstr "Позиция"
+
+#: pangyplot/templates/color-picker.html:35
+msgid "GC Content"
+msgstr "Содержание GC"
+
+#: pangyplot/templates/color-picker.html:40
+msgid "Solid"
+msgstr "Сплошной"
+
+#: pangyplot/templates/color-picker.html:47
+msgid "Colors"
+msgstr "Цвета"
+
+#: pangyplot/templates/color-picker.html:52
+msgid "Node:"
+msgstr "Узел:"
+
+#: pangyplot/templates/color-picker.html:61
+msgid "Link:"
+msgstr "Связь:"
+
+#: pangyplot/templates/color-picker.html:66
+msgid "Background:"
+msgstr "Фон:"
+
+#: pangyplot/templates/color-picker.html:77
+msgid "Preset Colors"
+msgstr "Предустановленные цвета"
+
+#: pangyplot/templates/color-picker.html:81
+msgid "Primary"
+msgstr "Основной"
+
+#: pangyplot/templates/color-picker.html:83
+msgid "Peach"
+msgstr "Персиковый"
+
+#: pangyplot/templates/color-picker.html:85
+msgid "Mystic"
+msgstr "Мистический"
+
+#: pangyplot/templates/color-picker.html:87
+msgid "Purples"
+msgstr "Фиолетовые"
+
+#: pangyplot/templates/color-picker.html:89
+msgid "Greens"
+msgstr "Зелёные"
+
+#: pangyplot/templates/color-picker.html:91
+msgid "Blues"
+msgstr "Синие"
+
+#: pangyplot/templates/color-picker.html:93
+msgid "Heat"
+msgstr "Тепло"
+
+#: pangyplot/templates/color-picker.html:95
+msgid "GoldenTide"
+msgstr "Золотой поток"
+
+#: pangyplot/templates/color-picker.html:97
+msgid "Iris"
+msgstr "Ирис"
+
+#: pangyplot/templates/color-picker.html:99
+msgid "Sorbet"
+msgstr "Сорбет"
+
+#: pangyplot/templates/color-picker.html:101
+msgid "CoralSky"
+msgstr "Коралловое небо"
+
+#: pangyplot/templates/color-picker.html:103
+msgid "Viridis"
+msgstr "Viridis"
+
+#: pangyplot/templates/color-picker.html:105
+msgid "Mako"
+msgstr "Mako"
+
+#: pangyplot/templates/color-picker.html:107
+msgid "Magma"
+msgstr "Магма"
+
+#: pangyplot/templates/color-picker.html:109
+msgid "Rocket"
+msgstr "Ракета"
+
+#: pangyplot/templates/coordinate-template.html:4
+msgid "Finalize Coordinates"
+msgstr "Завершить координаты"
+
+#: pangyplot/templates/coordinate-template.html:35
+msgid "flanking region"
+msgstr "фланкирующий регион"
+
+#: pangyplot/templates/coordinate-template.html:44
+msgid "Go"
+msgstr "Перейти"
+
+#: pangyplot/templates/cytoband-template.html:6
+msgid "Chromosome Selector"
+msgstr "Выбор хромосомы"
+
+#: pangyplot/templates/cytoband-template.html:26
+msgid "Locus Selector"
+msgstr "Выбор локуса"
+
+#: pangyplot/templates/cytoband-template.html:30
+msgid "No known chromosome data."
+msgstr "Нет известных данных о хромосомах."
+
+#: pangyplot/templates/gene-search-template.html:4
+msgid "Select by Gene"
+msgstr "Выбрать по гену"
+
+#: pangyplot/templates/gene-search-template.html:10
+msgid "Search genes..."
+msgstr "Поиск генов..."
+
+#: pangyplot/templates/index.html:28
+msgid "PangyPlot"
+msgstr "PangyPlot"
+
+#: pangyplot/templates/index.html:34
+msgid "Locale"
+msgstr "Язык"
+
+#: pangyplot/templates/index.html:70
+msgid "Waiting for query..."
+msgstr "Ожидание запроса..."
+
+#: pangyplot/templates/modal-template.html:43
+msgid "Supporting work"
+msgstr "Сопроводительная работа"
+
+#: pangyplot/templates/modal-template.html:105
+msgid "Welcome to PangyPlot"
+msgstr "Добро пожаловать в PangyPlot"
+
+#: pangyplot/templates/navbar-template.html:18
+msgid "Docs"
+msgstr "Документация"
+
+#: pangyplot/templates/navbar-template.html:19
+msgid "GitHub"
+msgstr "GitHub"
+
+#: pangyplot/templates/navbar-template.html:20
+msgid "Report Bug"
+msgstr "Сообщить об ошибке"
+
+#: pangyplot/templates/navbar-template.html:21
+msgid "Info"
+msgstr "Информация"
+
+#: pangyplot/templates/navbar-template.html:22
+msgid "Citation"
+msgstr "Цитата"
+
+#: pangyplot/templates/navbar-template.html:24
+msgid "Example"
+msgstr "Пример"
+
+#: pangyplot/templates/navbar-template.html:25
+msgid "Example 2"
+msgstr "Пример 2"
+
+#: pangyplot/templates/navbar-template.html:26
+msgid "Example 3"
+msgstr "Пример 3"
+
+#: pangyplot/templates/tabs/graph-annotation.html:2
+msgid "Gene Annotations"
+msgstr "Аннотации генов"
+
+#: pangyplot/templates/tabs/graph-annotation.html:7
+msgid "No annotations to show"
+msgstr "Нет аннотаций для отображения"
+
+#: pangyplot/templates/tabs/graph-annotation.html:12
+msgid "Gene Name"
+msgstr "Имя гена"
+
+#: pangyplot/templates/tabs/graph-annotation.html:13
+msgid "Exons"
+msgstr "Экзоны"
+
+#: pangyplot/templates/tabs/graph-annotation.html:15
+#: pangyplot/templates/tabs/search-tab.html:15
+msgid "Color"
+msgstr "Цвет"
+
+#: pangyplot/templates/tabs/graph-annotation.html:27
+msgid "Show All"
+msgstr "Показать все"
+
+#: pangyplot/templates/tabs/graph-annotation.html:30
+msgid "Hide All"
+msgstr "Скрыть все"
+
+#: pangyplot/templates/tabs/graph-annotation.html:36
+msgid "Set All Colors"
+msgstr "Установить все цвета"
+
+#: pangyplot/templates/tabs/graph-info.html:6
+msgid "Graph Information"
+msgstr "Информация о графе"
+
+#: pangyplot/templates/tabs/graph-info.html:17
+msgid "Debugging Information"
+msgstr "Отладочная информация"
+
+#: pangyplot/templates/tabs/graph-settings.html:3
+msgid "Force Settings"
+msgstr "Настройки силы"
+
+#: pangyplot/templates/tabs/graph-settings.html:12
+msgid "Render Settings"
+msgstr "Настройки визуализации"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:5
+msgid "Navigation"
+msgstr "Навигация"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:10
+msgid "Re-center"
+msgstr "Центрировать"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:15
+msgid "Pan view"
+msgstr "Перемещение вида"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:20
+msgid "Zoom in/out"
+msgstr "Увеличить/уменьшить"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:25
+msgid "Selection"
+msgstr "Выбор"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:30
+msgid "Select segment"
+msgstr "Выбрать сегмент"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:35
+msgid "Multi-select"
+msgstr "Множественный выбор"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:40
+msgid "Zoom to selection"
+msgstr "Увеличить до выбора"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:45
+msgid "Interaction"
+msgstr "Взаимодействие"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:50
+msgid "Move segment"
+msgstr "Переместить сегмент"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:56
+msgid "Click"
+msgstr "Клик"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+msgid "Drag"
+msgstr "Перетащить"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:55
+msgid "Pop open bubble"
+msgstr "Открыть пузырь"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:60
+msgid "Toggle node fix"
+msgstr "Зафиксировать/освободить узел"
+
+#: pangyplot/templates/tabs/path-selector.html:2
+msgid "Path Selector"
+msgstr "Выбор пути"
+
+#: pangyplot/templates/tabs/path-selector.html:12
+msgid "Show All Paths"
+msgstr "Показать все пути"
+
+#: pangyplot/templates/tabs/path-selector.html:15
+msgid "Clear"
+msgstr "Очистить"
+
+#: pangyplot/templates/tabs/path-selector.html:30
+msgid "Path Animation"
+msgstr "Анимация пути"
+
+#: pangyplot/templates/tabs/path-selector.html:54
+msgid "Speed"
+msgstr "Скорость"
+
+#: pangyplot/templates/tabs/path-selector.html:60
+msgid "Current Step"
+msgstr "Текущий шаг"
+
+#: pangyplot/templates/tabs/search-tab.html:4
+msgid "Sequence Search"
+msgstr "Поиск последовательности"
+
+#: pangyplot/templates/tabs/search-tab.html:8
+msgid "Enter short sequence (ATCGN only)"
+msgstr "Введите короткую последовательность (только ATCGN)"
+
+#: pangyplot/templates/tabs/search-tab.html:9
+msgid "Add"
+msgstr "Добавить"
+
+#: pangyplot/templates/tabs/search-tab.html:16
+msgid "Sequence"
+msgstr "Последовательность"
+
+#: pangyplot/templates/tabs/search-tab.html:27
+msgid "Node Search"
+msgstr "Поиск узла"
+
+#: pangyplot/templates/tabs/search-tab.html:31
+msgid "Enter node ID"
+msgstr "Введите ID узла"
+
+#: pangyplot/templates/tabs/tool-tab.html:3
+msgid "Settings"
+msgstr "Настройки"
+
+#: pangyplot/templates/tabs/tool-tab.html:10
+msgid "Anchor on drag"
+msgstr "Фиксировать при перетаскивании"
+
+#: pangyplot/templates/tabs/tool-tab.html:16
+msgid "Smooth GC colors"
+msgstr "Сглаживать цвета GC"
+

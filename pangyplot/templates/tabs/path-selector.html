@@ -1,5 +1,5 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/path-selector.css') }}">
-<div class="tab-header">Path Selector</div>
+<div class="tab-header">{{ _('Path Selector') }}</div>
 <hr>
 
 <div class="flex-col">
@@ -9,10 +9,10 @@
 
     <div id="path-select-container" class="flex-col hidden">
         <button id="path-select-button" class="button-style path-button">
-            Show All Paths
+            {{ _('Show All Paths') }}
         </button>
         <button id="path-clear-button" class="button-style path-button">
-            Clear
+            {{ _('Clear') }}
         </button>
     </div>
 
@@ -27,7 +27,7 @@
 
         <div>
             <br>
-            <div class="tab-header">Path Animation</div>
+            <div class="tab-header">{{ _('Path Animation') }}</div>
             <hr>
         </div>
 
@@ -51,13 +51,13 @@
         </div>
 
         <div class="flex-row">
-            <label for="path-speed-slider" class="flex-1">Speed:</label>
+            <label for="path-speed-slider" class="flex-1">{{ _('Speed') }}</label>
             <input type="range" id="path-speed-slider" class="flex-3" min="-5" max="6" value="0" autocomplete="off" step="1">
             <span id="path-speed-value" class="flex-1">1x</span>
         </div>
 
         <div class="flex-row">
-            <label for="path-current-step" class="flex-1">Current Step:</label>
+            <label for="path-current-step" class="flex-1">{{ _('Current Step') }}</label>
             <span id="path-current-step" class="flex-1">0</span>
         </div>
 

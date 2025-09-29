@@ -1,0 +1,382 @@
+# Portuguese (Brazil) translations for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# Translated by ChatGPT (OpenAI), 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-09-29 18:32-0400\n"
+"PO-Revision-Date: 2025-09-29 18:23-0400\n"
+"Last-Translator: ChatGPT (OpenAI) <noreply@openai.com>\n"
+"Language: pt_BR\n"
+"Language-Team: pt_BR <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: pangyplot/templates/color-picker.html:4
+msgid "Color Style"
+msgstr "Estilo de Cor"
+
+#: pangyplot/templates/color-picker.html:10
+msgid "Node Type"
+msgstr "Tipo de Nó"
+
+#: pangyplot/templates/color-picker.html:15
+msgid "Bubble Size"
+msgstr "Tamanho da Bolha"
+
+#: pangyplot/templates/color-picker.html:20
+msgid "Node Length"
+msgstr "Comprimento do Nó"
+
+#: pangyplot/templates/color-picker.html:25
+msgid "Ref/Alt"
+msgstr "Ref/Alt"
+
+#: pangyplot/templates/color-picker.html:30
+msgid "Position"
+msgstr "Posição"
+
+#: pangyplot/templates/color-picker.html:35
+msgid "GC Content"
+msgstr "Conteúdo de GC"
+
+#: pangyplot/templates/color-picker.html:40
+msgid "Solid"
+msgstr "Sólido"
+
+#: pangyplot/templates/color-picker.html:47
+msgid "Colors"
+msgstr "Cores"
+
+#: pangyplot/templates/color-picker.html:52
+msgid "Node:"
+msgstr "Nó:"
+
+#: pangyplot/templates/color-picker.html:61
+msgid "Link:"
+msgstr "Ligação:"
+
+#: pangyplot/templates/color-picker.html:66
+msgid "Background:"
+msgstr "Fundo:"
+
+#: pangyplot/templates/color-picker.html:77
+msgid "Preset Colors"
+msgstr "Cores Pré-definidas"
+
+#: pangyplot/templates/color-picker.html:81
+msgid "Primary"
+msgstr "Primário"
+
+#: pangyplot/templates/color-picker.html:83
+msgid "Peach"
+msgstr "Pêssego"
+
+#: pangyplot/templates/color-picker.html:85
+msgid "Mystic"
+msgstr "Místico"
+
+#: pangyplot/templates/color-picker.html:87
+msgid "Purples"
+msgstr "Roxos"
+
+#: pangyplot/templates/color-picker.html:89
+msgid "Greens"
+msgstr "Verdes"
+
+#: pangyplot/templates/color-picker.html:91
+msgid "Blues"
+msgstr "Azuis"
+
+#: pangyplot/templates/color-picker.html:93
+msgid "Heat"
+msgstr "Calor"
+
+#: pangyplot/templates/color-picker.html:95
+msgid "GoldenTide"
+msgstr "Maré Dourada"
+
+#: pangyplot/templates/color-picker.html:97
+msgid "Iris"
+msgstr "Íris"
+
+#: pangyplot/templates/color-picker.html:99
+msgid "Sorbet"
+msgstr "Sorvete"
+
+#: pangyplot/templates/color-picker.html:101
+msgid "CoralSky"
+msgstr "Céu Coral"
+
+#: pangyplot/templates/color-picker.html:103
+msgid "Viridis"
+msgstr "Viridis"
+
+#: pangyplot/templates/color-picker.html:105
+msgid "Mako"
+msgstr "Mako"
+
+#: pangyplot/templates/color-picker.html:107
+msgid "Magma"
+msgstr "Magma"
+
+#: pangyplot/templates/color-picker.html:109
+msgid "Rocket"
+msgstr "Foguete"
+
+#: pangyplot/templates/coordinate-template.html:4
+msgid "Finalize Coordinates"
+msgstr "Finalizar Coordenadas"
+
+#: pangyplot/templates/coordinate-template.html:35
+msgid "flanking region"
+msgstr "região adjacente"
+
+#: pangyplot/templates/coordinate-template.html:44
+msgid "Go"
+msgstr "Ir"
+
+#: pangyplot/templates/cytoband-template.html:6
+msgid "Chromosome Selector"
+msgstr "Seletor de Cromossomos"
+
+#: pangyplot/templates/cytoband-template.html:26
+msgid "Locus Selector"
+msgstr "Seletor de Lócus"
+
+#: pangyplot/templates/cytoband-template.html:30
+msgid "No known chromosome data."
+msgstr "Nenhum dado de cromossomo conhecido."
+
+#: pangyplot/templates/gene-search-template.html:4
+msgid "Select by Gene"
+msgstr "Selecionar por Gene"
+
+#: pangyplot/templates/gene-search-template.html:10
+msgid "Search genes..."
+msgstr "Pesquisar genes..."
+
+#: pangyplot/templates/index.html:28
+msgid "PangyPlot"
+msgstr "PangyPlot"
+
+#: pangyplot/templates/index.html:34
+msgid "Locale"
+msgstr "Idioma"
+
+#: pangyplot/templates/index.html:70
+msgid "Waiting for query..."
+msgstr "Aguardando consulta..."
+
+#: pangyplot/templates/modal-template.html:43
+msgid "Supporting work"
+msgstr "Trabalho de apoio"
+
+#: pangyplot/templates/modal-template.html:105
+msgid "Welcome to PangyPlot"
+msgstr "Bem-vindo ao PangyPlot"
+
+#: pangyplot/templates/navbar-template.html:18
+msgid "Docs"
+msgstr "Documentação"
+
+#: pangyplot/templates/navbar-template.html:19
+msgid "GitHub"
+msgstr "GitHub"
+
+#: pangyplot/templates/navbar-template.html:20
+msgid "Report Bug"
+msgstr "Reportar Bug"
+
+#: pangyplot/templates/navbar-template.html:21
+msgid "Info"
+msgstr "Informações"
+
+#: pangyplot/templates/navbar-template.html:22
+msgid "Citation"
+msgstr "Citação"
+
+#: pangyplot/templates/navbar-template.html:24
+msgid "Example"
+msgstr "Exemplo"
+
+#: pangyplot/templates/navbar-template.html:25
+msgid "Example 2"
+msgstr "Exemplo 2"
+
+#: pangyplot/templates/navbar-template.html:26
+msgid "Example 3"
+msgstr "Exemplo 3"
+
+#: pangyplot/templates/tabs/graph-annotation.html:2
+msgid "Gene Annotations"
+msgstr "Anotações de Genes"
+
+#: pangyplot/templates/tabs/graph-annotation.html:7
+msgid "No annotations to show"
+msgstr "Nenhuma anotação para mostrar"
+
+#: pangyplot/templates/tabs/graph-annotation.html:12
+msgid "Gene Name"
+msgstr "Nome do Gene"
+
+#: pangyplot/templates/tabs/graph-annotation.html:13
+msgid "Exons"
+msgstr "Éxons"
+
+#: pangyplot/templates/tabs/graph-annotation.html:15
+#: pangyplot/templates/tabs/search-tab.html:15
+msgid "Color"
+msgstr "Cor"
+
+#: pangyplot/templates/tabs/graph-annotation.html:27
+msgid "Show All"
+msgstr "Mostrar Todos"
+
+#: pangyplot/templates/tabs/graph-annotation.html:30
+msgid "Hide All"
+msgstr "Ocultar Todos"
+
+#: pangyplot/templates/tabs/graph-annotation.html:36
+msgid "Set All Colors"
+msgstr "Definir Todas as Cores"
+
+#: pangyplot/templates/tabs/graph-info.html:6
+msgid "Graph Information"
+msgstr "Informações do Gráfico"
+
+#: pangyplot/templates/tabs/graph-info.html:17
+msgid "Debugging Information"
+msgstr "Informações de Depuração"
+
+#: pangyplot/templates/tabs/graph-settings.html:3
+msgid "Force Settings"
+msgstr "Configurações de Força"
+
+#: pangyplot/templates/tabs/graph-settings.html:12
+msgid "Render Settings"
+msgstr "Configurações de Renderização"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:5
+msgid "Navigation"
+msgstr "Navegação"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:10
+msgid "Re-center"
+msgstr "Recentralizar"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:15
+msgid "Pan view"
+msgstr "Mover visualização"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:20
+msgid "Zoom in/out"
+msgstr "Ampliar/Reduzir"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:25
+msgid "Selection"
+msgstr "Seleção"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:30
+msgid "Select segment"
+msgstr "Selecionar segmento"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:35
+msgid "Multi-select"
+msgstr "Seleção múltipla"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:40
+msgid "Zoom to selection"
+msgstr "Ampliar para seleção"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:45
+msgid "Interaction"
+msgstr "Interação"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:50
+msgid "Move segment"
+msgstr "Mover segmento"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:56
+msgid "Click"
+msgstr "Clique"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+msgid "Drag"
+msgstr "Arrastar"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:55
+msgid "Pop open bubble"
+msgstr "Abrir bolha"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:60
+msgid "Toggle node fix"
+msgstr "Alternar fixação de nó"
+
+#: pangyplot/templates/tabs/path-selector.html:2
+msgid "Path Selector"
+msgstr "Seletor de Caminhos"
+
+#: pangyplot/templates/tabs/path-selector.html:12
+msgid "Show All Paths"
+msgstr "Mostrar Todos os Caminhos"
+
+#: pangyplot/templates/tabs/path-selector.html:15
+msgid "Clear"
+msgstr "Limpar"
+
+#: pangyplot/templates/tabs/path-selector.html:30
+msgid "Path Animation"
+msgstr "Animação de Caminho"
+
+#: pangyplot/templates/tabs/path-selector.html:54
+msgid "Speed"
+msgstr "Velocidade"
+
+#: pangyplot/templates/tabs/path-selector.html:60
+msgid "Current Step"
+msgstr "Etapa Atual"
+
+#: pangyplot/templates/tabs/search-tab.html:4
+msgid "Sequence Search"
+msgstr "Busca de Sequência"
+
+#: pangyplot/templates/tabs/search-tab.html:8
+msgid "Enter short sequence (ATCGN only)"
+msgstr "Digite sequência curta (apenas ATCGN)"
+
+#: pangyplot/templates/tabs/search-tab.html:9
+msgid "Add"
+msgstr "Adicionar"
+
+#: pangyplot/templates/tabs/search-tab.html:16
+msgid "Sequence"
+msgstr "Sequência"
+
+#: pangyplot/templates/tabs/search-tab.html:27
+msgid "Node Search"
+msgstr "Busca de Nó"
+
+#: pangyplot/templates/tabs/search-tab.html:31
+msgid "Enter node ID"
+msgstr "Digite ID do nó"
+
+#: pangyplot/templates/tabs/tool-tab.html:3
+msgid "Settings"
+msgstr "Configurações"
+
+#: pangyplot/templates/tabs/tool-tab.html:10
+msgid "Anchor on drag"
+msgstr "Ancorar ao arrastar"
+
+#: pangyplot/templates/tabs/tool-tab.html:16
+msgid "Smooth GC colors"
+msgstr "Suavizar cores GC"
+

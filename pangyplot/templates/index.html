@@ -23,15 +23,29 @@
 
 <body class="flex-col">
 
-    <div id="version-overlay"> PangyPlot {{ version }} ({{ version_name }}) </div>
+    <div id="info-corner" class="flex-col">
+        <div id="version-overlay" class="flex-row">
+            {{ _('PangyPlot') }} {{ version }} ({{ version_name }}) 
+        </div>
+        <div  class="flex-row">
 
-    {% if organism %}
-    <div id="organism-indicator" class="flex-column">
-        <div id="organism-emoji" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
-        <div id="organism-genome"> {{ organism_genome }} </div>
+            <div id="language-button" class="flex-col button-style flex-1">
+                <i class="fa-solid fa-globe"></i>
+                <div class="language-label">{{ _('Locale') }}</div>
 
+            </div>
+            <div id="language-dropdown" class="lang-dropdown hidden"></div>
+
+            {% if organism %}
+            <div id="organism-indicator" class="flex-1 flex-column">
+                <div id="organism-emoji" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
+                <div id="organism-genome"> {{ organism_genome }} </div>
+
+            </div>
+            {% endif %}
+
+        </div>
     </div>
-    {% endif %}
 
     {% include 'navbar-template.html' %}
 
@@ -53,7 +67,7 @@
                 <img src="{{ url_for('static', filename='images/pangyplot_pangy.svg') }}">
             </div>
             <div class="graph-container-empty-content">
-                Waiting for query...
+                {{ _('Waiting for query...') }}
             </div>
         </div>
 

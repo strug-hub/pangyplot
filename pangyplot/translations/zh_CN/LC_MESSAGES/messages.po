@@ -1,0 +1,382 @@
+# Chinese (Simplified, China) translations for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# Translated by ChatGPT (OpenAI), 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-09-29 18:32-0400\n"
+"PO-Revision-Date: 2025-09-29 18:23-0400\n"
+"Last-Translator: ChatGPT (OpenAI) <noreply@openai.com>\n"
+"Language: zh_Hans_CN\n"
+"Language-Team: zh_Hans_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: pangyplot/templates/color-picker.html:4
+msgid "Color Style"
+msgstr "颜色样式"
+
+#: pangyplot/templates/color-picker.html:10
+msgid "Node Type"
+msgstr "节点类型"
+
+#: pangyplot/templates/color-picker.html:15
+msgid "Bubble Size"
+msgstr "气泡大小"
+
+#: pangyplot/templates/color-picker.html:20
+msgid "Node Length"
+msgstr "节点长度"
+
+#: pangyplot/templates/color-picker.html:25
+msgid "Ref/Alt"
+msgstr "参考/替代"
+
+#: pangyplot/templates/color-picker.html:30
+msgid "Position"
+msgstr "位置"
+
+#: pangyplot/templates/color-picker.html:35
+msgid "GC Content"
+msgstr "GC 含量"
+
+#: pangyplot/templates/color-picker.html:40
+msgid "Solid"
+msgstr "实心"
+
+#: pangyplot/templates/color-picker.html:47
+msgid "Colors"
+msgstr "颜色"
+
+#: pangyplot/templates/color-picker.html:52
+msgid "Node:"
+msgstr "节点:"
+
+#: pangyplot/templates/color-picker.html:61
+msgid "Link:"
+msgstr "链接:"
+
+#: pangyplot/templates/color-picker.html:66
+msgid "Background:"
+msgstr "背景:"
+
+#: pangyplot/templates/color-picker.html:77
+msgid "Preset Colors"
+msgstr "预设颜色"
+
+#: pangyplot/templates/color-picker.html:81
+msgid "Primary"
+msgstr "主要"
+
+#: pangyplot/templates/color-picker.html:83
+msgid "Peach"
+msgstr "桃色"
+
+#: pangyplot/templates/color-picker.html:85
+msgid "Mystic"
+msgstr "神秘"
+
+#: pangyplot/templates/color-picker.html:87
+msgid "Purples"
+msgstr "紫色系"
+
+#: pangyplot/templates/color-picker.html:89
+msgid "Greens"
+msgstr "绿色系"
+
+#: pangyplot/templates/color-picker.html:91
+msgid "Blues"
+msgstr "蓝色系"
+
+#: pangyplot/templates/color-picker.html:93
+msgid "Heat"
+msgstr "热度"
+
+#: pangyplot/templates/color-picker.html:95
+msgid "GoldenTide"
+msgstr "金潮"
+
+#: pangyplot/templates/color-picker.html:97
+msgid "Iris"
+msgstr "鸢尾"
+
+#: pangyplot/templates/color-picker.html:99
+msgid "Sorbet"
+msgstr "冰沙"
+
+#: pangyplot/templates/color-picker.html:101
+msgid "CoralSky"
+msgstr "珊瑚天空"
+
+#: pangyplot/templates/color-picker.html:103
+msgid "Viridis"
+msgstr "Viridis"
+
+#: pangyplot/templates/color-picker.html:105
+msgid "Mako"
+msgstr "Mako"
+
+#: pangyplot/templates/color-picker.html:107
+msgid "Magma"
+msgstr "岩浆"
+
+#: pangyplot/templates/color-picker.html:109
+msgid "Rocket"
+msgstr "火箭"
+
+#: pangyplot/templates/coordinate-template.html:4
+msgid "Finalize Coordinates"
+msgstr "完成坐标"
+
+#: pangyplot/templates/coordinate-template.html:35
+msgid "flanking region"
+msgstr "侧翼区域"
+
+#: pangyplot/templates/coordinate-template.html:44
+msgid "Go"
+msgstr "执行"
+
+#: pangyplot/templates/cytoband-template.html:6
+msgid "Chromosome Selector"
+msgstr "染色体选择器"
+
+#: pangyplot/templates/cytoband-template.html:26
+msgid "Locus Selector"
+msgstr "位点选择器"
+
+#: pangyplot/templates/cytoband-template.html:30
+msgid "No known chromosome data."
+msgstr "没有已知的染色体数据。"
+
+#: pangyplot/templates/gene-search-template.html:4
+msgid "Select by Gene"
+msgstr "按基因选择"
+
+#: pangyplot/templates/gene-search-template.html:10
+msgid "Search genes..."
+msgstr "搜索基因..."
+
+#: pangyplot/templates/index.html:28
+msgid "PangyPlot"
+msgstr "PangyPlot"
+
+#: pangyplot/templates/index.html:34
+msgid "Locale"
+msgstr "语言"
+
+#: pangyplot/templates/index.html:70
+msgid "Waiting for query..."
+msgstr "等待查询..."
+
+#: pangyplot/templates/modal-template.html:43
+msgid "Supporting work"
+msgstr "支持工作"
+
+#: pangyplot/templates/modal-template.html:105
+msgid "Welcome to PangyPlot"
+msgstr "欢迎使用 PangyPlot"
+
+#: pangyplot/templates/navbar-template.html:18
+msgid "Docs"
+msgstr "文档"
+
+#: pangyplot/templates/navbar-template.html:19
+msgid "GitHub"
+msgstr "GitHub"
+
+#: pangyplot/templates/navbar-template.html:20
+msgid "Report Bug"
+msgstr "报告错误"
+
+#: pangyplot/templates/navbar-template.html:21
+msgid "Info"
+msgstr "信息"
+
+#: pangyplot/templates/navbar-template.html:22
+msgid "Citation"
+msgstr "引用"
+
+#: pangyplot/templates/navbar-template.html:24
+msgid "Example"
+msgstr "示例"
+
+#: pangyplot/templates/navbar-template.html:25
+msgid "Example 2"
+msgstr "示例 2"
+
+#: pangyplot/templates/navbar-template.html:26
+msgid "Example 3"
+msgstr "示例 3"
+
+#: pangyplot/templates/tabs/graph-annotation.html:2
+msgid "Gene Annotations"
+msgstr "基因注释"
+
+#: pangyplot/templates/tabs/graph-annotation.html:7
+msgid "No annotations to show"
+msgstr "没有注释可显示"
+
+#: pangyplot/templates/tabs/graph-annotation.html:12
+msgid "Gene Name"
+msgstr "基因名称"
+
+#: pangyplot/templates/tabs/graph-annotation.html:13
+msgid "Exons"
+msgstr "外显子"
+
+#: pangyplot/templates/tabs/graph-annotation.html:15
+#: pangyplot/templates/tabs/search-tab.html:15
+msgid "Color"
+msgstr "颜色"
+
+#: pangyplot/templates/tabs/graph-annotation.html:27
+msgid "Show All"
+msgstr "显示全部"
+
+#: pangyplot/templates/tabs/graph-annotation.html:30
+msgid "Hide All"
+msgstr "全部隐藏"
+
+#: pangyplot/templates/tabs/graph-annotation.html:36
+msgid "Set All Colors"
+msgstr "设置所有颜色"
+
+#: pangyplot/templates/tabs/graph-info.html:6
+msgid "Graph Information"
+msgstr "图谱信息"
+
+#: pangyplot/templates/tabs/graph-info.html:17
+msgid "Debugging Information"
+msgstr "调试信息"
+
+#: pangyplot/templates/tabs/graph-settings.html:3
+msgid "Force Settings"
+msgstr "力学设置"
+
+#: pangyplot/templates/tabs/graph-settings.html:12
+msgid "Render Settings"
+msgstr "渲染设置"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:5
+msgid "Navigation"
+msgstr "导航"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:10
+msgid "Re-center"
+msgstr "重新居中"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:15
+msgid "Pan view"
+msgstr "平移视图"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:20
+msgid "Zoom in/out"
+msgstr "缩放"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:25
+msgid "Selection"
+msgstr "选择"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:30
+msgid "Select segment"
+msgstr "选择片段"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:35
+msgid "Multi-select"
+msgstr "多选"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:40
+msgid "Zoom to selection"
+msgstr "缩放到所选"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:45
+msgid "Interaction"
+msgstr "交互"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:50
+msgid "Move segment"
+msgstr "移动片段"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:56
+msgid "Click"
+msgstr "点击"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
+msgid "Drag"
+msgstr "拖动"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:55
+msgid "Pop open bubble"
+msgstr "打开气泡"
+
+#: pangyplot/templates/tabs/keyboard-shortcuts.html:60
+msgid "Toggle node fix"
+msgstr "切换节点固定"
+
+#: pangyplot/templates/tabs/path-selector.html:2
+msgid "Path Selector"
+msgstr "路径选择器"
+
+#: pangyplot/templates/tabs/path-selector.html:12
+msgid "Show All Paths"
+msgstr "显示所有路径"
+
+#: pangyplot/templates/tabs/path-selector.html:15
+msgid "Clear"
+msgstr "清除"
+
+#: pangyplot/templates/tabs/path-selector.html:30
+msgid "Path Animation"
+msgstr "路径动画"
+
+#: pangyplot/templates/tabs/path-selector.html:54
+msgid "Speed"
+msgstr "速度"
+
+#: pangyplot/templates/tabs/path-selector.html:60
+msgid "Current Step"
+msgstr "当前步骤"
+
+#: pangyplot/templates/tabs/search-tab.html:4
+msgid "Sequence Search"
+msgstr "序列搜索"
+
+#: pangyplot/templates/tabs/search-tab.html:8
+msgid "Enter short sequence (ATCGN only)"
+msgstr "输入短序列（仅限 ATCGN）"
+
+#: pangyplot/templates/tabs/search-tab.html:9
+msgid "Add"
+msgstr "添加"
+
+#: pangyplot/templates/tabs/search-tab.html:16
+msgid "Sequence"
+msgstr "序列"
+
+#: pangyplot/templates/tabs/search-tab.html:27
+msgid "Node Search"
+msgstr "节点搜索"
+
+#: pangyplot/templates/tabs/search-tab.html:31
+msgid "Enter node ID"
+msgstr "输入节点 ID"
+
+#: pangyplot/templates/tabs/tool-tab.html:3
+msgid "Settings"
+msgstr "设置"
+
+#: pangyplot/templates/tabs/tool-tab.html:10
+msgid "Anchor on drag"
+msgstr "拖动时固定"
+
+#: pangyplot/templates/tabs/tool-tab.html:16
+msgid "Smooth GC colors"
+msgstr "平滑 GC 颜色"
+

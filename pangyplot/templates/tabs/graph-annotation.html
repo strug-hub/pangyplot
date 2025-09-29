@@ -1,18 +1,18 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/tabs/graph-annotation.css') }}">
-<div class="tab-header">Gene Annotations</div>
+<div class="tab-header">{{ _('Gene Annotations') }}</div>
 <hr>
 
 <div id="gene-annotation-tab-content" class="flex-1">
 
-    <p id="no-annotations-text">No annotations to show</p>
+    <p id="no-annotations-text">{{ _('No annotations to show') }}</p>
     <div id="gene-annotations-table-container" class="hidden">
         <table id="gene-annotations-table">
             <thead>
                 <tr>
-                    <th>Gene Name </th>
-                    <th>Exons</th>
+                    <th>{{ _('Gene Name') }}</th>
+                    <th>{{ _('Exons') }}</th>
                     <th></th>
-                    <th>Color</th>
+                    <th>{{ _('Color') }}</th>
                 </tr>
             </thead>
             <tbody id="gene-annotations-body">
@@ -23,15 +23,20 @@
 
     <div id="gene-annotations-control-container" class="hidden flex-1">
         <div class="flex-row">
-            <button id="select-all-gene-annotations" class="button-style flex-1">Show All</button>
-            <button id="deselect-all-gene-annotations" class="button-style flex-1">Hide All</button>
+            <button id="select-all-gene-annotations" class="button-style flex-1">
+                {{ _('Show All') }}
+            </button>
+            <button id="deselect-all-gene-annotations" class="button-style flex-1">
+                {{ _('Hide All') }}
+            </button>
         </div>
 
         <div class="flex-row">
-            <button id="set-all-colors-gene-annotations" class="button-style flex-1">Set All Colors</button>
+            <button id="set-all-colors-gene-annotations" class="button-style flex-1">
+                {{ _('Set All Colors') }}
+            </button>
             <input id="set-color-picker-gene-annotations" type="color" class="color-picker flex-1"> 
         </div>
-
     </div>
 
 </div>

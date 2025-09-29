@@ -1,57 +1,55 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/color-picker.css') }}">
 
 <div id="color-style" class="container flex-3">
-    <div class="container-title">Color Style</div>
+    <div class="container-title">{{ _('Color Style') }}</div>
 
     <div class="container-content flex-row">        
 
         <div class="color-style-option flex-1 flex-col option-button option-button-selected" data-style="node_type">
             <i class="fa-solid fa-shapes color-style-icon"></i>
-            <div class="color-style-label">Node Type</div>
+            <div class="color-style-label">{{ _('Node Type') }}</div>
         </div>
 
         <div class="color-style-option flex-1 flex-col option-button option-button-unselected" data-style="bubble_size">
             <i class="fa-solid fa-arrows-to-circle color-style-icon"></i>
-            <div class="color-style-label">Bubble Size</div>
+            <div class="color-style-label">{{ _('Bubble Size') }}</div>
         </div>
 
         <div class="color-style-option flex-1 flex-col option-button option-button-unselected" data-style="node_length">
             <i class="fa-solid fa-arrow-down-short-wide color-style-icon"></i>
-            <div class="color-style-label">Node Length</div>
+            <div class="color-style-label">{{ _('Node Length') }}</div>
         </div>
 
         <div class="color-style-option flex-1 flex-col option-button option-button-unselected" data-style="ref_alt">
             <i class="fa-solid fa-shuffle color-style-icon"></i>
-            <div class="color-style-label">Ref/Alt</div>
+            <div class="color-style-label">{{ _('Ref/Alt') }}</div>
         </div>
-
 
         <div class="color-style-option flex-1 flex-col option-button option-button-unselected" data-style="position">
             <i class="fa-solid fa-map-location color-style-icon"></i>
-            <div class="color-style-label">Position</div>
+            <div class="color-style-label">{{ _('Position') }}</div>
         </div>
 
         <div class="color-style-option flex-1 flex-col option-button option-button-unselected" data-style="gc_content">
             <i class="fa-solid fa-dna color-style-icon"></i>            
-            <div class="color-style-label">GC Content</div>
+            <div class="color-style-label">{{ _('GC Content') }}</div>
         </div>
 
         <div class="color-style-option flex-1 flex-col option-button option-button-unselected" data-style="solid">
             <i class="fa-solid fa-droplet color-style-icon"></i>
-            <div class="color-style-label">Solid</div>
+            <div class="color-style-label">{{ _('Solid') }}</div>
         </div>
-
-
     </div>
 </div>
 
+
 <div id="color-picker" class="container flex-2" >
-    <div class="container-title"><span>Colors</span></div>
+    <div class="container-title"><span>{{ _('Colors') }}</span></div>
 
     <div class="container-content flex-col">
 
         <div class="flex-row flex-1">
-            <div class="color-picker-label flex-1 flex-col">Node:</div>
+            <div class="color-picker-label flex-1 flex-col">{{ _('Node:') }}</div>
             <div id="color-picker-gradient-display" class="flex-9">
                 <input type="color" id="color-picker-node-1" class="color-picker-node" value="#0762e5">
                 <input type="color" id="color-picker-node-2" class="color-picker-node" value="#f2dc0f">
@@ -60,12 +58,12 @@
         </div>
 
         <div class="flex-row flex-1">
-            <div class="color-picker-label flex-1 flex-col">Link:</div>
+            <div class="color-picker-label flex-1 flex-col">{{ _('Link:') }}</div>
             <div class="color-picker-single flex-4">
                 <input type="color" id="color-picker-link" value="#969696">        
             </div>
 
-            <div class="color-picker-label flex-1 flex-col">Background:</div>
+            <div class="color-picker-label flex-1 flex-col">{{ _('Background:') }}</div>
             <div class="color-picker-single flex-4">
                 <input type="color" id="color-picker-bg" value="#373737">
             </div>
@@ -76,39 +74,39 @@
 </div>
 
 <div id="color-preset" class="container flex-3" >
-    <div class="container-title">Preset Colors</div>
-    
+    <div class="container-title">{{ _('Preset Colors') }}</div>
+
     <div id="color-preset-container" class="flex-row container-content">
         <div class="color-preset-option flex-1 option-button option-button-selected"
-            data-color1="#0762e5" data-color2="#f2dc0f" data-color3="#ff6700">Primary</div>
+            data-color1="#0762e5" data-color2="#f2dc0f" data-color3="#ff6700">{{ _('Primary') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#659157" data-color2="#E05263" data-color3="#F3DE8A">Peach</div>
+            data-color1="#659157" data-color2="#E05263" data-color3="#F3DE8A">{{ _('Peach') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#1b9e77" data-color2="#d95f02" data-color3="#7570b3">Mystic</div>
+            data-color1="#1b9e77" data-color2="#d95f02" data-color3="#7570b3">{{ _('Mystic') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#efedf5" data-color2="#bcbddc" data-color3="#756bb1">Purples</div>
+            data-color1="#efedf5" data-color2="#bcbddc" data-color3="#756bb1">{{ _('Purples') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#f7fcb9" data-color2="#addd8e" data-color3="#31a354">Greens</div>
+            data-color1="#f7fcb9" data-color2="#addd8e" data-color3="#31a354">{{ _('Greens') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#eff3ff" data-color2="#6baed6" data-color3="#08519c">Blues</div>
+            data-color1="#eff3ff" data-color2="#6baed6" data-color3="#08519c">{{ _('Blues') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#ffeda0" data-color2="#feb24c" data-color3="#f03b20">Heat</div>
+            data-color1="#ffeda0" data-color2="#feb24c" data-color3="#f03b20">{{ _('Heat') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#d8b365" data-color2="#f5f5f5" data-color3="#5ab4ac">GoldenTide</div>
+            data-color1="#d8b365" data-color2="#f5f5f5" data-color3="#5ab4ac">{{ _('GoldenTide') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#af8dc3" data-color2="#f7f7f7" data-color3="#7fbf7b">Iris</div>
+            data-color1="#af8dc3" data-color2="#f7f7f7" data-color3="#7fbf7b">{{ _('Iris') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#f1a340" data-color2="#f7f7f7" data-color3="#998ec3">Sorbet</div>
+            data-color1="#f1a340" data-color2="#f7f7f7" data-color3="#998ec3">{{ _('Sorbet') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#91bfdb" data-color2="#ffffbf" data-color3="#fc8d59">CoralSky</div>
+            data-color1="#91bfdb" data-color2="#ffffbf" data-color3="#fc8d59">{{ _('CoralSky') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#fbe74c" data-color2="#31a186" data-color3="#461352">Viridis</div>
+            data-color1="#fbe74c" data-color2="#31a186" data-color3="#461352">{{ _('Viridis') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#94dbb4" data-color2="#36679e" data-color3="#35264b">Mako</div>
+            data-color1="#94dbb4" data-color2="#36679e" data-color3="#35264b">{{ _('Mako') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#fcb683" data-color2="#d6496a" data-color3="#181331">Magma</div>
+            data-color1="#fcb683" data-color2="#d6496a" data-color3="#181331">{{ _('Magma') }}</div>
         <div class="color-preset-option flex-1 option-button option-button-unselected"
-            data-color1="#f7d1b7" data-color2="#e33540" data-color3="#441b46">Rocket</div>
+            data-color1="#f7d1b7" data-color2="#e33540" data-color3="#441b46">{{ _('Rocket') }}</div>
     </div>
 </div>
 

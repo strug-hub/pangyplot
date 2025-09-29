@@ -1,13 +1,13 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/gene-search-style.css') }}">
 
 <div id="gene-search" class="container flex-3">
-    <div class="container-title">Select by Gene</div>
+    <div class="container-title">{{ _('Select by Gene') }}</div>
 
     <div class="container-content flex-row">
         <i class="fa fa-search flex-col"></i>
 
         <div id="gene-search-bar-container" class="flex-1">
-            <input type="text" id="gene-search-bar" placeholder="Search genes...">
+            <input type="text" id="gene-search-bar" placeholder="{{ _('Search genes...') }}">
             <div id="gene-search-suggestions" class="gene-search-suggestions-dropdown"></div>
         </div>
 
