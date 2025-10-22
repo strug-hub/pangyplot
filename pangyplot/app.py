@@ -4,6 +4,7 @@ from pympler.asizeof import asizeof
 from flask import Flask, request
 from flask_babel import Babel
 
+
 from dotenv import load_dotenv
 from pangyplot.routes import bp as routes_bp
 
@@ -21,6 +22,7 @@ def get_locale():
     # Check ?lang= query param first
     lang = request.args.get("lang")
     print("LOCALE", lang)
+    print(lang)
     return lang or "en"
 
 
@@ -32,6 +34,7 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
         'en', 'fr', 'es', 'de', 'it',
         'pt_BR', 'ru', 'zh_CN', 'ja', 'ko', 'ar'
     ]
+    
     babel.init_app(app, locale_selector=get_locale)
 
     setup_cytoband(app)
