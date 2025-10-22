@@ -41,7 +41,7 @@ to run
 
 # Documentation
 
-[![Documentation](https://img.shields.io/badge/docs-pangyplot-blue?logo=readthedocs)](https://pangyplot-docs.readthedocs.io/en/latest/)
+[![Documentation](https://img.shields.io/badge/docs-pangyplot-blue?logo=readthedocs)](https://pangyplot.readthedocs.io/en/latest/)
 
 # License
 
