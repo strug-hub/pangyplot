@@ -2,11 +2,12 @@ import eventBus from "../utils/event-bus.js";
 
 document.getElementById('navbar-button-example').addEventListener('click', function() {
 
+    //PRSS1-PRSS2
     const data = {
         genome: "GRCh38",
-        chromosome: "chr18",
-        start: 47506000,
-        end: 47600000,
+        chromosome: "chr7",
+        start: 142746827,
+        end: 142776017,
         source:"navbar-example"
     };
     eventBus.publish("ui:coordinates-changed", data);
@@ -14,22 +15,14 @@ document.getElementById('navbar-button-example').addEventListener('click', funct
 
 document.getElementById('navbar-button-example2').addEventListener('click', function() {
 
-    //SERPINB5
+    //EXOC3
     const data = {
         genome: "GRCh38",
-        chromosome: "chr18",
-        start: 63476958-10000,
-        end: 63505085+10000,
+        chromosome: "chr5",
+        start: 433522,
+        end: 491937,
         source:"navbar-example"
     };
-
-    //const data = {
-    //    genome: "CHM13",
-    //    chrom: "chrM",
-    //    start: 1000,
-    //    end: 10000,
-    //    source:"navbar-example"
-    //};
 
     eventBus.publish("ui:coordinates-changed", data);
 
@@ -37,23 +30,15 @@ document.getElementById('navbar-button-example2').addEventListener('click', func
 
 document.getElementById('navbar-button-example3').addEventListener('click', function() {
 
-    //const data = {
-    //    genome: "CHM13",
-    //    chromosome: "XXX",
-    //    start: -1000,
-    //    end: 999999999999,
-    //    source:"navbar-example"
-    //};
-    
-    //SMAD4
+    //DAZ1
     const data = {
         genome: "GRCh38",
-        chromosome: "chr18",
-        start: 51028528-10000,
-        end: 51085045+10000,
+        chromosome: "chrY",
+        start: 23128355,
+        end: 23200010,
         source:"navbar-example"
     };
-    
+
     eventBus.publish("ui:coordinates-changed", data);
 
 });
