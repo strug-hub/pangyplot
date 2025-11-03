@@ -5,10 +5,10 @@
   <img src="images/readme/pangyplot_text_outline.svg" alt="PangyPlot header" height="144">
 </p>
 
-                Mastromatteo, Scott. 
-                <b>PangyPlot: a paper title</b>. 
-                <i>Journal</i>. 2024 XXX;Y(ZZZ):N-M.
-                doi: <a href="https://doi.org/DOI" target="_blank">DOI</a>.
+Mastromatteo et al. 
+<b>Beyond reference bias: Making pangenomes accessible with PangyPlot</b>. 
+<i>bioRxiv</i>.  2025.10.31.684064.
+https://doi.org/10.1101/2025.10.31.684064 
 
 PangyPlot (*ˈpæŋ-ɡi-plɑt*) is a genome graph visualization tool designed to offer intuitive and interactive visualization of genomic data. It enables researchers and biologists to effectively visualize and analyze complex genomic structures and variations.
 
