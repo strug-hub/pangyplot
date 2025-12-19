@@ -24,20 +24,20 @@ SCREENSHOT WILL GO HERE
 
 ## Prerequisites
 
-Graph in GFA format
-List any prerequisites for using PangyPlot, such as Python versions, necessary libraries, etc.
+- Graph in GFA format
+- Python 3.11 or higher recommended
+- Python packages: bitarray, sqlite, matplotlib, pympler, flask, python-dotenv
+- [odgi](https://github.com/pangenome/odgi) required to prepare custom data.
 
-## Usage
+## Usage - Quick Start
 
-to upload data:
-`pangyplot add` 
+```
+git clone https://github.com/ScottMastro/pangyplot.git
+cd pangyplot
+python pangyplot.py run --db hprc.clip --ref GRCh38 --annotations gencode48.chrY
+```
 
-to add annotations:
-`pangyplot annotate`
-
-to run
-
-`pangyplot run`
+This should launch a local web server at http://127.0.0.1:5700 with chrY data that is included with the codebase. Please consult this documentation page for further usage information: https://pangyplot.readthedocs.io/en/latest/advanced/quickstart.html
 
 # Documentation
 
