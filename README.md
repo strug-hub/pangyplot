@@ -37,7 +37,7 @@ cd pangyplot
 python pangyplot.py run --db hprc.clip --ref GRCh38 --annotations gencode48.chrY
 ```
 
-This should launch a local web server at http://127.0.0.1:5700 with chrY data that is included with the codebase. Please consult this documentation page for further usage information: https://pangyplot.readthedocs.io/en/latest/advanced/quickstart.html
+This should launch a local web server at http://127.0.0.1:5700 with chrY data that is included with the codebase. Please consult this documentation page for further usage information and test datasets: https://pangyplot.readthedocs.io/en/latest/advanced/quickstart.html
 
 # Documentation
 
