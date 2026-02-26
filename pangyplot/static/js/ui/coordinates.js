@@ -95,7 +95,7 @@ function updateGenomicCoordinates(rawText) {
     return;
   }
   const textBox = document.getElementById("go-chrom-start-end");
-  let input = rawText.replace(/\s+/g, "");
+  let input = rawText.replace(/\s+/g, "").replace(/,/g, "");
 
   const pattern = /^(chr)?[^:]+:\d+-\d+$/;
 
