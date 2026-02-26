@@ -1,11 +1,12 @@
 import { fetchData, buildUrl } from '../../../../utils/network-utils.js';
 import { colorState } from '../../../render/color/color-state.js'
 import eventBus from "../../../../utils/event-bus.js";
+import appState from '../../../app-state.js';
 
 var selectedSampleIdx = -1
 
-async function fetchPathData(forceGraph) {
-    const url = buildUrl('/pathorder', forceGraph.coords);
+async function fetchPathData() {
+    const url = buildUrl('/pathorder', appState.coords);
     return await fetchData(url, "path-order");
 }
 
@@ -23,7 +24,7 @@ export default async function setupLinkColorEngine(forceGraph) {
 
     const pathSelectButton = document.getElementById('path-select-button');
     pathSelectButton.addEventListener('click', async function () {
-        const pathOrderData = await fetchPathData(forceGraph);
+        const pathOrderData = await fetchPathData();
 
         if (!pathOrderData) {
             selectedSampleIdx = -1;

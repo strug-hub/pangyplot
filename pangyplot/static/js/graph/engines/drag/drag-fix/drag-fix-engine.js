@@ -1,12 +1,14 @@
+import appState from '../../../app-state.js';
+
 const DEFAULT_FIX_STATE = false;
 
 export default function setUpDragFixEngine(forceGraph) {
 
-    forceGraph.fixOnDrag = DEFAULT_FIX_STATE;
+    appState.fixOnDrag = DEFAULT_FIX_STATE;
 
     const checkbox = document.getElementById('anchorToggle');
     checkbox.addEventListener('change', event => {
-        forceGraph.fixOnDrag = event.target.checked;
+        appState.fixOnDrag = event.target.checked;
     });
 
     checkbox.checked = DEFAULT_FIX_STATE;
@@ -14,7 +16,7 @@ export default function setUpDragFixEngine(forceGraph) {
     forceGraph.element.addEventListener('keydown', event => {
         if (event.key === 'f') {
             checkbox.checked = !checkbox.checked;
-            forceGraph.fixOnDrag = checkbox.checked;
+            appState.fixOnDrag = checkbox.checked;
         }
     });
 

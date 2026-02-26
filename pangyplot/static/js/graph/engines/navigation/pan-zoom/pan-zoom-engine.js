@@ -1,4 +1,5 @@
 import eventBus from "../../../../utils/event-bus.js";
+import appState from "../../../app-state.js";
 
 export default function setUpPanZoomEngine(forceGraph) {
     forceGraph.enableZoomPanInteraction(false);
@@ -9,7 +10,7 @@ export default function setUpPanZoomEngine(forceGraph) {
         cursor: "move",
     };
 
-    forceGraph.registerMode(panZoomMode);
+    appState.registerMode(panZoomMode);
 
     eventBus.subscribe("graph:mode-changed", (mode) => {
         if (mode === panZoomMode.mode) {

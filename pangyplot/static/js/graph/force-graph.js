@@ -1,4 +1,5 @@
 import eventBus from '../utils/event-bus.js';
+import appState from './app-state.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import setUpForceManager from './forces/force-manager.js';
 import { setUpRenderManager } from './render/render-manager.js';
@@ -21,9 +22,6 @@ document.addEventListener("DOMContentLoaded", function () {
     forceGraph.getZoomFactor = function () {
         return this.canvas.__zoom["k"];
     }
-
-    // Define the coordinates for the force graph
-    forceGraph.coords = { genome: null, chromosome: null, start: null, end: null };
 
     forceGraph.graphData({nodes: [], links: []})
         .nodeId("iid")
@@ -63,6 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
     eventBus.publish("ui:construct-graph", SUBTELOMERE);
 
     window._forceGraph = forceGraph;
+    window._appState = appState;
     window._eventBus = eventBus;
 });
 

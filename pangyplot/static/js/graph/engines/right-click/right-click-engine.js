@@ -1,6 +1,7 @@
 import { RightClickMenu } from './right-click-menu.js';
 import { exportGraphToPng } from '../../render/download/render-png.js';
 import { exportGraphToSvg } from '../../render/download/render-svg.js';
+import appState from '../../app-state.js';
 
 var menu = null;
 
@@ -57,7 +58,7 @@ export function populateOptions(forceGraph) {
     });
 
     menu.addOption('file-export', 'Download GFA', 'general', () => {
-        const coords = forceGraph.coords;
+        const coords = appState.coords;
         const url = new URL('/gfa', window.location.origin);
         for (const [key, val] of Object.entries(coords)) {
             url.searchParams.set(key, val);

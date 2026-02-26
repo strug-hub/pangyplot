@@ -1,6 +1,7 @@
 import setUpUndoPopEngine from './undo-pop/undo-pop-engine.js';
 import setUpSinglePopEngine from './single-pop/single-pop-engine.js';
 import { popBubble, popBubbles } from './bubble-pop.js';
+import appState from '../../app-state.js';
 
 export default function setUpBubblePopEngine(forceGraph) {
     const bubblePopMode = {
@@ -9,12 +10,11 @@ export default function setUpBubblePopEngine(forceGraph) {
         cursor: "pointer",
     };
 
-    forceGraph.registerMode(bubblePopMode);
+    appState.registerMode(bubblePopMode);
 
-    forceGraph.popBubble = (bubble) => popBubble(bubble);
-    forceGraph.popBubbles = (bubbles) => popBubbles(bubbles);
+    forceGraph.popBubble = (bubble) => popBubble(bubble, forceGraph);
+    forceGraph.popBubbles = (bubbles) => popBubbles(bubbles, forceGraph);
 
     setUpSinglePopEngine(forceGraph);
     setUpUndoPopEngine(forceGraph);
 }
-

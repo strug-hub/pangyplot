@@ -1,6 +1,7 @@
 import eventBus from '../../../../utils/event-bus.js';
 import NodeSet from '../../../utils/node-set.js';
 import { influence } from './drag-influence-engine.js';
+import appState from '../../../app-state.js';
 
 const MAX_DRAG_DEPTH = 200;
 
@@ -14,7 +15,7 @@ function influenceDecay() {
 
 function buildDragCache(forceGraph) {
   cache.clear();
-  const draggedNode = forceGraph.draggedNode;
+  const draggedNode = appState.draggedNode;
   if (!draggedNode) return;
 
   const queue = [{ node: draggedNode, depth: 0 }];
@@ -24,7 +25,7 @@ function buildDragCache(forceGraph) {
 
   while (queue.length > 0) {
     const { node, depth } = queue.shift();
-    if (!forceGraph.selected.has(node)) {
+    if (!appState.selected.has(node)) {
       if (node.fx !== undefined) continue;
 
       cache.add(node, depth);
@@ -45,7 +46,7 @@ function buildDragCache(forceGraph) {
   }
 
   // Add selected nodes as depth=0
-  for (const node of forceGraph.selected) {
+  for (const node of appState.selected) {
     cache.add(node, 0);
   }
 
@@ -60,14 +61,14 @@ export default function dragInfluenceForce(forceGraph) {
 
   return function force(alpha) {
 
-    if (!forceGraph.isDragging()) {
+    if (!appState.isDragging()) {
       previousPos = { x: null, y: null };
       return;
     }
 
     if (!cacheValid) buildDragCache(forceGraph);
 
-    const draggedNode = forceGraph.draggedNode;
+    const draggedNode = appState.draggedNode;
 
     const { x: prevX, y: prevY } = previousPos;
     previousPos = { x: draggedNode.x, y: draggedNode.y };
@@ -89,7 +90,7 @@ export default function dragInfluenceForce(forceGraph) {
       node.x += dx * dampen;
       node.y += dy * dampen;
 
-      if (forceGraph.selected.has(node)) {
+      if (appState.selected.has(node)) {
         if (node.fx !== undefined) {
           node.fx += dx;
         }

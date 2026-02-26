@@ -1,13 +1,14 @@
 import DEBUG_MODE from '../../../../debug-mode.js';
 import { canSingleSelect } from '../selection-state.js';
 import { euclideanDist } from '../../../utils/node-utils.js';
+import appState from '../../../app-state.js';
 
 const MAX_SELECT_DISTANCE = 25;
 
 function attemptSelection(event, forceGraph) {
     if (!canSingleSelect()) return;
 
-    const hoveredNode = forceGraph.hoveredNode;
+    const hoveredNode = appState.hoveredNode;
     if (!hoveredNode) return;
 
     const coords = { x: event.offsetX, y: event.offsetY };
@@ -24,9 +25,9 @@ function attemptSelection(event, forceGraph) {
         console.log("[single-selection-engine] links:", connectedEdges);
     }
 
-      forceGraph.setSelected([hoveredNode]);
-      forceGraph.setHighlighted(null);
-    }
+    appState.setSelected([hoveredNode]);
+    appState.setHighlighted(null);
+}
 
 export default function setUpSingleSelectEngine(forceGraph) {
 

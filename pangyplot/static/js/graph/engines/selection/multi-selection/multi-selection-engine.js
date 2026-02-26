@@ -2,6 +2,7 @@ import eventBus from '../../../../utils/event-bus.js';
 import { nodesInBox } from '../../../utils/node-utils.js';
 import { selectionState } from '../selection-state.js';
 import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';
+import appState from '../../../app-state.js';
 
 const selectionBox = new MultiSelectionBox();
 var overlayElement = null;
@@ -28,10 +29,10 @@ function destroySelectionBox(forceGraph) {
 
 function pointerMove(event, forceGraph) {
 
-    if (!forceGraph.isSelectionMode() || forceGraph.isDragging()) {
+    if (!appState.isSelectionMode() || appState.isDragging()) {
         destroySelectionBox(forceGraph);
     }
-    
+
     if (!selectionAllowed) return;
 
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
@@ -44,7 +45,7 @@ function pointerMove(event, forceGraph) {
 
         // Highlight nodes
         const hitNodes = nodesInBox(forceGraph, bounds);
-        forceGraph.setHighlighted(hitNodes);
+        appState.setHighlighted(hitNodes);
 
     } else if (overlayElement) {
         forceGraph.element.style.cursor = 'default';
@@ -58,13 +59,13 @@ function pointerUp(event, forceGraph) {
 
         if (bounds) {
             const hitNodes = nodesInBox(forceGraph, bounds);
-            forceGraph.setSelected(hitNodes);
-            forceGraph.setHighlighted(null);
-            forceGraph.setHoveredNode(null);
+            appState.setSelected(hitNodes);
+            appState.setHighlighted(null);
+            appState.setHoveredNode(null);
         }
     }
     destroySelectionBox(forceGraph);
-    
+
 
     setTimeout(() => selectionState.multiSelectMode = false, 0);
 }

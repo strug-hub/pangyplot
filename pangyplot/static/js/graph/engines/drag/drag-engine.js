@@ -1,7 +1,7 @@
-import eventBus from '../../../utils/event-bus.js';
 import setUpDragFixEngine from './drag-fix/drag-fix-engine.js';
 import { setUpDragInfluenceEngine } from './drag-influence/drag-influence-engine.js';
 import { euclideanDist } from '../../utils/node-utils.js';
+import appState from '../../app-state.js';
 
 const MAX_DISTANCE_DRAG_DETECT_PX = 25;
 const MIN_MOVEMENT_INITIATION_PX = 5;
@@ -11,7 +11,7 @@ var initialMousePos = { x: null, y: null };
 var readyNode = null;
 
 function setDragStart(event, forceGraph) {
-    const hoveredNode = forceGraph.hoveredNode;
+    const hoveredNode = appState.hoveredNode;
     if (!hoveredNode) return;
 
     const coords = { x: event.offsetX, y: event.offsetY };
@@ -34,16 +34,16 @@ function checkIfDragging(event, forceGraph) {
 
     forceGraph.element.style.cursor = DRAG_CURSOR;
 
-    if (!forceGraph.selected.has(node)) {
-      forceGraph.setSelected(null);
+    if (!appState.selected.has(node)) {
+      appState.setSelected(null);
     }
-    forceGraph.setHighlighted([node]);
-    forceGraph.setDraggedNode(node);
+    appState.setHighlighted([node]);
+    appState.setDraggedNode(node);
   }
 }
 
 function updateDrag(event, forceGraph) {
-  const node = forceGraph.draggedNode;
+  const node = appState.draggedNode;
   if (!node) return;
 
   const { x, y } = forceGraph.screen2GraphCoords(event.offsetX, event.offsetY);
@@ -60,10 +60,10 @@ function onDragEnd(event, forceGraph) {
     if (forceGraph.element.style.cursor === DRAG_CURSOR)
       forceGraph.element.style.cursor = 'default';
 
-    const node = forceGraph.draggedNode;
+    const node = appState.draggedNode;
     if (!node) return;
 
-    if (forceGraph.fixOnDrag && forceGraph.selected.size < 2) {
+    if (appState.fixOnDrag && appState.selected.size < 2) {
       node.fx = node.x;
       node.fy = node.y;
     } else {
@@ -71,22 +71,10 @@ function onDragEnd(event, forceGraph) {
       node.fy = undefined;
     }
 
-    forceGraph.setDraggedNode(null);
+    appState.setDraggedNode(null);
 }
 
 export default function setUpDragEngine(forceGraph) {
-  
-  forceGraph.draggedNode = null;
-
-  forceGraph.setDraggedNode = function (node) {
-      if (this.draggedNode === node) return;
-      this.draggedNode = node;
-      eventBus.publish('graph:dragged-changed', node);
-  };
-
-  forceGraph.isDragging = function () {
-      return this.draggedNode !== null;
-  };
 
   setUpDragFixEngine(forceGraph);
   setUpDragInfluenceEngine(forceGraph);
@@ -99,14 +87,14 @@ export default function setUpDragEngine(forceGraph) {
   forceGraph.element.addEventListener('pointermove', event => {
     if (readyNode != null){
       checkIfDragging(event, forceGraph);
-    } else if (forceGraph.isDragging()) {
+    } else if (appState.isDragging()) {
       updateDrag(event, forceGraph);
     }
   });
 
   forceGraph.element.addEventListener('pointerup', event => {
     readyNode = null;
-    if (forceGraph.isDragging()) {
+    if (appState.isDragging()) {
       onDragEnd(event, forceGraph);
     }
   });

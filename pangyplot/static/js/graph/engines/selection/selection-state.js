@@ -1,4 +1,4 @@
-import forceGraph from '../../force-graph.js';
+import appState from '../../app-state.js';
 
 export const selectionState = {
   multiSelectMode: false,
@@ -14,9 +14,9 @@ export function isInChainMode() {
 }
 
 export function canSingleSelect() {
-  return !selectionState.multiSelectMode && forceGraph.isSelectionMode();
+  return !selectionState.multiSelectMode && appState.isSelectionMode();
 }
 
 export function canHighlight() {
-  return !selectionState.multiSelectMode && !forceGraph.isPanZoomMode() && !forceGraph.isDragging();
+  return !selectionState.multiSelectMode && !appState.isPanZoomMode() && !appState.isDragging();
 }

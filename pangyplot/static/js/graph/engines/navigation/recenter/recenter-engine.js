@@ -1,4 +1,5 @@
 import eventBus from "../../../../utils/event-bus.js";
+import appState from "../../../app-state.js";
 
 export default function setUpRecenterEngine(forceGraph) {
 
@@ -16,7 +17,7 @@ export default function setUpRecenterEngine(forceGraph) {
 
         if (event.code === 'ArrowUp') {
             event.preventDefault();
-            forceGraph.zoomToFit(200, 10, node => forceGraph.selected.has(node));
+            forceGraph.zoomToFit(200, 10, node => appState.selected.has(node));
         }
     });
 }

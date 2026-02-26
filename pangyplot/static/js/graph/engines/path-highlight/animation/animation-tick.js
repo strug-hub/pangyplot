@@ -1,7 +1,6 @@
 import { tickAnimation, pauseAnimation, resetAnimation, isAnimationPlaying } from './animation-state.js';
 import { updateStepDisplay } from '../path-highlight-ui.js';
 import recordsManager from '../../../data/records/records-manager.js';
-import forceGraph from '../../../force-graph.js';
 
 var animationPath = null;
 var currentStep = -1;
@@ -21,7 +20,7 @@ function splitSegment(step) {
     return [id, direction];
 }
 
-function highlightNode(id, direction) {
+function highlightNode(id, direction, forceGraph) {
     const nodeRecord = recordsManager.getNode(id);
     const nodes = nodeRecord.elements.nodes;
 
@@ -41,7 +40,7 @@ function highlightNode(id, direction) {
     }
 }
 
-export function updateNodeHighlight() {
+export function updateNodeHighlight(forceGraph) {
     if (!isAnimationPlaying()) return;
 
     for (const node of forceGraph.graphData().nodes){
@@ -83,7 +82,7 @@ function updatePathStep(forceGraph, move, nodeIdSet = null) {
         const [id, direction] = splitSegment(segment);
 
         if (activeNodeIds.has(id)) {
-            highlightNode(id, direction);
+            highlightNode(id, direction, forceGraph);
         } else if (bubbles.length == 0) {
             continue; // skip to next iteration
         }
@@ -98,7 +97,7 @@ function updatePathStep(forceGraph, move, nodeIdSet = null) {
         let bubbleHighlighted = false;
         for (const bid of bubbles) {
             if (activeNodeIds.has(bid)) {
-                highlightNode(bid, "+");
+                highlightNode(bid, "+", forceGraph);
                 bubbleHighlighted = true;
                 break;
             }

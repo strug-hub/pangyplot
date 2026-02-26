@@ -1,13 +1,8 @@
 import recordsManager from "../graph/data/records/records-manager.js";
-import forceGraph from "../graph/force-graph.js";
 
-export function checkForObjectMismatch(graphData=null) {
+export function checkForObjectMismatch(graphData) {
     console.log("Comparing records to graph elements...");
     const nodeElements = {}
-
-    if (!graphData) {
-        graphData = forceGraph.graphData();
-    }
 
     for (const node of graphData.nodes) {
         if (!nodeElements[node.id]) nodeElements[node.id] = [];
@@ -33,16 +28,10 @@ export function checkForObjectMismatch(graphData=null) {
 
 
 // Audit circular refs: element.record <-> record.elements
-export function auditRecordElementCircular(graphData=null, requireGraphCanonical = true) {
+export function auditRecordElementCircular(graphData, requireGraphCanonical = true) {
   const issues = [];
-    
-    let data = graphData;
 
-    if (!graphData) {
-        data = forceGraph.graphData();
-    }
-    
-    const allElements = [...data.nodes, ...data.links];
+  const allElements = [...graphData.nodes, ...graphData.links];
 
   // Fast lookup for canonical graph elements by iid
   const byIid = new Map(allElements.map(e => [String(e.iid), e]));

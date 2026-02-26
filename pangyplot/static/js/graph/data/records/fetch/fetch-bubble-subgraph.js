@@ -2,13 +2,13 @@
 import DEBUG_MODE from '../../../../debug-mode.js';
 import { deserializeBubbleSubgraph } from '../deserializer/deserializer.js';
 import { buildUrl, fetchData } from '../../../../utils/network-utils.js';
-import forceGraph from '../../../force-graph.js';
+import appState from '../../../app-state.js';
 
 export async function fetchBubbleSubgraph(bubbleId) {
     let graphBubbleRecords = null;
 
     try {
-        const params = { id: bubbleId, ...forceGraph.coords };
+        const params = { id: bubbleId, ...appState.coords };
         const url = buildUrl('/pop', params);
         const rawGraph = await fetchData(url, 'subgraph');
 

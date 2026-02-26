@@ -1,3 +1,5 @@
+import appState from '../../app-state.js';
+
 export class RightClickMenu {
     constructor(forceGraph) {
         this.forceGraph = forceGraph;
@@ -25,9 +27,9 @@ export class RightClickMenu {
         this.addLabel('Actions:');
         categorizedOptions.general.forEach(option => this.addOptionToMenu(option));
 
-        if (!this.forceGraph.selected.isEmpty()) {
+        if (!appState.selected.isEmpty()) {
             this.addLabel('Highlighted node actions:');
-            const selectedNodes = this.forceGraph.selected.nodeList();
+            const selectedNodes = appState.selected.nodeList();
             categorizedOptions.node.forEach(option => this.addOptionToMenu(option, selectedNodes));
         }
 

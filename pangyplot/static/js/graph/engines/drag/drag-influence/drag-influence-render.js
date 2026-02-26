@@ -1,11 +1,12 @@
 import { getViewport } from '../../../render/viewport-utils.js';
 import { influence } from './drag-influence-engine.js';
+import appState from '../../../app-state.js';
 
 //todo: better match actual range
 
 export function renderDragInfluenceCircle(forceGraph) {
-    if (!forceGraph.isDragging()) return;
-    const draggedNode = forceGraph.draggedNode;
+    if (!appState.isDragging()) return;
+    const draggedNode = appState.draggedNode;
 
     const ctx = forceGraph.canvas.ctx;
     const viewport = getViewport(forceGraph);
@@ -19,7 +20,7 @@ export function renderDragInfluenceCircle(forceGraph) {
 
     const graphUnitsPerPixel = ((viewportWidthGraph / canvasWidth) + (viewportHeightGraph / canvasHeight)) / 2;
     const graphRadius = screenRadius * graphUnitsPerPixel;
-    
+
     ctx.beginPath();
     ctx.arc(draggedNode.x, draggedNode.y, graphRadius, 0, 2 * Math.PI);
     ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';

@@ -7,7 +7,7 @@ const bubblePopUndoStack = [];
 export function undoBubblePop(forceGraph) {
     const bubbleId = popUndoStack();
     if (!bubbleId) return;
-    unpopBubble(bubbleId);
+    unpopBubble(bubbleId, forceGraph);
 }
 
 

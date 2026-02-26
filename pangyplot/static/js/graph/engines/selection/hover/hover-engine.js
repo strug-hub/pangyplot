@@ -4,6 +4,7 @@ import { findNearestNode, euclideanDist } from '../../../utils/node-utils.js';
 import { makeHoverLabel } from './hover-label.js';
 import { faLabel } from '../../../../utils/node-label.js';
 import DEBUG_MODE from '../../../../debug-mode.js';
+import appState from '../../../app-state.js';
 
 const MAX_HOVER_DISTANCE = 40;
 
@@ -20,8 +21,8 @@ function getHoverLabelText(node) {
 function attemptHover(event, forceGraph, tooltip) {
   if (!canHighlight()) {
     tooltip.hide();
-    forceGraph.setHighlighted(null);
-    forceGraph.setHoveredNode(null);
+    appState.setHighlighted(null);
+    appState.setHoveredNode(null);
     return;
   }
 
@@ -31,8 +32,8 @@ function attemptHover(event, forceGraph, tooltip) {
 
   const nearestNode = findNearestNode(nodes, graphCoords);
   if (!nearestNode) {
-    forceGraph.setHighlighted(null);
-    forceGraph.setHoveredNode(null);
+    appState.setHighlighted(null);
+    appState.setHoveredNode(null);
     tooltip.hide();
     return;
   }
@@ -41,29 +42,20 @@ function attemptHover(event, forceGraph, tooltip) {
   const distPx = euclideanDist(coords, screenPos);
 
   if (distPx > MAX_HOVER_DISTANCE) {
-    forceGraph.setHighlighted(null);
-    forceGraph.setHoveredNode(null);
+    appState.setHighlighted(null);
+    appState.setHoveredNode(null);
     tooltip.hide();
     return;
   }
-  
-  forceGraph.setHighlighted([nearestNode]);
-  forceGraph.setHoveredNode(nearestNode);
+
+  appState.setHighlighted([nearestNode]);
+  appState.setHoveredNode(nearestNode);
 
   const labelText = getHoverLabelText(nearestNode);
   tooltip.show(labelText, event.clientX, event.clientY);
 }
 
 export default function setUpHoverEngine(forceGraph) {
-
-  forceGraph.hoveredNode = null;
-
-  forceGraph.setHoveredNode = function (node) {
-    //if (this.hoveredNode === node) return;
-    this.hoveredNode = node;
-    //eventBus.publish('graph:hovered-changed', node);
-    
-  };
 
   const container = forceGraph.element.parentElement || forceGraph.element;
   const tooltip = makeHoverLabel(container);

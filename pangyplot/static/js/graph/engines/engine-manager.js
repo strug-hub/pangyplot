@@ -39,7 +39,7 @@ export default function setUpEngineManager(forceGraph) {
         debugStatusUpdate(forceGraph);
         pathHighlightTick(forceGraph);
         // todo: searchSequenceEngineRerun();
-        updateNodeHighlight();
+        updateNodeHighlight(forceGraph);
     });
 }
 

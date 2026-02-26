@@ -3,6 +3,7 @@ import recordsManager from "../../data/records/records-manager.js";
 import { colorState } from "../color/color-state.js";
 import { highlightNodePainter, outlineNodePainter } from "../painter/highlight-node-painter.js";
 import { highlightLinkPainter } from "../painter/highlight-link-painter.js";
+import appState from "../../app-state.js";
 
 const HIGHLIGHT_THICKNESS = 10;
 const SELECTION_THICKNESS = 10;
@@ -14,8 +15,8 @@ export function renderHoverEffect(forceGraph) {
   const ctx = forceGraph.canvas.ctx;
   ctx.save();
 
-  const hoveredNode = forceGraph.hoveredNode;
-  if (forceGraph.hoveredNode){
+  const hoveredNode = appState.hoveredNode;
+  if (hoveredNode){
     outlineNodePainter(ctx, hoveredNode, colorState.hoverColor, HOVER_WIDTH, HOVER_THICKNESS);
   }
   ctx.restore();

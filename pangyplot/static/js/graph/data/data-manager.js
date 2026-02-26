@@ -1,6 +1,6 @@
 import eventBus from '../../utils/event-bus.js';
 import setUpGraphDataManager from './graph-data/graph-data-manager.js';
-import forceGraph from '../force-graph.js';
+import appState from '../app-state.js';
 import { cleanUpGraphData } from './graph-data/graph-data-integrity.js';
 import recordsManager  from './records/records-manager.js';
 
@@ -42,7 +42,7 @@ function getPoppedContents(bubbleId, recursive = false) {
   return { nodes, links };
 }
 
-export function unpopBubble(bubbleId) {
+export function unpopBubble(bubbleId, forceGraph) {
   const graphData = forceGraph.graphData();
 
   const poppedContents = getPoppedContents(bubbleId, true);
@@ -125,7 +125,7 @@ export function setUpDataManager(forceGraph) {
     const graphRecords = await recordsManager.getByCoordinate(coordinates);
     console.log("Fetched records:", graphRecords);
     if (!graphRecords) return;
-    forceGraph.coords = coordinates;
+    appState.coords = coordinates;
 
     const graphData = recordsManager.extractElementsFromRecords(graphRecords);
     forceGraph.replaceGraphData(graphData);

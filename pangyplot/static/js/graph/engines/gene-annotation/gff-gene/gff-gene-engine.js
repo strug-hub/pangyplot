@@ -1,6 +1,7 @@
 import eventBus from "../../../../utils/event-bus.js";
 import recordsManager from "../../../data/records/records-manager.js";
 import { populateGeneAnnotationsTable } from "../gene-annotation-ui.js"
+import appState from "../../../app-state.js";
 
 const GFF_QUEUE_NAME = "gff-gene";
 
@@ -66,7 +67,7 @@ export function setUpGffGeneEngine(forceGraph) {
     forceGraph.addRenderQueue(GFF_QUEUE_NAME, 1);
 
     eventBus.subscribe("graph:data-replaced", async (forceGraph) => {
-        const geneRecords = await recordsManager.getGenesByCoordinate(forceGraph.coords);
+        const geneRecords = await recordsManager.getGenesByCoordinate(appState.coords);
 
         geneRecords.forEach(record => {
             forceGraph.addToRenderQueue(GFF_QUEUE_NAME, record);

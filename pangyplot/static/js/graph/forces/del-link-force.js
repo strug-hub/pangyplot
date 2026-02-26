@@ -1,12 +1,11 @@
 import { getInsideNodeElements } from "../data/data-manager.js";
 import { computeNodeCentroid } from "../utils/node-utils.js";
-import forceGraph from "../force-graph.js";
 
-function deletionLinks() {
+function deletionLinks(forceGraph) {
   return forceGraph.graphData().links.filter(link => link.isDel);
 }
 
-export default function delLinkForce() {
+export default function delLinkForce(forceGraph) {
   const cache = new Map();
   let strength = 2;
 
@@ -46,7 +45,7 @@ export default function delLinkForce() {
 
   function rebuildCache() {
     cache.clear();
-    const delLinks = deletionLinks();
+    const delLinks = deletionLinks(forceGraph);
 
     for (const link of delLinks) {
       if (!link.bubbleId) continue;

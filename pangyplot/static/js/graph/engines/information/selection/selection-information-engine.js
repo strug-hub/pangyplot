@@ -1,6 +1,7 @@
 import { updateSelectionInfo } from "../../../../ui/tabs/information-panel.js";
 import { faLabel } from '../../../../utils/node-label.js';
 import eventBus from '../../../../utils/event-bus.js';
+import appState from '../../../../app-state.js';
 
 const blankInfo = {
     id: '',
@@ -13,24 +14,23 @@ const blankInfo = {
     nInside: ''
 };
 
-function generateSelectionInfo(forceGraph){
+function generateSelectionInfo(){
     const info = { ...blankInfo };
 
-    const coords = forceGraph.coords;
+    const coords = appState.coords;
     info.genome = coords.genome || '';
     info.chromosome = coords.chromosome || '';
 
-    if (forceGraph.selected.size !== 1) {
+    if (appState.selected.size !== 1) {
         updateSelectionInfo(info);
         return;
     }
 
-    const node = forceGraph.selected.getAnyNode();
+    const node = appState.selected.getAnyNode();
     if (!node) {
         updateSelectionInfo(info);
         return;
     }
-    
 
     info.id = faLabel(node.id) || '';
     info.range = String(node.record.ranges) || '';
@@ -49,6 +49,6 @@ export default function setUpSelectionInformationEngine(forceGraph){
 
     //todo: allow for multiple selection
     eventBus.subscribe('graph:selection-changed', () => {
-        generateSelectionInfo(forceGraph);
+        generateSelectionInfo();
     });
 }

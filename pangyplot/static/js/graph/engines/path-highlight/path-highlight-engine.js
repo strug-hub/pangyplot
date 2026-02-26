@@ -2,9 +2,10 @@ import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { loadInSamples, loadInPaths } from './path-highlight-state.js';
 import { setupUi } from './path-highlight-ui.js';
 import setupLinkColorEngine from './link-color/link-color-engine.js'
+import appState from '../../app-state.js';
 
 async function fetchPathData(forceGraph, sample){
-    const params = { sample, ...forceGraph.coords };
+    const params = { sample, ...appState.coords };
     const url = buildUrl('/path', params);
     fetchData(url, "path-selection").then(paths => {
         loadInPaths(forceGraph, paths);
