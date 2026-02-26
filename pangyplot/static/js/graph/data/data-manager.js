@@ -113,7 +113,6 @@ export function setUpDataManager(forceGraph) {
   eventBus.subscribe("ui:construct-graph", async function (data) {
     const { genome, chromosome, start, end } = data;
     const coordinates = { genome, chromosome, start, end };
-    if (forceGraph.equalsCoords(coordinates)) return;
 
     const graphRecords = await recordsManager.getByCoordinate(coordinates);
     console.log("Fetched records:", graphRecords);
