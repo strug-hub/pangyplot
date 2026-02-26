@@ -31,7 +31,7 @@ def path_from_W(path_str):
         if char in "><":
             if i != 0:
                 seg_id = path_str[pos:i]
-                strand = "+" if path_str[i - 1] == ">" else "-"
+                strand = "+" if path_str[pos - 1] == ">" else "-"
                 path.append(strand + seg_id)
             pos = i + 1
     # Append last
