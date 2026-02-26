@@ -32,7 +32,7 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
     app.config['BABEL_DEFAULT_LOCALE'] = 'en'
     app.config['BABEL_SUPPORTED_LOCALES'] = [
         'en', 'fr', 'es', 'de', 'it',
-        'pt_BR', 'ru', 'zh_CN', 'ja', 'ko', 'ar'
+        'pt_BR', 'ru', 'zh_Hans_CN', 'ja', 'ko', 'ar'
     ]
     
     babel.init_app(app, locale_selector=get_locale)

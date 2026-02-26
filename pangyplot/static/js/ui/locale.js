@@ -6,7 +6,7 @@ const supportedLocales = [
   { code: "it", label: "Italiano" },
   { code: "pt_BR", label: "Português (Brasil)" },
   { code: "ru", label: "Русский" },
-  { code: "zh_CN", label: "简体中文" },
+  { code: "zh_Hans_CN", label: "简体中文" },
   { code: "ja", label: "日本語" },
   { code: "ko", label: "한국어" },
   { code: "ar", label: "العربية" }
