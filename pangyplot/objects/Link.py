@@ -50,6 +50,8 @@ class Link:
         link.link_type = self.link_type
         link.contained = self.contained[:]
         link.length = self.length
+        link.gc_count = self.gc_count
+        link.n_count = self.n_count
         return link
 
     def contains(self, id):

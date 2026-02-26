@@ -42,6 +42,8 @@ class BubbleJunction:
 
     def get_chain_links(self):
         chain_link = self.bubble.get_chain_link(self.gfaidx, self.is_source)
+        if chain_link is None:
+            return []
         chain_link.add_to_suffix("0") if self.is_source else \
             chain_link.add_from_suffix("1")
 
