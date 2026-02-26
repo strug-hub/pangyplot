@@ -48,7 +48,7 @@ export default function bubbleCircularForce(forceGraph, strength = 0.01) {
         for (const [bubbleId, group] of Object.entries(bubbleGroups)) {
             if (group.length < 2) continue;
 
-            centroid = computeNodeCentroid(group);
+            const centroid = computeNodeCentroid(group);
             
             const avgRadius = d3.mean(group, n => {
                 const dx = n.x - centroid.x;

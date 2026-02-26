@@ -47,12 +47,6 @@ export default function setUpGraphDataManager(forceGraph) {
         removeNode(this, id);
     }
 
-    forceGraph.getNode = function (iid) {
-        return nodeElementLookup.get(iid) || null;
-    }
-    forceGraph.getLink = function (iid) {
-        return linkElementLookup.get(iid) || null;
-    }
 
 
 }

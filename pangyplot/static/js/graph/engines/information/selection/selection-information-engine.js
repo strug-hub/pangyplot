@@ -40,7 +40,7 @@ function generateSelectionInfo(forceGraph){
     info.position = node.position || '';
     info.length = node.record.seqLength || '?';
     info.seq = node.record.seq || 'N?';
-    info.nInside = node.record.inside.length || '';
+    info.nInside = node.record.inside.size || '';
 
     updateSelectionInfo(info);
 }

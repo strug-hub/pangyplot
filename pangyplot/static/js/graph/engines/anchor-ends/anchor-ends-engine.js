@@ -5,8 +5,8 @@ function anchorEndpointNodes(forceGraph) {
     const incoming = new Set();
 
     for (const link of forceGraph.graphData().links) {
-        outgoing.add(link.source);
-        incoming.add(link.target);
+        outgoing.add(link.sourceIid);
+        incoming.add(link.targetIid);
     }
 
     let anchoredCount = 0;
