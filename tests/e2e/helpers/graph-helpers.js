@@ -2,8 +2,8 @@
 export const TEST_REGION = {
   genome: 'GRCh38',
   chromosome: 'chrY',
-  start: 19693650,
-  end: 19754942,
+  start: 23128355,
+  end: 23200010,
 };
 
 /** Publish ui:construct-graph to navigate to a genomic region */
