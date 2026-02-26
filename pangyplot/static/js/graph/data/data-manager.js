@@ -6,12 +6,20 @@ import recordsManager  from './records/records-manager.js';
 
 // TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
 
+function getLinkElements(nodeId) {
+  return recordsManager.getLinks(nodeId).flatMap(r => r.elements?.links ?? []);
+}
+
+function getNodeElements(nodeId) {
+  return recordsManager.getNode(nodeId)?.elements?.nodes ?? [];
+}
+
 function getUnpoppedContents(bubbleId) {
-  const bubbleRecord = recordsManager.getNode(bubbleId)
-  const nodes = Array.from(bubbleRecord.nodeElements);
+  const bubbleRecord = recordsManager.getNode(bubbleId);
+  const nodes = [...bubbleRecord.elements.nodes];
   const links = getLinkElements(bubbleId);
 
-  links.push(...bubbleRecord.linkElements);
+  links.push(...bubbleRecord.elements.links);
 
   return { nodes, links };
 }

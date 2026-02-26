@@ -1,4 +1,5 @@
 import { unpopBubble } from "../../../data/data-manager.js";
+import eventBus from '../../../../utils/event-bus.js';
 
 const bubblePopUndoStack = [];
 
@@ -28,9 +29,15 @@ function checkUndo(event, forceGraph) {
 
 
 export default function setUpUndoPopEngine(forceGraph) {
-    forceGraph.element.addEventListener('keydown', (event) => {
-            checkUndo(event, forceGraph);
+    eventBus.subscribe('graph:bubble-popped', (data) => {
+        bubblePopUndoStack.push(data.id);
     });
 
+    eventBus.subscribe('graph:data-replaced', () => {
+        bubblePopUndoStack.length = 0;
+    });
 
+    forceGraph.element.addEventListener('keydown', (event) => {
+        //checkUndo(event, forceGraph);
+    });
 }

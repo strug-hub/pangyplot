@@ -3,6 +3,11 @@ pangyplot/static/data/*
 .env
 datastore/*
 
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
 # Sphinx build
 build/
 docs/build/

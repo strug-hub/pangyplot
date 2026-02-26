@@ -62,6 +62,8 @@ document.addEventListener("DOMContentLoaded", function () {
     
     eventBus.publish("ui:construct-graph", SUBTELOMERE);
 
+    window._forceGraph = forceGraph;
+    window._eventBus = eventBus;
 });
 
 
