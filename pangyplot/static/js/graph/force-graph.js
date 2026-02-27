@@ -5,6 +5,9 @@ import setUpForceManager from './forces/force-manager.js';
 import { setUpRenderManager } from './render/render-manager.js';
 import setUpUiManager from './ui/ui-manager.js';
 import { setUpDataManager} from './data/data-manager.js';
+import recordsManager from './data/records/records-manager.js';
+import viewState from './data/view-state.js';
+import { nodeRecordLookup, linkRecordLookup, nodeAdjacencyLookup, geneRecordLookup } from './data/records/records-manager-implementation.js';
 
 const forceGraphElement = document.getElementById("graph");
 const forceGraph = ForceGraph()(forceGraphElement);
@@ -63,6 +66,9 @@ document.addEventListener("DOMContentLoaded", function () {
     window._forceGraph = forceGraph;
     window._appState = appState;
     window._eventBus = eventBus;
+    window._recordsManager = recordsManager;
+    window._viewState = viewState;
+    window._lookups = { nodeRecordLookup, linkRecordLookup, nodeAdjacencyLookup, geneRecordLookup };
 });
 
 

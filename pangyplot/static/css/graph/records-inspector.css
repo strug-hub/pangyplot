@@ -1,0 +1,224 @@
+#records-inspector {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    width: 520px;
+    max-height: 70vh;
+    background: var(--site-background);
+    color: var(--text-color);
+    border: 2px solid var(--dark-green);
+    border-radius: 5px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    display: none;
+    overflow: hidden;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: x-small;
+    line-height: 1.4;
+    z-index: 999999;
+}
+
+#records-inspector .ri-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--lighter-green);
+    border-bottom: 1px solid var(--dark-green);
+}
+
+#records-inspector .ri-header strong {
+    font-size: small;
+}
+
+#records-inspector .ri-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+#records-inspector input {
+    background: white;
+    color: var(--text-color);
+    border: 1px solid var(--light-green);
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+#records-inspector input:focus {
+    outline: none;
+    border-color: var(--dark-green);
+}
+
+#records-inspector button {
+    background: var(--light-green);
+    color: var(--text-color);
+    border: 1px solid var(--dark-green);
+    border-radius: 5px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    transition: background-color 0.2s ease;
+}
+
+#records-inspector button:hover {
+    background: var(--highlight);
+}
+
+#records-inspector button:active {
+    background: var(--darker-green);
+    color: white;
+    transform: scale(0.95);
+}
+
+#records-inspector .ri-stats {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--light-green);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: white;
+}
+
+#records-inspector .ri-pill {
+    background: var(--lighter-green);
+    border: 1px solid var(--light-green);
+    border-radius: 5px;
+    padding: 2px 8px;
+}
+
+#records-inspector .ri-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--light-green);
+    background: var(--lighter-green);
+}
+
+#records-inspector .ri-tabs button {
+    padding: 4px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+#records-inspector .ri-tabs button.active {
+    background: white;
+    border-color: var(--dark-green);
+}
+
+#records-inspector .ri-content {
+    max-height: 48vh;
+    overflow: auto;
+    background: white;
+    scrollbar-width: thin;
+    scrollbar-color: var(--light-green) transparent;
+}
+
+#records-inspector .ri-tab {
+    display: none;
+    padding: 8px;
+}
+
+#records-inspector .ri-tab.active {
+    display: block;
+}
+
+#records-inspector .ri-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+#records-inspector table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#records-inspector th {
+    border-bottom: 2px solid var(--dark-green);
+    padding: 4px;
+    text-align: left;
+    font-size: x-small;
+    color: var(--dark-green);
+    white-space: nowrap;
+}
+
+#records-inspector td {
+    border-bottom: 1px solid var(--lighter-green);
+    padding: 3px 4px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+#records-inspector tr:hover td {
+    background: var(--lighter-green);
+}
+
+#records-inspector .ri-type-bubble {
+    color: var(--dark-green);
+    font-weight: bold;
+}
+
+#records-inspector .ri-type-segment {
+    color: var(--unselected-text);
+}
+
+#records-inspector .ri-popped {
+    background: var(--highlight);
+    border-radius: 3px;
+    padding: 0 4px;
+}
+
+#records-inspector .ri-incomplete {
+    background: var(--debug-bg);
+    border-radius: 3px;
+    padding: 0 4px;
+}
+
+#records-inspector .ri-chain {
+    color: var(--dark-green);
+    font-weight: bold;
+}
+
+#records-inspector .ri-id-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--dark-green);
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+#records-inspector .ri-id-btn:hover {
+    background: var(--highlight);
+    border-radius: 3px;
+}
+
+#records-inspector .ri-empty {
+    color: var(--unselected-text);
+    font-style: italic;
+    padding: 10px;
+}
+
+#records-inspector .ri-detail {
+    background: var(--lighter-green);
+    border: 1px solid var(--light-green);
+    border-radius: 5px;
+    padding: 8px;
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#records-inspector .ri-detail-close {
+    float: right;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 4px;
+    color: var(--text-color);
+}

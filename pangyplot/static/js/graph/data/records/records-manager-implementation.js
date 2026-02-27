@@ -1,5 +1,4 @@
 import { installRecordsInspector } from "./records-manager-ui.js";
-import { createLinkElements } from "./deserializer/deserializer-element.js";
 
 export const nodeRecordLookup = new Map();
 export const linkRecordLookup = new Map();
@@ -11,6 +10,7 @@ export function clearRecordsManager() {
   nodeRecordLookup.clear();
   linkRecordLookup.clear();
   nodeAdjacencyLookup.clear();
+  geneRecordLookup.clear();
 }
 
 export function getNodeRecord(id) {
@@ -20,9 +20,6 @@ export function getNodeRecord(id) {
 export function getLinkRecord(id, allowIncomplete = false) {
   const linkRecord = linkRecordLookup.get(id) || null;
   if (!linkRecord || (linkRecord.isIncomplete() && !allowIncomplete)) return null;
-  if (!linkRecord.hasElements()) {
-    linkRecord.elements = createLinkElements(linkRecord);
-  }
   return linkRecord;
 }
 
@@ -43,7 +40,14 @@ export function getConnectingLinkRecords(nodeId) {
 }
 
 export function updateExistingNodeRecords(nodeRecords, parentId = null) {
-  const records = nodeRecords.map(r => getNodeRecord(r.id) || r);
+  const records = nodeRecords.map(newRecord => {
+    const existing = getNodeRecord(newRecord.id);
+    if (existing) {
+      existing.coords = newRecord.coords;
+      return existing;
+    }
+    return newRecord;
+  });
   records.forEach(r => nodeRecordLookup.set(r.id, r));
 
   if (parentId !== null && nodeRecordLookup.has(parentId)) {

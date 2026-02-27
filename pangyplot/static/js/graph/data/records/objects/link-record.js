@@ -7,9 +7,6 @@ export class LinkRecord extends GraphObjectRecord {
 
         this.sourceRecord = sourceRecord || null;
         this.targetRecord = targetRecord || null;
-        this.isIncomplete = function() {
-            return this.sourceRecord === null || this.targetRecord === null;
-        }
 
         // -----
 
@@ -22,7 +19,7 @@ export class LinkRecord extends GraphObjectRecord {
         this.haplotype = rawLink.haplotype;
         this.isDel = rawLink.is_deletion || false;
         this.bubbleId = rawLink.bubble_id || null;
-        
+
         // chain link properties
         this.seqLength = rawLink.length;
         this.contained = rawLink.contained;
@@ -33,6 +30,9 @@ export class LinkRecord extends GraphObjectRecord {
         this.isSelfDestructLink = rawLink.type == "self-destruct";
     }
 
+    isIncomplete() {
+        return this.sourceRecord === null || this.targetRecord === null;
+    }
 
     get isChainLink() {
         return this.type === "chain";

@@ -5,16 +5,15 @@ export default class GraphObjectRecord {
         }
 
         this.elements = {nodes: [], links: []};
-        this.hasElements = function() {
-            return this.elements.nodes.length > 0 || this.elements.links.length > 0;
-        }
-        
         this.inside = new Set();
-        Object.defineProperty(this, 'childRecords', {
-            get: function() { return Array.from(this.inside);}
-        });
-
         this.active = true;
+    }
 
+    get childRecords() {
+        return Array.from(this.inside);
+    }
+
+    hasElements() {
+        return this.elements.nodes.length > 0 || this.elements.links.length > 0;
     }
 }
