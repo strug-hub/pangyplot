@@ -51,15 +51,18 @@ class ViewState {
     // sourceSegs/sinkSegs: the bubble's boundary segment IDs
     // insideSegs: the bubble's inside segment IDs
     // childBubbles: array of {id, source_segs, sink_segs, inside_segs} to unmap
-    collapse(bubbleRecord, sourceSegs, sinkSegs, insideSegs, childBubbles) {
-        // Remove all child bubble segment mappings
+    // excludeSegIds: Set of plain seg ID strings to leave untouched (shared with popped sibling)
+    collapse(bubbleRecord, sourceSegs, sinkSegs, insideSegs, childBubbles, excludeSegIds = new Set()) {
+        // Remove all child bubble segment mappings, skipping excluded segs
         for (const child of childBubbles) {
             for (const segId of [...(child.source_segs || []), ...(child.sink_segs || []), ...(child.inside_segs || [])]) {
-                this.segmentToNode.delete(String(segId));
+                if (!excludeSegIds.has(String(segId)))
+                    this.segmentToNode.delete(String(segId));
             }
         }
-        // Re-register this bubble's segments
-        this.registerBubble(bubbleRecord, sourceSegs, sinkSegs, insideSegs);
+        // Re-register this bubble's segments, skipping excluded segs
+        const keep = (segs) => segs.filter(s => !excludeSegIds.has(String(s)));
+        this.registerBubble(bubbleRecord, keep(sourceSegs), keep(sinkSegs), keep(insideSegs));
     }
 
     // Returns the NodeRecord that visually represents this segment,

@@ -20,18 +20,43 @@ export function unpopBubble(bubbleId, forceGraph) {
 
   const { childBubbles, insideSegs, externalLinkSnapshots } = bubbleRecord.popData;
 
-  // Remove all descendant nodes from D3 (recursive for nested pops)
+  // Identify boundary segments shared with a still-popped sibling.
+  // These segments must stay visible in D3 and unmapped in viewState.
+  const exposedBoundarySegIds = new Set();
+  for (const sibId of (bubbleRecord.siblings || [null, null])) {
+    if (sibId == null) continue;
+    const sibRecord = recordsManager.getNode("b" + sibId);
+    if (!sibRecord || !sibRecord.popData) continue; // sibling not popped
+    const sibBoundary = new Set(
+      [...sibRecord.sourceSegs, ...sibRecord.sinkSegs].map(String)
+    );
+    for (const segId of [...bubbleRecord.sourceSegs, ...bubbleRecord.sinkSegs]) {
+      if (sibBoundary.has(String(segId)))
+        exposedBoundarySegIds.add(String(segId));
+    }
+  }
+
+  // Remove all descendant nodes from D3 (recursive for nested pops),
+  // but skip boundary segments still needed by a popped sibling.
   const descendantIds = collectAllDescendantIds(bubbleRecord);
   for (const id of descendantIds) {
+    if (id.startsWith("s") && exposedBoundarySegIds.has(id.slice(1))) continue;
     forceGraph.removeNodeById(id);
   }
 
-  // Restore viewState: unmap child bubble segs, re-register parent bubble segs
-  viewState.collapse(bubbleRecord, bubbleRecord.sourceSegs, bubbleRecord.sinkSegs, insideSegs, childBubbles);
+  // Restore viewState: unmap child bubble segs, re-register parent bubble segs.
+  // Exclude shared boundary segs so the sibling's visible segments stay unmapped.
+  viewState.collapse(bubbleRecord, bubbleRecord.sourceSegs, bubbleRecord.sinkSegs, insideSegs, childBubbles, exposedBoundarySegIds);
 
-  // Restore external link records from pre-pop snapshots and regenerate D3 elements
+  // Restore external link records from pre-pop snapshots and regenerate D3 elements.
+  // Skip links whose other end is a currently-popped bubble (target not in D3).
   const externalLinkElements = [];
   for (const snap of externalLinkSnapshots) {
+    const otherId = snap.sourceId === bubbleId ? snap.targetId : snap.sourceId;
+    if (otherId.startsWith("b")) {
+      const otherRecord = recordsManager.getNode(otherId);
+      if (otherRecord?.popData) continue;
+    }
     const linkRecord = recordsManager.getLink(snap.id);
     if (!linkRecord) continue;
     linkRecord.sourceId = snap.sourceId;
