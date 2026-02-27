@@ -380,3 +380,55 @@ msgstr "Ancrer lors du glisser"
 msgid "Smooth GC colors"
 msgstr "Couleurs GC lissées"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "Segment"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "Bulle"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "Coordonnées :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "Longueur :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "Contenu GC :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "Nombre de N :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "Séquence :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "Sous-type :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "Segments internes :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "Chaîne :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "Parent :"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "Voisins :"
+

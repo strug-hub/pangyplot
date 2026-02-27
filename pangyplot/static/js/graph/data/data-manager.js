@@ -1,104 +1,58 @@
 import eventBus from '../../utils/event-bus.js';
 import setUpGraphDataManager from './graph-data/graph-data-manager.js';
 import appState from '../app-state.js';
-import { cleanUpGraphData } from './graph-data/graph-data-integrity.js';
 import recordsManager  from './records/records-manager.js';
+import viewState from './view-state.js';
+import { createLinkElements } from './records/deserializer/deserializer-element.js';
 
-// TODO: AS LONG AS WE HAVE A VALID SET OF NODES WE CAN RETRIEVE THEIR LINKS
-
-function getLinkElements(nodeId) {
-  return recordsManager.getLinks(nodeId).flatMap(r => r.elements?.links ?? []);
-}
-
-function getNodeElements(nodeId) {
-  return recordsManager.getNode(nodeId)?.elements?.nodes ?? [];
-}
-
-function getUnpoppedContents(bubbleId) {
-  const bubbleRecord = recordsManager.getNode(bubbleId);
-  const nodes = [...bubbleRecord.elements.nodes];
-  const links = getLinkElements(bubbleId);
-
-  links.push(...bubbleRecord.elements.links);
-
-  return { nodes, links };
-}
-
-function getPoppedContents(bubbleId, recursive = false) {
-  const bubbleRecord = recordsManager.getNode(bubbleId);
-  const nodes = [];
-  const links = [];
-
-  for (const element of bubbleRecord.inside) {
-    nodes.push(element);
-    links.push(...getLinkElements(element.id));
-
-    if (recursive) {
-      const insideContents = getPoppedContents(element.id, true);
-      nodes.push(...insideContents.nodes);
-      links.push(...insideContents.links);
-    }
+function collectAllDescendantIds(record) {
+  const ids = [];
+  for (const child of record.inside) {
+    ids.push(child.id);
+    ids.push(...collectAllDescendantIds(child));
   }
-  return { nodes, links };
+  return ids;
 }
 
 export function unpopBubble(bubbleId, forceGraph) {
-  const graphData = forceGraph.graphData();
+  const bubbleRecord = recordsManager.getNode(bubbleId);
+  if (!bubbleRecord || !bubbleRecord.popData) return;
 
-  const poppedContents = getPoppedContents(bubbleId, true);
-  const unpoppedContents = getUnpoppedContents(bubbleId);
+  const { childBubbles, insideSegs, externalLinkSnapshots } = bubbleRecord.popData;
 
-  for (const endId of [bubbleId + ":0", bubbleId + ":1"]) {
-    console.log(getPoppedContents(endId).nodes)
-    const inside = getPoppedContents(endId);
-    poppedContents.nodes.push(...inside.nodes);
+  // Remove all descendant nodes from D3 (recursive for nested pops)
+  const descendantIds = collectAllDescendantIds(bubbleRecord);
+  for (const id of descendantIds) {
+    forceGraph.removeNodeById(id);
   }
 
-  console.log("Unpopping bubble:", bubbleId);
-  console.log("Popped contents:", poppedContents.nodes.map(n => n.id));
-  console.log("Unpopped contents:", unpoppedContents.nodes.map(n => n.id));
+  // Restore viewState: unmap child bubble segs, re-register parent bubble segs
+  viewState.collapse(bubbleRecord, bubbleRecord.sourceSegs, bubbleRecord.sinkSegs, insideSegs, childBubbles);
 
-  const recoverData = { nodes: [], links: [] };
-
-  for (const link of unpoppedContents.links) {
-    const siblingIds = [];
-
-    if (link.targetId === bubbleId && link.sourceId.startsWith("b") && link.sourceId.includes(":")) {
-      siblingIds.push(link.sourceId);
-    }
-    if (link.sourceId === bubbleId && link.targetId.startsWith("b") && link.targetId.includes(":")) {
-      siblingIds.push(link.targetId);
-    }
-
-    for (const sibId of siblingIds) {
-      let flag = false;
-
-      for (const elem of recordsManager.getNode(sibId).inside) {
-        if (recordsManager.getNode(elem.id).active) {
-          flag = true;
-          break;
-        }
-      }
-
-      if (flag) {
-        if (recordsManager.getNode(sibId)) {
-          recoverData.nodes.push(...getNodeElements(sibId));
-          recoverData.links.push(...getLinkElements(sibId));
-        }
-      }
-    }
+  // Restore external link records from pre-pop snapshots and regenerate D3 elements
+  const externalLinkElements = [];
+  for (const snap of externalLinkSnapshots) {
+    const linkRecord = recordsManager.getLink(snap.id);
+    if (!linkRecord) continue;
+    linkRecord.sourceId = snap.sourceId;
+    linkRecord.targetId = snap.targetId;
+    linkRecord.sourceRecord = snap.sourceRecord;
+    linkRecord.targetRecord = snap.targetRecord;
+    linkRecord.elements = createLinkElements(linkRecord);
+    externalLinkElements.push(...linkRecord.elements.links);
   }
 
-  for (const node of poppedContents.nodes) {
-    forceGraph.removeNodeById(node.id);
-  }
+  // Add bubble node + restored external links back to D3
+  forceGraph.addGraphData({
+    nodes: bubbleRecord.elements.nodes,
+    links: [...bubbleRecord.elements.links, ...externalLinkElements],
+  });
 
-  unpoppedContents.nodes.forEach(node => node.isActive = true);
-  graphData.nodes.push(...unpoppedContents.nodes, ...recoverData.nodes);
-  graphData.links.push(...unpoppedContents.links, ...recoverData.links);
+  // Clean up: clear children and undo data
+  bubbleRecord.inside.clear();
+  bubbleRecord.popData = null;
 
-  cleanUpGraphData(graphData);
-  forceGraph.graphData(graphData);
+  eventBus.publish('graph:bubble-unpopped', { id: bubbleId });
 }
 
 export function isNodeActive(id) {
@@ -134,4 +88,3 @@ export function setUpDataManager(forceGraph) {
 
   });
 }
-

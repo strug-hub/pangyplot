@@ -380,3 +380,55 @@ msgstr "드래그 시 고정"
 msgid "Smooth GC colors"
 msgstr "GC 색상 부드럽게"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "세그먼트"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "버블"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "좌표:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "길이:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "GC 함량:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "N 개수:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "서열:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "하위 유형:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "내부 세그먼트:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "체인:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "부모:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "이웃:"
+

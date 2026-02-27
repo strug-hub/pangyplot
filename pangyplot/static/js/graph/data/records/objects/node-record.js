@@ -26,16 +26,10 @@ export class BubbleRecord extends NodeRecord {
         this.chain = rawBubble.chain;
         this.chainStep = rawBubble.chain_step;
         this.size = rawBubble.size;
-    }
-}
-
-export class BubbleEndRecord extends NodeRecord {
-    constructor(rawBubbleEnd) {
-        super(rawBubbleEnd, "bubble:end");
-        this.subtype = rawBubbleEnd.subtype;
-        this.chainEnd = rawBubbleEnd.chain_end;
-        this.chain = rawBubbleEnd.chain;
-        this.size = rawBubbleEnd.size;
+        this.siblings = rawBubble.siblings || [null, null];
+        this.sourceSegs = rawBubble.source_segs || [];
+        this.sinkSegs = rawBubble.sink_segs || [];
+        this.popData = null;
     }
 }
 
@@ -44,6 +38,5 @@ export class SegmentRecord extends NodeRecord {
         super(rawSegment, "segment");
         this.insideBubble = rawSegment.inside_bubble;
         this.seq = rawSegment.seq;
-
     }
 }

@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const DAZ1 = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010};
     const EXOC3 = {genome: "GRCh38", chromosome:"chr5", start:321714, end:471937};
     
-    eventBus.publish("ui:construct-graph", SUBTELOMERE);
+    eventBus.publish("ui:construct-graph", DAZ1);
 
     window._forceGraph = forceGraph;
     window._appState = appState;

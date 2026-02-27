@@ -1,6 +1,7 @@
 import eventBus from '../../../utils/event-bus.js';
 import recordsManager from '../../data/records/records-manager.js';
 import appState from '../../app-state.js';
+import viewState from '../../data/view-state.js';
 
 let queue = [];
 let enqueued = new Set();
@@ -32,28 +33,32 @@ async function drain(forceGraph) {
       enqueued.delete(bubble.id);
 
       try {
+        const result = await recordsManager.getBubbleSubgraph(bubble.id);
 
-        const graphBubbleRecords = await recordsManager.getBubbleSubgraph(bubble.id, appState.coords);
-
-        if (!graphBubbleRecords)
+        if (!result)
           throw new Error("No data returned");
 
-        const nodes = [...graphBubbleRecords.bubble.nodes].map(r => r.elements.nodes).flat();
-        const links = [...graphBubbleRecords.bubble.nodes, //nodeLinks in NodeRecords
-                       ...graphBubbleRecords.bubble.links,
-                       ...graphBubbleRecords.source.links,
-                       ...graphBubbleRecords.sink.links].map(r => r.elements.links).flat();
-        const graphData = { nodes, links };
+        const { nodeRecords, linkRecords } = result;
 
-        console.log("[bubble-pop] deserialized ", graphData);
+        // Exclude segment nodes still owned by an adjacent collapsed bubble
+        // (e.g. a shared boundary segment whose sibling bubble is still collapsed).
+        // Those segments are visually represented by the owning bubble record —
+        // they must not appear as standalone orphan nodes in D3.
+        const visibleNodeRecords = nodeRecords.filter(r => {
+          if (r.type !== 'segment') return true;
+          const segId = r.id.slice(1); // strip 's' prefix
+          return viewState.resolve(segId) === null;
+        });
+
+        const { nodes, links } = recordsManager.extractElementsFromRecords({ nodes: visibleNodeRecords, links: linkRecords });
 
         forceGraph.removeNodeById(bubble.id);
-        forceGraph.addGraphData(graphData);
+        forceGraph.addGraphData({ nodes, links });
 
         appState.setSelected(nodes);
         appState.setHighlighted(null);
 
-        eventBus.publish('graph:bubble-popped', { id: bubble.id, graphData });
+        eventBus.publish('graph:bubble-popped', { id: bubble.id, graphData: { nodes, links } });
 
       } catch (err) {
         console.warn('[bubble-pop] failed:', bubble.id, err);

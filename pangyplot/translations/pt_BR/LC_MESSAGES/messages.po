@@ -380,3 +380,55 @@ msgstr "Ancorar ao arrastar"
 msgid "Smooth GC colors"
 msgstr "Suavizar cores GC"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "Segmento"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "Bolha"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "Coordenadas:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "Comprimento:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "Conteúdo GC:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "Contagem de N:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "Sequência:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "Subtipo:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "Segmentos internos:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "Cadeia:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "Pai:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "Vizinhos:"
+

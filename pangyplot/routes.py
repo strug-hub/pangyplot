@@ -137,19 +137,10 @@ def pop():
     id = request.args.get("id")
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
-    #start = int(request.args.get("start"))
-    #end = int(request.args.get("end"))
 
     print(f"Popping node {id} in {genome}#{chrom}...")
 
-    result = {"bubble": None, "source": None, "sink": None}
-    if id.startswith("s"):
-        return result
-    if id.startswith("b"):
-        result["bubble"] = query.pop_bubble(current_app, id, genome, chrom)
-        result["source"] = query.get_bubble_end(current_app, f'{id}:0', genome, chrom)
-        result["sink"] = query.get_bubble_end(current_app, f'{id}:1', genome, chrom)
-
+    result = query.pop_bubble(current_app, id, genome, chrom)
     return jsonify(result)
 
 @bp.route('/path', methods=["GET"])

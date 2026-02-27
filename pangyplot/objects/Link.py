@@ -14,7 +14,6 @@ class Link:
         self.length = 0
         self.gc_count = 0
         self.n_count = 0
-        self.deletion_bubble_id = None
 
     def serialize(self):
         return {
@@ -31,8 +30,6 @@ class Link:
             "length": self.length,
             "gc_count": self.gc_count,
             "n_count": self.n_count,
-            "is_deletion": self.deletion_bubble_id is not None,
-            "bubble_id": f"b{self.deletion_bubble_id}" if self.deletion_bubble_id is not None else None
         }
     
     def clone(self):
@@ -46,7 +43,6 @@ class Link:
         link.frequency = self.frequency
         link.from_type = self.from_type
         link.to_type = self.to_type
-        link.deletion_bubble_id = self.deletion_bubble_id
         link.link_type = self.link_type
         link.contained = self.contained[:]
         link.length = self.length
@@ -81,9 +77,6 @@ class Link:
         self.link_type = "self-destruct"
         self.is_self_destruct_link = True
 
-    def is_deletion(self):
-        return self.deletion_bubble_id is not None
-        
     def id(self):
         return f"{self.from_type}{self.from_id}{self.from_strand}{self.to_type}{self.to_id}{self.to_strand}"
     
@@ -113,11 +106,6 @@ class Link:
         self.n_count = n_count
         self.length = length
         self.link_type = "chain"
-
-    def update_to_deletion_link(self, new_ids, bubble_id):
-        self.from_id = new_ids[0]
-        self.to_id = new_ids[1]
-        self.deletion_bubble_id = bubble_id
 
     def make_bubble_to_bubble(self):
         self.from_type = "b"

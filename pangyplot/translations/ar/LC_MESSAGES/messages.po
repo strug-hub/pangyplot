@@ -381,3 +381,55 @@ msgstr "تثبيت عند السحب"
 msgid "Smooth GC colors"
 msgstr "ألوان GC ناعمة"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "قطعة"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "فقاعة"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "المعرّف:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "الإحداثيات:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "الطول:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "محتوى GC:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "عدد N:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "التسلسل:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "النوع الفرعي:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "القطع الداخلية:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "السلسلة:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "الأصل:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "الجيران:"
+

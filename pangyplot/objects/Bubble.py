@@ -1,5 +1,3 @@
-from pangyplot.objects.BubbleJunction import BubbleJunction
-
 class Bubble:
     def __init__(self):
         self.id = None
@@ -28,22 +26,6 @@ class Bubble:
         self.y1 = 0
         self.y2 = 0
 
-        # flowing from the bubble source to the sink
-        self.deletion_link = None
-        
-        # flowing from inside the bubble to the sorce or sink
-        # could be from internal segment or from child bubble
-        self.end_links = []
-
-        # flowing from the bubble end to the end of a child bubble
-        self.child_links = []
-
-        # flowing from one chain end to another separate chain 
-        self.cross_links = []
-
-        # flowing from a segment that isn't captured a bubble
-        self.singleton_links = []
-
     def get_serialized_id(self):
         return f"b{self.id}"
 
@@ -60,6 +42,10 @@ class Bubble:
             "gc_count": self.gc_count,
             "n_count": self.n_count,
             "ranges": self.range_inclusive,
+            "siblings": self.siblings,
+            "source_segs": self.source_segments,
+            "sink_segs": self.sink_segments,
+            "inside_segs": sorted(self.inside),
             "x1": self.x1,
             "x2": self.x2,
             "y1": self.y1,
@@ -75,7 +61,7 @@ class Bubble:
             shouldFlipSource = True
 
         if nextBubble is not None and set(self.source_segments).issubset(set(nextBubble.get_end_segments())):
-            shouldFlipSink = True      
+            shouldFlipSink = True
 
         if shouldFlipSource and shouldFlipSink:
             self.siblings = [prevBubble.id if prevBubble else None, nextBubble.id if nextBubble else None]
@@ -89,77 +75,6 @@ class Bubble:
         if sibling is None: return
         self.siblings[1] = sibling.id
 
-    def add_end_link(self, link_id, from_id, to_id):
-        self.end_links.append((link_id, from_id, to_id))
-
-    def add_deletion_link(self, link_id):
-        self.deletion_link = link_id
-
-    def add_child_link(self, link_id, from_id, to_id):
-        self.child_links.append((link_id, from_id, to_id))
-
-    def add_singleton_link(self, link_id, from_id, to_id):
-        self.singleton_links.append((link_id, from_id, to_id))
-    
-    def add_cross_link(self, link_id, from_id, to_id):
-        self.cross_links.append((link_id, from_id, to_id))
-
-    def get_chain_link(self, gfaidx, source=False):
-        end_id = f"{self.id}:0" if source else f"{self.id}:1"
-        link_data = [link for link in self.end_links + self.child_links if end_id in link]
-        link_ids = [link[0] for link in link_data]
-        links = gfaidx.get_links_by_id(link_ids)
-        
-        if len(links) < 1: return None
-        chain_link = links[0].clone()
-        
-        for link in links[1:]:
-            chain_link.combine_links(link)
-
-        length = sum([gfaidx.segment_length(sid) for sid in self.sink_segments])
-        gc_count = 0
-        n_count = 0
-        for sid in self.sink_segments:
-            gc,n = gfaidx.segment_gc_n_count(sid)
-            gc_count += gc
-            n_count += n
-
-        new_ids = (self.siblings[0], self.id) if source else (self.id, self.siblings[1])
-        chain_link.update_to_chain_link(new_ids, self.sink_segments, length, gc_count, n_count)
-        chain_link.make_bubble_to_bubble()
-        return chain_link
-    
-    def get_sink_chain_link(self, gfaidx):
-        return self.get_chain_link(gfaidx, source=False)
-    def get_source_chain_link(self, gfaidx):
-        return self.get_chain_link(gfaidx, source=True)
-    
-    def summarize_link_data(self):
-        link_data = dict()
-        if len(self.end_links) > 0:
-            link_data["end"] = self.end_links
-        if self.deletion_link is not None:
-            link_data["deletion"] = self.deletion_link
-        if len(self.child_links) > 0:
-            link_data["child"] = self.child_links
-        if len(self.singleton_links) > 0:
-            link_data["singleton"] = self.singleton_links
-        if len(self.cross_links) > 0:
-            link_data["cross"] = self.cross_links
-        return link_data
-    
-    def set_link_data(self, link_data):
-        if "end" in link_data:
-            self.end_links = link_data["end"]
-        if "deletion" in link_data:
-            self.deletion_link = link_data["deletion"]
-        if "child" in link_data:
-            self.child_links = link_data["child"]
-        if "singleton" in link_data:
-            self.singleton_links = link_data["singleton"]
-        if "cross" in link_data:
-            self.cross_links = link_data["cross"]
-            
     def _clean_inside(self, inside_ids, bubble_dict):
         self.inside -= inside_ids
         if self.parent:
@@ -192,25 +107,20 @@ class Bubble:
 
     def is_chain_end(self):
         return self.siblings[0] is None or self.siblings[1] is None
-        
+
     def get_end_segments(self):
         return self.get_source_segments() + self.get_sink_segments()
-    
-    def emit_junctions(self, gfaidx):
-        source = BubbleJunction(self, True, gfaidx)
-        sink = BubbleJunction(self, False, gfaidx)
-        return [source, sink]
 
     def has_range(self, exclusive=True):
         if exclusive:
             return len(self.range_exclusive) > 0
         return len(self.range_inclusive) > 0
-    
+
     def get_ranges(self, exclusive=True):
         if exclusive:
             return self.range_exclusive
         return self.range_inclusive
-    
+
     def is_contained(self, start_step, end_step, strict=False):
         strict_check = any(start >= start_step and end <= end_step for start, end in self.range_exclusive)
         if strict or strict_check:

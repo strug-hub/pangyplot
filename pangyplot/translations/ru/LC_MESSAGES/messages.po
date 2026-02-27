@@ -381,3 +381,55 @@ msgstr "Фиксировать при перетаскивании"
 msgid "Smooth GC colors"
 msgstr "Сглаживать цвета GC"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "Сегмент"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "Пузырь"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "Координаты:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "Длина:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "Содержание GC:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "Количество N:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "Последовательность:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "Подтип:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "Внутренние сегменты:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "Цепочка:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "Родитель:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "Соседи:"
+

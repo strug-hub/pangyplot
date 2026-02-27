@@ -1,6 +1,5 @@
 import os
 from pangyplot.db.indexes.StepIndex import StepIndex
-import pangyplot.preprocess.bubble.construct_bubble_links as bubble_links
 
 import pangyplot.db.sqlite.bubble_db as db
 
@@ -142,7 +141,6 @@ def construct_bubble_index(link_idx, graph, chr_dir, ref, plot=False):
 
     find_children(bubbles)
 
-    bubble_links.store_bubble_links(link_idx, bubbles)
     db.insert_bubbles(chr_dir, bubbles)
     
     if plot:

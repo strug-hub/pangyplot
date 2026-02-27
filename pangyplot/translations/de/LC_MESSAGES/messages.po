@@ -380,3 +380,55 @@ msgstr "Beim Ziehen verankern"
 msgid "Smooth GC colors"
 msgstr "Sanfte GC-Farben"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "Segment"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "Blase"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "Koordinaten:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "Länge:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "GC-Gehalt:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "N-Anzahl:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "Sequenz:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "Subtyp:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "Innere Segmente:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "Kette:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "Eltern:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "Nachbarn:"
+

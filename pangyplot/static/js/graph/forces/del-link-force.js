@@ -51,13 +51,7 @@ export default function delLinkForce(forceGraph) {
       if (!link.bubbleId) continue;
       const bubbleId = link.bubbleId;
 
-      const insideNodes = getInsideNodeElements(bubbleId)
-        .filter(node => {
-          // Remove end nodes
-          if (node.type !== "bubble:end") return true;
-          const stripped = bubbleId.slice(1); // remove initial "b"
-          return !(node.id === `b>${stripped}` || node.id === `b<${stripped}`);
-        });
+      const insideNodes = getInsideNodeElements(bubbleId);
 
       if (!insideNodes.length) continue;
       const record = {link: link, nodes: insideNodes };

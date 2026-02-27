@@ -8,18 +8,8 @@ class Chain:
 
         self._sort_bubbles()
 
-    def serialize(self):
-        bubbles, links = self.decompose()
-        return {
-            "nodes": [bubble.serialize() for bubble in bubbles],
-            "links": [link.serialize() for link in links]
-        }
-    
     def __getitem__(self, i):
         return self.bubbles[i]
-
-    def decompose(self):
-        return self.bubbles + self.get_chain_ends(), self.get_chain_links()
 
     def source_bubble(self): return self.bubbles[0] if self.bubbles else None
     def sink_bubble(self): return self.bubbles[-1] if self.bubbles else None
@@ -27,42 +17,11 @@ class Chain:
     def chain_step_range(self):
         return (self[0].chain_step, self[-1].chain_step) if len(self.bubbles) > 0 else (None, None)
 
-    def get_chain_ends(self):
-        ends = []
-        for bubble in (self.source_bubble(), self.sink_bubble()):
-            for junction in bubble.emit_junctions(self.gfaidx):
-                if junction.is_chain_end:
-                    ends.append(junction)
-        return ends
-
-    def get_chain_links(self):
-        if self.gfaidx is None:
-            return None
-                
-        links = []
-        for bubble in self.bubbles:
-            chain_link = bubble.get_sink_chain_link(self.gfaidx)
-            if chain_link is not None:
-                links.append(chain_link)
-
-            if bubble.is_chain_end():
-                junctions = bubble.emit_junctions(self.gfaidx)
-                for junction in junctions:
-                    chain_end_links = junction.get_chain_end_links()
-                    links.extend(chain_end_links)
-        
-        return links
-
-    def get_parent_segment_links(self):
-        links = self.bubbles[0].source.get_parent_segment_links(self.gfaidx)
-        links.extend(self.bubbles[-1].sink.get_parent_segment_links(self.gfaidx))
-        return links
-
     def get_internal_segment_ids(self, include_ends=True, as_set=False):
         seg_ids = []
         for i, bubble in enumerate(self.bubbles[:-1]):
             seg_ids.extend(bubble.sink_segments)
-        
+
         if include_ends:
             seg_ids.extend(self.bubbles[0].get_source_segments())
             seg_ids.extend(self.bubbles[-1].get_sink_segments())

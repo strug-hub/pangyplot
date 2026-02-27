@@ -1,6 +1,5 @@
 import json
 from pangyplot.objects.Bubble import Bubble
-from pangyplot.db.db_utils import get_connection
 import pangyplot.db.db_utils as utils
 import statistics
 
@@ -92,7 +91,7 @@ def insert_bubble(cur, bubble):
         bubble.x2,
         bubble.y1,
         bubble.y2,
-        json.dumps(bubble.summarize_link_data())
+        json.dumps({})
     ))
 
 def insert_bubbles(dir, bubbles):
@@ -123,9 +122,6 @@ def create_bubble(row, gfaidx):
     bubble.y2 = row["y2"]
     bubble.source_segments = json.loads(row["source"])
     bubble.sink_segments = json.loads(row["sink"])
-
-    link_data = json.loads(row["link_data"])
-    bubble.set_link_data(link_data)
 
     return bubble
 
@@ -164,8 +160,6 @@ def count_bubbles(chr_dir):
     cur.execute("SELECT COUNT(*) FROM bubbles")
     return int(cur.fetchone()[0])
 
-
-import statistics
 
 def summarize_bubbles(dir, top_chains=10):
     cur = get_connection(dir).cursor()

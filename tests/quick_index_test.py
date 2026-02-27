@@ -9,31 +9,33 @@ def test_quick_index_roundtrip():
     tempdir = tempfile.mkdtemp()
 
     try:
-        # Create and manually assign arbitrary data
         n = 1000
-        starts = array('I', [i * 10 for i in range(n)])
-        ends = array('I', [i * 10 + 5 for i in range(n)])
-        ids = array('I', list(range(n)))
+        start_steps = array('I', [i * 10 for i in range(n)])
+        end_steps   = array('I', [i * 10 + 5 for i in range(n)])
+        ids         = array('I', list(range(n)))
+        bubble_to_parent  = array('I', [0] * 50)
+        segment_to_bubble = array('I', [0] * 200)
 
-        # Save original
         original = BubbleIndex.__new__(BubbleIndex)
-        original.dir = tempdir
-        original.starts = starts
-        original.ends = ends
-        original.ids = ids
+        original.dir              = tempdir
+        original.start_steps      = start_steps
+        original.end_steps        = end_steps
+        original.ids              = ids
+        original.bubble_to_parent  = bubble_to_parent
+        original.segment_to_bubble = segment_to_bubble
 
-        # Save quick index
         original.save_quick_index()
 
-        # Load into a new instance
         reloaded = BubbleIndex.__new__(BubbleIndex)
         reloaded.dir = tempdir
         success = reloaded.load_quick_index()
 
         assert success, "Quick index failed to load"
-        assert reloaded.starts == original.starts
-        assert reloaded.ends == original.ends
-        assert reloaded.ids == original.ids
+        assert reloaded.start_steps      == original.start_steps
+        assert reloaded.end_steps        == original.end_steps
+        assert reloaded.ids              == original.ids
+        assert reloaded.bubble_to_parent  == original.bubble_to_parent
+        assert reloaded.segment_to_bubble == original.segment_to_bubble
 
     finally:
         shutil.rmtree(tempdir)

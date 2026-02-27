@@ -29,10 +29,7 @@ function getKinkCoordinates(coords, kinks, i = 0) {
 
 export function createNodeElements(nodeRecord) {
 
-    let kinks = 1;
-    if (nodeRecord.type !== "bubble:end") {
-        kinks = calculateNumberOfKinks(nodeRecord.seqLength);
-    }
+    let kinks = calculateNumberOfKinks(nodeRecord.seqLength);
 
     let nodes = [];
 
@@ -88,6 +85,34 @@ export function createNodeElements(nodeRecord) {
             isDrawn: true,
             width: 5,
             length: Math.min(nodeRecord.seqLength / 100, 1000) * LINK_SCALE,
+            annotations: []
+        });
+    }
+
+    // For indel bubbles with >=3 kinks, add a deletion link from #0 to #last
+    if (nodeRecord.isIndel && kinks >= 3) {
+        const sourceIid = `${nodeRecord.id}#0`;
+        const targetIid = `${nodeRecord.id}#${kinks - 1}`;
+        nodeLinks.push({
+            isNode: false,
+            isLink: true,
+            class: "link",
+            iid: `del_${nodeRecord.id}`,
+            record: nodeRecord,
+            type: nodeRecord.type,
+            source: sourceIid,
+            target: targetIid,
+            sourceIid: sourceIid,
+            targetIid: targetIid,
+            sourceId: nodeRecord.id,
+            targetId: nodeRecord.id,
+            isDel: true,
+            bubbleId: nodeRecord.id,
+            isRef: nodeRecord.ranges.length > 0,
+            isDrawn: true,
+            length: LINK_BASE_LENGTH * 2,
+            width: 1,
+            contained: [],
             annotations: []
         });
     }

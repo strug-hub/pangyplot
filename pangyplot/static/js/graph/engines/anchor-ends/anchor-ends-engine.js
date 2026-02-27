@@ -5,6 +5,10 @@ function anchorEndpointNodes(forceGraph) {
     const incoming = new Set();
 
     for (const link of forceGraph.graphData().links) {
+        // Skip GFA links — only chain links and internal kink-to-kink links
+        // define terminal status. GFA links can create spurious cross-chain
+        // connections that prevent true edge nodes from being anchored.
+        if (link.class === "link" && link.type !== "chain") continue;
         outgoing.add(link.sourceIid);
         incoming.add(link.targetIid);
     }

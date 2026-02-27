@@ -380,3 +380,55 @@ msgstr "ドラッグ時に固定"
 msgid "Smooth GC colors"
 msgstr "GCカラーを滑らかに"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "セグメント"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "バブル"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "座標："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "長さ："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "GC含量："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "N数："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "配列："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "サブタイプ："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "内部セグメント："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "チェーン："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "親："
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "隣接："
+

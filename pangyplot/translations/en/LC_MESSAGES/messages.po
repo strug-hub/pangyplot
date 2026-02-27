@@ -380,3 +380,55 @@ msgstr ""
 msgid "Smooth GC colors"
 msgstr ""
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr ""
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr ""
+

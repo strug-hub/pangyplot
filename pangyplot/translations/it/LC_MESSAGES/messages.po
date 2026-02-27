@@ -380,3 +380,55 @@ msgstr "Ancora durante il trascinamento"
 msgid "Smooth GC colors"
 msgstr "Colori GC uniformi"
 
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Segment"
+msgstr "Segmento"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Bubble"
+msgstr "Bolla"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "ID:"
+msgstr "ID:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Coordinates:"
+msgstr "Coordinate:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Length:"
+msgstr "Lunghezza:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "GC Content:"
+msgstr "Contenuto GC:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "N Count:"
+msgstr "Conteggio N:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Sequence:"
+msgstr "Sequenza:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Subtype:"
+msgstr "Sottotipo:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Inside segments:"
+msgstr "Segmenti interni:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Chain:"
+msgstr "Catena:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Parent:"
+msgstr "Genitore:"
+
+#: pangyplot/templates/tabs/graph-info.html
+msgid "Siblings:"
+msgstr "Vicini:"
+

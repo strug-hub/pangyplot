@@ -4,7 +4,6 @@ import { createLinkElements } from "./deserializer/deserializer-element.js";
 export const nodeRecordLookup = new Map();
 export const linkRecordLookup = new Map();
 export const nodeAdjacencyLookup = new Map();
-const danglingLinks = new Map();
 
 export const geneRecordLookup = new Map();
 
@@ -12,7 +11,6 @@ export function clearRecordsManager() {
   nodeRecordLookup.clear();
   linkRecordLookup.clear();
   nodeAdjacencyLookup.clear();
-  danglingLinks.clear();
 }
 
 export function getNodeRecord(id) {
@@ -44,25 +42,9 @@ export function getConnectingLinkRecords(nodeId) {
   return out;
 }
 
-function checkForDanglingLink(nodeRecord) {
-  if (danglingLinks.has(nodeRecord.id)) {
-    const links = danglingLinks.get(nodeRecord.id);
-    for (const linkRecord of links) {
-      if (linkRecord.sourceId === nodeRecord.id) {
-        linkRecord.sourceRecord = nodeRecord;
-      }
-      if (linkRecord.targetId === nodeRecord.id) {
-        linkRecord.targetRecord = nodeRecord;
-      }
-    }
-    danglingLinks.delete(nodeRecord.id);
-  }
-}
-
 export function updateExistingNodeRecords(nodeRecords, parentId = null) {
   const records = nodeRecords.map(r => getNodeRecord(r.id) || r);
   records.forEach(r => nodeRecordLookup.set(r.id, r));
-  records.forEach(r => checkForDanglingLink(r));
 
   if (parentId !== null && nodeRecordLookup.has(parentId)) {
     const parentRecord = getNodeRecord(parentId);
@@ -82,31 +64,10 @@ function ensureNodeAdjacency(linkRecord) {
   nodeAdjacencyLookup.get(linkRecord.targetId).add(linkRecord.id);
 }
 
-function addDanglingLink(nodeId, linkRecord) {
-  if (!danglingLinks.has(nodeId)) danglingLinks.set(nodeId, new Set());
-  danglingLinks.get(nodeId).add(linkRecord);
-}
-
-function tryToCompleteLinkRecord(linkRecord) {
-  if (linkRecord.sourceRecord === null) {
-    const src = getNodeRecord(linkRecord.sourceId);
-    if (src !== null) linkRecord.sourceRecord = src;
-    else addDanglingLink(linkRecord.sourceId, linkRecord);
-  }
-  if (linkRecord.targetRecord === null) {
-    const tgt = getNodeRecord(linkRecord.targetId);
-    if (tgt !== null) linkRecord.targetRecord = tgt;
-    else addDanglingLink(linkRecord.targetId, linkRecord);
-  }
-}
-
 export function updateExistingLinkRecords(linkRecords) {
   const records = linkRecords.map(r => getLinkRecord(r.id, true) || r);
   records.forEach(r => linkRecordLookup.set(r.id, r));
   records.forEach(r => ensureNodeAdjacency(r));
-
-  records.forEach(r => { tryToCompleteLinkRecord(r); });
-
   return records;
 }
 
@@ -130,8 +91,6 @@ export function getChildSubgraph(nodeId) {
 
 const inspector = installRecordsInspector({
   onHighlightNode: (id) => {
-    // optional: hook into your force graph selection/highlight
-    // e.g., select node, pan to it, etc.
     console.log('Highlight node', id);
   }
 });

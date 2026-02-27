@@ -221,33 +221,28 @@ class BubbleIndex:
     
     def get_popped_subgraph(self, bubble_id, stepidx):
         bubble = self[bubble_id]
-        all_nodes, all_links = [], []
-
         if bubble is None:
-            return {"nodes": all_nodes, "links": all_links} 
+            return {"source_segs": [], "sink_segs": [], "child_bubbles": [], "child_bubble_objects": [], "nodes": [], "links": []}
 
-        # get externals
-        junctions = bubble.emit_junctions(self.gfaidx)
-        for junction in junctions:
-            # when the last bubble in the chain is popped,
-            # we also want to pop the chain end
-            if junction.is_chain_end:
-                all_links.extend(junction.get_self_destruct_link())
-            else:
-                all_nodes.append(junction)
+        child_bubble_objects = [self[cid] for cid in bubble.children]
 
-            all_links.extend(junction.get_popped_links())
+        # Include child boundary segments so cross-chain links between
+        # children are found (they were removed from inside by _clean_inside)
+        all_segs = set(bubble.source_segments + bubble.sink_segments) | bubble.inside
+        for child in child_bubble_objects:
+            all_segs.update(child.source_segments + child.sink_segments)
 
-        # get internals
-        inside_segments, inside_links = self.gfaidx.get_subgraph(bubble.inside, stepidx)
-        all_nodes.extend(inside_segments)
-        all_links.extend(inside_links)
+        segments, links = self.gfaidx.get_subgraph(all_segs, stepidx)
+        child_bubbles = [
+            {"id": cb.id, "source_segs": cb.source_segments, "sink_segs": cb.sink_segments, "inside_segs": sorted(cb.inside)}
+            for cb in child_bubble_objects
+        ]
 
-        inside_bubbles = [self[bid] for bid in bubble.children]
-        chains = self.create_chains(inside_bubbles, parent_bubble=bubble)
-        for chain in chains:
-            bubbles, links = chain.decompose()
-            all_nodes.extend(bubbles)
-            all_links.extend(links)
-
-        return {"nodes": all_nodes, "links": all_links} 
+        return {
+            "source_segs": bubble.source_segments,
+            "sink_segs": bubble.sink_segments,
+            "child_bubbles": child_bubbles,
+            "child_bubble_objects": child_bubble_objects,
+            "nodes": segments,
+            "links": links,
+        }

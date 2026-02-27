@@ -38,6 +38,6 @@ export default function setUpUndoPopEngine(forceGraph) {
     });
 
     forceGraph.element.addEventListener('keydown', (event) => {
-        //checkUndo(event, forceGraph);
+        checkUndo(event, forceGraph);
     });
 }
