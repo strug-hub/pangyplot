@@ -1,6 +1,6 @@
 #no-annotations-text {
     font-style: italic;
-    color: #888;
+    color: var(--unselected-text);
 }
 
 /* Add spacing between rows */

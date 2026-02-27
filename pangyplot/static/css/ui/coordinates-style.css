@@ -18,3 +18,8 @@
 .editable-textbox {
     width: 80%;
 }
+
+#go-genome,
+#go-genome-separator {
+    align-content: center;
+}

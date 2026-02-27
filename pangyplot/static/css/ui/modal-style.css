@@ -11,23 +11,23 @@
 }
 
 .modal-content {
-    background-color: #fefefe;
-    margin: 5% auto; 
+    background-color: var(--site-background);
+    margin: 5% auto;
     padding: 20px;
-    border: 1px solid #888;
+    border: 1px solid var(--dark-green);
     width: 45%;
 }
 
 .modal-close {
-    color: #aaa;
+    color: var(--unselected-green);
     float: right;
-    font-size: 28px;
+    font-size: xx-large;
     font-weight: bold;
 }
 
 .modal-close:hover,
 .modal-close:focus {
-    color: black;
+    color: var(--darker-green);
     text-decoration: none;
     cursor: pointer;
 }
@@ -35,9 +35,24 @@
     font-weight: bold;
 }
 
+.modal-info-row {
+    display: flex;
+    align-items: center;
+    column-gap: 1em;
+}
+
+.modal-info-icon {
+    font-size: x-large;
+    color: var(--unselected-text);
+}
+
+.modal-reference-logo {
+    width: 90px;
+}
+
 .modal-citation{
-    font-family: monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     padding: 1em;
-    background: beige;
+    background: var(--lighter-green);
     width: 100%;
 }

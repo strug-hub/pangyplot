@@ -21,11 +21,11 @@
     left: 50%;
     bottom: 120%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: #fff;
+    background: var(--darker-green);
+    color: var(--lighter-green);
     padding: 5px 10px;
     border-radius: 5px;
-    font-size: 12px;
+    font-size: x-small;
     line-height: 1.4;
     white-space: pre; /* Enables multiline tooltip */
     display: none;

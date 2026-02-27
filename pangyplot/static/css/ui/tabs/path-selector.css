@@ -1,7 +1,7 @@
 .path-selector-dropdown {
     border-radius: 3px;
     padding: 10px 20px;  
-    background-color: #ffffff;
+    background-color: var(--site-background);
     width: 95%;
     color: var(--text-color);  
 }
@@ -17,7 +17,6 @@
   margin: 5px auto;
 }
 
-#path-selectable-table-header{
-  font-size: small !important;
-
+#path-table-container #path-selectable-table-header{
+  font-size: small;
 }

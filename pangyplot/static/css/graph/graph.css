@@ -70,11 +70,11 @@
     position: absolute;
     top: 10px;
     left: 10px;
-    background: rgba(255, 255, 255, 0.4);
-    border: 1px solid #ccc;
+    background: var(--tab-box);
+    border: 1px solid var(--dark-green);
     padding: 10px;
-    font-size: 14px;
-    border-radius: 4px;
+    font-size: small;
+    border-radius: 5px;
     z-index: 10;
   }
   

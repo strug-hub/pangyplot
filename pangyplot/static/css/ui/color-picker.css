@@ -31,10 +31,10 @@ input[type="color"] {
     border-width: 0px;
 }
 
-#color-preset-container{
-    column-gap: 4px !important;
-    row-gap: 4px !important;
-    flex-wrap: wrap !important;
+#color-preset-container.flex-row{
+    column-gap: 4px;
+    row-gap: 4px;
+    flex-wrap: wrap;
 } .color-preset-option {
     display: flex;
     align-items: center;

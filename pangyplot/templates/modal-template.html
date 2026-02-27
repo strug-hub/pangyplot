@@ -9,7 +9,7 @@
     <div class="modal-description">{{ description }}</div>
     <div class="flex-row-left">
         <div class="flex-col">
-            <img alt="{{ title }} logo" style="width:90px" src="{{ url_for('static', filename=image_src) }}">
+            <img alt="{{ title }} logo" class="modal-reference-logo" src="{{ url_for('static', filename=image_src) }}">
         </div>
         <div class="modal-citation">
             {{ paper_author }}. <b>{{ paper_title }}</b>. <i>{{ journal }}</i>. {{ journal_info }}.
@@ -104,29 +104,29 @@
         <span id="info-modal-close-button" class="modal-close">&times;</span>
         <h2>{{ _('Welcome to PangyPlot') }}</h2>
 
-        <div style="display: flex; align-items: center; column-gap: 1em;">
-            <i class="fa-solid fa-dna" style="font-size: 2em; color: #868686;"></i>
+        <div class="modal-info-row">
+            <i class="fa-solid fa-dna modal-info-icon"></i>
             <p>PangyPlot is a tool designed for visualizing graph-based pangenome data. Currently, PangyPlot is set to
                 visualize data from the <a href="https://github.com/human-pangenomics/hpp_pangenome_resources"
                     target="_blank">HPRC pangenome graph.</a> [Minigraph-Cactus, GRCh38 Graph, clip] with GENCODE annotations.</p>
         </div>
-        
-        <div style="display: flex; align-items: center; column-gap: 1em;">
-            <i class="fa-solid fa-bolt" style="font-size: 2em; color: #868686;"></i>
+
+        <div class="modal-info-row">
+            <i class="fa-solid fa-bolt modal-info-icon"></i>
             <p>To quickly run, select an "Example" button at the top of the page. Or input your region of interest then
                 click "Go".</p>
         </div>
 
-        <div style="display: flex; align-items: center; column-gap: 1em;">
-            <i class="fa-solid fa-hammer" style="font-size: 2em; color: #868686;"></i>
-            <p>As PangyPlot is still undergoing development, please treat this instance as a public beta. 
-               Bug fixes and feature additions are ongoing. 
+        <div class="modal-info-row">
+            <i class="fa-solid fa-hammer modal-info-icon"></i>
+            <p>As PangyPlot is still undergoing development, please treat this instance as a public beta.
+               Bug fixes and feature additions are ongoing.
                If you have a particular region of interest and need help, with visualization, please reach out to scott.mastromatteo@sickkids.ca.
                You can also report issues on our <a href="https://github.com/ScottMastro/pangyplot/issues" target="_blank">GitHub Issues</a> page.</p>
         </div>
 
-        <div style="display: flex; align-items: center; column-gap: 1em;">
-            <i class="fa-solid fa-book" style="font-size: 2em; color: #868686;"></i>
+        <div class="modal-info-row">
+            <i class="fa-solid fa-book modal-info-icon"></i>
             <p>For documentation, please visit our <a href="https://pangyplot.readthedocs.io/en/latest/" target="_blank">Docs</a> page.</p>
         </div>
 

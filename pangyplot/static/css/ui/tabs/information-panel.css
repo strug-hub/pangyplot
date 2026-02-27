@@ -1,7 +1,7 @@
 #info-debug-container {
     padding-left: 1em;
-    background-color: lightcoral;
-    font-family: monospace;
+    background-color: var(--debug-bg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 #info-selected-container {
