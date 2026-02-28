@@ -40,6 +40,34 @@
             font-size: 12px;
         }
 
+        .lod-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: #ccc;
+            width: 26px;
+            height: 26px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .lod-btn:hover { background: #333; border-color: #666; }
+        .lod-btn:active { background: #444; }
+
+        #lod-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #lod-offset {
+            color: #0ff;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: center;
+        }
+
         #canvas-container {
             flex: 1;
             position: relative;
@@ -69,7 +97,11 @@
         <span><span id="polyline-count" class="val">--</span> lines</span>
         <span><span id="visible-count" class="val">--</span> visible</span>
         <span><span id="reduction" class="val">--</span> reduction</span>
-        <span id="detail-badge" style="display:none; color:#0ff; font-weight:600;">DETAIL VIEW</span>
+        <div id="lod-controls">
+            <button class="lod-btn" id="lod-finer" title="Finer (more detail)">&#9664;</button>
+            <span id="lod-offset">AUTO</span>
+            <button class="lod-btn" id="lod-coarser" title="Coarser (less detail)">&#9654;</button>
+        </div>
         <span id="stats"></span>
     </div>
     <div id="canvas-container">
@@ -87,16 +119,13 @@
         const reductionEl = document.getElementById('reduction');
         const statsEl = document.getElementById('stats');
         const loadingEl = document.getElementById('loading');
-        const detailBadge = document.getElementById('detail-badge');
+        const lodOffsetEl = document.getElementById('lod-offset');
 
         let data = null;
         let currentLevel = -1;
 
-        // Detail view threshold: viewport width in ODGI units below which
-        // the standard bubble/segment view should take over.
-        // chrY ≈ 57Mb over ~40M ODGI units → 2Mb ≈ 1.4M ODGI units.
-        // We compute this as totalDataWidth / 30 (roughly 2Mb equivalent).
-        let detailThreshold = 0;
+        // Manual level offset: 0 = auto, negative = finer, positive = coarser
+        let levelOffset = 0;
 
         // Transform state
         let panX = 0, panY = 0, zoom = 1;
@@ -186,7 +215,9 @@
                     break;
                 }
             }
-            return best;
+            // Apply manual offset, clamped to valid range
+            const final = Math.max(0, Math.min(data.levels.length - 1, best + levelOffset));
+            return final;
         }
 
         // ---------------------------------------------------------------
@@ -225,7 +256,7 @@
 
             const vp = getViewport();
             // Margin in data units so lines at the edge aren't clipped
-            const margin = level.cellSize * 2;
+            const margin = (level.cellSize || 50) * 2;
             const vpMinX = vp.minX - margin;
             const vpMinY = vp.minY - margin;
             const vpMaxX = vp.maxX + margin;
@@ -276,46 +307,6 @@
             ctx.fill();
 
             ctx.restore();
-
-            // --- Detail view threshold indicator ---
-            const viewportWidth = cw / zoom;
-            const inDetailZone = viewportWidth <= detailThreshold;
-
-            // Draw threshold bracket centered in viewport
-            if (detailThreshold > 0) {
-                const bracketW = detailThreshold * zoom;
-                const bracketH = Math.min(ch * 0.6, 80);
-                const bx = (cw - bracketW) / 2;
-                const by = ch - bracketH - 12;
-
-                if (bracketW < cw * 0.95) {
-                    // Draw bracket
-                    ctx.strokeStyle = inDetailZone ? 'rgba(0, 255, 255, 0.6)' : 'rgba(0, 255, 255, 0.2)';
-                    ctx.lineWidth = inDetailZone ? 2 : 1;
-                    ctx.setLineDash(inDetailZone ? [] : [6, 4]);
-                    ctx.beginPath();
-                    // Left bracket arm
-                    ctx.moveTo(bx + 8, by);
-                    ctx.lineTo(bx, by);
-                    ctx.lineTo(bx, by + bracketH);
-                    ctx.lineTo(bx + 8, by + bracketH);
-                    // Right bracket arm
-                    ctx.moveTo(bx + bracketW - 8, by);
-                    ctx.lineTo(bx + bracketW, by);
-                    ctx.lineTo(bx + bracketW, by + bracketH);
-                    ctx.lineTo(bx + bracketW - 8, by + bracketH);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-
-                    // Label
-                    ctx.fillStyle = inDetailZone ? 'rgba(0, 255, 255, 0.8)' : 'rgba(0, 255, 255, 0.3)';
-                    ctx.font = '11px -apple-system, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('~2 Mb detail view', bx + bracketW / 2, by - 4);
-                }
-            }
-
-            detailBadge.style.display = inDetailZone ? '' : 'none';
 
             // --- Update info ---
             if (levelChanged) {
@@ -381,6 +372,35 @@
             scheduleFrame();
         });
 
+        // --- LOD override buttons ---
+        document.getElementById('lod-finer').addEventListener('click', () => {
+            levelOffset--;
+            updateLodDisplay();
+            scheduleFrame();
+        });
+        document.getElementById('lod-coarser').addEventListener('click', () => {
+            levelOffset++;
+            updateLodDisplay();
+            scheduleFrame();
+        });
+        // Double-click offset label to reset to auto
+        lodOffsetEl.addEventListener('dblclick', () => {
+            levelOffset = 0;
+            updateLodDisplay();
+            scheduleFrame();
+        });
+
+        function updateLodDisplay() {
+            if (levelOffset === 0) {
+                lodOffsetEl.textContent = 'AUTO';
+                lodOffsetEl.style.color = '#0ff';
+            } else {
+                const sign = levelOffset > 0 ? '+' : '';
+                lodOffsetEl.textContent = `${sign}${levelOffset}`;
+                lodOffsetEl.style.color = '#ff0';
+            }
+        }
+
         // --- Load data ---
         async function init() {
             try {
@@ -401,8 +421,6 @@
 
             precomputeBboxes();
             computeBounds();
-            // Detail threshold: ~1/30 of total data width (≈ 2Mb for chrY)
-            detailThreshold = (dataBounds.maxX - dataBounds.minX) / 30;
             resizeCanvas();
             fitToScreen();
             scheduleFrame();
