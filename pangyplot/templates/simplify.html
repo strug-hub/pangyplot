@@ -282,6 +282,56 @@
             return bp.toLocaleString();
         }
 
+        function bpToX(bp) {
+            if (!spineBp || spineBp.length === 0) return null;
+            if (bp <= spineBp[0]) return spineX[0];
+            if (bp >= spineBp[spineBp.length - 1]) return spineX[spineX.length - 1];
+            let lo = 0, hi = spineBp.length - 1;
+            while (lo < hi - 1) {
+                const mid = (lo + hi) >> 1;
+                if (spineBp[mid] <= bp) lo = mid;
+                else hi = mid;
+            }
+            const t = (bp - spineBp[lo]) / (spineBp[hi] - spineBp[lo]);
+            return spineX[lo] + t * (spineX[hi] - spineX[lo]);
+        }
+
+        // ---------------------------------------------------------------
+        // Gene landmarks (dummy data — real genes on chrY)
+        // ---------------------------------------------------------------
+        const GENES = [
+            { name: 'SRY',   bp: 2786855 },
+            { name: 'AMELY', bp: 6869000 },
+            { name: 'TSPY2', bp: 9467000 },
+            { name: 'USP9Y', bp: 12830000 },
+            { name: 'KDM5D', bp: 19703000 },
+            { name: 'RBMY1', bp: 21567000 },
+            { name: 'DAZ1',  bp: 23129000 },
+            { name: 'BPY2',  bp: 25100000 },
+        ];
+        let genePins = [];
+
+        function placeGenes() {
+            if (!spineX || !data) return;
+            const junctions = data.levels[0].junctions;
+            genePins = [];
+            for (const gene of GENES) {
+                const x = bpToX(gene.bp);
+                if (x === null) continue;
+                // Find nearest junction y for accurate graph placement
+                let bestDist = Infinity;
+                let bestY = (dataBounds.minY + dataBounds.maxY) / 2;
+                for (const [jx, jy] of junctions) {
+                    const d = Math.abs(jx - x);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestY = jy;
+                    }
+                }
+                genePins.push({ name: gene.name, x, y: bestY });
+            }
+        }
+
         // ---------------------------------------------------------------
         // Render: only visible polylines & junctions
         // ---------------------------------------------------------------
@@ -354,6 +404,61 @@
             ctx.fill();
 
             ctx.restore();
+
+            // --- Gene landmarks (screen coords) ---
+            if (genePins.length > 0) {
+                const pinH = 22;
+                const pinW = 12;
+                const fontSize = 11;
+                const labelGap = 4;
+
+                ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+
+                for (const gene of genePins) {
+                    const sx = gene.x * zoom + panX;
+                    const sy = gene.y * zoom + panY;
+                    if (sx < -60 || sx > cw + 60 || sy < -60 || sy > ch + 60) continue;
+
+                    // Pin triangle (tip at graph, body extends upward)
+                    ctx.fillStyle = '#e8a735';
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx - pinW / 2, sy - pinH);
+                    ctx.lineTo(sx + pinW / 2, sy - pinH);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Stem line from pin top
+                    ctx.strokeStyle = '#e8a735';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy - pinH);
+                    ctx.lineTo(sx, sy - pinH - 6);
+                    ctx.stroke();
+
+                    // Label with dark background pill
+                    const label = gene.name;
+                    const tw = ctx.measureText(label).width;
+                    const px = 5, py = 2;
+                    const lx = sx;
+                    const ly = sy - pinH - 6 - labelGap;
+
+                    ctx.fillStyle = 'rgba(40, 32, 10, 0.85)';
+                    const rr = 3;
+                    const rx = lx - tw / 2 - px;
+                    const ry = ly - fontSize - py;
+                    const rw = tw + px * 2;
+                    const rh = fontSize + py * 2;
+                    ctx.beginPath();
+                    ctx.roundRect(rx, ry, rw, rh, rr);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#e8a735';
+                    ctx.fillText(label, lx, ly);
+                }
+            }
 
             // --- Update info ---
             if (levelChanged) {
@@ -498,6 +603,7 @@
             if (data.refSpine) {
                 initSpine(data.refSpine);
                 chromosome = data.chromosome || '';
+                placeGenes();
             }
             resizeCanvas();
             fitToScreen();
