@@ -253,20 +253,6 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
     total_segments = len(segment_index)
     levels = []
 
-    # Level 0: full-resolution (unsimplified) polylines
-    full_lines = [[[round(p[0], 1), round(p[1], 1)] for p in pl]
-                  for pl in polylines if len(pl) >= 2]
-    full_juncs = [[round(j[0], 1), round(j[1], 1)] for j in junc_coords]
-    full_nodes = len(full_juncs) + sum(max(0, len(pl) - 2) for pl in polylines)
-    levels.append({
-        "cellSize": 0,
-        "label": "Full",
-        "polylines": full_lines,
-        "junctions": full_juncs,
-        "nodeCount": full_nodes,
-        "polylineCount": len(full_lines),
-    })
-
     for cell in sorted(grid_cell_sizes):
         grid_pls, grid_juncs = grid_simplify(polylines, junc_coords, cell)
         lines = [[[round(p[0], 1), round(p[1], 1)] for p in pl]
