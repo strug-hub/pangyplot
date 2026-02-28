@@ -297,17 +297,17 @@
         }
 
         // ---------------------------------------------------------------
-        // Gene landmarks (dummy data — real genes on chrY)
+        // Gene landmarks (dummy data — real genes on chrY, GRCh38)
         // ---------------------------------------------------------------
         const GENES = [
-            { name: 'SRY',   bp: 2786855 },
-            { name: 'AMELY', bp: 6869000 },
-            { name: 'TSPY2', bp: 9467000 },
-            { name: 'USP9Y', bp: 12830000 },
-            { name: 'KDM5D', bp: 19703000 },
-            { name: 'RBMY1', bp: 21567000 },
-            { name: 'DAZ1',  bp: 23129000 },
-            { name: 'BPY2',  bp: 25100000 },
+            { name: 'SRY',   startBp: 2786855,  endBp: 2787699 },
+            { name: 'AMELY', startBp: 6865918,  endBp: 6873094 },
+            { name: 'TSPY2', startBp: 9462854,  endBp: 9471218 },
+            { name: 'USP9Y', startBp: 12663994, endBp: 12831751 },
+            { name: 'KDM5D', startBp: 19703867, endBp: 19744939 },
+            { name: 'RBMY1', startBp: 21520504, endBp: 21567290 },
+            { name: 'DAZ1',  startBp: 23067742, endBp: 23134530 },
+            { name: 'BPY2',  startBp: 25062059, endBp: 25104498 },
         ];
         let genePins = [];
 
@@ -316,19 +316,21 @@
             const junctions = data.levels[0].junctions;
             genePins = [];
             for (const gene of GENES) {
-                const x = bpToX(gene.bp);
-                if (x === null) continue;
-                // Find nearest junction y for accurate graph placement
+                const startX = bpToX(gene.startBp);
+                const endX = bpToX(gene.endBp);
+                if (startX === null || endX === null) continue;
+                const midX = (startX + endX) / 2;
+                // Find nearest junction y at gene midpoint
                 let bestDist = Infinity;
                 let bestY = (dataBounds.minY + dataBounds.maxY) / 2;
                 for (const [jx, jy] of junctions) {
-                    const d = Math.abs(jx - x);
+                    const d = Math.abs(jx - midX);
                     if (d < bestDist) {
                         bestDist = d;
                         bestY = jy;
                     }
                 }
-                genePins.push({ name: gene.name, x, y: bestY });
+                genePins.push({ name: gene.name, startX, endX, midX, y: bestY });
             }
         }
 
@@ -376,7 +378,6 @@
             ctx.beginPath();
             for (let i = 0; i < level.polylines.length; i++) {
                 const o = i * 4;
-                // Bbox check
                 if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
                     bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
 
@@ -388,6 +389,38 @@
                 }
             }
             ctx.stroke();
+
+            // --- Gene-colored polylines (overdraw) ---
+            if (genePins.length > 0) {
+                ctx.strokeStyle = '#e8a735';
+                ctx.lineWidth = lineWidth * 2;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                for (let i = 0; i < level.polylines.length; i++) {
+                    const o = i * 4;
+                    if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
+                        bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
+
+                    // Check if polyline overlaps any gene region
+                    let inGene = false;
+                    for (const gene of genePins) {
+                        if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX) {
+                            inGene = true;
+                            break;
+                        }
+                    }
+                    if (!inGene) continue;
+
+                    const pl = level.polylines[i];
+                    ctx.moveTo(pl[0][0], pl[0][1]);
+                    for (let j = 1; j < pl.length; j++) {
+                        ctx.lineTo(pl[j][0], pl[j][1]);
+                    }
+                }
+                ctx.stroke();
+            }
 
             // --- Junctions (culled) ---
             const r = Math.max(1.5, 3.0 / zoom);
@@ -403,51 +436,73 @@
             }
             ctx.fill();
 
+            // --- Gene-colored junctions (overdraw) ---
+            if (genePins.length > 0) {
+                const gr = Math.max(2, 4.0 / zoom);
+                ctx.fillStyle = '#e8a735';
+                ctx.beginPath();
+                for (const [x, y] of level.junctions) {
+                    if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
+                    let inGene = false;
+                    for (const gene of genePins) {
+                        if (x >= gene.startX && x <= gene.endX) {
+                            inGene = true;
+                            break;
+                        }
+                    }
+                    if (!inGene) continue;
+                    ctx.moveTo(x + gr, y);
+                    ctx.arc(x, y, gr, 0, Math.PI * 2);
+                }
+                ctx.fill();
+            }
+
             ctx.restore();
 
-            // --- Gene landmarks (screen coords) ---
+            // --- Gene labels (screen coords) ---
             if (genePins.length > 0) {
-                const pinH = 22;
-                const pinW = 12;
                 const fontSize = 11;
-                const labelGap = 4;
-
                 ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
 
                 for (const gene of genePins) {
-                    const sx = gene.x * zoom + panX;
+                    const sxStart = gene.startX * zoom + panX;
+                    const sxEnd = gene.endX * zoom + panX;
+                    const sxMid = (sxStart + sxEnd) / 2;
                     const sy = gene.y * zoom + panY;
-                    if (sx < -60 || sx > cw + 60 || sy < -60 || sy > ch + 60) continue;
+                    if (sxEnd < -60 || sxStart > cw + 60) continue;
 
-                    // Pin triangle (tip at graph, body extends upward)
-                    ctx.fillStyle = '#e8a735';
-                    ctx.beginPath();
-                    ctx.moveTo(sx, sy);
-                    ctx.lineTo(sx - pinW / 2, sy - pinH);
-                    ctx.lineTo(sx + pinW / 2, sy - pinH);
-                    ctx.closePath();
-                    ctx.fill();
+                    const geneW = sxEnd - sxStart;
+                    const bracketY = sy - 16;
 
-                    // Stem line from pin top
+                    // Extent bracket (when gene spans enough pixels)
                     ctx.strokeStyle = '#e8a735';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(sx, sy - pinH);
-                    ctx.lineTo(sx, sy - pinH - 6);
-                    ctx.stroke();
+                    ctx.lineWidth = 1.5;
+                    if (geneW > 6) {
+                        ctx.beginPath();
+                        ctx.moveTo(sxStart, sy - 4);
+                        ctx.lineTo(sxStart, bracketY);
+                        ctx.lineTo(sxEnd, bracketY);
+                        ctx.lineTo(sxEnd, sy - 4);
+                        ctx.stroke();
+                    } else {
+                        // Gene too small on screen — single stem
+                        ctx.beginPath();
+                        ctx.moveTo(sxMid, sy - 4);
+                        ctx.lineTo(sxMid, bracketY);
+                        ctx.stroke();
+                    }
 
-                    // Label with dark background pill
+                    // Label pill
                     const label = gene.name;
                     const tw = ctx.measureText(label).width;
                     const px = 5, py = 2;
-                    const lx = sx;
-                    const ly = sy - pinH - 6 - labelGap;
+                    const ly = bracketY - 4;
 
                     ctx.fillStyle = 'rgba(40, 32, 10, 0.85)';
                     const rr = 3;
-                    const rx = lx - tw / 2 - px;
+                    const rx = sxMid - tw / 2 - px;
                     const ry = ly - fontSize - py;
                     const rw = tw + px * 2;
                     const rh = fontSize + py * 2;
@@ -456,7 +511,7 @@
                     ctx.fill();
 
                     ctx.fillStyle = '#e8a735';
-                    ctx.fillText(label, lx, ly);
+                    ctx.fillText(label, sxMid, ly);
                 }
             }
 
