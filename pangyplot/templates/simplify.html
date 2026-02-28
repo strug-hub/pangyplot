@@ -69,6 +69,7 @@
         <span><span id="polyline-count" class="val">--</span> lines</span>
         <span><span id="visible-count" class="val">--</span> visible</span>
         <span><span id="reduction" class="val">--</span> reduction</span>
+        <span id="detail-badge" style="display:none; color:#0ff; font-weight:600;">DETAIL VIEW</span>
         <span id="stats"></span>
     </div>
     <div id="canvas-container">
@@ -86,9 +87,16 @@
         const reductionEl = document.getElementById('reduction');
         const statsEl = document.getElementById('stats');
         const loadingEl = document.getElementById('loading');
+        const detailBadge = document.getElementById('detail-badge');
 
         let data = null;
         let currentLevel = -1;
+
+        // Detail view threshold: viewport width in ODGI units below which
+        // the standard bubble/segment view should take over.
+        // chrY ≈ 57Mb over ~40M ODGI units → 2Mb ≈ 1.4M ODGI units.
+        // We compute this as totalDataWidth / 30 (roughly 2Mb equivalent).
+        let detailThreshold = 0;
 
         // Transform state
         let panX = 0, panY = 0, zoom = 1;
@@ -167,11 +175,10 @@
             const dpr = window.devicePixelRatio || 1;
             const cw = canvas.width / dpr;
             const viewportWidth = cw / zoom;
-            // Target ~300 grid cells across viewport
-            const targetCell = viewportWidth / 300;
+            // Target ~2000 grid cells across viewport — keeps resolution high
+            const targetCell = viewportWidth / 2000;
 
             // Levels sorted finest → coarsest. Pick finest whose cellSize <= target.
-            // If zoomed in beyond finest, use finest. If zoomed out beyond coarsest, use coarsest.
             let best = 0;
             for (let i = data.levels.length - 1; i >= 0; i--) {
                 if (data.levels[i].cellSize <= targetCell) {
@@ -270,6 +277,46 @@
 
             ctx.restore();
 
+            // --- Detail view threshold indicator ---
+            const viewportWidth = cw / zoom;
+            const inDetailZone = viewportWidth <= detailThreshold;
+
+            // Draw threshold bracket centered in viewport
+            if (detailThreshold > 0) {
+                const bracketW = detailThreshold * zoom;
+                const bracketH = Math.min(ch * 0.6, 80);
+                const bx = (cw - bracketW) / 2;
+                const by = ch - bracketH - 12;
+
+                if (bracketW < cw * 0.95) {
+                    // Draw bracket
+                    ctx.strokeStyle = inDetailZone ? 'rgba(0, 255, 255, 0.6)' : 'rgba(0, 255, 255, 0.2)';
+                    ctx.lineWidth = inDetailZone ? 2 : 1;
+                    ctx.setLineDash(inDetailZone ? [] : [6, 4]);
+                    ctx.beginPath();
+                    // Left bracket arm
+                    ctx.moveTo(bx + 8, by);
+                    ctx.lineTo(bx, by);
+                    ctx.lineTo(bx, by + bracketH);
+                    ctx.lineTo(bx + 8, by + bracketH);
+                    // Right bracket arm
+                    ctx.moveTo(bx + bracketW - 8, by);
+                    ctx.lineTo(bx + bracketW, by);
+                    ctx.lineTo(bx + bracketW, by + bracketH);
+                    ctx.lineTo(bx + bracketW - 8, by + bracketH);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Label
+                    ctx.fillStyle = inDetailZone ? 'rgba(0, 255, 255, 0.8)' : 'rgba(0, 255, 255, 0.3)';
+                    ctx.font = '11px -apple-system, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('~2 Mb detail view', bx + bracketW / 2, by - 4);
+                }
+            }
+
+            detailBadge.style.display = inDetailZone ? '' : 'none';
+
             // --- Update info ---
             if (levelChanged) {
                 levelLabel.textContent = level.label;
@@ -354,6 +401,8 @@
 
             precomputeBboxes();
             computeBounds();
+            // Detail threshold: ~1/30 of total data width (≈ 2Mb for chrY)
+            detailThreshold = (dataBounds.maxX - dataBounds.minX) / 30;
             resizeCanvas();
             fitToScreen();
             scheduleFrame();
