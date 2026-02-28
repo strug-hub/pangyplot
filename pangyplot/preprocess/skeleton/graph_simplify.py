@@ -28,7 +28,8 @@ from pangyplot.db.indexes.StepIndex import StepIndex
 
 
 DEFAULT_EPSILONS = [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-VIEWER_EPSILONS = [1.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0]
+VIEWER_EPSILONS = [1.0, 5.0, 10.0, 50.0, 100.0]
+GRID_CELL_SIZES = [500, 1000, 5000, 10000, 50000, 100000]
 
 
 # ---------------------------------------------------------------------------
@@ -201,41 +202,98 @@ def compute_mipmaps(runs, segment_index, epsilon_levels):
 
 
 # ---------------------------------------------------------------------------
+# Grid-based spatial simplification
+# ---------------------------------------------------------------------------
+
+def grid_simplify(polylines, junction_coords, cell_size):
+    """Snap all coordinates to a spatial grid and deduplicate.
+
+    This merges nearby junctions (which RDP cannot do), enabling much
+    coarser simplification levels. A polyline whose endpoints snap to the
+    same grid cell collapses and is removed.
+    """
+    def snap(x, y):
+        return (round(x / cell_size) * cell_size,
+                round(y / cell_size) * cell_size)
+
+    new_polylines = []
+    for pl in polylines:
+        snapped = [snap(p[0], p[1]) for p in pl]
+        # Remove consecutive duplicates
+        deduped = [snapped[0]]
+        for p in snapped[1:]:
+            if p != deduped[-1]:
+                deduped.append(p)
+        if len(deduped) >= 2:
+            new_polylines.append(deduped)
+
+    new_junctions = sorted(set(snap(x, y) for x, y in junction_coords))
+    return new_polylines, new_junctions
+
+
+# ---------------------------------------------------------------------------
 # JSON export for D3 viewer
 # ---------------------------------------------------------------------------
 
 def export_json(junctions, runs, segment_index, link_index, polylines,
-                epsilon_levels, output_path):
-    """Export precomputed mipmap data as gzipped JSON for the D3 viewer."""
-    # Junction coordinates
+                epsilon_levels, grid_cell_sizes, output_path):
+    """Export precomputed mipmap data as gzipped JSON for the D3 viewer.
+
+    Produces two types of levels:
+      - RDP levels: geometric simplification within runs (junctions fixed)
+      - Grid levels: spatial binning that merges nearby junctions
+    Each level carries its own junction + polyline set.
+    """
+    # Base junction coordinates
     junc_coords = []
     for sid in sorted(junctions):
         if sid < len(segment_index.valid) and segment_index.valid[sid]:
             cx = (segment_index.x1[sid] + segment_index.x2[sid]) / 2.0
             cy = (segment_index.y1[sid] + segment_index.y2[sid]) / 2.0
-            junc_coords.append([round(cx, 1), round(cy, 1)])
+            junc_coords.append((cx, cy))
 
-    # Build levels
+    def round_coords(coords):
+        return [[round(p[0], 1), round(p[1], 1)] for p in coords]
+
+    # --- RDP levels (junctions unchanged) ---
     levels = []
+    base_junctions_json = round_coords(junc_coords)
+
     for eps in epsilon_levels:
         simplified = [rdp_simplify(pl, eps) for pl in polylines]
-        # Convert to rounded coordinate arrays
-        lines = []
-        for pl in simplified:
-            if len(pl) >= 2:
-                lines.append([[round(p[0], 1), round(p[1], 1)] for p in pl])
-        total_nodes = len(junctions) + sum(max(0, len(pl) - 2) for pl in simplified)
+        lines = [round_coords(pl) for pl in simplified if len(pl) >= 2]
+        total_nodes = len(junc_coords) + sum(max(0, len(pl) - 2) for pl in simplified)
         levels.append({
-            "epsilon": eps,
+            "label": f"RDP ε={eps}",
             "polylines": lines,
+            "junctions": base_junctions_json,
             "nodeCount": total_nodes,
+            "polylineCount": len(lines),
         })
 
+    # --- Grid levels (applied on top of max-RDP polylines) ---
+    # Start from the most-simplified RDP polylines
+    rdp_polylines = [rdp_simplify(pl, epsilon_levels[-1]) for pl in polylines]
+
+    for cell in grid_cell_sizes:
+        grid_pls, grid_juncs = grid_simplify(rdp_polylines, junc_coords, cell)
+        lines = [[[round(p[0], 1), round(p[1], 1)] for p in pl]
+                 for pl in grid_pls if len(pl) >= 2]
+        juncs = [[round(j[0], 1), round(j[1], 1)] for j in grid_juncs]
+        total_nodes = len(juncs) + sum(max(0, len(pl) - 2) for pl in grid_pls)
+        levels.append({
+            "label": f"Grid {cell:,}",
+            "polylines": lines,
+            "junctions": juncs,
+            "nodeCount": total_nodes,
+            "polylineCount": len(lines),
+        })
+
+    total_segments = len(segment_index)
     data = {
-        "junctions": junc_coords,
         "levels": levels,
         "stats": {
-            "totalSegments": len(segment_index),
+            "totalSegments": total_segments,
             "totalLinks": len(link_index),
             "junctionCount": len(junctions),
             "runCount": len(runs),
@@ -246,6 +304,16 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
         json.dump(data, f)
     size_mb = os.path.getsize(output_path) / (1024 * 1024)
     print(f"Exported {output_path} ({size_mb:.1f} MB)")
+
+    # Print grid level stats
+    print(f"\n=== Grid Simplification Levels ===")
+    print(f"{'Cell size':>12}  {'Nodes':>10}  {'Junctions':>10}  {'Polylines':>10}  {'Reduction':>10}")
+    for level in levels:
+        if level["label"].startswith("Grid"):
+            pct = (1 - level["nodeCount"] / total_segments) * 100
+            print(f"{level['label']:>12}  {level['nodeCount']:>10,}  "
+                  f"{len(level['junctions']):>10,}  {level['polylineCount']:>10,}  "
+                  f"{pct:>9.1f}%")
 
 
 # ---------------------------------------------------------------------------
@@ -412,7 +480,7 @@ def main():
     if args.export_json:
         print(f"Exporting JSON for D3 viewer ...")
         export_json(junctions, runs, segment_index, link_index, polylines,
-                    args.epsilons, args.export_json)
+                    args.epsilons, GRID_CELL_SIZES, args.export_json)
 
     if not args.no_plot:
         print("Generating plots ...")

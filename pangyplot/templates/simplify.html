@@ -32,7 +32,7 @@
             white-space: nowrap;
         }
 
-        #epsilon-slider {
+        #detail-slider {
             flex: 1;
             max-width: 500px;
             accent-color: #4a90d9;
@@ -78,11 +78,12 @@
 </head>
 <body>
     <div id="controls">
-        <label for="epsilon-slider">Epsilon:</label>
-        <input type="range" id="epsilon-slider" min="0" max="8" value="4" step="1">
+        <label for="detail-slider">Detail:</label>
+        <input type="range" id="detail-slider" min="0" max="10" value="5" step="1">
         <div id="info">
-            <span id="epsilon-val">--</span> &nbsp;
+            <span id="level-label">--</span> &nbsp;
             <span id="node-count">--</span> nodes &nbsp;
+            <span id="polyline-count">--</span> lines &nbsp;
             <span id="reduction">--</span> reduction
         </div>
         <div id="stats"></div>
@@ -95,9 +96,10 @@
     <script type="module">
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const slider = document.getElementById('epsilon-slider');
-        const epsilonVal = document.getElementById('epsilon-val');
+        const slider = document.getElementById('detail-slider');
+        const levelLabel = document.getElementById('level-label');
         const nodeCountEl = document.getElementById('node-count');
+        const polylineCountEl = document.getElementById('polyline-count');
         const reductionEl = document.getElementById('reduction');
         const statsEl = document.getElementById('stats');
         const loadingEl = document.getElementById('loading');
@@ -110,13 +112,26 @@
         let isDragging = false, dragStartX = 0, dragStartY = 0;
         let dataBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
 
+        // Offscreen rendering
+        let offscreen = null;
+        let offCtx = null;
+        let offPanX = 0, offPanY = 0, offZoom = 1;
+        let offDirty = true;
+        let rafId = null;
+
         function resizeCanvas() {
             const container = document.getElementById('canvas-container');
             const dpr = window.devicePixelRatio || 1;
             canvas.width = container.clientWidth * dpr;
             canvas.height = container.clientHeight * dpr;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            if (data) draw();
+
+            // Resize offscreen to match
+            offscreen = new OffscreenCanvas(canvas.width, canvas.height);
+            offCtx = offscreen.getContext('2d');
+            offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            offDirty = true;
+            if (data) scheduleFrame();
         }
 
         function fitToScreen() {
@@ -130,11 +145,14 @@
             zoom = Math.min((cw - pad * 2) / dw, (ch - pad * 2) / dh);
             panX = (cw / 2) - ((dataBounds.minX + dw / 2) * zoom);
             panY = (ch / 2) - ((dataBounds.minY + dh / 2) * zoom);
+            offDirty = true;
         }
 
         function computeBounds() {
+            // Use the finest level's junctions for global bounds
+            const juncs = data.levels[0].junctions;
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (const [x, y] of data.junctions) {
+            for (const [x, y] of juncs) {
                 if (x < minX) minX = x;
                 if (x > maxX) maxX = x;
                 if (y < minY) minY = y;
@@ -143,53 +161,96 @@
             dataBounds = { minX, maxX, minY, maxY };
         }
 
-        function draw() {
+        // ---------------------------------------------------------------
+        // Offscreen rendering: draw the full graph once per level/zoom
+        // ---------------------------------------------------------------
+        function renderOffscreen() {
             const cw = canvas.width / (window.devicePixelRatio || 1);
             const ch = canvas.height / (window.devicePixelRatio || 1);
-            ctx.clearRect(0, 0, cw, ch);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, cw, ch);
+
+            offCtx.clearRect(0, 0, cw, ch);
+            offCtx.fillStyle = '#000';
+            offCtx.fillRect(0, 0, cw, ch);
 
             const level = data.levels[currentLevel];
             if (!level) return;
 
-            ctx.save();
-            ctx.translate(panX, panY);
-            ctx.scale(zoom, zoom);
+            offCtx.save();
+            offCtx.translate(panX, panY);
+            offCtx.scale(zoom, zoom);
 
-            // Draw polylines
-            const lineWidth = Math.max(0.5, 1.0 / zoom);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.lineWidth = lineWidth;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
+            // Polylines
+            const lineWidth = Math.max(0.5, 1.2 / zoom);
+            offCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+            offCtx.lineWidth = lineWidth;
+            offCtx.lineJoin = 'round';
+            offCtx.lineCap = 'round';
 
-            ctx.beginPath();
+            offCtx.beginPath();
             for (const pl of level.polylines) {
-                ctx.moveTo(pl[0][0], pl[0][1]);
+                offCtx.moveTo(pl[0][0], pl[0][1]);
                 for (let i = 1; i < pl.length; i++) {
-                    ctx.lineTo(pl[i][0], pl[i][1]);
+                    offCtx.lineTo(pl[i][0], pl[i][1]);
                 }
             }
-            ctx.stroke();
+            offCtx.stroke();
 
-            // Draw junction dots
+            // Junction dots
             const r = Math.max(1.5, 3.0 / zoom);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-            ctx.beginPath();
-            for (const [x, y] of data.junctions) {
-                ctx.moveTo(x + r, y);
-                ctx.arc(x, y, r, 0, Math.PI * 2);
+            offCtx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            offCtx.beginPath();
+            for (const [x, y] of level.junctions) {
+                offCtx.moveTo(x + r, y);
+                offCtx.arc(x, y, r, 0, Math.PI * 2);
             }
-            ctx.fill();
+            offCtx.fill();
 
-            ctx.restore();
+            offCtx.restore();
+
+            offPanX = panX;
+            offPanY = panY;
+            offZoom = zoom;
+            offDirty = false;
+        }
+
+        // ---------------------------------------------------------------
+        // Composite: blit offscreen with pan delta, or re-render if needed
+        // ---------------------------------------------------------------
+        function composite() {
+            const cw = canvas.width / (window.devicePixelRatio || 1);
+            const ch = canvas.height / (window.devicePixelRatio || 1);
+
+            // Re-render offscreen if zoom changed or flagged dirty
+            if (offDirty || zoom !== offZoom) {
+                renderOffscreen();
+            }
+
+            ctx.clearRect(0, 0, cw, ch);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, cw, ch);
+
+            // Blit with pan offset delta
+            const dx = panX - offPanX;
+            const dy = panY - offPanY;
+            ctx.drawImage(offscreen, dx, dy);
+        }
+
+        // ---------------------------------------------------------------
+        // RAF-throttled frame scheduling
+        // ---------------------------------------------------------------
+        function scheduleFrame() {
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                composite();
+            });
         }
 
         function updateInfo() {
             const level = data.levels[currentLevel];
-            epsilonVal.textContent = `ε = ${level.epsilon}`;
+            levelLabel.textContent = level.label;
             nodeCountEl.textContent = level.nodeCount.toLocaleString();
+            polylineCountEl.textContent = level.polylineCount.toLocaleString();
             const pct = ((1 - level.nodeCount / data.stats.totalSegments) * 100).toFixed(1);
             reductionEl.textContent = `${pct}%`;
         }
@@ -206,12 +267,16 @@
             if (!isDragging) return;
             panX = e.clientX - dragStartX;
             panY = e.clientY - dragStartY;
-            draw();
+            scheduleFrame();
         });
 
         window.addEventListener('mouseup', () => {
+            if (!isDragging) return;
             isDragging = false;
             canvas.style.cursor = 'grab';
+            // Re-render offscreen at final pan position to fill edges
+            offDirty = true;
+            scheduleFrame();
         });
 
         canvas.addEventListener('wheel', e => {
@@ -226,21 +291,23 @@
             panX = mx - (mx - panX) * (newZoom / zoom);
             panY = my - (my - panY) * (newZoom / zoom);
             zoom = newZoom;
-
-            draw();
+            offDirty = true;
+            scheduleFrame();
         }, { passive: false });
 
-        // --- Slider ---
+        // --- Slider (reversed: left = coarse, right = fine) ---
         slider.addEventListener('input', () => {
-            currentLevel = parseInt(slider.value);
+            const maxIdx = data.levels.length - 1;
+            currentLevel = maxIdx - parseInt(slider.value);
+            offDirty = true;
             updateInfo();
-            draw();
+            scheduleFrame();
         });
 
         // --- Double-click to reset view ---
         canvas.addEventListener('dblclick', () => {
             fitToScreen();
-            draw();
+            scheduleFrame();
         });
 
         // --- Load data ---
@@ -257,10 +324,11 @@
             loadingEl.style.display = 'none';
             canvas.style.cursor = 'grab';
 
-            // Set slider range
-            slider.max = data.levels.length - 1;
-            slider.value = Math.floor(data.levels.length / 2);
-            currentLevel = parseInt(slider.value);
+            // Slider: 0 = coarsest, max = finest
+            const maxIdx = data.levels.length - 1;
+            slider.max = maxIdx;
+            slider.value = Math.floor(maxIdx / 2);
+            currentLevel = maxIdx - parseInt(slider.value);
 
             statsEl.textContent =
                 `${data.stats.totalSegments.toLocaleString()} segs | ` +
@@ -271,7 +339,7 @@
             resizeCanvas();
             fitToScreen();
             updateInfo();
-            draw();
+            scheduleFrame();
         }
 
         window.addEventListener('resize', resizeCanvas);
