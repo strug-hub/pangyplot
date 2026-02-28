@@ -42,7 +42,9 @@ const appState = {
     },
 
     setHoveredNode(node) {
+        if (this.hoveredNode === node) return;
         this.hoveredNode = node;
+        eventBus.publish('graph:hovered-changed', node);
     },
 
     setDraggedNode(node) {

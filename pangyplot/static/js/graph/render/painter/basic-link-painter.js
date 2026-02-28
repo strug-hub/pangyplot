@@ -30,6 +30,13 @@ export function basicLinkPainter(ctx, link, svg=null){
         }
     }
 
+    const hasFlashlight = !svg &&
+        (source.flashlightAlpha !== undefined || target.flashlightAlpha !== undefined);
+
+    if (hasFlashlight) {
+        ctx.globalAlpha = Math.max(source.flashlightAlpha ?? 1, target.flashlightAlpha ?? 1);
+    }
+
     if (svg){
         drawLineSvg(svg, x1, y1, x2, y2, width, color);
     } else{
@@ -47,5 +54,9 @@ export function basicLinkPainter(ctx, link, svg=null){
         } else {
             drawRotatedCross(ctx, midX, midY, crossSize, width, color, angle);
         }
+    }
+
+    if (hasFlashlight) {
+        ctx.globalAlpha = 1;
     }
 }

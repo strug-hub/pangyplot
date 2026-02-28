@@ -35,6 +35,10 @@ export function basicNodePainter(ctx, node, svg=null) {
     if (svg) {
         drawCircleSvg(svg, node.x, node.y, width, color);
     } else {
+        if (node.flashlightAlpha !== undefined) {
+            ctx.globalAlpha = node.flashlightAlpha;
+        }
         drawCircle(ctx, node.x, node.y, width, color);
+        ctx.globalAlpha = 1;
     }
 }
