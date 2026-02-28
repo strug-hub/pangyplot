@@ -231,11 +231,54 @@ def grid_simplify(polylines, junction_coords, cell_size):
 
 
 # ---------------------------------------------------------------------------
+# Reference spine: layout_x → basepair lookup table
+# ---------------------------------------------------------------------------
+
+def build_reference_spine(step_index, segment_index, stride=50):
+    """Build a compact (x, bp) lookup table from the reference path.
+
+    Walks each step, computes segment centroid x and midpoint bp, then
+    filters to a monotone-increasing envelope (drops backward jogs in x)
+    and downsamples by stride for compactness.
+
+    Returns list of [x, bp] pairs sorted by x.
+    """
+    # Collect (x, bp) for every reference step
+    points = []
+    for i in range(len(step_index.segments)):
+        sid = step_index.segments[i]
+        if sid >= len(segment_index.valid) or not segment_index.valid[sid]:
+            continue
+        cx = (segment_index.x1[sid] + segment_index.x2[sid]) / 2.0
+        bp = (step_index.starts[i] + step_index.ends[i]) / 2.0
+        points.append((cx, bp))
+
+    # Build monotone envelope: only keep points where x exceeds running max
+    envelope = []
+    max_x = -float('inf')
+    for cx, bp in points:
+        if cx > max_x:
+            envelope.append((cx, bp))
+            max_x = cx
+
+    # Downsample by stride
+    spine = [[round(envelope[i][0], 1), int(envelope[i][1])]
+             for i in range(0, len(envelope), stride)]
+
+    # Ensure last point is included
+    if len(envelope) > 0 and (len(spine) == 0 or spine[-1] != [round(envelope[-1][0], 1), int(envelope[-1][1])]):
+        spine.append([round(envelope[-1][0], 1), int(envelope[-1][1])])
+
+    print(f"Reference spine: {len(points)} steps → {len(envelope)} monotone → {len(spine)} sampled points")
+    return spine
+
+
+# ---------------------------------------------------------------------------
 # JSON export for D3 viewer
 # ---------------------------------------------------------------------------
 
 def export_json(junctions, runs, segment_index, link_index, polylines,
-                grid_cell_sizes, output_path):
+                grid_cell_sizes, output_path, ref_spine=None, chromosome=None):
     """Export pure grid-based mipmap data as gzipped JSON for the D3 viewer.
 
     Each level is a grid simplification at a different cell size.
@@ -275,8 +318,12 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
             "totalLinks": len(link_index),
             "junctionCount": len(junctions),
             "runCount": len(runs),
-        }
+        },
     }
+    if ref_spine is not None:
+        data["refSpine"] = ref_spine
+    if chromosome is not None:
+        data["chromosome"] = chromosome
 
     with gzip.open(output_path, 'wt', encoding='utf-8') as f:
         json.dump(data, f)
@@ -449,9 +496,14 @@ def main():
     report_stats(segment_index, link_index, junctions, runs, mipmaps, args.epsilons)
 
     if args.export_json:
+        print(f"Building reference spine ...")
+        step_index = StepIndex(data_dir, args.ref)
+        ref_spine = build_reference_spine(step_index, segment_index)
+
         print(f"Exporting JSON for D3 viewer ...")
         export_json(junctions, runs, segment_index, link_index, polylines,
-                    VIEWER_GRID_SIZES, args.export_json)
+                    VIEWER_GRID_SIZES, args.export_json,
+                    ref_spine=ref_spine, chromosome=args.chr)
 
     if not args.no_plot:
         print("Generating plots ...")

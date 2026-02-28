@@ -102,6 +102,8 @@
             <span id="lod-offset">AUTO</span>
             <button class="lod-btn" id="lod-coarser" title="Coarser (less detail)">&#9654;</button>
         </div>
+        <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
+        <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
         <span id="stats"></span>
     </div>
     <div id="canvas-container">
@@ -135,6 +137,13 @@
         // Per-level precomputed bounding boxes: level index → Float64Array [minX,minY,maxX,maxY, ...]
         let levelBboxes = [];
         let rafId = null;
+
+        // Reference spine: layout_x → basepair lookup
+        let spineX = null;      // Float64Array
+        let spineBp = null;     // Float64Array
+        let chromosome = '';
+        const viewportBpEl = document.getElementById('viewport-bp');
+        const cursorBpEl = document.getElementById('cursor-bp');
 
         // ---------------------------------------------------------------
         // Setup
@@ -239,6 +248,41 @@
         }
 
         // ---------------------------------------------------------------
+        // Reference coordinate translation
+        // ---------------------------------------------------------------
+        function initSpine(refSpine) {
+            const n = refSpine.length;
+            spineX = new Float64Array(n);
+            spineBp = new Float64Array(n);
+            for (let i = 0; i < n; i++) {
+                spineX[i] = refSpine[i][0];
+                spineBp[i] = refSpine[i][1];
+            }
+        }
+
+        function xToBp(layoutX) {
+            if (!spineX || spineX.length === 0) return null;
+            // Clamp to spine range
+            if (layoutX <= spineX[0]) return spineBp[0];
+            if (layoutX >= spineX[spineX.length - 1]) return spineBp[spineBp.length - 1];
+            // Binary search for interval
+            let lo = 0, hi = spineX.length - 1;
+            while (lo < hi - 1) {
+                const mid = (lo + hi) >> 1;
+                if (spineX[mid] <= layoutX) lo = mid;
+                else hi = mid;
+            }
+            // Linear interpolation
+            const t = (layoutX - spineX[lo]) / (spineX[hi] - spineX[lo]);
+            return spineBp[lo] + t * (spineBp[hi] - spineBp[lo]);
+        }
+
+        function formatBp(bp) {
+            bp = Math.round(bp);
+            return bp.toLocaleString();
+        }
+
+        // ---------------------------------------------------------------
         // Render: only visible polylines & junctions
         // ---------------------------------------------------------------
         function draw() {
@@ -320,6 +364,15 @@
                 reductionEl.textContent = `${pct}%`;
             }
             visibleCountEl.textContent = `${visiblePl.toLocaleString()} / ${visibleJ.toLocaleString()}`;
+
+            // --- Viewport coordinate readout ---
+            if (spineX) {
+                const bpLeft = xToBp(vp.minX);
+                const bpRight = xToBp(vp.maxX);
+                if (bpLeft !== null && bpRight !== null) {
+                    viewportBpEl.textContent = `${chromosome}:${formatBp(bpLeft)}-${formatBp(bpRight)}`;
+                }
+            }
         }
 
         // ---------------------------------------------------------------
@@ -368,6 +421,22 @@
             zoom = newZoom;
             scheduleFrame();
         }, { passive: false });
+
+        // --- Cursor coordinate readout ---
+        canvas.addEventListener('mousemove', e => {
+            if (isDragging || !spineX) return;
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const layoutX = (screenX - panX) / zoom;
+            const bp = xToBp(layoutX);
+            if (bp !== null) {
+                cursorBpEl.textContent = `${chromosome}:${formatBp(bp)}`;
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            cursorBpEl.textContent = '';
+        });
 
         // --- Double-click to reset view ---
         canvas.addEventListener('dblclick', () => {
@@ -424,6 +493,12 @@
 
             precomputeBboxes();
             computeBounds();
+
+            // Initialize reference spine if available
+            if (data.refSpine) {
+                initSpine(data.refSpine);
+                chromosome = data.chromosome || '';
+            }
             resizeCanvas();
             fitToScreen();
             scheduleFrame();
