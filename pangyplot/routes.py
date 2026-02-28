@@ -1,5 +1,6 @@
+import gzip
 import os
-from flask import Blueprint, current_app, render_template, request, jsonify, make_response
+from flask import Blueprint, current_app, render_template, request, jsonify, make_response, Response
 from flask_babel import _,get_locale
 from dotenv import load_dotenv
 from pangyplot.version import __version__,__version_name__
@@ -11,6 +12,20 @@ bp = Blueprint("routes", __name__)
 @bp.route('/')
 def index():
     return render_template("index.html")
+
+@bp.route('/simplify')
+def simplify_viewer():
+    return render_template("simplify.html")
+
+@bp.route('/simplify-data')
+def simplify_data():
+    gz_path = os.path.join(current_app.static_folder, 'data', 'simplify', 'chrY.json.gz')
+    if not os.path.exists(gz_path):
+        return jsonify({"error": "No precomputed data. Run graph_simplify.py --export-json first."}), 404
+    with open(gz_path, 'rb') as f:
+        data = f.read()
+    return Response(data, mimetype='application/json',
+                    headers={'Content-Encoding': 'gzip'})
 
 @bp.context_processor
 def inject_ga_tag_id():
