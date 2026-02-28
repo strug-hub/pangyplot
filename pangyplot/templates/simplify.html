@@ -17,42 +17,27 @@
         }
 
         #controls {
-            padding: 12px 20px;
+            padding: 10px 20px;
             background: #111;
             border-bottom: 1px solid #333;
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 24px;
             flex-shrink: 0;
             z-index: 10;
-        }
-
-        #controls label {
-            font-size: 13px;
-            white-space: nowrap;
-        }
-
-        #detail-slider {
-            flex: 1;
-            max-width: 500px;
-            accent-color: #4a90d9;
-            cursor: pointer;
-        }
-
-        #info {
             font-size: 13px;
             font-variant-numeric: tabular-nums;
         }
 
-        #info span {
+        #controls span.val {
             color: #fff;
             font-weight: 600;
         }
 
         #stats {
             margin-left: auto;
+            color: #555;
             font-size: 12px;
-            color: #666;
         }
 
         #canvas-container {
@@ -64,6 +49,7 @@
             display: block;
             width: 100%;
             height: 100%;
+            cursor: grab;
         }
 
         #loading {
@@ -78,15 +64,12 @@
 </head>
 <body>
     <div id="controls">
-        <label for="detail-slider">Detail:</label>
-        <input type="range" id="detail-slider" min="0" max="10" value="5" step="1">
-        <div id="info">
-            <span id="level-label">--</span> &nbsp;
-            <span id="node-count">--</span> nodes &nbsp;
-            <span id="polyline-count">--</span> lines &nbsp;
-            <span id="reduction">--</span> reduction
-        </div>
-        <div id="stats"></div>
+        <span id="level-label" class="val">--</span>
+        <span><span id="node-count" class="val">--</span> nodes</span>
+        <span><span id="polyline-count" class="val">--</span> lines</span>
+        <span><span id="visible-count" class="val">--</span> visible</span>
+        <span><span id="reduction" class="val">--</span> reduction</span>
+        <span id="stats"></span>
     </div>
     <div id="canvas-container">
         <canvas id="canvas"></canvas>
@@ -96,60 +79,52 @@
     <script type="module">
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const slider = document.getElementById('detail-slider');
         const levelLabel = document.getElementById('level-label');
         const nodeCountEl = document.getElementById('node-count');
         const polylineCountEl = document.getElementById('polyline-count');
+        const visibleCountEl = document.getElementById('visible-count');
         const reductionEl = document.getElementById('reduction');
         const statsEl = document.getElementById('stats');
         const loadingEl = document.getElementById('loading');
 
         let data = null;
-        let currentLevel = 0;
+        let currentLevel = -1;
 
         // Transform state
         let panX = 0, panY = 0, zoom = 1;
         let isDragging = false, dragStartX = 0, dragStartY = 0;
         let dataBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
 
-        // Offscreen rendering
-        let offscreen = null;
-        let offCtx = null;
-        let offPanX = 0, offPanY = 0, offZoom = 1;
-        let offDirty = true;
+        // Per-level precomputed bounding boxes: level index → Float64Array [minX,minY,maxX,maxY, ...]
+        let levelBboxes = [];
         let rafId = null;
 
+        // ---------------------------------------------------------------
+        // Setup
+        // ---------------------------------------------------------------
         function resizeCanvas() {
             const container = document.getElementById('canvas-container');
             const dpr = window.devicePixelRatio || 1;
             canvas.width = container.clientWidth * dpr;
             canvas.height = container.clientHeight * dpr;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-            // Resize offscreen to match
-            offscreen = new OffscreenCanvas(canvas.width, canvas.height);
-            offCtx = offscreen.getContext('2d');
-            offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            offDirty = true;
             if (data) scheduleFrame();
         }
 
         function fitToScreen() {
-            const cw = canvas.width / (window.devicePixelRatio || 1);
-            const ch = canvas.height / (window.devicePixelRatio || 1);
+            const dpr = window.devicePixelRatio || 1;
+            const cw = canvas.width / dpr;
+            const ch = canvas.height / dpr;
             const dw = dataBounds.maxX - dataBounds.minX;
             const dh = dataBounds.maxY - dataBounds.minY;
             if (dw === 0 || dh === 0) return;
-
             const pad = 40;
             zoom = Math.min((cw - pad * 2) / dw, (ch - pad * 2) / dh);
             panX = (cw / 2) - ((dataBounds.minX + dw / 2) * zoom);
             panY = (ch / 2) - ((dataBounds.minY + dh / 2) * zoom);
-            offDirty = true;
         }
 
         function computeBounds() {
-            // Use the finest level's junctions for global bounds
             const juncs = data.levels[0].junctions;
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             for (const [x, y] of juncs) {
@@ -162,77 +137,148 @@
         }
 
         // ---------------------------------------------------------------
-        // Offscreen rendering: draw the full graph once per level/zoom
+        // Precompute per-polyline bounding boxes for viewport culling
         // ---------------------------------------------------------------
-        function renderOffscreen() {
-            const cw = canvas.width / (window.devicePixelRatio || 1);
-            const ch = canvas.height / (window.devicePixelRatio || 1);
-
-            offCtx.clearRect(0, 0, cw, ch);
-            offCtx.fillStyle = '#000';
-            offCtx.fillRect(0, 0, cw, ch);
-
-            const level = data.levels[currentLevel];
-            if (!level) return;
-
-            offCtx.save();
-            offCtx.translate(panX, panY);
-            offCtx.scale(zoom, zoom);
-
-            // Polylines
-            const lineWidth = Math.max(0.5, 1.2 / zoom);
-            offCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-            offCtx.lineWidth = lineWidth;
-            offCtx.lineJoin = 'round';
-            offCtx.lineCap = 'round';
-
-            offCtx.beginPath();
-            for (const pl of level.polylines) {
-                offCtx.moveTo(pl[0][0], pl[0][1]);
-                for (let i = 1; i < pl.length; i++) {
-                    offCtx.lineTo(pl[i][0], pl[i][1]);
+        function precomputeBboxes() {
+            levelBboxes = [];
+            for (const level of data.levels) {
+                const n = level.polylines.length;
+                const arr = new Float64Array(n * 4);
+                for (let i = 0; i < n; i++) {
+                    const pl = level.polylines[i];
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    for (const [x, y] of pl) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                    const o = i * 4;
+                    arr[o] = minX; arr[o+1] = minY; arr[o+2] = maxX; arr[o+3] = maxY;
                 }
+                levelBboxes.push(arr);
             }
-            offCtx.stroke();
-
-            // Junction dots
-            const r = Math.max(1.5, 3.0 / zoom);
-            offCtx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-            offCtx.beginPath();
-            for (const [x, y] of level.junctions) {
-                offCtx.moveTo(x + r, y);
-                offCtx.arc(x, y, r, 0, Math.PI * 2);
-            }
-            offCtx.fill();
-
-            offCtx.restore();
-
-            offPanX = panX;
-            offPanY = panY;
-            offZoom = zoom;
-            offDirty = false;
         }
 
         // ---------------------------------------------------------------
-        // Composite: blit offscreen with pan delta, or re-render if needed
+        // Auto-LOD: pick grid level based on zoom
         // ---------------------------------------------------------------
-        function composite() {
-            const cw = canvas.width / (window.devicePixelRatio || 1);
-            const ch = canvas.height / (window.devicePixelRatio || 1);
+        function selectLevel() {
+            const dpr = window.devicePixelRatio || 1;
+            const cw = canvas.width / dpr;
+            const viewportWidth = cw / zoom;
+            // Target ~300 grid cells across viewport
+            const targetCell = viewportWidth / 300;
 
-            // Re-render offscreen if zoom changed or flagged dirty
-            if (offDirty || zoom !== offZoom) {
-                renderOffscreen();
+            // Levels sorted finest → coarsest. Pick finest whose cellSize <= target.
+            // If zoomed in beyond finest, use finest. If zoomed out beyond coarsest, use coarsest.
+            let best = 0;
+            for (let i = data.levels.length - 1; i >= 0; i--) {
+                if (data.levels[i].cellSize <= targetCell) {
+                    best = i;
+                    break;
+                }
             }
+            return best;
+        }
+
+        // ---------------------------------------------------------------
+        // Viewport bounds in data coordinates
+        // ---------------------------------------------------------------
+        function getViewport() {
+            const dpr = window.devicePixelRatio || 1;
+            const cw = canvas.width / dpr;
+            const ch = canvas.height / dpr;
+            return {
+                minX: -panX / zoom,
+                minY: -panY / zoom,
+                maxX: (cw - panX) / zoom,
+                maxY: (ch - panY) / zoom,
+            };
+        }
+
+        // ---------------------------------------------------------------
+        // Render: only visible polylines & junctions
+        // ---------------------------------------------------------------
+        function draw() {
+            const dpr = window.devicePixelRatio || 1;
+            const cw = canvas.width / dpr;
+            const ch = canvas.height / dpr;
 
             ctx.clearRect(0, 0, cw, ch);
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, cw, ch);
 
-            // Blit with pan offset delta
-            const dx = panX - offPanX;
-            const dy = panY - offPanY;
-            ctx.drawImage(offscreen, dx, dy);
+            const li = selectLevel();
+            const level = data.levels[li];
+            if (!level) return;
+
+            const levelChanged = li !== currentLevel;
+            currentLevel = li;
+
+            const vp = getViewport();
+            // Margin in data units so lines at the edge aren't clipped
+            const margin = level.cellSize * 2;
+            const vpMinX = vp.minX - margin;
+            const vpMinY = vp.minY - margin;
+            const vpMaxX = vp.maxX + margin;
+            const vpMaxY = vp.maxY + margin;
+
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+
+            // --- Polylines (culled) ---
+            const lineWidth = Math.max(0.5, 1.2 / zoom);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+            ctx.lineWidth = lineWidth;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+
+            const bboxes = levelBboxes[li];
+            let visiblePl = 0;
+
+            ctx.beginPath();
+            for (let i = 0; i < level.polylines.length; i++) {
+                const o = i * 4;
+                // Bbox check
+                if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
+                    bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
+
+                visiblePl++;
+                const pl = level.polylines[i];
+                ctx.moveTo(pl[0][0], pl[0][1]);
+                for (let j = 1; j < pl.length; j++) {
+                    ctx.lineTo(pl[j][0], pl[j][1]);
+                }
+            }
+            ctx.stroke();
+
+            // --- Junctions (culled) ---
+            const r = Math.max(1.5, 3.0 / zoom);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            let visibleJ = 0;
+
+            ctx.beginPath();
+            for (const [x, y] of level.junctions) {
+                if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
+                visibleJ++;
+                ctx.moveTo(x + r, y);
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            ctx.restore();
+
+            // --- Update info ---
+            if (levelChanged) {
+                levelLabel.textContent = level.label;
+                nodeCountEl.textContent = level.nodeCount.toLocaleString();
+                polylineCountEl.textContent = level.polylineCount.toLocaleString();
+                const pct = ((1 - level.nodeCount / data.stats.totalSegments) * 100).toFixed(1);
+                reductionEl.textContent = `${pct}%`;
+            }
+            visibleCountEl.textContent = `${visiblePl.toLocaleString()} / ${visibleJ.toLocaleString()}`;
         }
 
         // ---------------------------------------------------------------
@@ -242,17 +288,8 @@
             if (rafId) return;
             rafId = requestAnimationFrame(() => {
                 rafId = null;
-                composite();
+                draw();
             });
-        }
-
-        function updateInfo() {
-            const level = data.levels[currentLevel];
-            levelLabel.textContent = level.label;
-            nodeCountEl.textContent = level.nodeCount.toLocaleString();
-            polylineCountEl.textContent = level.polylineCount.toLocaleString();
-            const pct = ((1 - level.nodeCount / data.stats.totalSegments) * 100).toFixed(1);
-            reductionEl.textContent = `${pct}%`;
         }
 
         // --- Pan & zoom ---
@@ -274,9 +311,6 @@
             if (!isDragging) return;
             isDragging = false;
             canvas.style.cursor = 'grab';
-            // Re-render offscreen at final pan position to fill edges
-            offDirty = true;
-            scheduleFrame();
         });
 
         canvas.addEventListener('wheel', e => {
@@ -291,18 +325,8 @@
             panX = mx - (mx - panX) * (newZoom / zoom);
             panY = my - (my - panY) * (newZoom / zoom);
             zoom = newZoom;
-            offDirty = true;
             scheduleFrame();
         }, { passive: false });
-
-        // --- Slider (reversed: left = coarse, right = fine) ---
-        slider.addEventListener('input', () => {
-            const maxIdx = data.levels.length - 1;
-            currentLevel = maxIdx - parseInt(slider.value);
-            offDirty = true;
-            updateInfo();
-            scheduleFrame();
-        });
 
         // --- Double-click to reset view ---
         canvas.addEventListener('dblclick', () => {
@@ -322,23 +346,16 @@
             }
 
             loadingEl.style.display = 'none';
-            canvas.style.cursor = 'grab';
-
-            // Slider: 0 = coarsest, max = finest
-            const maxIdx = data.levels.length - 1;
-            slider.max = maxIdx;
-            slider.value = Math.floor(maxIdx / 2);
-            currentLevel = maxIdx - parseInt(slider.value);
 
             statsEl.textContent =
                 `${data.stats.totalSegments.toLocaleString()} segs | ` +
                 `${data.stats.junctionCount.toLocaleString()} junctions | ` +
-                `${data.stats.runCount.toLocaleString()} runs`;
+                `${data.levels.length} grid levels`;
 
+            precomputeBboxes();
             computeBounds();
             resizeCanvas();
             fitToScreen();
-            updateInfo();
             scheduleFrame();
         }
 
