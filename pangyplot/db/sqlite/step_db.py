@@ -9,6 +9,9 @@ def write_step_index(segment_index, genome, path, dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
+    cur.execute("PRAGMA journal_mode = OFF")
+    cur.execute("PRAGMA synchronous = OFF")
+
     cur.execute("""
         CREATE TABLE step_index (
             step INTEGER NOT NULL,
@@ -19,19 +22,26 @@ def write_step_index(segment_index, genome, path, dir):
             PRIMARY KEY (genome, step)
         );
     """)
-    cur.execute("CREATE INDEX idx_seg_id ON step_index(genome, seg_id);")
-    cur.execute("CREATE INDEX idx_genome ON step_index(genome, step);")
 
+    batch = []
     pos = path.start
     for i, step in enumerate(path.path):
         sid = int(step[:-1])
         length = segment_index.segment_length(sid)
         start = pos + 1
         end = pos + length
-    
-        cur.execute("INSERT INTO step_index (step, seg_id, start, end, genome) VALUES (?, ?, ?, ?, ?)",
-                    (i, sid, start, end, genome))
+        batch.append((i, sid, start, end, genome))
         pos += length
+
+        if len(batch) >= 5000:
+            cur.executemany("INSERT INTO step_index (step, seg_id, start, end, genome) VALUES (?, ?, ?, ?, ?)", batch)
+            batch = []
+
+    if batch:
+        cur.executemany("INSERT INTO step_index (step, seg_id, start, end, genome) VALUES (?, ?, ?, ?, ?)", batch)
+
+    cur.execute("CREATE INDEX idx_seg_id ON step_index(genome, seg_id);")
+    cur.execute("CREATE INDEX idx_genome ON step_index(genome, step);")
 
     conn.commit()
     conn.close()

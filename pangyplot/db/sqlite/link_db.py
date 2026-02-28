@@ -6,9 +6,13 @@ DB_NAME = "links.db"
 def get_connection(dir):
     return utils.get_connection(dir, DB_NAME)
 
-def create_link_table(dir):
+def create_link_table(dir, bulk=False):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
+
+    if bulk:
+        cur.execute("PRAGMA journal_mode = OFF")
+        cur.execute("PRAGMA synchronous = OFF")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS links (
@@ -23,11 +27,18 @@ def create_link_table(dir):
         );
     """)
 
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_from_id ON links(from_id);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_to_id ON links(to_id);")
+    if not bulk:
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_from_id ON links(from_id);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_to_id ON links(to_id);")
 
     conn.commit()
     return conn
+
+def create_link_indexes(conn):
+    cur = conn.cursor()
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_from_id ON links(from_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_to_id ON links(to_id);")
+    conn.commit()
 
 def insert_link(cur, link):
     key = f"{link.from_id}{link.from_strand}{link.to_id}{link.to_strand}"
@@ -44,6 +55,12 @@ def insert_link(cur, link):
         link.reverse,
         link.frequency
     ))
+
+def insert_links_batch(cur, batch):
+    cur.executemany("""
+        INSERT INTO links (id, from_id, from_strand, to_id, to_strand, haplotype, reverse, frequency)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, batch)
 
 def load_links(dir):
     cur = get_connection(dir).cursor()

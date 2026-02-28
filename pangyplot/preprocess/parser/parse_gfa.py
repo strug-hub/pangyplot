@@ -1,10 +1,18 @@
 import sys
 import time
 import gzip
+from collections import defaultdict
+
 from pangyplot.db.sqlite.step_db import write_step_index
-from pangyplot.preprocess.parser.gfa.parse_segments import parse_segments
-from pangyplot.preprocess.parser.gfa.parse_links import parse_links
+from pangyplot.preprocess.parser.gfa.parse_segments import parse_segments, parse_line_S
+from pangyplot.preprocess.parser.gfa.parse_links import parse_links, parse_line_L
 from pangyplot.preprocess.parser.gfa.parse_paths import parse_paths
+import pangyplot.db.sqlite.segment_db as segment_db
+import pangyplot.db.sqlite.link_db as link_db
+from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+from pangyplot.db.indexes.LinkIndex import LinkIndex
+
+BATCH_SIZE = 5000
 
 def get_reader(gfa_file):
     if gfa_file.endswith(".gz"):
@@ -25,9 +33,89 @@ def verify_reference(ref_path, matching_refs):
     full_name, sample_name = matching_refs[0]
     print(f"   🎯 Found reference path {full_name} -> {sample_name}.")
 
+def _parse_segments_and_links(gfa_file, layout_coords, path_idx, path_dict, dir):
+    """Parse S and L lines in a single file pass with batched SQLite inserts."""
+    layout = layout_coords["layout"]
+    layout_type = layout_coords["type"]
+    n_paths = len(path_idx)
+
+    # Create both tables with bulk-loading pragmas
+    seg_conn = segment_db.create_segment_table(dir, bulk=True)
+    seg_cur = seg_conn.cursor()
+
+    lnk_conn = link_db.create_link_table(dir, bulk=True)
+    lnk_cur = lnk_conn.cursor()
+
+    seg_batch = []
+    lnk_batch = []
+    seg_count = 0
+    lnk_count = 0
+
+    with get_reader(gfa_file) as gfa:
+        for line in gfa:
+            tag = line[0]
+
+            if tag == "S":
+                segment = parse_line_S(line)
+                if layout_type == "odgi":
+                    coords = layout[seg_count]
+                elif layout_type == "bandage":
+                    coords = layout[segment.id]
+
+                seg_batch.append((
+                    segment.id, segment.gc_count, segment.n_count, segment.length,
+                    coords["x1"], coords["y1"], coords["x2"], coords["y2"],
+                    segment.seq
+                ))
+                seg_count += 1
+
+                if len(seg_batch) >= BATCH_SIZE:
+                    segment_db.insert_segments_batch(seg_cur, seg_batch)
+                    seg_batch = []
+
+            elif tag == "L":
+                link = parse_line_L(line)
+
+                # Compute haplotype bitmask inline
+                key = link.gfa_id()
+                key_rev = link.reverse_gfa_id()
+                mask = path_dict.get(key, 0) | path_dict.get(key_rev, 0)
+                haplotype = hex(mask)[2:]
+                frequency = bin(mask).count("1") / n_paths
+                reverse = hex(path_dict.get(key_rev, 0))[2:]
+                link_key = f"{link.from_id}{link.from_strand}{link.to_id}{link.to_strand}"
+
+                lnk_batch.append((
+                    link_key, link.from_id, link.from_strand,
+                    link.to_id, link.to_strand,
+                    haplotype, reverse, frequency
+                ))
+                lnk_count += 1
+
+                if len(lnk_batch) >= BATCH_SIZE:
+                    link_db.insert_links_batch(lnk_cur, lnk_batch)
+                    lnk_batch = []
+
+    # Flush remaining
+    if seg_batch:
+        segment_db.insert_segments_batch(seg_cur, seg_batch)
+    if lnk_batch:
+        link_db.insert_links_batch(lnk_cur, lnk_batch)
+
+    seg_conn.commit()
+    seg_conn.close()
+
+    # Create link indexes after all data is loaded
+    link_db.create_link_indexes(lnk_conn)
+    lnk_conn.close()
+
+    segment_idx = SegmentIndex(dir)
+    link_idx = LinkIndex(dir)
+    return segment_idx, link_idx, seg_count, lnk_count
+
 def parse_gfa(gfa_file, ref, path, ref_offset, path_sep, layout_coords, dir):
     print(f"→ Parsing GFA file: {gfa_file}.")
-    
+
     if path:
         print(f"   🔍 Looking for path: {ref} (reference genome = {ref})")
         ref_path = path
@@ -35,7 +123,7 @@ def parse_gfa(gfa_file, ref, path, ref_offset, path_sep, layout_coords, dir):
         print(f"   🔎 Looking for reference path with name: {ref}")
         ref_path = ref
 
-    # ==== PATHS ====
+    # ==== PASS 1: PATHS ====
     print("   🧵 Gathering paths from GFA...", end="", flush=True)
     start_time = time.time()
     path_idx, path_dict, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset, path_sep, dir)
@@ -44,22 +132,17 @@ def parse_gfa(gfa_file, ref, path, ref_offset, path_sep, layout_coords, dir):
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
     verify_reference(reference_path, matching_refs)
 
-    # ==== SEGMENTS ====
-    print("   🍡 Gathering segments from GFA...", end="", flush=True)
+    # ==== PASS 2: SEGMENTS + LINKS (single file read) ====
+    print("   🍡 Gathering segments and links from GFA...", end="", flush=True)
     start_time = time.time()
-    segment_idx = parse_segments(get_reader(gfa_file), layout_coords, dir)
+    segment_idx, link_idx, seg_count, lnk_count = _parse_segments_and_links(
+        gfa_file, layout_coords, path_idx, path_dict, dir
+    )
+    end_time = time.time()
+    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
+    print(f"      {seg_count} segments, {lnk_count} links total.")
+
+    # ==== STEP INDEX ====
     write_step_index(segment_idx, ref, reference_path, dir)
-
-    end_time = time.time()
-    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    print(f"      {len(segment_idx)} segments total.")
-
-    # ==== LINKS ====
-    print("   🧷 Gathering links from GFA...", end="", flush=True)
-    start_time = time.time()
-    link_idx = parse_links(get_reader(gfa_file), path_idx, path_dict, dir)
-    end_time = time.time()
-    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    print(f"      {len(link_idx)} links total.")
 
     return path_idx, segment_idx, link_idx

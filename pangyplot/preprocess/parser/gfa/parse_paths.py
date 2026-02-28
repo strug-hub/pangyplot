@@ -60,6 +60,7 @@ def parse_line_W(line, path_sep=None):
     return path
 
 def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
+    db.reset_filename_counters()
     sample_idx = dict()
     next_idx = 0
     path_dict = defaultdict(int)

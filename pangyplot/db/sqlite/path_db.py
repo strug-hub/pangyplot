@@ -51,13 +51,16 @@ def retrieve_paths(dir, sample):
         paths.append(create_path(file))
     return paths
 
+_filename_counters = {}
+
+def reset_filename_counters():
+    _filename_counters.clear()
+
 def get_filename(db_path, sample):
-    i = 0
-    while True:
-        filename = os.path.join(db_path, f"{sample}__{i+1}.json")
-        if not os.path.exists(filename):
-            return filename
-        i += 1
+    key = (db_path, sample)
+    idx = _filename_counters.get(key, 0) + 1
+    _filename_counters[key] = idx
+    return os.path.join(db_path, f"{sample}__{idx}.json")
 
 def get_all_filenames(db_path, sample):
     i = 0

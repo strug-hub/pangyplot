@@ -7,9 +7,13 @@ DB_NAME="segments.db"
 def get_connection(chr_dir):
     return utils.get_connection(chr_dir, DB_NAME)
 
-def create_segment_table(dir):
+def create_segment_table(dir, bulk=False):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
+
+    if bulk:
+        cur.execute("PRAGMA journal_mode = OFF")
+        cur.execute("PRAGMA synchronous = OFF")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS segments (
@@ -47,6 +51,12 @@ def insert_segment(cur, segment):
         segment.y2,
         segment.seq
     ))
+
+def insert_segments_batch(cur, batch):
+    cur.executemany("""
+        INSERT INTO segments (id, gc_count, n_count, length, x1, y1, x2, y2, seq)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, batch)
 
 def get_index_info(dir):
     cur = get_connection(dir).cursor()
