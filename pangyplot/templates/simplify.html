@@ -96,7 +96,6 @@
         #detail-phase.none { color: #555; }
         #detail-phase.fading { color: #f90; }
         #detail-phase.static { color: #0f0; }
-        #detail-phase.physics { color: #0ff; }
 
         #detail-bar {
             padding: 4px 20px;
@@ -114,6 +113,26 @@
         }
         #detail-bar.active { visibility: visible; }
         #detail-bar span.val { color: #5bb8f0; font-weight: 600; }
+
+        #tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(20, 20, 20, 0.92);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-family: 'SF Mono', Consolas, monospace;
+            color: #ccc;
+            white-space: nowrap;
+            display: none;
+            z-index: 20;
+            line-height: 1.5;
+        }
+        #tooltip .tt-label { color: #888; }
+        #tooltip .tt-val { color: #fff; font-weight: 600; }
+        #tooltip .tt-chain { color: #5bb8f0; }
+        #tooltip .tt-subtype { font-weight: 600; }
     </style>
 </head>
 <body>
@@ -135,8 +154,8 @@
     </div>
     <div id="detail-bar">
         <span id="detail-phase2" class="none"></span>
+        <span><span id="detail-chains" class="val">--</span> chains</span>
         <span><span id="detail-nodes" class="val">--</span> bubbles</span>
-        <span><span id="detail-links" class="val">--</span> links</span>
         <span><span id="detail-range" class="val">--</span></span>
         <span>opacity <span id="detail-opacity" class="val">0</span></span>
         <span>steps <span id="detail-steps" class="val">--</span></span>
@@ -144,6 +163,7 @@
     <div id="canvas-container">
         <canvas id="canvas"></canvas>
         <div id="loading">Loading graph data...</div>
+        <div id="tooltip"></div>
     </div>
 
     <script src="/static/js/d3/d3.js"></script>
@@ -161,8 +181,8 @@
         const detailPhaseEl = document.getElementById('detail-phase');
         const detailBarEl = document.getElementById('detail-bar');
         const detailPhase2El = document.getElementById('detail-phase2');
+        const detailChainsEl = document.getElementById('detail-chains');
         const detailNodesEl = document.getElementById('detail-nodes');
-        const detailLinksEl = document.getElementById('detail-links');
         const detailRangeEl = document.getElementById('detail-range');
         const detailOpacityEl = document.getElementById('detail-opacity');
         const detailStepsEl = document.getElementById('detail-steps');
@@ -198,20 +218,17 @@
         // Progressive detail state
         // ---------------------------------------------------------------
         const NODE_BUDGET_STEPS = 1500;
-        const HARD_NODE_CAP = 1000;
         const FETCH_MARGIN = 0.2;       // 20% extra on each side
         const FADE_DURATION = 600;      // ms for fade-in / fade-out animation
 
-        let detailPhase = 'none';       // 'none' | 'fading-in' | 'static' | 'physics' | 'fading-out'
-        let detailData = null;          // { nodes, links, nodeMap }
+        let detailPhase = 'none';       // 'none' | 'fading-in' | 'static' | 'fading-out'
+        let detailData = null;          // { chains, totalBubbles }
         let detailCache = null;         // { bpStart, bpEnd, data }
         let detailOpacity = 0;
         let skeletonOpacity = 1;
         let fadeStartTime = 0;          // performance.now() when fade started
         let fetchController = null;     // AbortController for in-flight fetch
         let fetchTimer = null;          // debounce timer
-        let simulation = null;          // d3-force simulation
-        let physicsDelayTimer = null;
 
         // ---------------------------------------------------------------
         // Setup
@@ -443,49 +460,25 @@
         // ---------------------------------------------------------------
         // Detail data: fetch, process, cache
         // ---------------------------------------------------------------
-        function processDetailResponse(apiResponse) {
-            const nodeMap = {};
-            const segToBubble = {};
-
-            for (const node of apiResponse.nodes) {
-                const cx = (node.x1 + node.x2) / 2;
-                const cy = (node.y1 + node.y2) / 2;
-                nodeMap[node.id] = {
-                    id: node.id,
-                    cx, cy,
-                    homeX: cx, homeY: cy,
-                    x: cx, y: cy,         // d3 simulation coordinates
-                    vx: 0, vy: 0,
-                    type: node.type,
-                    size: node.size || 1,
-                    length: node.length || 0,
-                    subtype: node.subtype,
-                };
-                if (node.source_segs) {
-                    for (const seg of node.source_segs) segToBubble[`s${seg}`] = node.id;
-                }
-                if (node.sink_segs) {
-                    for (const seg of node.sink_segs) segToBubble[`s${seg}`] = node.id;
-                }
+        function processChainsResponse(apiResponse) {
+            const chains = [];
+            let totalBubbles = 0;
+            for (const chain of apiResponse.chains) {
+                chains.push({
+                    id: chain.id,
+                    polyline: chain.polyline,   // [[x,y], ...]
+                    length: chain.length,
+                    nBubbles: chain.n_bubbles,
+                    subtype: chain.subtype,
+                    sourceSegs: chain.source_segs,
+                    sinkSegs: chain.sink_segs,
+                });
+                totalBubbles += chain.n_bubbles;
             }
-
-            // Resolve s->s links to bubble->bubble, deduplicating
-            const links = [];
-            const seen = new Set();
-            for (const link of apiResponse.links) {
-                const srcBubble = segToBubble[link.source];
-                const tgtBubble = segToBubble[link.target];
-                if (!srcBubble || !tgtBubble || srcBubble === tgtBubble) continue;
-                const key = srcBubble < tgtBubble ? `${srcBubble}-${tgtBubble}` : `${tgtBubble}-${srcBubble}`;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                links.push({ source: srcBubble, target: tgtBubble });
-            }
-
-            return { nodes: Object.values(nodeMap), links, nodeMap };
+            return { chains, totalBubbles };
         }
 
-        async function fetchDetailForViewport() {
+        async function fetchChainsForViewport() {
             if (!spineX || !chromosome) return;
 
             const vp = getViewport();
@@ -502,6 +495,7 @@
             if (detailCache &&
                 fetchStart >= detailCache.bpStart &&
                 fetchEnd <= detailCache.bpEnd) {
+                console.log(`[detail] cache HIT: viewport ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k within cached ${Math.round(detailCache.bpStart/1000)}k-${Math.round(detailCache.bpEnd/1000)}k`);
                 return;
             }
 
@@ -509,20 +503,19 @@
             if (fetchController) fetchController.abort();
             fetchController = new AbortController();
 
-            const url = `/select?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}`;
+            const url = `/chains?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}`;
+            console.log(`[detail] FETCH /chains: ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k (${Math.round((fetchEnd-fetchStart)/1000)}kb span)`);
 
             try {
+                const t0 = performance.now();
                 const resp = await fetch(url, { signal: fetchController.signal });
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const apiData = await resp.json();
 
-                // Check node count against hard cap
-                if (apiData.nodes.length > HARD_NODE_CAP) {
-                    console.log(`Detail: ${apiData.nodes.length} nodes exceeds cap ${HARD_NODE_CAP}, skipping`);
-                    return;
-                }
+                const processed = processChainsResponse(apiData);
+                const totalPts = processed.chains.reduce((s, c) => s + c.polyline.length, 0);
+                console.log(`[detail]   /chains response: ${processed.chains.length} chains, ${processed.totalBubbles} bubbles, ${totalPts} polyline pts (${(performance.now()-t0).toFixed(0)}ms)`);
 
-                const processed = processDetailResponse(apiData);
                 detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, data: processed };
                 detailData = processed;
 
@@ -532,7 +525,7 @@
                     scheduleFadeFrame();
                 } else if (detailPhase === 'fading-out') {
                     // Data arrived while fading out — reverse the fade
-                    const remaining = detailOpacity;  // current opacity becomes starting point
+                    const remaining = detailOpacity;
                     fadeStartTime = performance.now() - remaining * FADE_DURATION;
                     setDetailPhase('fading-in');
                     scheduleFadeFrame();
@@ -549,9 +542,16 @@
             if (fetchTimer) clearTimeout(fetchTimer);
             fetchTimer = setTimeout(() => {
                 const steps = viewportStepCount();
+                const vp = getViewport();
+                const bpLeft = xToBp(vp.minX);
+                const bpRight = xToBp(vp.maxX);
+                const bpSpan = bpRight - bpLeft;
+                console.log(`[detail] scheduleDetailFetch: steps=${Math.round(steps)}, zoom=${zoom.toFixed(2)}, viewport=${Math.round(bpSpan/1000)}kb, threshold=${NODE_BUDGET_STEPS}, phase=${detailPhase}`);
                 if (steps < NODE_BUDGET_STEPS) {
-                    fetchDetailForViewport();
+                    console.log(`[detail]   -> steps < threshold, fetching chains...`);
+                    fetchChainsForViewport();
                 } else {
+                    console.log(`[detail]   -> steps >= threshold, exiting detail mode`);
                     exitDetailMode();
                 }
             }, 200);
@@ -561,13 +561,14 @@
         // Detail phase state machine
         // ---------------------------------------------------------------
         function setDetailPhase(phase) {
+            console.log(`[phase] ${detailPhase} -> ${phase}`);
             detailPhase = phase;
             const cls = (phase === 'fading-in' || phase === 'fading-out') ? 'fading' : phase;
             detailPhaseEl.className = cls;
             detailPhase2El.className = cls;
             const labels = {
-                'none': '', 'fading-in': 'DETAIL', 'fading-out': 'DETAIL',
-                'static': 'DETAIL (static)', 'physics': 'DETAIL (physics)',
+                'none': '', 'fading-in': 'CHAINS', 'fading-out': 'CHAINS',
+                'static': 'CHAINS',
             };
             detailPhaseEl.textContent = labels[phase] || '';
             detailPhase2El.textContent = labels[phase] || '';
@@ -583,8 +584,8 @@
 
         function updateDetailBar() {
             if (!detailData) return;
-            detailNodesEl.textContent = detailData.nodes.length.toLocaleString();
-            detailLinksEl.textContent = detailData.links.length.toLocaleString();
+            detailChainsEl.textContent = detailData.chains.length.toLocaleString();
+            detailNodesEl.textContent = (detailData.totalBubbles || 0).toLocaleString();
             if (detailCache) {
                 detailRangeEl.textContent = `${formatBp(detailCache.bpStart)}-${formatBp(detailCache.bpEnd)}`;
             }
@@ -595,28 +596,6 @@
 
         function exitDetailMode() {
             if (detailPhase === 'none' || detailPhase === 'fading-out') return;
-
-            // Kill simulation
-            if (simulation) {
-                simulation.stop();
-                simulation = null;
-            }
-            if (physicsDelayTimer) {
-                clearTimeout(physicsDelayTimer);
-                physicsDelayTimer = null;
-            }
-
-            // Snap nodes back to ODGI positions for clean fade-out
-            if (detailData) {
-                for (const node of detailData.nodes) {
-                    node.cx = node.homeX;
-                    node.cy = node.homeY;
-                    node.x = node.homeX;
-                    node.y = node.homeY;
-                    node.vx = 0;
-                    node.vy = 0;
-                }
-            }
 
             // Start time-based fade-out
             fadeStartTime = performance.now();
@@ -645,15 +624,10 @@
                 if (t < 1) {
                     scheduleFadeFrame();
                 } else {
-                    // Fade-in complete
+                    // Fade-in complete — chains are static, no physics
                     detailOpacity = 1;
                     skeletonOpacity = 0.1;
                     setDetailPhase('static');
-                    physicsDelayTimer = setTimeout(() => {
-                        if (detailPhase === 'static' && detailData) {
-                            startPhysics();
-                        }
-                    }, 200);
                 }
             } else if (detailPhase === 'fading-out') {
                 detailOpacity = 1 - t;
@@ -680,61 +654,8 @@
             });
         }
 
-        // ---------------------------------------------------------------
-        // D3-force simulation
-        // ---------------------------------------------------------------
-        function createLayoutForce(strength) {
-            let nodes = [];
-            function force(alpha) {
-                for (const node of nodes) {
-                    node.vx += (node.homeX - node.x) * strength * alpha;
-                    node.vy += (node.homeY - node.y) * strength * alpha;
-                }
-            }
-            force.initialize = _nodes => { nodes = _nodes; };
-            return force;
-        }
-
-        function startPhysics() {
-            if (!detailData || detailPhase !== 'static') return;
-
-            // Prepare node array for d3 (positions already set to ODGI)
-            const nodes = detailData.nodes;
-            for (const n of nodes) {
-                n.x = n.homeX;
-                n.y = n.homeY;
-                n.vx = 0;
-                n.vy = 0;
-            }
-
-            // Build links with node object references
-            const nodeById = {};
-            for (const n of nodes) nodeById[n.id] = n;
-            const simLinks = detailData.links
-                .map(l => ({
-                    source: nodeById[l.source],
-                    target: nodeById[l.target],
-                }))
-                .filter(l => l.source && l.target);
-
-            simulation = d3.forceSimulation(nodes)
-                .force('charge', d3.forceManyBody().strength(-20).distanceMax(100))
-                .force('collision', d3.forceCollide().radius(d => Math.max(3, Math.sqrt(d.size || 1) * 1.5)))
-                .force('link', d3.forceLink(simLinks).distance(15).strength(0.3))
-                .force('layout', createLayoutForce(0.05))
-                .alphaDecay(0.02)
-                .velocityDecay(0.4)
-                .on('tick', () => {
-                    // Sync simulation coords to rendering coords
-                    for (const n of nodes) {
-                        n.cx = n.x;
-                        n.cy = n.y;
-                    }
-                    scheduleFrame();
-                });
-
-            setDetailPhase('physics');
-        }
+        // Chain polylines are static — no d3-force simulation needed.
+        // ODGI layout positions are used directly.
 
         // ---------------------------------------------------------------
         // Render: only visible polylines & junctions + detail overlay
@@ -949,43 +870,70 @@
         // ---------------------------------------------------------------
         // Detail rendering pass (within data-space transform)
         // ---------------------------------------------------------------
+        function subtypeColor(subtype) {
+            return subtype === 'simple' ? '#4a90d9'
+                : subtype === 'superbubble' ? '#d94a90' : '#90d94a';
+        }
+
+        function drawChainPolylines(chains, baseWidth, hovChain) {
+            for (const chain of chains) {
+                const pl = chain.polyline;
+                if (pl.length < 2) continue;
+                const isHovered = hovChain && chain === hovChain;
+                const color = subtypeColor(chain.subtype);
+
+                // Width scales with chain bp length
+                const w = Math.max(1.5, baseWidth * Math.log2(Math.max(1, chain.length / 1000)));
+
+                if (hovChain && !isHovered) {
+                    ctx.globalAlpha = 0.25 * detailOpacity;
+                } else if (isHovered) {
+                    ctx.globalAlpha = detailOpacity;
+                }
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = isHovered ? w * 1.5 : w;
+                ctx.beginPath();
+                ctx.moveTo(pl[0][0], pl[0][1]);
+                for (let i = 1; i < pl.length; i++) {
+                    ctx.lineTo(pl[i][0], pl[i][1]);
+                }
+                ctx.stroke();
+
+                if (hovChain) {
+                    ctx.globalAlpha = detailOpacity;
+                }
+            }
+        }
+
         function drawDetail() {
             ctx.globalAlpha = detailOpacity;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
 
-            // --- Links ---
-            ctx.strokeStyle = '#5599dd';
-            ctx.lineWidth = Math.max(0.5, 1.5 / zoom);
-            ctx.beginPath();
-            for (const link of detailData.links) {
-                const src = detailData.nodeMap[link.source];
-                const tgt = detailData.nodeMap[link.target];
-                if (!src || !tgt) continue;
-                ctx.moveTo(src.cx, src.cy);
-                ctx.lineTo(tgt.cx, tgt.cy);
-            }
-            ctx.stroke();
+            const hovChain = hoveredChain;
 
-            // --- Nodes ---
-            // Bubble nodes: colored circles sized by complexity
-            const baseR = Math.max(2, 4 / zoom);
-            for (const node of detailData.nodes) {
-                const nr = baseR * Math.max(1, Math.sqrt(node.size) * 0.4);
-                ctx.beginPath();
-                ctx.arc(node.cx, node.cy, nr, 0, Math.PI * 2);
+            // --- Chain polylines ---
+            drawChainPolylines(detailData.chains, Math.max(1.5, 3 / zoom), hovChain);
 
-                if (node.subtype === 'simple') {
-                    ctx.fillStyle = '#4a90d9';
-                } else if (node.subtype === 'superbubble') {
-                    ctx.fillStyle = '#d94a90';
-                } else {
-                    ctx.fillStyle = '#90d94a';
+            // --- Hover highlight ---
+            if (hoveredChain) {
+                const hc = hoveredChain;
+                const pl = hc.polyline;
+
+                // Highlight hovered chain with bright stroke
+                if (pl.length >= 2) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = Math.max(2.5, 5 / zoom);
+                    ctx.globalAlpha = 0.3 * detailOpacity;
+                    ctx.beginPath();
+                    ctx.moveTo(pl[0][0], pl[0][1]);
+                    for (let i = 1; i < pl.length; i++) {
+                        ctx.lineTo(pl[i][0], pl[i][1]);
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = detailOpacity;
                 }
-                ctx.fill();
-
-                // Subtle outline
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-                ctx.lineWidth = Math.max(0.3, 0.6 / zoom);
-                ctx.stroke();
             }
 
             ctx.globalAlpha = 1;
@@ -1040,20 +988,98 @@
             scheduleDetailFetch();
         }, { passive: false });
 
-        // --- Cursor coordinate readout ---
+        // --- Hover state ---
+        let hoveredChain = null;   // chain object or null
+        const tooltipEl = document.getElementById('tooltip');
+        const HIT_RADIUS_PX = 12;  // screen pixels for hit detection
+
+        function pointToSegmentDist(px, py, ax, ay, bx, by) {
+            const dx = bx - ax, dy = by - ay;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+            const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+            return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+        }
+
+        function hitTestChains(dataX, dataY) {
+            if (!detailData || detailOpacity < 0.5) return null;
+            const hitR = HIT_RADIUS_PX / zoom;
+            let bestDist = hitR;
+            let bestChain = null;
+
+            for (const chain of detailData.chains) {
+                const pl = chain.polyline;
+                for (let i = 0; i < pl.length - 1; i++) {
+                    const d = pointToSegmentDist(dataX, dataY, pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1]);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestChain = chain;
+                    }
+                }
+            }
+            return bestChain;
+        }
+
+        function formatTooltip(chain) {
+            const subtypeColors = { simple: '#4a90d9', superbubble: '#d94a90' };
+            const color = subtypeColors[chain.subtype] || '#90d94a';
+            const lengthStr = chain.length >= 1000 ? (chain.length/1000).toFixed(1) + 'kb' : chain.length + 'bp';
+            const lines = [
+                `<span class="tt-label">chain</span> <span class="tt-chain">${chain.id}</span>`,
+                `<span class="tt-label">subtype</span> <span class="tt-subtype" style="color:${color}">${chain.subtype}</span>`,
+                `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
+                `<span class="tt-label">bubbles</span> <span class="tt-val">${chain.nBubbles}</span>`,
+                `<span class="tt-label">polyline</span> <span class="tt-val">${chain.polyline.length} pts</span>`,
+            ];
+            return lines.join('<br>');
+        }
+
+        // --- Cursor coordinate readout + hover hit-test ---
         canvas.addEventListener('mousemove', e => {
             if (isDragging || !spineX) return;
             const rect = canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
             const layoutX = (screenX - panX) / zoom;
+            const layoutY = (screenY - panY) / zoom;
             const bp = xToBp(layoutX);
             if (bp !== null) {
                 cursorBpEl.textContent = `${chromosome}:${formatBp(bp)}`;
+            }
+
+            // Hit-test chain polylines
+            const hit = hitTestChains(layoutX, layoutY);
+            if (hit) {
+                hoveredChain = hit;
+                tooltipEl.innerHTML = formatTooltip(hit);
+                tooltipEl.style.display = 'block';
+                // Position tooltip near cursor, offset right and up
+                const ttRect = tooltipEl.getBoundingClientRect();
+                let tx = e.clientX + 14;
+                let ty = e.clientY - ttRect.height - 8;
+                // Keep on screen
+                if (tx + ttRect.width > window.innerWidth - 8) tx = e.clientX - ttRect.width - 14;
+                if (ty < 4) ty = e.clientY + 18;
+                tooltipEl.style.left = tx + 'px';
+                tooltipEl.style.top = ty + 'px';
+                canvas.style.cursor = 'crosshair';
+                scheduleFrame();
+            } else if (hoveredChain) {
+                hoveredChain = null;
+                tooltipEl.style.display = 'none';
+                canvas.style.cursor = 'grab';
+                scheduleFrame();
             }
         });
 
         canvas.addEventListener('mouseleave', () => {
             cursorBpEl.textContent = '';
+            if (hoveredChain) {
+                hoveredChain = null;
+                tooltipEl.style.display = 'none';
+                canvas.style.cursor = 'grab';
+                scheduleFrame();
+            }
         });
 
         // --- Double-click to reset view ---
