@@ -15,7 +15,7 @@ def index():
 
 @bp.route('/simplify')
 def simplify_viewer():
-    return render_template("simplify.html")
+    return render_template("simplify.html", genome=current_app.genome)
 
 @bp.route('/simplify-data')
 def simplify_data():

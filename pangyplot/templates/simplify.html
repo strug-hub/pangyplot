@@ -88,6 +88,15 @@
             font-size: 16px;
             color: #666;
         }
+
+        #detail-phase {
+            font-size: 11px;
+            font-family: 'SF Mono', Consolas, monospace;
+        }
+        #detail-phase.none { color: #555; }
+        #detail-phase.fading { color: #f90; }
+        #detail-phase.static { color: #0f0; }
+        #detail-phase.physics { color: #0ff; }
     </style>
 </head>
 <body>
@@ -104,6 +113,7 @@
         </div>
         <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
         <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
+        <span id="detail-phase" class="none"></span>
         <span id="stats"></span>
     </div>
     <div id="canvas-container">
@@ -111,6 +121,7 @@
         <div id="loading">Loading graph data...</div>
     </div>
 
+    <script src="/static/js/d3/d3.js"></script>
     <script type="module">
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -122,6 +133,10 @@
         const statsEl = document.getElementById('stats');
         const loadingEl = document.getElementById('loading');
         const lodOffsetEl = document.getElementById('lod-offset');
+        const detailPhaseEl = document.getElementById('detail-phase');
+
+        // Config passed from Flask
+        const GENOME = '{{ genome }}';
 
         let data = null;
         let currentLevel = -1;
@@ -134,16 +149,35 @@
         let isDragging = false, dragStartX = 0, dragStartY = 0;
         let dataBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
 
-        // Per-level precomputed bounding boxes: level index → Float64Array [minX,minY,maxX,maxY, ...]
+        // Per-level precomputed bounding boxes: level index -> Float64Array [minX,minY,maxX,maxY, ...]
         let levelBboxes = [];
         let rafId = null;
 
-        // Reference spine: layout_x → basepair lookup
+        // Reference spine: layout_x -> basepair + step lookup
         let spineX = null;      // Float64Array
         let spineBp = null;     // Float64Array
+        let spineY = null;      // Float64Array
+        let spineStep = null;   // Float64Array
         let chromosome = '';
         const viewportBpEl = document.getElementById('viewport-bp');
         const cursorBpEl = document.getElementById('cursor-bp');
+
+        // ---------------------------------------------------------------
+        // Progressive detail state
+        // ---------------------------------------------------------------
+        const NODE_BUDGET_STEPS = 1500;
+        const HARD_NODE_CAP = 500;
+        const FETCH_MARGIN = 0.2;       // 20% extra on each side
+
+        let detailPhase = 'none';       // 'none' | 'fading-in' | 'static' | 'physics'
+        let detailData = null;          // { nodes, links, nodeMap }
+        let detailCache = null;         // { bpStart, bpEnd, data }
+        let detailOpacity = 0;
+        let skeletonOpacity = 1;
+        let fetchController = null;     // AbortController for in-flight fetch
+        let fetchTimer = null;          // debounce timer
+        let simulation = null;          // d3-force simulation
+        let physicsDelayTimer = null;
 
         // ---------------------------------------------------------------
         // Setup
@@ -216,10 +250,10 @@
             const dpr = window.devicePixelRatio || 1;
             const cw = canvas.width / dpr;
             const viewportWidth = cw / zoom;
-            // Target ~2000 grid cells across viewport — keeps resolution high
+            // Target ~2000 grid cells across viewport -- keeps resolution high
             const targetCell = viewportWidth / 2000;
 
-            // Levels sorted finest → coarsest. Pick finest whose cellSize <= target.
+            // Levels sorted finest -> coarsest. Pick finest whose cellSize <= target.
             let best = 0;
             for (let i = data.levels.length - 1; i >= 0; i--) {
                 if (data.levels[i].cellSize <= targetCell) {
@@ -250,17 +284,17 @@
         // ---------------------------------------------------------------
         // Reference coordinate translation
         // ---------------------------------------------------------------
-        let spineY = null;      // Float64Array
-
         function initSpine(refSpine) {
             const n = refSpine.length;
             spineX = new Float64Array(n);
             spineBp = new Float64Array(n);
             spineY = new Float64Array(n);
+            spineStep = new Float64Array(n);
             for (let i = 0; i < n; i++) {
                 spineX[i] = refSpine[i][0];
                 spineBp[i] = refSpine[i][1];
                 spineY[i] = refSpine[i][2];
+                spineStep[i] = refSpine[i][3] ?? 0;
             }
         }
 
@@ -295,6 +329,28 @@
             return spineY[lo] + t * (spineY[hi] - spineY[lo]);
         }
 
+        function bpToStep(bp) {
+            if (!spineBp || spineBp.length === 0) return 0;
+            if (bp <= spineBp[0]) return spineStep[0];
+            if (bp >= spineBp[spineBp.length - 1]) return spineStep[spineStep.length - 1];
+            let lo = 0, hi = spineBp.length - 1;
+            while (lo < hi - 1) {
+                const mid = (lo + hi) >> 1;
+                if (spineBp[mid] <= bp) lo = mid;
+                else hi = mid;
+            }
+            const t = (bp - spineBp[lo]) / (spineBp[hi] - spineBp[lo]);
+            return spineStep[lo] + t * (spineStep[hi] - spineStep[lo]);
+        }
+
+        function viewportStepCount() {
+            const vp = getViewport();
+            const bpLeft = xToBp(vp.minX);
+            const bpRight = xToBp(vp.maxX);
+            if (bpLeft === null || bpRight === null) return Infinity;
+            return bpToStep(bpRight) - bpToStep(bpLeft);
+        }
+
         function formatBp(bp) {
             bp = Math.round(bp);
             return bp.toLocaleString();
@@ -315,9 +371,8 @@
         }
 
         // ---------------------------------------------------------------
-        // Gene landmarks (dummy data — real genes on chrY, GRCh38)
+        // Gene landmarks (real chrY genes, GRCh38)
         // ---------------------------------------------------------------
-        // Real chrY genes from gencode48 (GRCh38)
         const GENES = [
             { name: 'SRY',     startBp: 2786855,  endBp: 2787682 },
             { name: 'ZFY',     startBp: 2935281,  endBp: 2982506 },
@@ -341,12 +396,10 @@
                 const endX = bpToX(gene.endBp);
                 if (startX === null || endX === null) continue;
                 const midX = (startX + endX) / 2;
-                // Reference path y at gene start, mid, end
                 const yStart = xToY(startX);
                 const yEnd = xToY(endX);
                 const yMid = xToY(midX);
                 const refY = yMid;
-                // Min/max y along the reference path through the gene
                 const minY = Math.min(yStart, yMid, yEnd);
                 const maxY = Math.max(yStart, yMid, yEnd);
                 genePins.push({ name: gene.name, startX, endX, midX, refY, minY, maxY });
@@ -354,7 +407,272 @@
         }
 
         // ---------------------------------------------------------------
-        // Render: only visible polylines & junctions
+        // Detail data: fetch, process, cache
+        // ---------------------------------------------------------------
+        function processDetailResponse(apiResponse) {
+            const nodeMap = {};
+            const segToBubble = {};
+
+            for (const node of apiResponse.nodes) {
+                const cx = (node.x1 + node.x2) / 2;
+                const cy = (node.y1 + node.y2) / 2;
+                nodeMap[node.id] = {
+                    id: node.id,
+                    cx, cy,
+                    homeX: cx, homeY: cy,
+                    x: cx, y: cy,         // d3 simulation coordinates
+                    vx: 0, vy: 0,
+                    type: node.type,
+                    size: node.size || 1,
+                    length: node.length || 0,
+                    subtype: node.subtype,
+                };
+                if (node.source_segs) {
+                    for (const seg of node.source_segs) segToBubble[`s${seg}`] = node.id;
+                }
+                if (node.sink_segs) {
+                    for (const seg of node.sink_segs) segToBubble[`s${seg}`] = node.id;
+                }
+            }
+
+            // Resolve s->s links to bubble->bubble, deduplicating
+            const links = [];
+            const seen = new Set();
+            for (const link of apiResponse.links) {
+                const srcBubble = segToBubble[link.source];
+                const tgtBubble = segToBubble[link.target];
+                if (!srcBubble || !tgtBubble || srcBubble === tgtBubble) continue;
+                const key = srcBubble < tgtBubble ? `${srcBubble}-${tgtBubble}` : `${tgtBubble}-${srcBubble}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                links.push({ source: srcBubble, target: tgtBubble });
+            }
+
+            return { nodes: Object.values(nodeMap), links, nodeMap };
+        }
+
+        async function fetchDetailForViewport() {
+            if (!spineX || !chromosome) return;
+
+            const vp = getViewport();
+            const bpLeft = xToBp(vp.minX);
+            const bpRight = xToBp(vp.maxX);
+            if (bpLeft === null || bpRight === null) return;
+
+            const span = bpRight - bpLeft;
+            const marginBp = span * FETCH_MARGIN;
+            const fetchStart = Math.max(0, Math.round(bpLeft - marginBp));
+            const fetchEnd = Math.round(bpRight + marginBp);
+
+            // Reuse cache if viewport is within cached range
+            if (detailCache &&
+                fetchStart >= detailCache.bpStart &&
+                fetchEnd <= detailCache.bpEnd) {
+                return;
+            }
+
+            // Cancel any in-flight fetch
+            if (fetchController) fetchController.abort();
+            fetchController = new AbortController();
+
+            const url = `/select?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}`;
+
+            try {
+                const resp = await fetch(url, { signal: fetchController.signal });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const apiData = await resp.json();
+
+                // Check node count against hard cap
+                if (apiData.nodes.length > HARD_NODE_CAP) {
+                    console.log(`Detail: ${apiData.nodes.length} nodes exceeds cap ${HARD_NODE_CAP}, skipping`);
+                    return;
+                }
+
+                const processed = processDetailResponse(apiData);
+                detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, data: processed };
+                detailData = processed;
+
+                if (detailPhase === 'none') {
+                    setDetailPhase('fading-in');
+                }
+                scheduleFrame();
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Detail fetch error:', err);
+                }
+            }
+        }
+
+        function scheduleDetailFetch() {
+            if (fetchTimer) clearTimeout(fetchTimer);
+            fetchTimer = setTimeout(() => {
+                const steps = viewportStepCount();
+                if (steps < NODE_BUDGET_STEPS) {
+                    fetchDetailForViewport();
+                } else {
+                    exitDetailMode();
+                }
+            }, 200);
+        }
+
+        // ---------------------------------------------------------------
+        // Detail phase state machine
+        // ---------------------------------------------------------------
+        function setDetailPhase(phase) {
+            detailPhase = phase;
+            detailPhaseEl.className = phase === 'fading-in' ? 'fading' : phase;
+            if (phase === 'none') {
+                detailPhaseEl.textContent = '';
+            } else if (phase === 'fading-in') {
+                detailPhaseEl.textContent = 'DETAIL';
+            } else if (phase === 'static') {
+                detailPhaseEl.textContent = 'DETAIL (static)';
+            } else if (phase === 'physics') {
+                detailPhaseEl.textContent = 'DETAIL (physics)';
+            }
+        }
+
+        function exitDetailMode() {
+            if (detailPhase === 'none') return;
+
+            // Kill simulation
+            if (simulation) {
+                simulation.stop();
+                simulation = null;
+            }
+            if (physicsDelayTimer) {
+                clearTimeout(physicsDelayTimer);
+                physicsDelayTimer = null;
+            }
+
+            // Snap nodes back to ODGI positions (for clean fade-out)
+            if (detailData) {
+                for (const node of detailData.nodes) {
+                    node.cx = node.homeX;
+                    node.cy = node.homeY;
+                    node.x = node.homeX;
+                    node.y = node.homeY;
+                    node.vx = 0;
+                    node.vy = 0;
+                }
+            }
+
+            detailData = null;
+            detailCache = null;
+            detailOpacity = 0;
+            skeletonOpacity = 1;
+            setDetailPhase('none');
+            scheduleFrame();
+        }
+
+        function updateDetailOpacity() {
+            if (!spineStep) return;
+            const stepCount = viewportStepCount();
+
+            if (stepCount >= NODE_BUDGET_STEPS) {
+                detailOpacity = 0;
+                skeletonOpacity = 1;
+                return;
+            }
+
+            // t goes from 0 (at threshold) to 1 (when 3x zoomed past)
+            const t = 1 - (stepCount / NODE_BUDGET_STEPS);
+            detailOpacity = Math.max(0, Math.min(1, t * 2));
+            skeletonOpacity = Math.max(0.1, 1 - detailOpacity);
+
+            // Phase transitions based on opacity
+            if (detailData && detailPhase === 'fading-in' && detailOpacity >= 1.0) {
+                setDetailPhase('static');
+                // Brief pause, then engage physics
+                physicsDelayTimer = setTimeout(() => {
+                    if (detailPhase === 'static' && detailData) {
+                        startPhysics();
+                    }
+                }, 200);
+            } else if (detailPhase === 'physics' && detailOpacity < 1.0) {
+                // Zooming back out while physics active: snap back and revert
+                if (simulation) {
+                    simulation.stop();
+                    simulation = null;
+                }
+                if (detailData) {
+                    for (const node of detailData.nodes) {
+                        node.cx = node.homeX;
+                        node.cy = node.homeY;
+                        node.x = node.homeX;
+                        node.y = node.homeY;
+                        node.vx = 0;
+                        node.vy = 0;
+                    }
+                }
+                setDetailPhase('fading-in');
+            } else if (detailPhase === 'static' && detailOpacity < 1.0) {
+                if (physicsDelayTimer) {
+                    clearTimeout(physicsDelayTimer);
+                    physicsDelayTimer = null;
+                }
+                setDetailPhase('fading-in');
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // D3-force simulation
+        // ---------------------------------------------------------------
+        function createLayoutForce(strength) {
+            let nodes = [];
+            function force(alpha) {
+                for (const node of nodes) {
+                    node.vx += (node.homeX - node.x) * strength * alpha;
+                    node.vy += (node.homeY - node.y) * strength * alpha;
+                }
+            }
+            force.initialize = _nodes => { nodes = _nodes; };
+            return force;
+        }
+
+        function startPhysics() {
+            if (!detailData || detailPhase !== 'static') return;
+
+            // Prepare node array for d3 (positions already set to ODGI)
+            const nodes = detailData.nodes;
+            for (const n of nodes) {
+                n.x = n.homeX;
+                n.y = n.homeY;
+                n.vx = 0;
+                n.vy = 0;
+            }
+
+            // Build links with node object references
+            const nodeById = {};
+            for (const n of nodes) nodeById[n.id] = n;
+            const simLinks = detailData.links
+                .map(l => ({
+                    source: nodeById[l.source],
+                    target: nodeById[l.target],
+                }))
+                .filter(l => l.source && l.target);
+
+            simulation = d3.forceSimulation(nodes)
+                .force('charge', d3.forceManyBody().strength(-20).distanceMax(100))
+                .force('collision', d3.forceCollide().radius(d => Math.max(3, Math.sqrt(d.size || 1) * 1.5)))
+                .force('link', d3.forceLink(simLinks).distance(15).strength(0.3))
+                .force('layout', createLayoutForce(0.05))
+                .alphaDecay(0.02)
+                .velocityDecay(0.4)
+                .on('tick', () => {
+                    // Sync simulation coords to rendering coords
+                    for (const n of nodes) {
+                        n.cx = n.x;
+                        n.cy = n.y;
+                    }
+                    scheduleFrame();
+                });
+
+            setDetailPhase('physics');
+        }
+
+        // ---------------------------------------------------------------
+        // Render: only visible polylines & junctions + detail overlay
         // ---------------------------------------------------------------
         function draw() {
             const dpr = window.devicePixelRatio || 1;
@@ -372,6 +690,9 @@
             const levelChanged = li !== currentLevel;
             currentLevel = li;
 
+            // Update detail opacity based on zoom level
+            if (spineStep) updateDetailOpacity();
+
             const vp = getViewport();
             // Margin in data units so lines at the edge aren't clipped
             const margin = (level.cellSize || 50) * 2;
@@ -380,13 +701,15 @@
             const vpMaxX = vp.maxX + margin;
             const vpMaxY = vp.maxY + margin;
 
+            // ===== SKELETON LAYER =====
             ctx.save();
             ctx.translate(panX, panY);
             ctx.scale(zoom, zoom);
 
             // --- Polylines (culled) ---
             const lineWidth = Math.max(0.5, 1.2 / zoom);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+            const skelAlpha = detailData ? skeletonOpacity : 1;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 * skelAlpha})`;
             ctx.lineWidth = lineWidth;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
@@ -410,11 +733,9 @@
             ctx.stroke();
 
             // --- Gene-colored polylines (overdraw) ---
-            // Tight margin around the reference path y — enough for nearby
-            // haplotype branches but not distant structural variants
             const geneYMargin = (level.cellSize || 50) * 3;
             if (genePins.length > 0) {
-                ctx.strokeStyle = '#e8a735';
+                ctx.strokeStyle = `rgba(232, 167, 53, ${skelAlpha})`;
                 ctx.lineWidth = lineWidth * 2;
                 ctx.lineJoin = 'round';
                 ctx.lineCap = 'round';
@@ -425,7 +746,6 @@
                     if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
                         bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
 
-                    // Check if polyline overlaps any gene region (x AND y)
                     let inGene = false;
                     for (const gene of genePins) {
                         if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX &&
@@ -447,7 +767,7 @@
 
             // --- Junctions (culled) ---
             const r = Math.max(1.5, 3.0 / zoom);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * skelAlpha})`;
             let visibleJ = 0;
 
             ctx.beginPath();
@@ -462,7 +782,7 @@
             // --- Gene-colored junctions (overdraw) ---
             if (genePins.length > 0) {
                 const gr = Math.max(2, 4.0 / zoom);
-                ctx.fillStyle = '#e8a735';
+                ctx.fillStyle = `rgba(232, 167, 53, ${skelAlpha})`;
                 ctx.beginPath();
                 for (const [x, y] of level.junctions) {
                     if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
@@ -481,6 +801,11 @@
                 ctx.fill();
             }
 
+            // ===== DETAIL LAYER (drawn in same data-space transform) =====
+            if (detailData && detailOpacity > 0) {
+                drawDetail();
+            }
+
             ctx.restore();
 
             // --- Gene labels (screen coords) ---
@@ -494,13 +819,12 @@
                     const sxStart = gene.startX * zoom + panX;
                     const sxEnd = gene.endX * zoom + panX;
                     const sxMid = (sxStart + sxEnd) / 2;
-                    const syRef = gene.refY * zoom + panY;   // reference path y
+                    const syRef = gene.refY * zoom + panY;
                     if (sxEnd < -60 || sxStart > cw + 60) continue;
 
                     const geneW = sxEnd - sxStart;
                     const bracketY = syRef - 16;
 
-                    // Extent bracket (when gene spans enough pixels)
                     ctx.strokeStyle = '#e8a735';
                     ctx.lineWidth = 1.5;
                     if (geneW > 6) {
@@ -511,14 +835,12 @@
                         ctx.lineTo(sxEnd, syRef + 4);
                         ctx.stroke();
                     } else {
-                        // Gene too small on screen — single stem
                         ctx.beginPath();
                         ctx.moveTo(sxMid, syRef + 4);
                         ctx.lineTo(sxMid, bracketY);
                         ctx.stroke();
                     }
 
-                    // Label pill
                     const label = gene.name;
                     const tw = ctx.measureText(label).width;
                     const px = 5, py = 2;
@@ -560,6 +882,51 @@
         }
 
         // ---------------------------------------------------------------
+        // Detail rendering pass (within data-space transform)
+        // ---------------------------------------------------------------
+        function drawDetail() {
+            ctx.globalAlpha = detailOpacity;
+
+            // --- Links ---
+            ctx.strokeStyle = '#5599dd';
+            ctx.lineWidth = Math.max(0.5, 1.5 / zoom);
+            ctx.beginPath();
+            for (const link of detailData.links) {
+                const src = detailData.nodeMap[link.source];
+                const tgt = detailData.nodeMap[link.target];
+                if (!src || !tgt) continue;
+                ctx.moveTo(src.cx, src.cy);
+                ctx.lineTo(tgt.cx, tgt.cy);
+            }
+            ctx.stroke();
+
+            // --- Nodes ---
+            // Bubble nodes: colored circles sized by complexity
+            const baseR = Math.max(2, 4 / zoom);
+            for (const node of detailData.nodes) {
+                const nr = baseR * Math.max(1, Math.sqrt(node.size) * 0.4);
+                ctx.beginPath();
+                ctx.arc(node.cx, node.cy, nr, 0, Math.PI * 2);
+
+                if (node.subtype === 'simple') {
+                    ctx.fillStyle = '#4a90d9';
+                } else if (node.subtype === 'superbubble') {
+                    ctx.fillStyle = '#d94a90';
+                } else {
+                    ctx.fillStyle = '#90d94a';
+                }
+                ctx.fill();
+
+                // Subtle outline
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = Math.max(0.3, 0.6 / zoom);
+                ctx.stroke();
+            }
+
+            ctx.globalAlpha = 1;
+        }
+
+        // ---------------------------------------------------------------
         // RAF-throttled frame scheduling
         // ---------------------------------------------------------------
         function scheduleFrame() {
@@ -583,6 +950,7 @@
             panX = e.clientX - dragStartX;
             panY = e.clientY - dragStartY;
             scheduleFrame();
+            scheduleDetailFetch();
         });
 
         window.addEventListener('mouseup', () => {
@@ -604,6 +972,7 @@
             panY = my - (my - panY) * (newZoom / zoom);
             zoom = newZoom;
             scheduleFrame();
+            scheduleDetailFetch();
         }, { passive: false });
 
         // --- Cursor coordinate readout ---
@@ -626,6 +995,7 @@
         canvas.addEventListener('dblclick', () => {
             fitToScreen();
             scheduleFrame();
+            scheduleDetailFetch();
         });
 
         // --- LOD override buttons ---
