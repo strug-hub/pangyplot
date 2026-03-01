@@ -132,6 +132,22 @@ def search():
 
     return jsonify(results)
 
+@bp.route('/chains', methods=["GET"])
+def chains():
+    genome = request.args.get("genome")
+    chrom = request.args.get("chromosome")
+    start = int(request.args.get("start"))
+    end = int(request.args.get("end"))
+    expand = request.args.get("expand", type=int, default=None)
+
+    print(f"Getting chains for {genome}#{chrom}:{start}-{end} expand={expand}...")
+    try:
+        result = query.get_chains(current_app, genome, chrom, start, end, expand_threshold=expand)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify(result)
+
 @bp.route('/select', methods=["GET"])
 def select():
     genome = request.args.get("genome")

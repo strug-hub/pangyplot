@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Graph Simplification Viewer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -221,6 +222,8 @@
         const FETCH_MARGIN = 0.2;       // 20% extra on each side
         const FADE_DURATION = 600;      // ms for fade-in / fade-out animation
 
+        let hashTimer = null;           // debounce timer for URL hash updates
+
         let detailPhase = 'none';       // 'none' | 'fading-in' | 'static' | 'fading-out'
         let detailData = null;          // { chains, totalBubbles }
         let detailCache = null;         // { bpStart, bpEnd, data }
@@ -422,6 +425,66 @@
         }
 
         // ---------------------------------------------------------------
+        // URL hash: sync viewport state for shareable links
+        // ---------------------------------------------------------------
+        function updateUrlHash() {
+            if (!spineX || !chromosome) return;
+            const vp = getViewport();
+            const bpLeft = xToBp(vp.minX);
+            const bpRight = xToBp(vp.maxX);
+            if (bpLeft === null || bpRight === null) return;
+            const start = Math.max(0, Math.round(bpLeft));
+            const end = Math.round(bpRight);
+            const hash = `#${chromosome}:${start}-${end}`;
+            if (location.hash !== hash) {
+                history.replaceState(null, '', hash);
+            }
+        }
+
+        function scheduleHashUpdate() {
+            if (hashTimer) clearTimeout(hashTimer);
+            hashTimer = setTimeout(updateUrlHash, 150);
+        }
+
+        function parseUrlHash() {
+            const hash = location.hash.replace(/^#/, '');
+            if (!hash) return null;
+            // Format: chrY:12345-67890
+            const m = hash.match(/^([^:]+):(\d+)-(\d+)$/);
+            if (!m) return null;
+            return { chrom: m[1], start: parseInt(m[2], 10), end: parseInt(m[3], 10) };
+        }
+
+        function navigateToHash() {
+            const params = parseUrlHash();
+            if (!params || !spineX) return false;
+
+            const layoutLeft = bpToX(params.start);
+            const layoutRight = bpToX(params.end);
+            if (layoutLeft === null || layoutRight === null) return false;
+
+            const dpr = window.devicePixelRatio || 1;
+            const cw = canvas.width / dpr;
+            const ch = canvas.height / dpr;
+
+            const layoutWidth = layoutRight - layoutLeft;
+            if (layoutWidth <= 0) return false;
+
+            // Fit the bp range horizontally with padding
+            const pad = 40;
+            zoom = (cw - pad * 2) / layoutWidth;
+
+            // Center on the midpoint; use spine Y for vertical centering
+            const midX = (layoutLeft + layoutRight) / 2;
+            const midY = xToY(midX);
+            if (midY === null) return false;
+
+            panX = (cw / 2) - (midX * zoom);
+            panY = (ch / 2) - (midY * zoom);
+            return true;
+        }
+
+        // ---------------------------------------------------------------
         // Gene landmarks (real chrY genes, GRCh38)
         // ---------------------------------------------------------------
         const GENES = [
@@ -470,6 +533,7 @@
                     length: chain.length,
                     nBubbles: chain.n_bubbles,
                     subtype: chain.subtype,
+                    depth: chain.depth || 0,
                     sourceSegs: chain.source_segs,
                     sinkSegs: chain.sink_segs,
                 });
@@ -491,20 +555,28 @@
             const fetchStart = Math.max(0, Math.round(bpLeft - marginBp));
             const fetchEnd = Math.round(bpRight + marginBp);
 
-            // Reuse cache if viewport is within cached range
+            // Reuse cache if viewport is within cached range and zoom hasn't changed much
             if (detailCache &&
                 fetchStart >= detailCache.bpStart &&
                 fetchEnd <= detailCache.bpEnd) {
-                console.log(`[detail] cache HIT: viewport ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k within cached ${Math.round(detailCache.bpStart/1000)}k-${Math.round(detailCache.bpEnd/1000)}k`);
-                return;
+                const zoomRatio = zoom / (detailCache.zoom || zoom);
+                if (zoomRatio > 0.5 && zoomRatio < 2) {
+                    console.log(`[detail] cache HIT: viewport ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k within cached ${Math.round(detailCache.bpStart/1000)}k-${Math.round(detailCache.bpEnd/1000)}k`);
+                    return;
+                }
+                console.log(`[detail] cache STALE: zoom changed ${zoomRatio.toFixed(2)}x, re-fetching for new expand threshold`);
             }
 
             // Cancel any in-flight fetch
             if (fetchController) fetchController.abort();
             fetchController = new AbortController();
 
-            const url = `/chains?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}`;
-            console.log(`[detail] FETCH /chains: ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k (${Math.round((fetchEnd-fetchStart)/1000)}kb span)`);
+            // Expand bubbles whose layout span exceeds 1/10 of viewport width (in layout units)
+            const vp2 = getViewport();
+            const viewportLayoutWidth = vp2.maxX - vp2.minX;
+            const expandThreshold = Math.round(Math.max(100, viewportLayoutWidth / 10));
+            const url = `/chains?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}&expand=${expandThreshold}`;
+            console.log(`[detail] FETCH /chains: ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k (${Math.round((fetchEnd-fetchStart)/1000)}kb span, expand>${expandThreshold} layout units)`);
 
             try {
                 const t0 = performance.now();
@@ -516,7 +588,7 @@
                 const totalPts = processed.chains.reduce((s, c) => s + c.polyline.length, 0);
                 console.log(`[detail]   /chains response: ${processed.chains.length} chains, ${processed.totalBubbles} bubbles, ${totalPts} polyline pts (${(performance.now()-t0).toFixed(0)}ms)`);
 
-                detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, data: processed };
+                detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, zoom, data: processed };
                 detailData = processed;
 
                 if (detailPhase === 'none') {
@@ -880,18 +952,19 @@
                 const pl = chain.polyline;
                 if (pl.length < 2) continue;
                 const isHovered = hovChain && chain === hovChain;
-                const color = subtypeColor(chain.subtype);
 
-                // Width scales with chain bp length
-                const w = Math.max(1.5, baseWidth * Math.log2(Math.max(1, chain.length / 1000)));
+                // Width scales with number of bubbles (always positive)
+                const w = Math.max(1.5, baseWidth * Math.log2(Math.max(2, chain.nBubbles)));
 
                 if (hovChain && !isHovered) {
                     ctx.globalAlpha = 0.25 * detailOpacity;
                 } else if (isHovered) {
                     ctx.globalAlpha = detailOpacity;
+                } else {
+                    ctx.globalAlpha = 0.9 * detailOpacity;
                 }
 
-                ctx.strokeStyle = color;
+                ctx.strokeStyle = '#4a90d9';
                 ctx.lineWidth = isHovered ? w * 1.5 : w;
                 ctx.beginPath();
                 ctx.moveTo(pl[0][0], pl[0][1]);
@@ -970,6 +1043,7 @@
             if (!isDragging) return;
             isDragging = false;
             canvas.style.cursor = 'grab';
+            scheduleHashUpdate();
         });
 
         canvas.addEventListener('wheel', e => {
@@ -986,6 +1060,7 @@
             zoom = newZoom;
             scheduleFrame();
             scheduleDetailFetch();
+            scheduleHashUpdate();
         }, { passive: false });
 
         // --- Hover state ---
@@ -1024,12 +1099,14 @@
             const subtypeColors = { simple: '#4a90d9', superbubble: '#d94a90' };
             const color = subtypeColors[chain.subtype] || '#90d94a';
             const lengthStr = chain.length >= 1000 ? (chain.length/1000).toFixed(1) + 'kb' : chain.length + 'bp';
+            const typeLabel = `<span class="tt-subtype" style="color:${color}">${chain.subtype}</span>`;
             const lines = [
                 `<span class="tt-label">chain</span> <span class="tt-chain">${chain.id}</span>`,
-                `<span class="tt-label">subtype</span> <span class="tt-subtype" style="color:${color}">${chain.subtype}</span>`,
+                `<span class="tt-label">type</span> ${typeLabel}`,
                 `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
                 `<span class="tt-label">bubbles</span> <span class="tt-val">${chain.nBubbles}</span>`,
                 `<span class="tt-label">polyline</span> <span class="tt-val">${chain.polyline.length} pts</span>`,
+                `<span class="tt-label">depth</span> <span class="tt-val">${chain.depth}</span>`,
             ];
             return lines.join('<br>');
         }
@@ -1087,6 +1164,7 @@
             fitToScreen();
             scheduleFrame();
             scheduleDetailFetch();
+            scheduleHashUpdate();
         });
 
         // --- LOD override buttons ---
@@ -1146,8 +1224,14 @@
                 placeGenes();
             }
             resizeCanvas();
-            fitToScreen();
+
+            // Navigate to URL hash coordinates, or fit whole graph
+            if (!navigateToHash()) {
+                fitToScreen();
+            }
             scheduleFrame();
+            scheduleDetailFetch();
+            scheduleHashUpdate();
         }
 
         window.addEventListener('resize', resizeCanvas);
