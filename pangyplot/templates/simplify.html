@@ -250,13 +250,17 @@
         // ---------------------------------------------------------------
         // Reference coordinate translation
         // ---------------------------------------------------------------
+        let spineY = null;      // Float64Array
+
         function initSpine(refSpine) {
             const n = refSpine.length;
             spineX = new Float64Array(n);
             spineBp = new Float64Array(n);
+            spineY = new Float64Array(n);
             for (let i = 0; i < n; i++) {
                 spineX[i] = refSpine[i][0];
                 spineBp[i] = refSpine[i][1];
+                spineY[i] = refSpine[i][2];
             }
         }
 
@@ -275,6 +279,20 @@
             // Linear interpolation
             const t = (layoutX - spineX[lo]) / (spineX[hi] - spineX[lo]);
             return spineBp[lo] + t * (spineBp[hi] - spineBp[lo]);
+        }
+
+        function xToY(layoutX) {
+            if (!spineX || spineX.length === 0) return null;
+            if (layoutX <= spineX[0]) return spineY[0];
+            if (layoutX >= spineX[spineX.length - 1]) return spineY[spineY.length - 1];
+            let lo = 0, hi = spineX.length - 1;
+            while (lo < hi - 1) {
+                const mid = (lo + hi) >> 1;
+                if (spineX[mid] <= layoutX) lo = mid;
+                else hi = mid;
+            }
+            const t = (layoutX - spineX[lo]) / (spineX[hi] - spineX[lo]);
+            return spineY[lo] + t * (spineY[hi] - spineY[lo]);
         }
 
         function formatBp(bp) {
@@ -313,24 +331,21 @@
 
         function placeGenes() {
             if (!spineX || !data) return;
-            const junctions = data.levels[0].junctions;
             genePins = [];
             for (const gene of GENES) {
                 const startX = bpToX(gene.startBp);
                 const endX = bpToX(gene.endBp);
                 if (startX === null || endX === null) continue;
                 const midX = (startX + endX) / 2;
-                // Find nearest junction y at gene midpoint
-                let bestDist = Infinity;
-                let bestY = (dataBounds.minY + dataBounds.maxY) / 2;
-                for (const [jx, jy] of junctions) {
-                    const d = Math.abs(jx - midX);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        bestY = jy;
-                    }
-                }
-                genePins.push({ name: gene.name, startX, endX, midX, y: bestY });
+                // Reference path y at gene start, mid, end
+                const yStart = xToY(startX);
+                const yEnd = xToY(endX);
+                const yMid = xToY(midX);
+                const refY = yMid;
+                // Min/max y along the reference path through the gene
+                const minY = Math.min(yStart, yMid, yEnd);
+                const maxY = Math.max(yStart, yMid, yEnd);
+                genePins.push({ name: gene.name, startX, endX, midX, refY, minY, maxY });
             }
         }
 
@@ -391,6 +406,9 @@
             ctx.stroke();
 
             // --- Gene-colored polylines (overdraw) ---
+            // Tight margin around the reference path y — enough for nearby
+            // haplotype branches but not distant structural variants
+            const geneYMargin = (level.cellSize || 50) * 3;
             if (genePins.length > 0) {
                 ctx.strokeStyle = '#e8a735';
                 ctx.lineWidth = lineWidth * 2;
@@ -403,10 +421,11 @@
                     if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
                         bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
 
-                    // Check if polyline overlaps any gene region
+                    // Check if polyline overlaps any gene region (x AND y)
                     let inGene = false;
                     for (const gene of genePins) {
-                        if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX) {
+                        if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX &&
+                            bboxes[o+3] >= gene.minY - geneYMargin && bboxes[o+1] <= gene.maxY + geneYMargin) {
                             inGene = true;
                             break;
                         }
@@ -445,7 +464,8 @@
                     if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
                     let inGene = false;
                     for (const gene of genePins) {
-                        if (x >= gene.startX && x <= gene.endX) {
+                        if (x >= gene.startX && x <= gene.endX &&
+                            y >= gene.minY - geneYMargin && y <= gene.maxY + geneYMargin) {
                             inGene = true;
                             break;
                         }
@@ -470,26 +490,26 @@
                     const sxStart = gene.startX * zoom + panX;
                     const sxEnd = gene.endX * zoom + panX;
                     const sxMid = (sxStart + sxEnd) / 2;
-                    const sy = gene.y * zoom + panY;
+                    const syRef = gene.refY * zoom + panY;   // reference path y
                     if (sxEnd < -60 || sxStart > cw + 60) continue;
 
                     const geneW = sxEnd - sxStart;
-                    const bracketY = sy - 16;
+                    const bracketY = syRef - 16;
 
                     // Extent bracket (when gene spans enough pixels)
                     ctx.strokeStyle = '#e8a735';
                     ctx.lineWidth = 1.5;
                     if (geneW > 6) {
                         ctx.beginPath();
-                        ctx.moveTo(sxStart, sy - 4);
+                        ctx.moveTo(sxStart, syRef + 4);
                         ctx.lineTo(sxStart, bracketY);
                         ctx.lineTo(sxEnd, bracketY);
-                        ctx.lineTo(sxEnd, sy - 4);
+                        ctx.lineTo(sxEnd, syRef + 4);
                         ctx.stroke();
                     } else {
                         // Gene too small on screen — single stem
                         ctx.beginPath();
-                        ctx.moveTo(sxMid, sy - 4);
+                        ctx.moveTo(sxMid, syRef + 4);
                         ctx.lineTo(sxMid, bracketY);
                         ctx.stroke();
                     }

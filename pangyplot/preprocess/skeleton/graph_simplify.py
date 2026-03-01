@@ -235,39 +235,42 @@ def grid_simplify(polylines, junction_coords, cell_size):
 # ---------------------------------------------------------------------------
 
 def build_reference_spine(step_index, segment_index, stride=50):
-    """Build a compact (x, bp) lookup table from the reference path.
+    """Build a compact (x, bp, y) lookup table from the reference path.
 
-    Walks each step, computes segment centroid x and midpoint bp, then
+    Walks each step, computes segment centroid (x, y) and midpoint bp,
     filters to a monotone-increasing envelope (drops backward jogs in x)
     and downsamples by stride for compactness.
 
-    Returns list of [x, bp] pairs sorted by x.
+    Returns list of [x, bp, y] triples sorted by x.
     """
-    # Collect (x, bp) for every reference step
+    # Collect (x, bp, y) for every reference step
     points = []
     for i in range(len(step_index.segments)):
         sid = step_index.segments[i]
         if sid >= len(segment_index.valid) or not segment_index.valid[sid]:
             continue
         cx = (segment_index.x1[sid] + segment_index.x2[sid]) / 2.0
+        cy = (segment_index.y1[sid] + segment_index.y2[sid]) / 2.0
         bp = (step_index.starts[i] + step_index.ends[i]) / 2.0
-        points.append((cx, bp))
+        points.append((cx, bp, cy))
 
     # Build monotone envelope: only keep points where x exceeds running max
     envelope = []
     max_x = -float('inf')
-    for cx, bp in points:
+    for cx, bp, cy in points:
         if cx > max_x:
-            envelope.append((cx, bp))
+            envelope.append((cx, bp, cy))
             max_x = cx
 
     # Downsample by stride
-    spine = [[round(envelope[i][0], 1), int(envelope[i][1])]
+    spine = [[round(envelope[i][0], 1), int(envelope[i][1]), round(envelope[i][2], 1)]
              for i in range(0, len(envelope), stride)]
 
     # Ensure last point is included
-    if len(envelope) > 0 and (len(spine) == 0 or spine[-1] != [round(envelope[-1][0], 1), int(envelope[-1][1])]):
-        spine.append([round(envelope[-1][0], 1), int(envelope[-1][1])])
+    if len(envelope) > 0:
+        last = [round(envelope[-1][0], 1), int(envelope[-1][1]), round(envelope[-1][2], 1)]
+        if not spine or spine[-1] != last:
+            spine.append(last)
 
     print(f"Reference spine: {len(points)} steps → {len(envelope)} monotone → {len(spine)} sampled points")
     return spine
