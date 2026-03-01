@@ -111,6 +111,8 @@ targetCellSize = viewportWidth / 2000
 
 This targets ~2000 grid cells across the viewport, keeping resolution high. The finest level whose `cellSize ≤ targetCellSize` is selected.
 
+Manual LOD override buttons are available in the header to lock to a specific grid level.
+
 ### Viewport Culling
 
 Per-polyline bounding boxes are precomputed into `Float64Array` on load. During rendering, polylines whose bbox doesn't intersect the viewport (plus margin) are skipped entirely. This bounds the draw count regardless of zoom level.
@@ -121,6 +123,28 @@ A cyan bracket at the bottom of the canvas shows the ~2 Mb detail-view threshold
 - When the viewport is wider than the bracket, the bracket appears as a dashed outline
 - When the viewport narrows below the threshold, the bracket becomes solid and a "DETAIL VIEW" badge appears in the header
 - Threshold computed as `totalDataWidth / 30` (≈ 1.4M ODGI units for chrY ≈ 2 Mb)
+
+### Reference Coordinate Readout
+
+The viewer translates layout-space positions back to genomic coordinates using a **reference spine** — a monotone envelope of `(x, bp, y)` triples from the reference path, downsampled by stride-50.
+
+- **Backend**: `build_reference_spine()` in `graph_simplify.py` walks reference steps, builds a monotone x envelope, downsamples, and exports `[x, bp, y]` triples in the JSON
+- **Frontend**: `initSpine()` loads into `Float64Array`s; `xToBp()`, `xToY()`, `bpToX()` use binary search + linear interpolation
+- **Viewport readout**: green `chrY:start-end` label in bottom-left shows the genomic range visible on screen
+- **Cursor readout**: gray `chrY:pos` label tracks the mouse cursor position in basepairs
+
+### Gene Landmarks
+
+Gene annotations are displayed as colored overlays on the graph, similar to landmarks on a map.
+
+**Data**: 11 real chrY genes from gencode48 (GRCh38): SRY, ZFY, PCDH11Y, AMELY, USP9Y, UTY, NLGN4Y, KDM5D, EIF1AY, RBMY1A1, DAZ1. Positions are hardcoded in the GENES array (will eventually be loaded from the annotation database dynamically).
+
+**Rendering** (all computed at every LOD level, not just coarsest):
+
+1. **Gene body coloring**: Gold overdraw pass — all polylines/junctions are drawn white first, then those within a gene's basepair range are overdrawn in gold. Both x-range and y-proximity to the reference path are checked, so distant branches on non-planar graphs are not falsely colored.
+2. **Y-proximity filtering**: `xToY()` finds the reference path's actual y at a given x. Only elements within `cellSize * 3` of that y are colored, preventing false hits on distant diagonal branches that happen to share the same x range.
+3. **Extent brackets**: In screen space, gene labels appear with bracket markers. Full bracket `[—]` when the gene spans >6px on screen; single stem `|` when collapsed to a point.
+4. **Label pills**: Gene name rendered in a dark pill above the bracket, positioned at the gene midpoint's reference-path y.
 
 ### Performance
 
@@ -167,5 +191,6 @@ python -m pangyplot.preprocess.skeleton.graph_simplify \
 
 - Integrate coarse view into main PangyPlot app (replace standalone viewer)
 - Implement view transition: coarse → detail when viewport < ~2 Mb
+- Load gene landmarks dynamically from annotation database (currently hardcoded)
 - Color polylines by path/haplotype density or graph topology
 - Support multiple chromosomes
