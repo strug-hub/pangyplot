@@ -97,6 +97,23 @@
         #detail-phase.fading { color: #f90; }
         #detail-phase.static { color: #0f0; }
         #detail-phase.physics { color: #0ff; }
+
+        #detail-bar {
+            padding: 4px 20px;
+            background: #0a0a0a;
+            border-bottom: 1px solid #222;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-shrink: 0;
+            z-index: 10;
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            color: #888;
+            visibility: hidden;
+        }
+        #detail-bar.active { visibility: visible; }
+        #detail-bar span.val { color: #5bb8f0; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -116,6 +133,14 @@
         <span id="detail-phase" class="none"></span>
         <span id="stats"></span>
     </div>
+    <div id="detail-bar">
+        <span id="detail-phase2" class="none"></span>
+        <span><span id="detail-nodes" class="val">--</span> bubbles</span>
+        <span><span id="detail-links" class="val">--</span> links</span>
+        <span><span id="detail-range" class="val">--</span></span>
+        <span>opacity <span id="detail-opacity" class="val">0</span></span>
+        <span>steps <span id="detail-steps" class="val">--</span></span>
+    </div>
     <div id="canvas-container">
         <canvas id="canvas"></canvas>
         <div id="loading">Loading graph data...</div>
@@ -134,6 +159,13 @@
         const loadingEl = document.getElementById('loading');
         const lodOffsetEl = document.getElementById('lod-offset');
         const detailPhaseEl = document.getElementById('detail-phase');
+        const detailBarEl = document.getElementById('detail-bar');
+        const detailPhase2El = document.getElementById('detail-phase2');
+        const detailNodesEl = document.getElementById('detail-nodes');
+        const detailLinksEl = document.getElementById('detail-links');
+        const detailRangeEl = document.getElementById('detail-range');
+        const detailOpacityEl = document.getElementById('detail-opacity');
+        const detailStepsEl = document.getElementById('detail-steps');
 
         // Config passed from Flask
         const GENOME = '{{ genome }}';
@@ -166,14 +198,16 @@
         // Progressive detail state
         // ---------------------------------------------------------------
         const NODE_BUDGET_STEPS = 1500;
-        const HARD_NODE_CAP = 500;
+        const HARD_NODE_CAP = 1000;
         const FETCH_MARGIN = 0.2;       // 20% extra on each side
+        const FADE_DURATION = 600;      // ms for fade-in / fade-out animation
 
-        let detailPhase = 'none';       // 'none' | 'fading-in' | 'static' | 'physics'
+        let detailPhase = 'none';       // 'none' | 'fading-in' | 'static' | 'physics' | 'fading-out'
         let detailData = null;          // { nodes, links, nodeMap }
         let detailCache = null;         // { bpStart, bpEnd, data }
         let detailOpacity = 0;
         let skeletonOpacity = 1;
+        let fadeStartTime = 0;          // performance.now() when fade started
         let fetchController = null;     // AbortController for in-flight fetch
         let fetchTimer = null;          // debounce timer
         let simulation = null;          // d3-force simulation
@@ -493,7 +527,15 @@
                 detailData = processed;
 
                 if (detailPhase === 'none') {
+                    fadeStartTime = performance.now();
                     setDetailPhase('fading-in');
+                    scheduleFadeFrame();
+                } else if (detailPhase === 'fading-out') {
+                    // Data arrived while fading out — reverse the fade
+                    const remaining = detailOpacity;  // current opacity becomes starting point
+                    fadeStartTime = performance.now() - remaining * FADE_DURATION;
+                    setDetailPhase('fading-in');
+                    scheduleFadeFrame();
                 }
                 scheduleFrame();
             } catch (err) {
@@ -520,20 +562,39 @@
         // ---------------------------------------------------------------
         function setDetailPhase(phase) {
             detailPhase = phase;
-            detailPhaseEl.className = phase === 'fading-in' ? 'fading' : phase;
+            const cls = (phase === 'fading-in' || phase === 'fading-out') ? 'fading' : phase;
+            detailPhaseEl.className = cls;
+            detailPhase2El.className = cls;
+            const labels = {
+                'none': '', 'fading-in': 'DETAIL', 'fading-out': 'DETAIL',
+                'static': 'DETAIL (static)', 'physics': 'DETAIL (physics)',
+            };
+            detailPhaseEl.textContent = labels[phase] || '';
+            detailPhase2El.textContent = labels[phase] || '';
+
+            // Show/hide detail bar
             if (phase === 'none') {
-                detailPhaseEl.textContent = '';
-            } else if (phase === 'fading-in') {
-                detailPhaseEl.textContent = 'DETAIL';
-            } else if (phase === 'static') {
-                detailPhaseEl.textContent = 'DETAIL (static)';
-            } else if (phase === 'physics') {
-                detailPhaseEl.textContent = 'DETAIL (physics)';
+                detailBarEl.classList.remove('active');
+            } else {
+                detailBarEl.classList.add('active');
+                updateDetailBar();
             }
         }
 
+        function updateDetailBar() {
+            if (!detailData) return;
+            detailNodesEl.textContent = detailData.nodes.length.toLocaleString();
+            detailLinksEl.textContent = detailData.links.length.toLocaleString();
+            if (detailCache) {
+                detailRangeEl.textContent = `${formatBp(detailCache.bpStart)}-${formatBp(detailCache.bpEnd)}`;
+            }
+            detailOpacityEl.textContent = detailOpacity.toFixed(2);
+            const steps = viewportStepCount();
+            detailStepsEl.textContent = isFinite(steps) ? Math.round(steps).toLocaleString() : '--';
+        }
+
         function exitDetailMode() {
-            if (detailPhase === 'none') return;
+            if (detailPhase === 'none' || detailPhase === 'fading-out') return;
 
             // Kill simulation
             if (simulation) {
@@ -545,7 +606,7 @@
                 physicsDelayTimer = null;
             }
 
-            // Snap nodes back to ODGI positions (for clean fade-out)
+            // Snap nodes back to ODGI positions for clean fade-out
             if (detailData) {
                 for (const node of detailData.nodes) {
                     node.cx = node.homeX;
@@ -557,6 +618,13 @@
                 }
             }
 
+            // Start time-based fade-out
+            fadeStartTime = performance.now();
+            setDetailPhase('fading-out');
+            scheduleFadeFrame();
+        }
+
+        function finishExit() {
             detailData = null;
             detailCache = null;
             detailOpacity = 0;
@@ -566,53 +634,50 @@
         }
 
         function updateDetailOpacity() {
-            if (!spineStep) return;
-            const stepCount = viewportStepCount();
+            const now = performance.now();
+            const elapsed = now - fadeStartTime;
+            const t = Math.min(1, elapsed / FADE_DURATION);
 
-            if (stepCount >= NODE_BUDGET_STEPS) {
-                detailOpacity = 0;
-                skeletonOpacity = 1;
-                return;
+            if (detailPhase === 'fading-in') {
+                detailOpacity = t;
+                skeletonOpacity = Math.max(0.1, 1 - t);
+
+                if (t < 1) {
+                    scheduleFadeFrame();
+                } else {
+                    // Fade-in complete
+                    detailOpacity = 1;
+                    skeletonOpacity = 0.1;
+                    setDetailPhase('static');
+                    physicsDelayTimer = setTimeout(() => {
+                        if (detailPhase === 'static' && detailData) {
+                            startPhysics();
+                        }
+                    }, 200);
+                }
+            } else if (detailPhase === 'fading-out') {
+                detailOpacity = 1 - t;
+                skeletonOpacity = Math.max(0.1, t);
+
+                if (t < 1) {
+                    scheduleFadeFrame();
+                } else {
+                    finishExit();
+                    return;
+                }
             }
+            // In 'static' or 'physics' phase, opacity stays at 1/0.1
+            detailOpacityEl.textContent = detailOpacity.toFixed(2);
+        }
 
-            // t goes from 0 (at threshold) to 1 (when 3x zoomed past)
-            const t = 1 - (stepCount / NODE_BUDGET_STEPS);
-            detailOpacity = Math.max(0, Math.min(1, t * 2));
-            skeletonOpacity = Math.max(0.1, 1 - detailOpacity);
-
-            // Phase transitions based on opacity
-            if (detailData && detailPhase === 'fading-in' && detailOpacity >= 1.0) {
-                setDetailPhase('static');
-                // Brief pause, then engage physics
-                physicsDelayTimer = setTimeout(() => {
-                    if (detailPhase === 'static' && detailData) {
-                        startPhysics();
-                    }
-                }, 200);
-            } else if (detailPhase === 'physics' && detailOpacity < 1.0) {
-                // Zooming back out while physics active: snap back and revert
-                if (simulation) {
-                    simulation.stop();
-                    simulation = null;
+        function scheduleFadeFrame() {
+            // Drive the fade animation independent of user interaction
+            requestAnimationFrame(() => {
+                if (detailPhase === 'fading-in' || detailPhase === 'fading-out') {
+                    updateDetailOpacity();
+                    scheduleFrame();
                 }
-                if (detailData) {
-                    for (const node of detailData.nodes) {
-                        node.cx = node.homeX;
-                        node.cy = node.homeY;
-                        node.x = node.homeX;
-                        node.y = node.homeY;
-                        node.vx = 0;
-                        node.vy = 0;
-                    }
-                }
-                setDetailPhase('fading-in');
-            } else if (detailPhase === 'static' && detailOpacity < 1.0) {
-                if (physicsDelayTimer) {
-                    clearTimeout(physicsDelayTimer);
-                    physicsDelayTimer = null;
-                }
-                setDetailPhase('fading-in');
-            }
+            });
         }
 
         // ---------------------------------------------------------------
@@ -690,8 +755,8 @@
             const levelChanged = li !== currentLevel;
             currentLevel = li;
 
-            // Update detail opacity based on zoom level
-            if (spineStep) updateDetailOpacity();
+            // Update detail bar readouts (steps change with pan/zoom)
+            if (detailPhase !== 'none') updateDetailBar();
 
             const vp = getViewport();
             // Margin in data units so lines at the edge aren't clipped
