@@ -7,7 +7,7 @@ import { formatBp } from './format-utils.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
 import { selectLevel } from './lod.js';
 import { stopPhysics } from './physics.js';
-import { clearForce, addPoppedNodes, collapseToAnchors } from './simplify-force.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, collapseToAnchors } from './simplify-force.js';
 
 let fadeStartTime = 0;
 let fetchController = null;
@@ -83,6 +83,7 @@ export function setDetailPhase(phase) {
 function finishExit() {
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
     clearForce();
+    currentPoppedIds = null;
     state.detailData = null;
     state.detailCache = null;
     state.detailOpacity = 0;
@@ -220,6 +221,8 @@ export async function fetchChainsForViewport() {
         console.log(`[detail]   /chains response: ${processed.chains.length} chains, ${processed.bubbles.length} exposed bubbles, ${processed.totalBubbles} chain-bubbles, ${totalPts} polyline pts (${(performance.now()-t0).toFixed(0)}ms)`);
 
         state.detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, expandThreshold, data: processed };
+        // Carry over poppedChains so polylines stay hidden during async pop
+        if (currentPoppedIds) processed.poppedChains = currentPoppedIds;
         state.detailData = processed;
 
         // Pop chains into force simulation
@@ -250,112 +253,128 @@ export async function fetchChainsForViewport() {
 // ---------------------------------------------------------------
 // Pop chains: fetch subgraphs and add to force simulation
 // ---------------------------------------------------------------
-const POP_MAX_BUBBLES = 80;  // only pop chains with <= this many bubbles
+const POP_BUDGET = 2000;  // total bubble budget across all popped chains
+let currentPoppedIds = null;  // Set of chain IDs currently in the force sim
 
 async function popChainsForViewport(chains, chr, signal) {
-    clearForce();
+    // Sort candidates by bubble count (smallest first) to maximize chains popped
+    const candidates = chains
+        .filter(c => !c.connector && c.nBubbles > 0)
+        .sort((a, b) => a.nBubbles - b.nBubbles);
 
-    // Filter to poppable chains (small enough, not connectors)
-    const toPop = chains.filter(c => !c.connector && c.nBubbles <= POP_MAX_BUBBLES && c.nBubbles > 0);
-    if (toPop.length === 0) return;
+    // Fill budget greedily
+    const toPop = [];
+    let budget = 0;
+    for (const c of candidates) {
+        if (budget + c.nBubbles > POP_BUDGET) continue;
+        toPop.push(c);
+        budget += c.nBubbles;
+    }
 
-    // Mark which chains are popped so render can skip their polylines
-    const poppedSet = new Set();
+    const newIds = new Set(toPop.map(c => c.id));
 
-    console.log(`[detail] popping ${toPop.length}/${chains.length} chains (max ${POP_MAX_BUBBLES} bubbles each)`);
+    // Nothing to pop — clear everything
+    if (toPop.length === 0) {
+        clearForce();
+        currentPoppedIds = null;
+        if (state.detailData) state.detailData.poppedChains = null;
+        return;
+    }
 
-    // Fetch subgraphs for all poppable chains in parallel
-    const fetches = toPop.map(async (chain) => {
-        // Use the chain's polyline bbox to derive bp range
-        const pl = chain.polyline;
-        const minX = Math.min(...pl.map(p => p[0]));
-        const maxX = Math.max(...pl.map(p => p[0]));
+    // Identical set already popped — nothing to do
+    if (currentPoppedIds && newIds.size === currentPoppedIds.size &&
+        [...newIds].every(id => currentPoppedIds.has(id))) {
+        if (state.detailData) state.detailData.poppedChains = newIds;
+        console.log(`[detail] same ${newIds.size} chains already popped, skipping`);
+        return;
+    }
 
-        // Convert layout x to bp via spine
-        const bpStart = xToBp(minX);
-        const bpEnd = xToBp(maxX);
-        if (bpStart === null || bpEnd === null) return null;
+    // --- Incremental update: remove stale, keep existing, fetch new ---
+    const kept = currentPoppedIds ? [...currentPoppedIds].filter(id => newIds.has(id)) : [];
+    const keptSet = new Set(kept);
+    const toRemove = currentPoppedIds ? [...currentPoppedIds].filter(id => !newIds.has(id)) : [];
+    const toFetch = toPop.filter(c => !keptSet.has(c.id));
 
-        const url = `/select?genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}&start=${Math.round(bpStart)}&end=${Math.round(bpEnd)}`;
-        try {
-            const resp = await fetch(url, { signal });
-            if (!resp.ok) return null;
-            const data = await resp.json();
-            return { chain, data };
-        } catch (e) {
-            if (e.name !== 'AbortError') console.warn(`Pop fetch failed for ${chain.id}:`, e);
-            return null;
-        }
-    });
+    // Remove chains no longer in the set (keeps existing nodes in place)
+    for (const id of toRemove) {
+        removePoppedNodes(id);
+    }
 
-    const results = await Promise.all(fetches);
+    console.log(`[detail] pop update: ${kept.length} kept, ${toRemove.length} removed, ${toFetch.length} to fetch (${budget}/${POP_BUDGET} budget)`);
 
-    // Convert API results to force nodes+links
-    const allNodes = [];
-    const allLinks = [];
+    // Fetch subgraphs only for newly added chains
+    if (toFetch.length > 0) {
+        const fetches = toFetch.map(async (chain) => {
+            const pl = chain.polyline;
+            const minX = Math.min(...pl.map(p => p[0]));
+            const maxX = Math.max(...pl.map(p => p[0]));
+            const bpStart = xToBp(minX);
+            const bpEnd = xToBp(maxX);
+            if (bpStart === null || bpEnd === null) return null;
 
-    for (const result of results) {
-        if (!result || !result.data.nodes || result.data.nodes.length === 0) continue;
-        const { chain, data } = result;
+            const url = `/select?genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}&start=${Math.round(bpStart)}&end=${Math.round(bpEnd)}`;
+            try {
+                const resp = await fetch(url, { signal });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                return { chain, data };
+            } catch (e) {
+                if (e.name !== 'AbortError') console.warn(`Pop fetch failed for ${chain.id}:`, e);
+                return null;
+            }
+        });
 
-        for (const node of data.nodes) {
-            const cx = (node.x1 + node.x2) / 2;
-            const cy = (node.y1 + node.y2) / 2;
-            const seqLen = node.length || 1;
-            // Width from seqLength (log scale), capped for visual balance
-            const width = Math.min(20, Math.max(3, Math.log10(seqLen + 1) * 4));
-            // Collision radius in data-space
-            const radius = width / 2;
-            allNodes.push({
-                id: node.id,
-                chainId: chain.id,
-                x: cx,
-                y: cy,
-                width,
-                radius,
-                type: node.type,
-                seqLength: seqLen,
-                siblings: node.siblings,
-                gcCount: node.gc_count || 0,
-                isRef: node.is_ref || false,
-            });
-        }
+        const results = await Promise.all(fetches);
+        const newNodes = [];
+        const newLinks = [];
 
-        // Create links from sibling relationships (bubble → next bubble)
-        const nodeMap = new Map(data.nodes.map(n => [n.id, n]));
-        for (const node of data.nodes) {
-            if (!node.siblings) continue;
-            const nextId = node.siblings[1];
-            if (nextId != null) {
-                const targetId = `b${nextId}`;
-                if (nodeMap.has(targetId)) {
-                    // Link distance proportional to connected node sizes
-                    const srcLen = node.length || 1;
-                    const tgtLen = nodeMap.get(targetId).length || 1;
-                    const dist = Math.max(5, (Math.log10(srcLen + 1) + Math.log10(tgtLen + 1)) * 3);
-                    allLinks.push({
-                        source: node.id,
-                        target: targetId,
-                        length: dist,
-                        chainId: chain.id,
-                    });
+        for (const result of results) {
+            if (!result || !result.data.nodes || result.data.nodes.length === 0) continue;
+            const { chain, data } = result;
+
+            for (const node of data.nodes) {
+                const cx = (node.x1 + node.x2) / 2;
+                const cy = (node.y1 + node.y2) / 2;
+                const seqLen = node.length || 1;
+                const width = Math.min(20, Math.max(3, Math.log10(seqLen + 1) * 4));
+                const radius = width / 2;
+                newNodes.push({
+                    id: node.id, chainId: chain.id, x: cx, y: cy,
+                    width, radius, type: node.type, seqLength: seqLen,
+                    siblings: node.siblings, gcCount: node.gc_count || 0,
+                    isRef: node.is_ref || false,
+                });
+            }
+
+            const nodeMap = new Map(data.nodes.map(n => [n.id, n]));
+            for (const node of data.nodes) {
+                if (!node.siblings) continue;
+                const nextId = node.siblings[1];
+                if (nextId != null) {
+                    const targetId = `b${nextId}`;
+                    if (nodeMap.has(targetId)) {
+                        const srcLen = node.length || 1;
+                        const tgtLen = nodeMap.get(targetId).length || 1;
+                        const dist = Math.max(5, (Math.log10(srcLen + 1) + Math.log10(tgtLen + 1)) * 3);
+                        newLinks.push({
+                            source: node.id, target: targetId,
+                            length: dist, chainId: chain.id,
+                        });
+                    }
                 }
             }
         }
 
-        poppedSet.add(chain.id);
-    }
-
-    if (allNodes.length > 0) {
-        // Mark chains as popped in detailData so render skips their polylines
-        if (state.detailData) {
-            state.detailData.poppedChains = poppedSet;
+        if (newNodes.length > 0) {
+            console.log(`[detail] popped ${toFetch.length} new chains: ${newNodes.length} nodes, ${newLinks.length} links`);
+            addPoppedNodes(newNodes, newLinks);
         }
-
-        console.log(`[detail] popped: ${poppedSet.size} chains, ${allNodes.length} nodes, ${allLinks.length} links`);
-        addPoppedNodes(allNodes, allLinks);
-        scheduleFrame();
     }
+
+    // Update tracking
+    currentPoppedIds = newIds;
+    if (state.detailData) state.detailData.poppedChains = newIds;
+    scheduleFrame();
 }
 
 export function scheduleDetailFetch() {
