@@ -536,6 +536,7 @@
                     nBubbles: chain.n_bubbles,
                     subtype: chain.subtype,
                     depth: chain.depth || 0,
+                    connector: chain.connector || false,
                     sourceSegs: chain.source_segs,
                     sinkSegs: chain.sink_segs,
                 });
@@ -973,19 +974,28 @@
                 if (pl.length < 2) continue;
                 const isHovered = hovChain && chain === hovChain;
 
-                // Width scales with number of bubbles (always positive)
-                const w = Math.max(1.5, baseWidth * Math.log2(Math.max(2, chain.nBubbles)));
-
-                if (hovChain && !isHovered) {
-                    ctx.globalAlpha = 0.25 * detailOpacity;
-                } else if (isHovered) {
-                    ctx.globalAlpha = detailOpacity;
+                if (chain.connector) {
+                    // Connector: thin dashed line for leaf-bubble runs
+                    const dashLen = Math.max(4, 10 / zoom);
+                    ctx.setLineDash([dashLen, dashLen]);
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = Math.max(1, baseWidth * 0.6);
+                    ctx.globalAlpha = (hovChain && !isHovered ? 0.15 : 0.5) * detailOpacity;
                 } else {
-                    ctx.globalAlpha = 0.9 * detailOpacity;
+                    // Regular chain: solid line
+                    const w = Math.max(1.5, baseWidth * Math.log2(Math.max(2, chain.nBubbles)));
+                    ctx.setLineDash([]);
+                    ctx.strokeStyle = '#4a90d9';
+                    ctx.lineWidth = isHovered ? w * 1.5 : w;
+                    if (hovChain && !isHovered) {
+                        ctx.globalAlpha = 0.25 * detailOpacity;
+                    } else if (isHovered) {
+                        ctx.globalAlpha = detailOpacity;
+                    } else {
+                        ctx.globalAlpha = 0.9 * detailOpacity;
+                    }
                 }
 
-                ctx.strokeStyle = '#4a90d9';
-                ctx.lineWidth = isHovered ? w * 1.5 : w;
                 ctx.beginPath();
                 ctx.moveTo(pl[0][0], pl[0][1]);
                 for (let i = 1; i < pl.length; i++) {
@@ -997,6 +1007,7 @@
                     ctx.globalAlpha = detailOpacity;
                 }
             }
+            ctx.setLineDash([]);
         }
 
         function drawBubbleEllipses(bubbles, hovBubble) {

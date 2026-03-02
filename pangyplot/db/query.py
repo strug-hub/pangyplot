@@ -1,5 +1,6 @@
 from collections import Counter
 from types import SimpleNamespace
+from pangyplot.objects.Chain import Chain
 from pangyplot.preprocess.skeleton.graph_simplify import rdp_simplify
 
 
@@ -89,6 +90,21 @@ def _bubble_layout_span(bubble):
     return max(abs(bubble.x2 - bubble.x1), abs(bubble.y2 - bubble.y1))
 
 
+def _build_connector(parent_chain, leaf_bubbles, stepidx, seg_index,
+                     connector_idx, depth):
+    """Build a connector polyline from a run of leaf bubbles."""
+    sub_chain = Chain(
+        chain_id=f"{parent_chain.id}_r{connector_idx}",
+        bubbles=leaf_bubbles)
+    entry = _build_chain_polyline(sub_chain, stepidx, seg_index)
+    if entry is None:
+        return None
+    entry["id"] = f"c{parent_chain.id}_r{connector_idx}"
+    entry["depth"] = depth
+    entry["connector"] = True
+    return entry
+
+
 def _decompose_chain(chain, expand_threshold, bubble_threshold,
                      bubbleidx, stepidx, seg_index, depth, max_depth):
     """Decompose a chain into sub-chains or individual bubbles.
@@ -114,8 +130,11 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
 
     # Replace the parent chain with child chains from all its bubbles.
     # Only decompose one level: child chains are returned as-is (or as bubbles).
+    # Runs of leaf bubbles between expanded superbubbles become connectors.
     chains = []
     bubbles = []
+
+    # Collect child chains from inside expanded superbubbles
     for b in chain.bubbles:
         if not b.children:
             continue
@@ -125,6 +144,27 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
             r = _chain_or_bubbles(cc, bubble_threshold, stepidx, seg_index, depth + 1)
             chains.extend(r["chains"])
             bubbles.extend(r["bubbles"])
+
+    # Build connector polylines from runs of leaf bubbles
+    leaf_run = []
+    connector_idx = 0
+    for b in chain.bubbles:
+        if b.children:
+            if len(leaf_run) >= 2:
+                connector = _build_connector(
+                    chain, leaf_run, stepidx, seg_index, connector_idx, depth)
+                if connector:
+                    chains.append(connector)
+                    connector_idx += 1
+            leaf_run = []
+        else:
+            leaf_run.append(b)
+    # Trailing run
+    if len(leaf_run) >= 2:
+        connector = _build_connector(
+            chain, leaf_run, stepidx, seg_index, connector_idx, depth)
+        if connector:
+            chains.append(connector)
 
     return {"chains": chains, "bubbles": bubbles}
 
