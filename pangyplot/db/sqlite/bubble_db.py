@@ -161,6 +161,48 @@ def count_bubbles(chr_dir):
     return int(cur.fetchone()[0])
 
 
+def get_bubble_chain_map(dir):
+    """Returns {bubble_id: chain_id} for all bubbles."""
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT id, chain FROM bubbles")
+    return {row["id"]: row["chain"] for row in cur.fetchall()}
+
+
+def get_chain_stats(dir):
+    """Returns {chain_id: {"n_bubbles", "total_length", "parent"}} via GROUP BY chain.
+
+    Parent chain is determined by finding the parent bubble of any bubble in
+    the chain, then looking up that parent's chain.
+    """
+    conn = get_connection(dir)
+    cur = conn.cursor()
+
+    # Basic per-chain stats
+    cur.execute("SELECT chain, COUNT(*) as n, SUM(length) as total_len FROM bubbles GROUP BY chain")
+    stats = {}
+    for row in cur.fetchall():
+        stats[row["chain"]] = {
+            "n_bubbles": row["n"],
+            "total_length": row["total_len"] or 0,
+            "parent": None,
+        }
+
+    # Find parent chain for each chain
+    cur.execute("""
+        SELECT b.chain, p.chain as parent_chain
+        FROM bubbles b
+        JOIN bubbles p ON b.parent = p.id
+        WHERE b.parent IS NOT NULL
+        GROUP BY b.chain
+    """)
+    for row in cur.fetchall():
+        chain_id = row["chain"]
+        if chain_id in stats:
+            stats[chain_id]["parent"] = row["parent_chain"]
+
+    return stats
+
+
 def summarize_bubbles(dir, top_chains=10):
     cur = get_connection(dir).cursor()
 

@@ -214,6 +214,24 @@ export function draw() {
     }
     ctx.stroke();
 
+    // --- Hovered skeleton polyline highlight ---
+    const hovSkel = state.hoveredSkeletonPl;
+    if (hovSkel && hovSkel.levelIdx === li) {
+        const hpl = level.polylines[hovSkel.plIdx];
+        if (hpl && hpl.length >= 2) {
+            ctx.strokeStyle = `rgba(91, 184, 240, ${skelAlpha})`;
+            ctx.lineWidth = Math.max(2, 3 / state.zoom);
+            ctx.beginPath();
+            ctx.moveTo(hpl[0][0], hpl[0][1]);
+            for (let j = 1; j < hpl.length; j++) {
+                ctx.lineTo(hpl[j][0], hpl[j][1]);
+            }
+            ctx.stroke();
+            // Reset line width for subsequent passes
+            ctx.lineWidth = lineWidth;
+        }
+    }
+
     // --- Gene-colored polylines (overdraw) ---
     const genePins = getGenePins();
     const geneYMargin = (level.cellSize || 50) * 3;

@@ -35,6 +35,7 @@ export const state = {
     // Hover
     hoveredChain: null,
     hoveredBubble: null,
+    hoveredSkeletonPl: null,  // {levelIdx, plIdx, chainId}
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',

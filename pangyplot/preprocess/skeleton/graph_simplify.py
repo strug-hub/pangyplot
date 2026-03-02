@@ -25,6 +25,8 @@ from matplotlib.collections import LineCollection
 
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
+from pangyplot.db.sqlite import bubble_db
+from pangyplot.db import db_utils
 
 
 DEFAULT_EPSILONS = [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
@@ -139,6 +141,46 @@ def run_to_polyline(run, segment_index):
 
 
 # ---------------------------------------------------------------------------
+# Chain ID annotation for runs
+# ---------------------------------------------------------------------------
+
+def load_segment_to_bubble(data_dir):
+    """Read segment_to_bubble array from bubbles.quickindex.json.gz.
+
+    Returns list where index=seg_id, value=bubble_id (0 = unmapped).
+    Avoids loading the full BubbleIndex.
+    """
+    quick_index = db_utils.load_json(os.path.join(data_dir, "bubbles.quickindex.json.gz"))
+    if quick_index is None:
+        return None
+    return quick_index["segment_to_bubble"]
+
+
+def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain):
+    """For each run, determine dominant chain by majority vote of seg→bubble→chain.
+
+    Returns list parallel to runs: chain_id or -1 if unmapped.
+    """
+    chain_ids = []
+    mapped = 0
+    for run in runs:
+        votes = defaultdict(int)
+        for sid in run:
+            if sid < len(seg_to_bubble):
+                bid = seg_to_bubble[sid]
+                if bid != 0 and bid in bubble_to_chain:
+                    votes[bubble_to_chain[bid]] += 1
+        if votes:
+            chain_id = max(votes, key=votes.get)
+            chain_ids.append(chain_id)
+            mapped += 1
+        else:
+            chain_ids.append(-1)
+    print(f"Chain annotation: {mapped}/{len(runs)} runs mapped ({100*mapped/max(1,len(runs)):.1f}%)")
+    return chain_ids
+
+
+# ---------------------------------------------------------------------------
 # Ramer-Douglas-Peucker
 # ---------------------------------------------------------------------------
 
@@ -204,19 +246,23 @@ def compute_mipmaps(runs, segment_index, epsilon_levels):
 # Grid-based spatial simplification
 # ---------------------------------------------------------------------------
 
-def grid_simplify(polylines, junction_coords, cell_size):
+def grid_simplify(polylines, junction_coords, cell_size, chain_ids=None):
     """Snap all coordinates to a spatial grid and deduplicate.
 
     This merges nearby junctions (which RDP cannot do), enabling much
     coarser simplification levels. A polyline whose endpoints snap to the
     same grid cell collapses and is removed.
+
+    If chain_ids is provided (parallel to polylines), it is filtered in sync.
+    Returns (new_polylines, new_junctions) or (new_polylines, new_junctions, new_chain_ids).
     """
     def snap(x, y):
         return (round(x / cell_size) * cell_size,
                 round(y / cell_size) * cell_size)
 
     new_polylines = []
-    for pl in polylines:
+    new_chain_ids = [] if chain_ids is not None else None
+    for i, pl in enumerate(polylines):
         snapped = [snap(p[0], p[1]) for p in pl]
         # Remove consecutive duplicates
         deduped = [snapped[0]]
@@ -225,8 +271,12 @@ def grid_simplify(polylines, junction_coords, cell_size):
                 deduped.append(p)
         if len(deduped) >= 2:
             new_polylines.append(deduped)
+            if new_chain_ids is not None:
+                new_chain_ids.append(chain_ids[i])
 
     new_junctions = sorted(set(snap(x, y) for x, y in junction_coords))
+    if chain_ids is not None:
+        return new_polylines, new_junctions, new_chain_ids
     return new_polylines, new_junctions
 
 
@@ -281,12 +331,17 @@ def build_reference_spine(step_index, segment_index, stride=50):
 # ---------------------------------------------------------------------------
 
 def export_json(junctions, runs, segment_index, link_index, polylines,
-                grid_cell_sizes, output_path, ref_spine=None, chromosome=None):
+                grid_cell_sizes, output_path, ref_spine=None, chromosome=None,
+                chain_ids=None, chain_stats=None):
     """Export pure grid-based mipmap data as gzipped JSON for the D3 viewer.
 
     Each level is a grid simplification at a different cell size.
     Levels are sorted finest (smallest cell) to coarsest (largest cell).
     Each level carries its own junction + polyline set.
+
+    If chain_ids is provided (parallel to polylines), each level includes
+    a chainIds array parallel to its polylines. chain_stats is exported
+    as top-level chainMeta.
     """
     # Base junction coordinates
     junc_coords = []
@@ -300,19 +355,36 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
     levels = []
 
     for cell in sorted(grid_cell_sizes):
-        grid_pls, grid_juncs = grid_simplify(polylines, junc_coords, cell)
-        lines = [[[round(p[0], 1), round(p[1], 1)] for p in pl]
-                 for pl in grid_pls if len(pl) >= 2]
+        if chain_ids is not None:
+            grid_pls, grid_juncs, grid_chain_ids = grid_simplify(
+                polylines, junc_coords, cell, chain_ids=chain_ids)
+        else:
+            grid_pls, grid_juncs = grid_simplify(polylines, junc_coords, cell)
+            grid_chain_ids = None
+
+        # Build polylines and chain IDs in sync (filter len<2 together)
+        lines = []
+        level_chain_ids = [] if grid_chain_ids is not None else None
+        for j, pl in enumerate(grid_pls):
+            if len(pl) < 2:
+                continue
+            lines.append([[round(p[0], 1), round(p[1], 1)] for p in pl])
+            if level_chain_ids is not None:
+                level_chain_ids.append(grid_chain_ids[j])
+
         juncs = [[round(j[0], 1), round(j[1], 1)] for j in grid_juncs]
         total_nodes = len(juncs) + sum(max(0, len(pl) - 2) for pl in grid_pls)
-        levels.append({
+        level_data = {
             "cellSize": cell,
             "label": f"Grid {cell:,}",
             "polylines": lines,
             "junctions": juncs,
             "nodeCount": total_nodes,
             "polylineCount": len(lines),
-        })
+        }
+        if level_chain_ids is not None:
+            level_data["chainIds"] = level_chain_ids
+        levels.append(level_data)
 
     data = {
         "levels": levels,
@@ -327,6 +399,9 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
         data["refSpine"] = ref_spine
     if chromosome is not None:
         data["chromosome"] = chromosome
+    if chain_stats is not None:
+        # Convert int keys to strings for JSON
+        data["chainMeta"] = {str(k): v for k, v in chain_stats.items()}
 
     with gzip.open(output_path, 'wt', encoding='utf-8') as f:
         json.dump(data, f)
@@ -503,10 +578,23 @@ def main():
         step_index = StepIndex(data_dir, args.ref)
         ref_spine = build_reference_spine(step_index, segment_index)
 
+        # Load bubble→chain mapping for skeleton annotation
+        print(f"Loading bubble chain data ...")
+        seg_to_bubble = load_segment_to_bubble(data_dir)
+        bubble_to_chain = bubble_db.get_bubble_chain_map(data_dir)
+        chain_stats = bubble_db.get_chain_stats(data_dir)
+
+        chain_ids = None
+        if seg_to_bubble and bubble_to_chain:
+            chain_ids = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain)
+        else:
+            print("Warning: could not load bubble data, skipping chain annotation")
+
         print(f"Exporting JSON for D3 viewer ...")
         export_json(junctions, runs, segment_index, link_index, polylines,
                     VIEWER_GRID_SIZES, args.export_json,
-                    ref_spine=ref_spine, chromosome=args.chr)
+                    ref_spine=ref_spine, chromosome=args.chr,
+                    chain_ids=chain_ids, chain_stats=chain_stats)
 
     if not args.no_plot:
         print("Generating plots ...")

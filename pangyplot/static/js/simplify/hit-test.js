@@ -1,9 +1,12 @@
-// Chain/bubble hover detection and tooltip formatting.
+// Chain/bubble/skeleton hover detection and tooltip formatting.
 
 import { state } from './simplify-state.js';
 import { subtypeColor } from './format-utils.js';
+import { selectLevel } from './lod.js';
+import { getViewport } from './viewport.js';
 
 const HIT_RADIUS_PX = 12;
+const SKELETON_HIT_RADIUS_PX = 8;
 
 function pointToSegmentDist(px, py, ax, ay, bx, by) {
     const dx = bx - ax, dy = by - ay;
@@ -70,5 +73,70 @@ export function formatBubbleTooltip(b) {
         `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
         `<span class="tt-label">chain</span> <span class="tt-val">${b.chain}</span>`,
     ];
+    return lines.join('<br>');
+}
+
+export function hitTestSkeleton(dataX, dataY) {
+    if (!state.data) return null;
+    const li = selectLevel();
+    const level = state.data.levels[li];
+    if (!level || !level.chainIds) return null;
+
+    const hitR = SKELETON_HIT_RADIUS_PX / state.zoom;
+    const bboxes = state.levelBboxes[li];
+    const vp = getViewport();
+    const margin = (level.cellSize || 50) * 2;
+
+    let bestDist = hitR;
+    let bestHit = null;
+
+    for (let i = 0; i < level.polylines.length; i++) {
+        const cid = level.chainIds[i];
+        if (cid === -1) continue;
+
+        // Bbox cull
+        const o = i * 4;
+        if (bboxes[o+2] < vp.minX - margin || bboxes[o] > vp.maxX + margin ||
+            bboxes[o+3] < vp.minY - margin || bboxes[o+1] > vp.maxY + margin) continue;
+
+        const pl = level.polylines[i];
+        for (let j = 0; j < pl.length - 1; j++) {
+            const d = pointToSegmentDist(dataX, dataY, pl[j][0], pl[j][1], pl[j+1][0], pl[j+1][1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestHit = { levelIdx: li, plIdx: i, chainId: cid };
+            }
+        }
+    }
+    return bestHit;
+}
+
+export function formatSkeletonTooltip(hit) {
+    const meta = state.data.chainMeta;
+    const cid = String(hit.chainId);
+    const info = meta ? meta[cid] : null;
+
+    // Build ancestry string (e.g. "c489 > c122 > c1")
+    let ancestry = 'c' + cid;
+    if (meta) {
+        let cur = cid;
+        for (let depth = 0; depth < 10; depth++) {
+            const m = meta[cur];
+            if (!m || m.parent == null) break;
+            ancestry += ` > c${m.parent}`;
+            cur = String(m.parent);
+        }
+    }
+
+    const lines = [
+        `<span class="tt-label">chain</span> <span class="tt-chain">${ancestry}</span>`,
+    ];
+    if (info) {
+        const lengthStr = info.total_length >= 1000
+            ? (info.total_length / 1000).toFixed(1) + 'kb'
+            : info.total_length + 'bp';
+        lines.push(`<span class="tt-label">bubbles</span> <span class="tt-val">${info.n_bubbles}</span>`);
+        lines.push(`<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`);
+    }
     return lines.join('<br>');
 }

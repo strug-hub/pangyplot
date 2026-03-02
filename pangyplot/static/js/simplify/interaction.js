@@ -7,7 +7,7 @@ import { scheduleHashUpdate } from './hash-navigation.js';
 import { resizeCanvas, fitToScreen } from './viewport.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
 import { formatBp } from './format-utils.js';
-import { hitTestBubbles, hitTestChains, formatTooltip, formatBubbleTooltip } from './hit-test.js';
+import { hitTestBubbles, hitTestChains, hitTestSkeleton, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from './hit-test.js';
 import { updateLodDisplay } from './lod.js';
 
 export function setupInteraction() {
@@ -69,15 +69,23 @@ export function setupInteraction() {
             cursorBpEl.textContent = `${chr}:${formatBp(bp)}`;
         }
 
-        // Hit-test bubbles first (rendered on top), then chains
+        // Hit-test priority: bubbles > chains > skeleton polylines
         const hitBubble = hitTestBubbles(layoutX, layoutY);
         const hitChain = hitBubble ? null : hitTestChains(layoutX, layoutY);
-        const hit = hitBubble || hitChain;
+        const hitSkel = (hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
+        const hit = hitBubble || hitChain || hitSkel;
 
         if (hit) {
             state.hoveredBubble = hitBubble;
             state.hoveredChain = hitChain;
-            tooltipEl.innerHTML = hitBubble ? formatBubbleTooltip(hitBubble) : formatTooltip(hitChain);
+            state.hoveredSkeletonPl = hitSkel;
+            if (hitBubble) {
+                tooltipEl.innerHTML = formatBubbleTooltip(hitBubble);
+            } else if (hitChain) {
+                tooltipEl.innerHTML = formatTooltip(hitChain);
+            } else {
+                tooltipEl.innerHTML = formatSkeletonTooltip(hitSkel);
+            }
             tooltipEl.style.display = 'block';
             // Position tooltip near cursor, offset right and up
             const ttRect = tooltipEl.getBoundingClientRect();
@@ -90,9 +98,10 @@ export function setupInteraction() {
             tooltipEl.style.top = ty + 'px';
             canvas.style.cursor = 'crosshair';
             scheduleFrame();
-        } else if (state.hoveredChain || state.hoveredBubble) {
+        } else if (state.hoveredChain || state.hoveredBubble || state.hoveredSkeletonPl) {
             state.hoveredChain = null;
             state.hoveredBubble = null;
+            state.hoveredSkeletonPl = null;
             tooltipEl.style.display = 'none';
             canvas.style.cursor = 'grab';
             scheduleFrame();
@@ -101,9 +110,10 @@ export function setupInteraction() {
 
     canvas.addEventListener('mouseleave', () => {
         cursorBpEl.textContent = '';
-        if (state.hoveredChain || state.hoveredBubble) {
+        if (state.hoveredChain || state.hoveredBubble || state.hoveredSkeletonPl) {
             state.hoveredChain = null;
             state.hoveredBubble = null;
+            state.hoveredSkeletonPl = null;
             tooltipEl.style.display = 'none';
             canvas.style.cursor = 'grab';
             scheduleFrame();
