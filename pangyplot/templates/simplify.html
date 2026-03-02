@@ -156,6 +156,7 @@
     <div id="detail-bar">
         <span id="detail-phase2" class="none"></span>
         <span><span id="detail-chains" class="val">--</span> chains</span>
+        <span><span id="detail-exposed" class="val">--</span> exposed</span>
         <span><span id="detail-nodes" class="val">--</span> bubbles</span>
         <span><span id="detail-range" class="val">--</span></span>
         <span>opacity <span id="detail-opacity" class="val">0</span></span>
@@ -183,6 +184,7 @@
         const detailBarEl = document.getElementById('detail-bar');
         const detailPhase2El = document.getElementById('detail-phase2');
         const detailChainsEl = document.getElementById('detail-chains');
+        const detailExposedEl = document.getElementById('detail-exposed');
         const detailNodesEl = document.getElementById('detail-nodes');
         const detailRangeEl = document.getElementById('detail-range');
         const detailOpacityEl = document.getElementById('detail-opacity');
@@ -539,7 +541,22 @@
                 });
                 totalBubbles += chain.n_bubbles;
             }
-            return { chains, totalBubbles };
+
+            const bubbles = [];
+            for (const b of (apiResponse.bubbles || [])) {
+                bubbles.push({
+                    id: b.id,
+                    x: b.x,
+                    y: b.y,
+                    rx: b.rx,
+                    ry: b.ry,
+                    subtype: b.subtype,
+                    length: b.length,
+                    chain: b.chain,
+                });
+            }
+
+            return { chains, bubbles, totalBubbles };
         }
 
         async function fetchChainsForViewport() {
@@ -575,8 +592,10 @@
             const vp2 = getViewport();
             const viewportLayoutWidth = vp2.maxX - vp2.minX;
             const expandThreshold = Math.round(Math.max(100, viewportLayoutWidth / 10));
-            const url = `/chains?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}&expand=${expandThreshold}`;
-            console.log(`[detail] FETCH /chains: ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k (${Math.round((fetchEnd-fetchStart)/1000)}kb span, expand>${expandThreshold} layout units)`);
+            // Expose individual bubbles for chains spanning > 1/8 of viewport
+            const bubbleThreshold = Math.round(Math.max(50, viewportLayoutWidth / 8));
+            let url = `/chains?genome=${encodeURIComponent(GENOME)}&chromosome=${encodeURIComponent(chromosome)}&start=${fetchStart}&end=${fetchEnd}&expand=${expandThreshold}&bubble=${bubbleThreshold}`;
+            console.log(`[detail] FETCH /chains: ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k (${Math.round((fetchEnd-fetchStart)/1000)}kb span, expand>${expandThreshold}, bubble>${bubbleThreshold} layout units)`);
 
             try {
                 const t0 = performance.now();
@@ -586,7 +605,7 @@
 
                 const processed = processChainsResponse(apiData);
                 const totalPts = processed.chains.reduce((s, c) => s + c.polyline.length, 0);
-                console.log(`[detail]   /chains response: ${processed.chains.length} chains, ${processed.totalBubbles} bubbles, ${totalPts} polyline pts (${(performance.now()-t0).toFixed(0)}ms)`);
+                console.log(`[detail]   /chains response: ${processed.chains.length} chains, ${processed.bubbles.length} exposed bubbles, ${processed.totalBubbles} chain-bubbles, ${totalPts} polyline pts (${(performance.now()-t0).toFixed(0)}ms)`);
 
                 detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, zoom, data: processed };
                 detailData = processed;
@@ -657,6 +676,7 @@
         function updateDetailBar() {
             if (!detailData) return;
             detailChainsEl.textContent = detailData.chains.length.toLocaleString();
+            detailExposedEl.textContent = (detailData.bubbles ? detailData.bubbles.length : 0).toLocaleString();
             detailNodesEl.textContent = (detailData.totalBubbles || 0).toLocaleString();
             if (detailCache) {
                 detailRangeEl.textContent = `${formatBp(detailCache.bpStart)}-${formatBp(detailCache.bpEnd)}`;
@@ -979,15 +999,50 @@
             }
         }
 
+        function drawBubbleEllipses(bubbles, hovBubble) {
+            // Minimum radius in screen pixels so bubbles are always visible
+            const minR = 4 / zoom;
+            for (const b of bubbles) {
+                const isHovered = hovBubble && b === hovBubble;
+                const color = subtypeColor(b.subtype);
+
+                if (hovBubble && !isHovered) {
+                    ctx.globalAlpha = 0.2 * detailOpacity;
+                } else if (isHovered) {
+                    ctx.globalAlpha = 0.9 * detailOpacity;
+                } else {
+                    ctx.globalAlpha = 0.6 * detailOpacity;
+                }
+
+                const rx = Math.max(b.rx, minR);
+                const ry = Math.max(b.ry, minR);
+
+                ctx.fillStyle = color;
+                ctx.strokeStyle = isHovered ? '#fff' : color;
+                ctx.lineWidth = isHovered ? 2 / zoom : 1 / zoom;
+
+                ctx.beginPath();
+                ctx.ellipse(b.x, b.y, rx, ry, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
         function drawDetail() {
             ctx.globalAlpha = detailOpacity;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
 
             const hovChain = hoveredChain;
+            const hovBubble = hoveredBubble;
 
             // --- Chain polylines ---
             drawChainPolylines(detailData.chains, Math.max(1.5, 3 / zoom), hovChain);
+
+            // --- Exposed bubbles ---
+            if (detailData.bubbles && detailData.bubbles.length > 0) {
+                drawBubbleEllipses(detailData.bubbles, hovBubble);
+            }
 
             // --- Hover highlight ---
             if (hoveredChain) {
@@ -1007,6 +1062,17 @@
                     ctx.stroke();
                     ctx.globalAlpha = detailOpacity;
                 }
+            }
+
+            if (hoveredBubble) {
+                const b = hoveredBubble;
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = Math.max(2, 3 / zoom);
+                ctx.globalAlpha = 0.5 * detailOpacity;
+                ctx.beginPath();
+                ctx.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = detailOpacity;
             }
 
             ctx.globalAlpha = 1;
@@ -1065,6 +1131,7 @@
 
         // --- Hover state ---
         let hoveredChain = null;   // chain object or null
+        let hoveredBubble = null;  // bubble object or null
         const tooltipEl = document.getElementById('tooltip');
         const HIT_RADIUS_PX = 12;  // screen pixels for hit detection
 
@@ -1074,6 +1141,18 @@
             if (lenSq === 0) return Math.hypot(px - ax, py - ay);
             const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
             return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+        }
+
+        function hitTestBubbles(dataX, dataY) {
+            if (!detailData || !detailData.bubbles || detailOpacity < 0.5) return null;
+            const margin = HIT_RADIUS_PX / zoom;
+            for (const b of detailData.bubbles) {
+                // Ellipse containment with hover margin
+                const dx = (dataX - b.x) / (b.rx + margin);
+                const dy = (dataY - b.y) / (b.ry + margin);
+                if (dx * dx + dy * dy <= 1) return b;
+            }
+            return null;
         }
 
         function hitTestChains(dataX, dataY) {
@@ -1111,6 +1190,19 @@
             return lines.join('<br>');
         }
 
+        function formatBubbleTooltip(b) {
+            const color = subtypeColor(b.subtype);
+            const lengthStr = b.length >= 1000 ? (b.length/1000).toFixed(1) + 'kb' : b.length + 'bp';
+            const typeLabel = `<span class="tt-subtype" style="color:${color}">${b.subtype}</span>`;
+            const lines = [
+                `<span class="tt-label">bubble</span> <span class="tt-chain">${b.id}</span>`,
+                `<span class="tt-label">type</span> ${typeLabel}`,
+                `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
+                `<span class="tt-label">chain</span> <span class="tt-val">${b.chain}</span>`,
+            ];
+            return lines.join('<br>');
+        }
+
         // --- Cursor coordinate readout + hover hit-test ---
         canvas.addEventListener('mousemove', e => {
             if (isDragging || !spineX) return;
@@ -1124,11 +1216,15 @@
                 cursorBpEl.textContent = `${chromosome}:${formatBp(bp)}`;
             }
 
-            // Hit-test chain polylines
-            const hit = hitTestChains(layoutX, layoutY);
+            // Hit-test bubbles first (rendered on top), then chains
+            const hitBubble = hitTestBubbles(layoutX, layoutY);
+            const hitChain = hitBubble ? null : hitTestChains(layoutX, layoutY);
+            const hit = hitBubble || hitChain;
+
             if (hit) {
-                hoveredChain = hit;
-                tooltipEl.innerHTML = formatTooltip(hit);
+                hoveredBubble = hitBubble;
+                hoveredChain = hitChain;
+                tooltipEl.innerHTML = hitBubble ? formatBubbleTooltip(hitBubble) : formatTooltip(hitChain);
                 tooltipEl.style.display = 'block';
                 // Position tooltip near cursor, offset right and up
                 const ttRect = tooltipEl.getBoundingClientRect();
@@ -1141,8 +1237,9 @@
                 tooltipEl.style.top = ty + 'px';
                 canvas.style.cursor = 'crosshair';
                 scheduleFrame();
-            } else if (hoveredChain) {
+            } else if (hoveredChain || hoveredBubble) {
                 hoveredChain = null;
+                hoveredBubble = null;
                 tooltipEl.style.display = 'none';
                 canvas.style.cursor = 'grab';
                 scheduleFrame();
@@ -1151,8 +1248,9 @@
 
         canvas.addEventListener('mouseleave', () => {
             cursorBpEl.textContent = '';
-            if (hoveredChain) {
+            if (hoveredChain || hoveredBubble) {
                 hoveredChain = null;
+                hoveredBubble = null;
                 tooltipEl.style.display = 'none';
                 canvas.style.cursor = 'grab';
                 scheduleFrame();

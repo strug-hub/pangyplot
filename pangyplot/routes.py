@@ -139,10 +139,12 @@ def chains():
     start = int(request.args.get("start"))
     end = int(request.args.get("end"))
     expand = request.args.get("expand", type=int, default=None)
+    bubble = request.args.get("bubble", type=int, default=None)
 
-    print(f"Getting chains for {genome}#{chrom}:{start}-{end} expand={expand}...")
+    print(f"Getting chains for {genome}#{chrom}:{start}-{end} expand={expand} bubble={bubble}...")
     try:
-        result = query.get_chains(current_app, genome, chrom, start, end, expand_threshold=expand)
+        result = query.get_chains(current_app, genome, chrom, start, end,
+                                  expand_threshold=expand, bubble_threshold=bubble)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 

@@ -89,21 +89,19 @@ def _bubble_layout_span(bubble):
     return max(abs(bubble.x2 - bubble.x1), abs(bubble.y2 - bubble.y1))
 
 
-def _decompose_chain(chain, expand_threshold, bubbleidx, stepidx, seg_index, depth, max_depth):
-    """Decompose a chain by replacing it with the child chains inside its bubbles.
+def _decompose_chain(chain, expand_threshold, bubble_threshold,
+                     bubbleidx, stepidx, seg_index, depth, max_depth):
+    """Decompose a chain into sub-chains or individual bubbles.
 
-    The expand_threshold gates whether to decompose the chain at all
-    (any bubble must exceed it). Once triggered, the parent chain is fully
-    replaced by the child chains nested inside its bubbles. Leaf bubbles
-    (no children) don't produce output — the skeleton layer shows that structure.
+    Two thresholds control progressive detail:
+    - expand_threshold: if any bubble exceeds this, replace the chain
+      with child chains from inside its bubbles (one level).
+    - bubble_threshold: if the chain's layout span exceeds this (and it
+      wasn't decomposed into sub-chains), expose individual bubbles.
     """
-    # No expansion: return chain as-is
+    # No expansion: return chain as-is or expose bubbles
     if expand_threshold is None or depth >= max_depth:
-        entry = _build_chain_polyline(chain, stepidx, seg_index)
-        if entry is None:
-            return []
-        entry["depth"] = depth
-        return [entry]
+        return _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth)
 
     # Gate: does any bubble in this chain exceed the threshold?
     should_decompose = any(
@@ -112,28 +110,78 @@ def _decompose_chain(chain, expand_threshold, bubbleidx, stepidx, seg_index, dep
     )
 
     if not should_decompose:
-        entry = _build_chain_polyline(chain, stepidx, seg_index)
-        if entry is None:
-            return []
-        entry["depth"] = depth
-        return [entry]
+        return _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth)
 
-    # Replace the parent chain with child chains from all its bubbles
-    result = []
+    # Replace the parent chain with child chains from all its bubbles.
+    # Only decompose one level: child chains are returned as-is (or as bubbles).
+    chains = []
+    bubbles = []
     for b in chain.bubbles:
         if not b.children:
             continue
         child_bubbles = [bubbleidx[cid] for cid in b.children]
         child_chains = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
         for cc in child_chains:
-            result.extend(_decompose_chain(
-                cc, expand_threshold, bubbleidx, stepidx, seg_index,
-                depth + 1, max_depth))
+            r = _chain_or_bubbles(cc, bubble_threshold, stepidx, seg_index, depth + 1)
+            chains.extend(r["chains"])
+            bubbles.extend(r["bubbles"])
 
-    return result
+    return {"chains": chains, "bubbles": bubbles}
 
 
-def get_chains(indexes, genome, chrom, start, end, expand_threshold=None):
+def _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth):
+    """Return a chain as a polyline, or expose its bubbles if large enough."""
+    if bubble_threshold is not None and _chain_layout_span(chain) > bubble_threshold:
+        return {"chains": [], "bubbles": _expose_chain_bubbles(chain)}
+
+    entry = _build_chain_polyline(chain, stepidx, seg_index)
+    if entry is None:
+        return {"chains": [], "bubbles": []}
+    entry["depth"] = depth
+    return {"chains": [entry], "bubbles": []}
+
+
+def _expose_chain_bubbles(chain):
+    """Return individual bubbles from a chain as point features.
+
+    Skips superbubbles with children — those are intermediate hierarchy
+    nodes that will be decomposed into child chains on further zoom.
+    Only leaf bubbles (no children) are exposed as visible features.
+    """
+    bubbles = []
+    for b in chain.bubbles:
+        if b.children:
+            continue
+        cx = (b.x1 + b.x2) / 2.0
+        cy = (b.y1 + b.y2) / 2.0
+        rx = abs(b.x2 - b.x1) / 2.0
+        ry = abs(b.y2 - b.y1) / 2.0
+        bubbles.append({
+            "id": f"b{b.id}",
+            "x": round(cx, 1),
+            "y": round(cy, 1),
+            "rx": round(max(rx, 0.5), 1),
+            "ry": round(max(ry, 0.5), 1),
+            "subtype": b.subtype,
+            "length": b.length,
+            "chain": f"c{chain.id}",
+        })
+    return bubbles
+
+
+def _chain_layout_span(chain):
+    """Layout span of a chain from its bubbles' bounding boxes."""
+    if not chain.bubbles:
+        return 0
+    min_x = min(b.x1 for b in chain.bubbles)
+    max_x = max(b.x2 for b in chain.bubbles)
+    min_y = min(b.y1 for b in chain.bubbles)
+    max_y = max(b.y2 for b in chain.bubbles)
+    return max(max_x - min_x, max_y - min_y)
+
+
+def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
+               bubble_threshold=None):
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
     gfaidx = indexes.gfa_index.get(chrom, None)
@@ -146,13 +194,16 @@ def get_chains(indexes, genome, chrom, start, end, expand_threshold=None):
 
     seg_index = gfaidx.segment_index
 
-    result = []
+    chain_results = []
+    bubble_results = []
     for chain in chains:
-        result.extend(_decompose_chain(
-            chain, expand_threshold, bubbleidx, stepidx, seg_index,
-            depth=0, max_depth=3))
+        r = _decompose_chain(
+            chain, expand_threshold, bubble_threshold,
+            bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
+        chain_results.extend(r["chains"])
+        bubble_results.extend(r["bubbles"])
 
-    return {"chains": result}
+    return {"chains": chain_results, "bubbles": bubble_results}
 
 
 def get_bubble_graph(indexes, genome, chrom, start, end):
