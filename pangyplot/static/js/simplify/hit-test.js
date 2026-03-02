@@ -1,9 +1,10 @@
 // Chain/bubble/skeleton hover detection and tooltip formatting.
 
 import { state } from './simplify-state.js';
-import { subtypeColor } from './format-utils.js';
+import { subtypeColor, formatBp } from './format-utils.js';
 import { selectLevel } from './lod.js';
 import { getViewport } from './viewport.js';
+import { getForceNodes } from './simplify-force.js';
 
 const HIT_RADIUS_PX = 12;
 const SKELETON_HIT_RADIUS_PX = 14;
@@ -26,6 +27,44 @@ export function hitTestBubbles(dataX, dataY) {
         if (dx * dx + dy * dy <= 1) return b;
     }
     return null;
+}
+
+export function hitTestForceNodes(dataX, dataY) {
+    if (state.detailOpacity < 0.5) return null;
+    const nodes = getForceNodes();
+    if (nodes.length === 0) return null;
+
+    const hitR = HIT_RADIUS_PX / state.zoom;
+    let bestDist = hitR;
+    let bestNode = null;
+
+    for (const node of nodes) {
+        const dx = dataX - node.x;
+        const dy = dataY - node.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Hit within the node's visual radius or the minimum hit radius
+        const nodeR = (node.width || 6) / (2 * state.zoom);
+        const threshold = Math.max(nodeR, hitR);
+        if (dist < threshold && dist < bestDist) {
+            bestDist = dist;
+            bestNode = node;
+        }
+    }
+    return bestNode;
+}
+
+export function formatForceNodeTooltip(node) {
+    const typeColors = { segment: '#0762E5', bubble: '#F2DC0F', chain: '#FF6700' };
+    const color = typeColors[node.type] || '#888';
+    const lengthStr = node.seqLength >= 1000
+        ? (node.seqLength / 1000).toFixed(1) + 'kb'
+        : node.seqLength + 'bp';
+    const lines = [
+        `<span class="tt-label">${node.type}</span> <span class="tt-chain">${node.id}</span>`,
+        `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
+        `<span class="tt-label">chain</span> <span class="tt-val" style="color:${color}">${node.chainId}</span>`,
+    ];
+    return lines.join('<br>');
 }
 
 export function hitTestChains(dataX, dataY) {

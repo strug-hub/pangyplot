@@ -75,7 +75,11 @@ c122 (395 bubbles: 391 leaf + 4 super)
 Three mechanisms control what the simplify viewer shows as the user zooms in.
 Each is gated by a threshold derived from the viewport width in layout units.
 
-### 1. Chain Decomposition (`expand_threshold = viewport / 10`)
+### 1. Chain Decomposition (`expand_threshold = cellSize * 2`)
+
+The expand threshold is derived from the skeleton's current grid cell size:
+`expand_threshold = cellSize * 2`. This aligns detail decomposition with what
+the skeleton layer shows at the same zoom level.
 
 When any bubble in a chain exceeds `expand_threshold`, the parent chain is
 replaced by child chains from inside its superbubbles. Only one level of
@@ -109,24 +113,28 @@ For c122, this produces 5 connectors:
 - `c122_r3`: 34 leaf bubbles between b7933 and b7968
 - `c122_r4`: 80 leaf bubbles after b7968
 
-### 3. Bubble Exposure (`bubble_threshold = viewport / 8`)
+### 3. Inline Bubble Arrow Markers
 
-When a chain's layout span exceeds `bubble_threshold`, it is replaced by its
-individual leaf bubbles rendered as colored ellipses (blue=simple, pink=super,
-green=insertion). Superbubbles with children are skipped — they are intermediate
-hierarchy nodes that decompose into child chains on further zoom.
+Bubble information is rendered as colored triangle arrows directly on the chain
+polyline, rather than as separate ellipse shapes. The backend computes
+`bubble_positions` — an array of fractional positions (`t` in 0..1) for each
+leaf bubble along the chain's step range.
 
-Each bubble has a minimum 4px screen radius for visibility. Hover hit-testing
-uses an ellipse containment check with a margin for easier targeting.
+The frontend interpolates each `t` value along the polyline and draws a small
+filled equilateral triangle at that position, oriented along the polyline tangent.
+Color matches bubble subtype (blue=simple, pink=superbubble, green=insertion).
+Arrow size is zoom-adaptive: `Math.max(3, 6 / zoom)`.
+
+This replaces the previous `bubble_threshold`-based exposure of individual
+bubble ellipses.
 
 ### Typical zoom progression for c122
 
 | Zoom Level | What's Shown |
 |-----------|--------------|
-| Far out | c122 as a single polyline |
-| Medium | c122 decomposed: 10 child chains (solid blue) + 5 connectors (dashed gray) |
-| Closer | Large child chains (c489, c123, c393) replaced by exposed leaf bubbles |
-| Very close | All chains replaced by individual bubble ellipses |
+| Far out | c122 as a single polyline with arrow markers |
+| Medium | c122 decomposed: 10 child chains (solid + arrows) + 5 connectors (dashed gray) |
+| Closer | Child chains show individual bubble arrows at bp-proportional positions |
 
 ## Key Insight
 

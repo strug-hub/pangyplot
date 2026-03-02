@@ -4,11 +4,22 @@ from pangyplot.objects.Chain import Chain
 from pangyplot.preprocess.skeleton.graph_simplify import rdp_simplify
 
 
+def _seg_centroid(sid, seg_index):
+    """Return (cx, cy) for a segment id, or None if invalid."""
+    if sid < len(seg_index.valid) and seg_index.valid[sid]:
+        return ((seg_index.x1[sid] + seg_index.x2[sid]) / 2.0,
+                (seg_index.y1[sid] + seg_index.y2[sid]) / 2.0)
+    return None
+
+
 def _build_chain_polyline(chain, stepidx, seg_index):
     """Build an RDP-simplified polyline for a chain.
 
     For ref-path chains (bubbles have range_inclusive), walks reference steps
     at adaptive stride. For non-ref chains, falls back to bubble centroids.
+
+    Per-bubble fractional positions along the chain are returned in
+    ``bubble_positions``.
     """
     if not chain.bubbles:
         return None
@@ -36,21 +47,17 @@ def _build_chain_polyline(chain, stepidx, seg_index):
         while step <= max_step:
             if step < len(stepidx.segments):
                 sid = stepidx.segments[step]
-                if sid < len(seg_index.valid) and seg_index.valid[sid]:
-                    cx = (seg_index.x1[sid] + seg_index.x2[sid]) / 2.0
-                    cy = (seg_index.y1[sid] + seg_index.y2[sid]) / 2.0
-                    raw_polyline.append((cx, cy))
+                pt = _seg_centroid(sid, seg_index)
+                if pt and (not raw_polyline or raw_polyline[-1] != pt):
+                    raw_polyline.append(pt)
             step += stride
 
         # Always include the endpoint
         if max_step < len(stepidx.segments):
             sid = stepidx.segments[max_step]
-            if sid < len(seg_index.valid) and seg_index.valid[sid]:
-                cx = (seg_index.x1[sid] + seg_index.x2[sid]) / 2.0
-                cy = (seg_index.y1[sid] + seg_index.y2[sid]) / 2.0
-                last = (cx, cy)
-                if not raw_polyline or raw_polyline[-1] != last:
-                    raw_polyline.append(last)
+            pt = _seg_centroid(sid, seg_index)
+            if pt and (not raw_polyline or raw_polyline[-1] != pt):
+                raw_polyline.append(pt)
     else:
         # Non-ref chain: use bubble centroids from ODGI layout
         raw_polyline = []
@@ -69,6 +76,29 @@ def _build_chain_polyline(chain, stepidx, seg_index):
         else:
             return None
 
+    # Bubble positions: fractional t along chain for each leaf bubble
+    bubble_positions = []
+    step_span = (max_step - min_step) if (min_step is not None and max_step is not None and max_step > min_step) else 0
+    if step_span > 0:
+        for b in chain.bubbles:
+            if b.children:
+                continue
+            # Midpoint step of this bubble's range_inclusive
+            mid_step = None
+            for rs, re in b.range_inclusive:
+                mid_step = (rs + re) / 2.0
+                break
+            if mid_step is None:
+                continue
+            t = (mid_step - min_step) / step_span
+            t = max(0.0, min(1.0, t))
+            bubble_positions.append({
+                "t": round(t, 4),
+                "subtype": b.subtype,
+                "length": b.length,
+                "id": f"b{b.id}",
+            })
+
     span = max(abs(raw_polyline[-1][0] - raw_polyline[0][0]),
                 abs(raw_polyline[-1][1] - raw_polyline[0][1]))
     epsilon = max(0.5, span / 500)
@@ -82,6 +112,7 @@ def _build_chain_polyline(chain, stepidx, seg_index):
         "subtype": subtype_counter.most_common(1)[0][0],
         "source_segs": chain.bubbles[0].source_segments,
         "sink_segs": chain.bubbles[-1].sink_segments,
+        "bubble_positions": bubble_positions,
     }
 
 
@@ -170,10 +201,7 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
 
 
 def _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth):
-    """Return a chain as a polyline, or expose its bubbles if large enough."""
-    if bubble_threshold is not None and _chain_layout_span(chain) > bubble_threshold:
-        return {"chains": [], "bubbles": _expose_chain_bubbles(chain)}
-
+    """Return a chain as a polyline with inline bubble_positions."""
     entry = _build_chain_polyline(chain, stepidx, seg_index)
     if entry is None:
         return {"chains": [], "bubbles": []}

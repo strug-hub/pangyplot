@@ -35,13 +35,14 @@ export const state = {
     // Hover
     hoveredChain: null,
     hoveredBubble: null,
+    hoveredForceNode: null,   // popped node from force simulation
     hoveredSkeletonPl: null,  // {levelIdx, plIdx, chainId}
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',
 
     // Constants
-    NODE_BUDGET_STEPS: 1500,
+    DETAIL_CELL_THRESHOLD: 100,   // activate detail when skeleton cellSize <= this
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 

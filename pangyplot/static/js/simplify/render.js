@@ -4,8 +4,10 @@ import { state } from './simplify-state.js';
 import { selectLevel } from './lod.js';
 import { getViewport, viewportStepCount } from './viewport.js';
 import { getGenePins } from './genes.js';
-import { formatBp, subtypeColor } from './format-utils.js';
+import { formatBp } from './format-utils.js';
 import { xToBp, getChromosome } from './spine.js';
+import { getForceNodes, getForceLinks } from './simplify-force.js';
+import { paintNode, paintLink } from './simplify-painter.js';
 
 let rafId = null;
 
@@ -28,6 +30,7 @@ export function updateDetailBar() {
 // ---------------------------------------------------------------
 // Detail rendering helpers (within data-space transform)
 // ---------------------------------------------------------------
+
 function drawChainPolylines(chains, baseWidth, hovChain) {
     const ctx = state.ctx;
     for (const chain of chains) {
@@ -35,26 +38,16 @@ function drawChainPolylines(chains, baseWidth, hovChain) {
         if (pl.length < 2) continue;
         const isHovered = hovChain && chain === hovChain;
 
-        if (chain.connector) {
-            // Connector: thin dashed line for leaf-bubble runs
-            const dashLen = Math.max(4, 10 / state.zoom);
-            ctx.setLineDash([dashLen, dashLen]);
-            ctx.strokeStyle = '#888';
-            ctx.lineWidth = Math.max(1, baseWidth * 0.6);
-            ctx.globalAlpha = (hovChain && !isHovered ? 0.15 : 0.5) * state.detailOpacity;
+        // All chains (including connectors) use uniform skeleton-matched style
+        ctx.setLineDash([]);
+        ctx.strokeStyle = isHovered ? '#5bb8f0' : '#fff';
+        ctx.lineWidth = isHovered ? baseWidth * 1.5 : baseWidth;
+        if (hovChain && !isHovered) {
+            ctx.globalAlpha = 0.25 * state.detailOpacity;
+        } else if (isHovered) {
+            ctx.globalAlpha = state.detailOpacity;
         } else {
-            // Regular chain: white by default (matches skeleton), blue on hover
-            const w = Math.max(1.5, baseWidth * Math.log2(Math.max(2, chain.nBubbles)));
-            ctx.setLineDash([]);
-            ctx.strokeStyle = isHovered ? '#5bb8f0' : '#fff';
-            ctx.lineWidth = isHovered ? w * 1.5 : w;
-            if (hovChain && !isHovered) {
-                ctx.globalAlpha = 0.25 * state.detailOpacity;
-            } else if (isHovered) {
-                ctx.globalAlpha = state.detailOpacity;
-            } else {
-                ctx.globalAlpha = 0.75 * state.detailOpacity;
-            }
+            ctx.globalAlpha = 0.75 * state.detailOpacity;
         }
 
         ctx.beginPath();
@@ -68,37 +61,47 @@ function drawChainPolylines(chains, baseWidth, hovChain) {
             ctx.globalAlpha = state.detailOpacity;
         }
     }
-    ctx.setLineDash([]);
 }
 
-function drawBubbleEllipses(bubbles, hovBubble) {
+function drawPoppedGraph() {
     const ctx = state.ctx;
-    // Minimum radius in screen pixels so bubbles are always visible
-    const minR = 4 / state.zoom;
-    for (const b of bubbles) {
-        const isHovered = hovBubble && b === hovBubble;
-        const color = subtypeColor(b.subtype);
+    const links = getForceLinks();
+    const nodes = getForceNodes();
+    if (nodes.length === 0) return;
 
-        if (hovBubble && !isHovered) {
-            ctx.globalAlpha = 0.2 * state.detailOpacity;
-        } else if (isHovered) {
-            ctx.globalAlpha = 0.9 * state.detailOpacity;
-        } else {
-            ctx.globalAlpha = 0.6 * state.detailOpacity;
+    const hovNode = state.hoveredForceNode;
+    const hovChainId = hovNode ? hovNode.chainId : null;
+
+    // Links first (behind nodes)
+    for (const link of links) {
+        if (hovNode) {
+            // Dim links not in hovered chain
+            const linkChain = link.chainId || link.source?.chainId;
+            ctx.globalAlpha = (linkChain === hovChainId ? 0.6 : 0.15) * state.detailOpacity;
         }
+        paintLink(ctx, link);
+    }
 
-        const rx = Math.max(b.rx, minR);
-        const ry = Math.max(b.ry, minR);
+    // Nodes on top
+    for (const node of nodes) {
+        if (hovNode) {
+            ctx.globalAlpha = (node.chainId === hovChainId ? 0.9 : 0.2) * state.detailOpacity;
+        }
+        paintNode(ctx, node);
+    }
 
-        ctx.fillStyle = color;
-        ctx.strokeStyle = isHovered ? '#fff' : color;
-        ctx.lineWidth = isHovered ? 2 / state.zoom : 1 / state.zoom;
-
+    // Highlight ring on hovered node
+    if (hovNode) {
+        const r = Math.max(3, (hovNode.width || 6) / (2 * state.zoom)) + 2 / state.zoom;
+        ctx.globalAlpha = state.detailOpacity;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = Math.max(1, 2 / state.zoom);
         ctx.beginPath();
-        ctx.ellipse(b.x, b.y, rx, ry, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(hovNode.x, hovNode.y, r, 0, Math.PI * 2);
         ctx.stroke();
     }
+
+    ctx.globalAlpha = 1;
 }
 
 function drawDetail() {
@@ -108,22 +111,23 @@ function drawDetail() {
     ctx.lineCap = 'round';
 
     const hovChain = state.hoveredChain;
-    const hovBubble = state.hoveredBubble;
+    const poppedChains = state.detailData.poppedChains;
 
-    // --- Chain polylines ---
-    drawChainPolylines(state.detailData.chains, Math.max(1.5, 3 / state.zoom), hovChain);
+    // --- Chain polylines (skip popped chains) ---
+    const baseWidth = Math.max(1.5, 3 / state.zoom);
+    const visibleChains = poppedChains
+        ? state.detailData.chains.filter(c => !poppedChains.has(c.id))
+        : state.detailData.chains;
+    drawChainPolylines(visibleChains, baseWidth, hovChain);
 
-    // --- Exposed bubbles ---
-    if (state.detailData.bubbles && state.detailData.bubbles.length > 0) {
-        drawBubbleEllipses(state.detailData.bubbles, hovBubble);
-    }
+    // --- Popped chain subgraphs (force-simulated) ---
+    drawPoppedGraph();
 
     // --- Hover highlight ---
-    if (state.hoveredChain) {
+    if (state.hoveredChain && (!poppedChains || !poppedChains.has(state.hoveredChain.id))) {
         const hc = state.hoveredChain;
         const pl = hc.polyline;
 
-        // Highlight hovered chain with bright stroke
         if (pl.length >= 2) {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
@@ -136,17 +140,6 @@ function drawDetail() {
             ctx.stroke();
             ctx.globalAlpha = state.detailOpacity;
         }
-    }
-
-    if (state.hoveredBubble) {
-        const b = state.hoveredBubble;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = Math.max(2, 3 / state.zoom);
-        ctx.globalAlpha = 0.5 * state.detailOpacity;
-        ctx.beginPath();
-        ctx.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = state.detailOpacity;
     }
 
     ctx.globalAlpha = 1;

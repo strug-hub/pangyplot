@@ -7,7 +7,7 @@ import { scheduleHashUpdate } from './hash-navigation.js';
 import { resizeCanvas, fitToScreen } from './viewport.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
 import { formatBp } from './format-utils.js';
-import { hitTestBubbles, hitTestChains, hitTestSkeleton, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from './hit-test.js';
+import { hitTestForceNodes, hitTestBubbles, hitTestChains, hitTestSkeleton, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from './hit-test.js';
 import { updateLodDisplay } from './lod.js';
 
 export function setupInteraction() {
@@ -69,17 +69,21 @@ export function setupInteraction() {
             cursorBpEl.textContent = `${chr}:${formatBp(bp)}`;
         }
 
-        // Hit-test priority: bubbles > chains > skeleton polylines
-        const hitBubble = hitTestBubbles(layoutX, layoutY);
-        const hitChain = hitBubble ? null : hitTestChains(layoutX, layoutY);
-        const hitSkel = (hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
-        const hit = hitBubble || hitChain || hitSkel;
+        // Hit-test priority: force nodes > bubbles > chains > skeleton polylines
+        const hitForceNode = hitTestForceNodes(layoutX, layoutY);
+        const hitBubble = hitForceNode ? null : hitTestBubbles(layoutX, layoutY);
+        const hitChain = (hitForceNode || hitBubble) ? null : hitTestChains(layoutX, layoutY);
+        const hitSkel = (hitForceNode || hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
+        const hit = hitForceNode || hitBubble || hitChain || hitSkel;
 
         if (hit) {
+            state.hoveredForceNode = hitForceNode;
             state.hoveredBubble = hitBubble;
             state.hoveredChain = hitChain;
             state.hoveredSkeletonPl = hitSkel;
-            if (hitBubble) {
+            if (hitForceNode) {
+                tooltipEl.innerHTML = formatForceNodeTooltip(hitForceNode);
+            } else if (hitBubble) {
                 tooltipEl.innerHTML = formatBubbleTooltip(hitBubble);
             } else if (hitChain) {
                 tooltipEl.innerHTML = formatTooltip(hitChain);
@@ -98,9 +102,10 @@ export function setupInteraction() {
             tooltipEl.style.top = ty + 'px';
             canvas.style.cursor = 'crosshair';
             scheduleFrame();
-        } else if (state.hoveredChain || state.hoveredBubble || state.hoveredSkeletonPl) {
+        } else if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
             state.hoveredChain = null;
             state.hoveredBubble = null;
+            state.hoveredForceNode = null;
             state.hoveredSkeletonPl = null;
             tooltipEl.style.display = 'none';
             canvas.style.cursor = 'grab';
@@ -110,9 +115,10 @@ export function setupInteraction() {
 
     canvas.addEventListener('mouseleave', () => {
         cursorBpEl.textContent = '';
-        if (state.hoveredChain || state.hoveredBubble || state.hoveredSkeletonPl) {
+        if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
             state.hoveredChain = null;
             state.hoveredBubble = null;
+            state.hoveredForceNode = null;
             state.hoveredSkeletonPl = null;
             tooltipEl.style.display = 'none';
             canvas.style.cursor = 'grab';
