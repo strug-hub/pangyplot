@@ -3,11 +3,9 @@
 import { state } from './simplify-state.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
 import { getViewport } from './viewport.js';
-import { formatBp } from './format-utils.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
 import { selectLevel } from './lod.js';
-import { stopPhysics } from './physics.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, collapseToAnchors } from './simplify-force.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, collapseToAnchors, restoreAnchors } from './simplify-force.js';
 
 let fadeStartTime = 0;
 let fetchController = null;
@@ -58,7 +56,6 @@ function processChainsResponse(apiResponse) {
 // Detail phase state machine
 // ---------------------------------------------------------------
 export function setDetailPhase(phase) {
-    console.log(`[phase] ${state.detailPhase} -> ${phase}`);
     state.detailPhase = phase;
     const cls = (phase === 'fading-in' || phase === 'fading-out') ? 'fading'
                : phase === 'collapsing' ? 'fading' : phase;
@@ -99,7 +96,6 @@ export function exitDetailMode() {
     if (state.detailPhase === 'collapsing') return;
 
     // Start collapse: pull nodes back to polyline positions
-    stopPhysics();
     setDetailPhase('collapsing');
     collapseToAnchors(0.6);
 
@@ -122,8 +118,8 @@ function cancelCollapse() {
         clearTimeout(collapseTimer);
         collapseTimer = null;
     }
-    // Restore normal anchor strength by re-adding with default
-    collapseToAnchors(0.15);
+    // Restore fixed positions on anchor nodes and normal anchor strength
+    restoreAnchors();
     setDetailPhase('static');
     scheduleFrame();
 }
@@ -197,7 +193,6 @@ export async function fetchChainsForViewport() {
         fetchStart >= state.detailCache.bpStart &&
         fetchEnd <= state.detailCache.bpEnd &&
         expandThreshold === state.detailCache.expandThreshold) {
-        console.log(`[detail] cache HIT: viewport ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k within cached ${Math.round(state.detailCache.bpStart/1000)}k-${Math.round(state.detailCache.bpEnd/1000)}k, expand=${expandThreshold}`);
         // If collapsing (zoomed back in before collapse finished), cancel it
         if (state.detailPhase === 'collapsing') cancelCollapse();
         return;
@@ -208,17 +203,13 @@ export async function fetchChainsForViewport() {
     fetchController = new AbortController();
 
     let url = `/chains?genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}&start=${fetchStart}&end=${fetchEnd}&expand=${expandThreshold}`;
-    console.log(`[detail] FETCH /chains: ${Math.round(fetchStart/1000)}k-${Math.round(fetchEnd/1000)}k (${Math.round((fetchEnd-fetchStart)/1000)}kb span, expand>${expandThreshold} = cellSize ${cellSize} * 2)`);
 
     try {
-        const t0 = performance.now();
         const resp = await fetch(url, { signal: fetchController.signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const apiData = await resp.json();
 
         const processed = processChainsResponse(apiData);
-        const totalPts = processed.chains.reduce((s, c) => s + c.polyline.length, 0);
-        console.log(`[detail]   /chains response: ${processed.chains.length} chains, ${processed.bubbles.length} exposed bubbles, ${processed.totalBubbles} chain-bubbles, ${totalPts} polyline pts (${(performance.now()-t0).toFixed(0)}ms)`);
 
         state.detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, expandThreshold, data: processed };
         // Carry over poppedChains so polylines stay hidden during async pop
@@ -285,7 +276,6 @@ async function popChainsForViewport(chains, chr, signal) {
     if (currentPoppedIds && newIds.size === currentPoppedIds.size &&
         [...newIds].every(id => currentPoppedIds.has(id))) {
         if (state.detailData) state.detailData.poppedChains = newIds;
-        console.log(`[detail] same ${newIds.size} chains already popped, skipping`);
         return;
     }
 
@@ -300,19 +290,10 @@ async function popChainsForViewport(chains, chr, signal) {
         removePoppedNodes(id);
     }
 
-    console.log(`[detail] pop update: ${kept.length} kept, ${toRemove.length} removed, ${toFetch.length} to fetch (${budget}/${POP_BUDGET} budget)`);
-
     // Fetch subgraphs only for newly added chains
     if (toFetch.length > 0) {
         const fetches = toFetch.map(async (chain) => {
-            const pl = chain.polyline;
-            const minX = Math.min(...pl.map(p => p[0]));
-            const maxX = Math.max(...pl.map(p => p[0]));
-            const bpStart = xToBp(minX);
-            const bpEnd = xToBp(maxX);
-            if (bpStart === null || bpEnd === null) return null;
-
-            const url = `/select?genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}&start=${Math.round(bpStart)}&end=${Math.round(bpEnd)}`;
+            const url = `/chain-graph?id=${encodeURIComponent(chain.id)}&genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}`;
             try {
                 const resp = await fetch(url, { signal });
                 if (!resp.ok) return null;
@@ -331,6 +312,7 @@ async function popChainsForViewport(chains, chr, signal) {
         for (const result of results) {
             if (!result || !result.data.nodes || result.data.nodes.length === 0) continue;
             const { chain, data } = result;
+            const chainNodes = [];
 
             for (const node of data.nodes) {
                 const cx = (node.x1 + node.x2) / 2;
@@ -338,26 +320,53 @@ async function popChainsForViewport(chains, chr, signal) {
                 const seqLen = node.length || 1;
                 const width = Math.min(20, Math.max(3, Math.log10(seqLen + 1) * 4));
                 const radius = width / 2;
-                newNodes.push({
+                const n = {
                     id: node.id, chainId: chain.id, x: cx, y: cy,
                     width, radius, type: node.type, seqLength: seqLen,
                     siblings: node.siblings, gcCount: node.gc_count || 0,
                     isRef: node.is_ref || false,
-                });
+                };
+                chainNodes.push(n);
+                newNodes.push(n);
             }
 
-            const nodeMap = new Map(data.nodes.map(n => [n.id, n]));
-            for (const node of data.nodes) {
-                if (!node.siblings) continue;
-                const nextId = node.siblings[1];
+            // Pin source/sink nodes to chain polyline endpoints
+            if (chain.polyline.length >= 2 && chainNodes.length > 0) {
+                const plStart = chain.polyline[0];
+                const plEnd = chain.polyline[chain.polyline.length - 1];
+
+                let closestToStart = null, startDist = Infinity;
+                let closestToEnd = null, endDist = Infinity;
+                for (const n of chainNodes) {
+                    const ds = Math.hypot(n.x - plStart[0], n.y - plStart[1]);
+                    const de = Math.hypot(n.x - plEnd[0], n.y - plEnd[1]);
+                    if (ds < startDist) { startDist = ds; closestToStart = n; }
+                    if (de < endDist) { endDist = de; closestToEnd = n; }
+                }
+                if (closestToStart) {
+                    closestToStart.fx = plStart[0];
+                    closestToStart.fy = plStart[1];
+                    closestToStart.isAnchor = true;
+                }
+                if (closestToEnd && closestToEnd !== closestToStart) {
+                    closestToEnd.fx = plEnd[0];
+                    closestToEnd.fy = plEnd[1];
+                    closestToEnd.isAnchor = true;
+                }
+            }
+
+            // Build links from sibling references
+            const chainNodeMap = new Map(chainNodes.map(n => [n.id, n]));
+            for (const n of chainNodes) {
+                if (!n.siblings) continue;
+                const nextId = n.siblings[1];
                 if (nextId != null) {
                     const targetId = `b${nextId}`;
-                    if (nodeMap.has(targetId)) {
-                        const srcLen = node.length || 1;
-                        const tgtLen = nodeMap.get(targetId).length || 1;
-                        const dist = Math.max(5, (Math.log10(srcLen + 1) + Math.log10(tgtLen + 1)) * 3);
+                    const tgt = chainNodeMap.get(targetId);
+                    if (tgt) {
+                        const dist = Math.max(5, (Math.log10(n.seqLength + 1) + Math.log10(tgt.seqLength + 1)) * 3);
                         newLinks.push({
-                            source: node.id, target: targetId,
+                            source: n.id, target: targetId,
                             length: dist, chainId: chain.id,
                         });
                     }
@@ -366,7 +375,6 @@ async function popChainsForViewport(chains, chr, signal) {
         }
 
         if (newNodes.length > 0) {
-            console.log(`[detail] popped ${toFetch.length} new chains: ${newNodes.length} nodes, ${newLinks.length} links`);
             addPoppedNodes(newNodes, newLinks);
         }
     }
@@ -382,12 +390,9 @@ export function scheduleDetailFetch() {
     fetchTimer = setTimeout(() => {
         const li = selectLevel();
         const cellSize = state.data.levels[li]?.cellSize || 50;
-        console.log(`[detail] scheduleDetailFetch: cellSize=${cellSize}, zoom=${state.zoom.toFixed(2)}, threshold=${state.DETAIL_CELL_THRESHOLD}, phase=${state.detailPhase}`);
         if (cellSize <= state.DETAIL_CELL_THRESHOLD) {
-            console.log(`[detail]   -> cellSize <= threshold, fetching chains...`);
             fetchChainsForViewport();
         } else {
-            console.log(`[detail]   -> cellSize > threshold, exiting detail mode`);
             exitDetailMode();
         }
     }, 200);

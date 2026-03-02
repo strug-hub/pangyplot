@@ -150,6 +150,27 @@ def chains():
 
     return jsonify(result)
 
+@bp.route('/chain-graph', methods=["GET"])
+def chain_graph():
+    raw_id = request.args.get("id", "")
+    genome = request.args.get("genome")
+    chrom = request.args.get("chromosome")
+
+    # Reject connector IDs (synthetic, not in SQLite)
+    if '_r' in raw_id:
+        return jsonify({"error": "Connector chains have no stored subgraph"}), 400
+
+    # Strip "c" prefix to get integer chain ID
+    chain_id = int(raw_id.lstrip("c"))
+
+    print(f"Getting chain graph for chain {chain_id} in {genome}#{chrom}...")
+    try:
+        graph = query.get_chain_graph(current_app, chain_id, genome, chrom)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify(graph)
+
 @bp.route('/select', methods=["GET"])
 def select():
     genome = request.args.get("genome")

@@ -274,6 +274,35 @@ def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
     return {"chains": chain_results, "bubbles": bubble_results}
 
 
+def get_chain_graph(indexes, chain_id, genome, chrom):
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    gfaidx = indexes.gfa_index.get(chrom, None)
+
+    if stepidx is None or bubbleidx is None or gfaidx is None:
+        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
+
+    chain_ends = bubbleidx.get_chain_ends(chain_id)
+    if chain_ends is None:
+        return {"nodes": [], "links": []}
+
+    (_, min_step), (_, max_step) = chain_ends
+    from pangyplot.db.sqlite import bubble_db as db
+    bubble_ids = db.get_bubble_ids_from_chain(
+        bubbleidx.dir, chain_id, min_step, max_step)
+    bubbles = [bubbleidx[bid] for bid in bubble_ids]
+
+    boundary_segs = set()
+    for b in bubbles:
+        boundary_segs.update(b.source_segments + b.sink_segments)
+    _, links = gfaidx.get_subgraph(boundary_segs, stepidx)
+
+    return {
+        "nodes": [b.serialize() for b in bubbles],
+        "links": [l.serialize() for l in links],
+    }
+
+
 def get_bubble_graph(indexes, genome, chrom, start, end):
 
     stepidx = indexes.step_index.get((chrom, genome), None)
