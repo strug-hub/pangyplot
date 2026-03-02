@@ -156,9 +156,22 @@ def chain_graph():
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
 
-    # Reject connector IDs (synthetic, not in SQLite)
+    # Connector chains: synthetic IDs with _r, use explicit bubble IDs
     if '_r' in raw_id:
-        return jsonify({"error": "Connector chains have no stored subgraph"}), 400
+        bubbles_param = request.args.get("bubbles", "")
+        if not bubbles_param:
+            return jsonify({"error": "Connector chains require &bubbles= parameter"}), 400
+        try:
+            bubble_ids = [int(x) for x in bubbles_param.split(",")]
+        except ValueError:
+            return jsonify({"error": "Invalid bubble IDs"}), 400
+
+        print(f"Getting connector subgraph for {raw_id} ({len(bubble_ids)} bubbles) in {genome}#{chrom}...")
+        try:
+            graph = query.get_bubbles_subgraph(current_app, bubble_ids, genome, chrom)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 404
+        return jsonify(graph)
 
     # Strip "c" prefix to get integer chain ID
     chain_id = int(raw_id.lstrip("c"))

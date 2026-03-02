@@ -133,6 +133,7 @@ def _build_connector(parent_chain, leaf_bubbles, stepidx, seg_index,
     entry["id"] = f"c{parent_chain.id}_r{connector_idx}"
     entry["depth"] = depth
     entry["connector"] = True
+    entry["bubble_ids"] = [b.id for b in leaf_bubbles]
     return entry
 
 
@@ -290,6 +291,27 @@ def get_chain_graph(indexes, chain_id, genome, chrom):
     from pangyplot.db.sqlite import bubble_db as db
     bubble_ids = db.get_bubble_ids_from_chain(
         bubbleidx.dir, chain_id, min_step, max_step)
+    bubbles = [bubbleidx[bid] for bid in bubble_ids]
+
+    boundary_segs = set()
+    for b in bubbles:
+        boundary_segs.update(b.source_segments + b.sink_segments)
+    _, links = gfaidx.get_subgraph(boundary_segs, stepidx)
+
+    return {
+        "nodes": [b.serialize() for b in bubbles],
+        "links": [l.serialize() for l in links],
+    }
+
+
+def get_bubbles_subgraph(indexes, bubble_ids, genome, chrom):
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    gfaidx = indexes.gfa_index.get(chrom, None)
+
+    if stepidx is None or bubbleidx is None or gfaidx is None:
+        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
+
     bubbles = [bubbleidx[bid] for bid in bubble_ids]
 
     boundary_segs = set()

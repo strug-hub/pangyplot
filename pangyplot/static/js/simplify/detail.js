@@ -28,6 +28,7 @@ function processChainsResponse(apiResponse) {
             subtype: chain.subtype,
             depth: chain.depth || 0,
             connector: chain.connector || false,
+            bubbleIds: chain.bubble_ids || null,
             sourceSegs: chain.source_segs,
             sinkSegs: chain.sink_segs,
             bubblePositions: chain.bubble_positions || null,
@@ -269,7 +270,7 @@ let currentPoppedIds = null;  // Set of chain IDs currently in the force sim
 async function popChainsForViewport(chains, chr, signal) {
     // Sort candidates by bubble count (smallest first) to maximize chains popped
     const candidates = chains
-        .filter(c => !c.connector && c.nBubbles > 0)
+        .filter(c => c.nBubbles > 0)
         .sort((a, b) => a.nBubbles - b.nBubbles);
 
     // Fill budget greedily
@@ -312,7 +313,10 @@ async function popChainsForViewport(chains, chr, signal) {
     // Fetch subgraphs only for newly added chains
     if (toFetch.length > 0) {
         const fetches = toFetch.map(async (chain) => {
-            const url = `/chain-graph?id=${encodeURIComponent(chain.id)}&genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}`;
+            let url = `/chain-graph?id=${encodeURIComponent(chain.id)}&genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}`;
+            if (chain.bubbleIds) {
+                url += `&bubbles=${chain.bubbleIds.join(',')}`;
+            }
             try {
                 const resp = await fetch(url, { signal });
                 if (!resp.ok) return null;
