@@ -275,6 +275,85 @@ def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
     return {"chains": chain_results, "bubbles": bubble_results}
 
 
+def _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx):
+    """Build a hybrid subgraph from a list of bubbles.
+
+    Leaf bubbles (no children) stay as bubble nodes, hiding their
+    internal segments.  Superbubbles (have children) are auto-popped
+    one level: their naked internal segments become visible nodes and
+    their child bubbles become bubble nodes.
+
+    Links are redirected like core pangyplot's viewState: segment
+    endpoints hidden inside a bubble redirect to that bubble node.
+    """
+    # seg_id → bubble_id for segments hidden inside a bubble node
+    seg_to_bubble = {}
+    bubble_nodes = []
+    visible_seg_ids = set()
+    all_seg_ids = set()
+
+    for b in bubbles:
+        b_segs = set(b.source_segments + b.sink_segments) | b.inside
+        all_seg_ids.update(b_segs)
+
+        if not b.children:
+            # Leaf bubble: keep as node, map all its segments for redirection
+            bubble_nodes.append(b)
+            for sid in b_segs:
+                seg_to_bubble[sid] = b.id
+        else:
+            # Superbubble: pop one level
+            child_seg_set = set()
+            for cid in b.children:
+                child = bubbleidx[cid]
+                bubble_nodes.append(child)
+                c_segs = set(child.source_segments + child.sink_segments) | child.inside
+                for sid in c_segs:
+                    seg_to_bubble[sid] = child.id
+                child_seg_set.update(c_segs)
+
+            # Naked segments = parent's segments minus everything owned by children
+            visible_seg_ids.update(b_segs - child_seg_set)
+
+    # Fetch full subgraph for link discovery
+    segments, raw_links = gfaidx.get_subgraph(all_seg_ids, stepidx)
+    visible_segments = [s for s in segments if s.id in visible_seg_ids]
+
+    # Redirect links: segment inside bubble → bubble node
+    seen = set()
+    result_links = []
+    for link in raw_links:
+        if link.from_id not in all_seg_ids or link.to_id not in all_seg_ids:
+            continue
+
+        from_bub = seg_to_bubble.get(link.from_id)
+        to_bub = seg_to_bubble.get(link.to_id)
+
+        # Skip internal links (both endpoints in same bubble)
+        if from_bub is not None and to_bub is not None and from_bub == to_bub:
+            continue
+
+        new_link = link.clone()
+        if from_bub is not None:
+            new_link.from_type = 'b'
+            new_link.from_id = from_bub
+        if to_bub is not None:
+            new_link.to_type = 'b'
+            new_link.to_id = to_bub
+
+        # Deduplicate (multiple segment links may collapse to same b→b)
+        lid = new_link.id()
+        if lid not in seen:
+            seen.add(lid)
+            result_links.append(new_link)
+
+    return {
+        "nodes": [b.serialize() for b in bubble_nodes] +
+                 [s.serialize() for s in visible_segments],
+        "links": [l.serialize() for l in result_links],
+    }
+
+
 def get_chain_graph(indexes, chain_id, genome, chrom):
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
@@ -293,15 +372,7 @@ def get_chain_graph(indexes, chain_id, genome, chrom):
         bubbleidx.dir, chain_id, min_step, max_step)
     bubbles = [bubbleidx[bid] for bid in bubble_ids]
 
-    boundary_segs = set()
-    for b in bubbles:
-        boundary_segs.update(b.source_segments + b.sink_segments)
-    _, links = gfaidx.get_subgraph(boundary_segs, stepidx)
-
-    return {
-        "nodes": [b.serialize() for b in bubbles],
-        "links": [l.serialize() for l in links],
-    }
+    return _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx)
 
 
 def get_bubbles_subgraph(indexes, bubble_ids, genome, chrom):
@@ -314,15 +385,7 @@ def get_bubbles_subgraph(indexes, bubble_ids, genome, chrom):
 
     bubbles = [bubbleidx[bid] for bid in bubble_ids]
 
-    boundary_segs = set()
-    for b in bubbles:
-        boundary_segs.update(b.source_segments + b.sink_segments)
-    _, links = gfaidx.get_subgraph(boundary_segs, stepidx)
-
-    return {
-        "nodes": [b.serialize() for b in bubbles],
-        "links": [l.serialize() for l in links],
-    }
+    return _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx)
 
 
 def get_bubble_graph(indexes, genome, chrom, start, end):

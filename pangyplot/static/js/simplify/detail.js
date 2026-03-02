@@ -331,12 +331,14 @@ async function popChainsForViewport(chains, chr, signal) {
         const results = await Promise.all(fetches);
         const newNodes = [];
         const newLinks = [];
+        const fetchedIds = [];  // track which chains actually produced nodes
 
         for (const result of results) {
             if (!result || !result.data.nodes || result.data.nodes.length === 0) continue;
+            fetchedIds.push(result.chain.id);
             const { chain, data } = result;
 
-            // Map from record ID (e.g. "b123") to array of kink nodes
+            // Map from record ID (e.g. "s123") to array of kink nodes
             const kinksByRecord = new Map();
 
             for (const node of data.nodes) {
@@ -355,9 +357,8 @@ async function popChainsForViewport(chains, chr, signal) {
                         radius: KINK_WIDTH / 2,
                         type: node.type,
                         seqLength: seqLen,
-                        siblings: node.siblings,
                         gcCount: node.gc_count || 0,
-                        isRef: node.is_ref || false,
+                        isRef: (node.ranges && node.ranges.length > 0) || false,
                     };
                     kinks.push(kn);
                     newNodes.push(kn);
@@ -409,21 +410,17 @@ async function popChainsForViewport(chains, chr, signal) {
                 }
             }
 
-            // Inter-bubble links: connect tail kink of source to head kink of next sibling
-            for (const [recId, kinks] of kinksByRecord) {
-                const tailKink = kinks[kinks.length - 1];
-                const node = data.nodes.find(n => n.id === recId);
-                if (!node || !node.siblings) continue;
-                const nextId = node.siblings[1];
-                if (nextId == null) continue;
-                const targetRecId = `b${nextId}`;
-                const targetKinks = kinksByRecord.get(targetRecId);
-                if (!targetKinks) continue;
-                const headKink = targetKinks[0];
-                const dist = Math.max(5, Math.hypot(headKink.x - tailKink.x, headKink.y - tailKink.y));
+            // Inter-segment links from API (connect tail kink of source to head kink of target)
+            for (const link of data.links) {
+                const sourceKinks = kinksByRecord.get(link.source);
+                const targetKinks = kinksByRecord.get(link.target);
+                if (!sourceKinks || !targetKinks) continue;
+                const sourceTail = sourceKinks[sourceKinks.length - 1];
+                const targetHead = targetKinks[0];
+                const dist = Math.max(5, Math.hypot(targetHead.x - sourceTail.x, targetHead.y - sourceTail.y));
                 newLinks.push({
-                    source: tailKink.id,
-                    target: headKink.id,
+                    source: sourceTail.id,
+                    target: targetHead.id,
                     length: dist,
                     chainId: chain.id,
                     isKinkLink: false,
@@ -433,6 +430,12 @@ async function popChainsForViewport(chains, chr, signal) {
 
         if (newNodes.length > 0) {
             addPoppedNodes(newNodes, newLinks);
+        }
+
+        // Only mark chains as popped if they actually produced nodes
+        // (kept chains already have nodes; newly fetched need confirmation)
+        for (const id of toFetch.map(c => c.id)) {
+            if (!fetchedIds.includes(id)) newIds.delete(id);
         }
     }
 

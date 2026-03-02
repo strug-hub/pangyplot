@@ -90,6 +90,32 @@ function drawPoppedGraph() {
         paintNode(ctx, node);
     }
 
+    // Anchor point indicators (diamond shape at chain connection points)
+    // Only show where anchor connects to an unpopped chain — if two anchors
+    // share the same pinned position, both chains are popped and no diamond needed.
+    const anchorCounts = new Map();
+    for (const node of nodes) {
+        if (!node.isAnchor) continue;
+        const key = `${node.fx.toFixed(1)},${node.fy.toFixed(1)}`;
+        anchorCounts.set(key, (anchorCounts.get(key) || 0) + 1);
+    }
+
+    ctx.globalAlpha = 0.7 * state.detailOpacity;
+    ctx.fillStyle = '#fff';
+    const anchorSize = Math.max(2, 4 / state.zoom);
+    for (const node of nodes) {
+        if (!node.isAnchor) continue;
+        const key = `${node.fx.toFixed(1)},${node.fy.toFixed(1)}`;
+        if (anchorCounts.get(key) >= 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(node.x, node.y - anchorSize);
+        ctx.lineTo(node.x + anchorSize, node.y);
+        ctx.lineTo(node.x, node.y + anchorSize);
+        ctx.lineTo(node.x - anchorSize, node.y);
+        ctx.closePath();
+        ctx.fill();
+    }
+
     // Highlight ring on hovered node
     if (hovNode) {
         const r = Math.max(3, (hovNode.width || 6) / (2 * state.zoom)) + 2 / state.zoom;
@@ -119,6 +145,27 @@ function drawDetail() {
         ? state.detailData.chains.filter(c => !poppedChains.has(c.id))
         : state.detailData.chains;
     drawChainPolylines(visibleChains, baseWidth, hovChain);
+
+    // --- Faint guide polylines for popped chains (shows chain path) ---
+    if (poppedChains) {
+        ctx.globalAlpha = 0.15 * state.detailOpacity;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
+        ctx.setLineDash([4 / state.zoom, 6 / state.zoom]);
+        ctx.beginPath();
+        for (const chain of state.detailData.chains) {
+            if (!poppedChains.has(chain.id)) continue;
+            const pl = chain.polyline;
+            if (pl.length < 2) continue;
+            ctx.moveTo(pl[0][0], pl[0][1]);
+            for (let i = 1; i < pl.length; i++) {
+                ctx.lineTo(pl[i][0], pl[i][1]);
+            }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = state.detailOpacity;
+    }
 
     // --- Popped chain subgraphs (force-simulated) ---
     drawPoppedGraph();
