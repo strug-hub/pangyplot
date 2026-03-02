@@ -59,7 +59,14 @@ def _build_chain_polyline(chain, stepidx, seg_index):
             raw_polyline.append((cx, cy))
 
     if len(raw_polyline) < 2:
-        return None
+        # Single-point chain: use bubble bbox corners as a short segment
+        if len(chain.bubbles) == 1:
+            b = chain.bubbles[0]
+            p1 = ((b.x1 + b.x2) / 2.0 - 0.5, (b.y1 + b.y2) / 2.0)
+            p2 = ((b.x1 + b.x2) / 2.0 + 0.5, (b.y1 + b.y2) / 2.0)
+            raw_polyline = [p1, p2]
+        else:
+            return None
 
     span = max(abs(raw_polyline[-1][0] - raw_polyline[0][0]),
                 abs(raw_polyline[-1][1] - raw_polyline[0][1]))
