@@ -43,17 +43,17 @@ function drawChainPolylines(chains, baseWidth, hovChain) {
             ctx.lineWidth = Math.max(1, baseWidth * 0.6);
             ctx.globalAlpha = (hovChain && !isHovered ? 0.15 : 0.5) * state.detailOpacity;
         } else {
-            // Regular chain: solid line
+            // Regular chain: white by default (matches skeleton), blue on hover
             const w = Math.max(1.5, baseWidth * Math.log2(Math.max(2, chain.nBubbles)));
             ctx.setLineDash([]);
-            ctx.strokeStyle = '#4a90d9';
+            ctx.strokeStyle = isHovered ? '#5bb8f0' : '#fff';
             ctx.lineWidth = isHovered ? w * 1.5 : w;
             if (hovChain && !isHovered) {
                 ctx.globalAlpha = 0.25 * state.detailOpacity;
             } else if (isHovered) {
                 ctx.globalAlpha = state.detailOpacity;
             } else {
-                ctx.globalAlpha = 0.9 * state.detailOpacity;
+                ctx.globalAlpha = 0.75 * state.detailOpacity;
             }
         }
 
@@ -191,7 +191,9 @@ export function draw() {
     // --- Polylines (culled) ---
     const lineWidth = Math.max(0.5, 1.2 / state.zoom);
     const skelAlpha = state.detailData ? state.skeletonOpacity : 1;
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 * skelAlpha})`;
+    const hovSkel = state.hoveredSkeletonPl;
+    const hasSkeletonHover = hovSkel && hovSkel.levelIdx === li;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${(hasSkeletonHover ? 0.3 : 0.75) * skelAlpha})`;
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -206,6 +208,7 @@ export function draw() {
             bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
 
         visiblePl++;
+        if (hasSkeletonHover && i === hovSkel.plIdx) continue;
         const pl = level.polylines[i];
         ctx.moveTo(pl[0][0], pl[0][1]);
         for (let j = 1; j < pl.length; j++) {
@@ -215,8 +218,7 @@ export function draw() {
     ctx.stroke();
 
     // --- Hovered skeleton polyline highlight ---
-    const hovSkel = state.hoveredSkeletonPl;
-    if (hovSkel && hovSkel.levelIdx === li) {
+    if (hasSkeletonHover) {
         const hpl = level.polylines[hovSkel.plIdx];
         if (hpl && hpl.length >= 2) {
             ctx.strokeStyle = `rgba(91, 184, 240, ${skelAlpha})`;
@@ -227,7 +229,6 @@ export function draw() {
                 ctx.lineTo(hpl[j][0], hpl[j][1]);
             }
             ctx.stroke();
-            // Reset line width for subsequent passes
             ctx.lineWidth = lineWidth;
         }
     }
