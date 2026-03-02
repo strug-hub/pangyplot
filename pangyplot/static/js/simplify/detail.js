@@ -5,6 +5,7 @@ import { xToBp, getChromosome, isReady } from './spine.js';
 import { getViewport, viewportStepCount } from './viewport.js';
 import { formatBp } from './format-utils.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
+import { startPhysics, stopPhysics, restartPhysics } from './physics.js';
 
 let fadeStartTime = 0;
 let fetchController = null;
@@ -84,6 +85,7 @@ function finishExit() {
 
 export function exitDetailMode() {
     if (state.detailPhase === 'none' || state.detailPhase === 'fading-out') return;
+    stopPhysics();
     fadeStartTime = performance.now();
     setDetailPhase('fading-out');
     scheduleFadeFrame();
@@ -101,10 +103,11 @@ export function updateDetailOpacity() {
         if (t < 1) {
             scheduleFadeFrame();
         } else {
-            // Fade-in complete — chains are static, no physics
+            // Fade-in complete — chains are static, start physics
             state.detailOpacity = 1;
             state.skeletonOpacity = 0.1;
             setDetailPhase('static');
+            startPhysics(state.detailData?.bubbles);
         }
     } else if (state.detailPhase === 'fading-out') {
         state.detailOpacity = 1 - t;
@@ -186,6 +189,9 @@ export async function fetchChainsForViewport() {
         state.detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, zoom: state.zoom, data: processed };
         state.detailData = processed;
 
+        if (state.detailPhase === 'static') {
+            restartPhysics(processed.bubbles);
+        }
         if (state.detailPhase === 'none') {
             fadeStartTime = performance.now();
             setDetailPhase('fading-in');
