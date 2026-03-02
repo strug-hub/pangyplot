@@ -242,6 +242,25 @@ export async function fetchChainsForViewport() {
 }
 
 // ---------------------------------------------------------------
+// Kink model: each bubble → N kink nodes connected by thick internal links
+// ---------------------------------------------------------------
+const SINGLE_NODE_BP_THRESH = 10;
+const KINK_SIZE = 2000;
+const MAX_KINKS = 20;
+const KINK_WIDTH = 5;
+
+function calculateKinks(seqLength) {
+    if (seqLength < SINGLE_NODE_BP_THRESH) return 1;
+    return Math.min(MAX_KINKS, Math.floor(seqLength / KINK_SIZE) + 2);
+}
+
+function interpolateKinkPos(node, kinkCount, i) {
+    if (kinkCount === 1) return [(node.x1 + node.x2) / 2, (node.y1 + node.y2) / 2];
+    const p = 1 - i / (kinkCount - 1);
+    return [p * node.x1 + (1 - p) * node.x2, p * node.y1 + (1 - p) * node.y2];
+}
+
+// ---------------------------------------------------------------
 // Pop chains: fetch subgraphs and add to force simulation
 // ---------------------------------------------------------------
 const POP_BUDGET = 2000;  // total bubble budget across all popped chains
@@ -312,65 +331,99 @@ async function popChainsForViewport(chains, chr, signal) {
         for (const result of results) {
             if (!result || !result.data.nodes || result.data.nodes.length === 0) continue;
             const { chain, data } = result;
-            const chainNodes = [];
+
+            // Map from record ID (e.g. "b123") to array of kink nodes
+            const kinksByRecord = new Map();
 
             for (const node of data.nodes) {
-                const cx = (node.x1 + node.x2) / 2;
-                const cy = (node.y1 + node.y2) / 2;
                 const seqLen = node.length || 1;
-                const width = Math.min(20, Math.max(3, Math.log10(seqLen + 1) * 4));
-                const radius = width / 2;
-                const n = {
-                    id: node.id, chainId: chain.id, x: cx, y: cy,
-                    width, radius, type: node.type, seqLength: seqLen,
-                    siblings: node.siblings, gcCount: node.gc_count || 0,
-                    isRef: node.is_ref || false,
-                };
-                chainNodes.push(n);
-                newNodes.push(n);
+                const kinkCount = calculateKinks(seqLen);
+                const kinks = [];
+
+                for (let i = 0; i < kinkCount; i++) {
+                    const [kx, ky] = interpolateKinkPos(node, kinkCount, i);
+                    const kn = {
+                        id: `${node.id}#${i}`,
+                        recordId: node.id,
+                        chainId: chain.id,
+                        x: kx, y: ky,
+                        width: KINK_WIDTH,
+                        radius: KINK_WIDTH / 2,
+                        type: node.type,
+                        seqLength: seqLen,
+                        siblings: node.siblings,
+                        gcCount: node.gc_count || 0,
+                        isRef: node.is_ref || false,
+                    };
+                    kinks.push(kn);
+                    newNodes.push(kn);
+                }
+
+                kinksByRecord.set(node.id, kinks);
+
+                // Internal kink links (thick, same color as node)
+                for (let i = 0; i < kinks.length - 1; i++) {
+                    const dist = Math.hypot(kinks[i+1].x - kinks[i].x, kinks[i+1].y - kinks[i].y);
+                    newLinks.push({
+                        source: kinks[i].id,
+                        target: kinks[i+1].id,
+                        length: Math.max(3, dist),
+                        chainId: chain.id,
+                        isKinkLink: true,
+                    });
+                }
             }
 
-            // Pin source/sink nodes to chain polyline endpoints
-            if (chain.polyline.length >= 2 && chainNodes.length > 0) {
+            // Pin head/tail kinks to chain polyline endpoints
+            if (chain.polyline.length >= 2 && kinksByRecord.size > 0) {
                 const plStart = chain.polyline[0];
                 const plEnd = chain.polyline[chain.polyline.length - 1];
 
-                let closestToStart = null, startDist = Infinity;
-                let closestToEnd = null, endDist = Infinity;
-                for (const n of chainNodes) {
-                    const ds = Math.hypot(n.x - plStart[0], n.y - plStart[1]);
-                    const de = Math.hypot(n.x - plEnd[0], n.y - plEnd[1]);
-                    if (ds < startDist) { startDist = ds; closestToStart = n; }
-                    if (de < endDist) { endDist = de; closestToEnd = n; }
+                // Find the record whose head kink is closest to polyline start
+                let closestStartRec = null, startDist = Infinity;
+                let closestEndRec = null, endDist = Infinity;
+                for (const [recId, kinks] of kinksByRecord) {
+                    const head = kinks[0];
+                    const tail = kinks[kinks.length - 1];
+                    const ds = Math.hypot(head.x - plStart[0], head.y - plStart[1]);
+                    const de = Math.hypot(tail.x - plEnd[0], tail.y - plEnd[1]);
+                    if (ds < startDist) { startDist = ds; closestStartRec = recId; }
+                    if (de < endDist) { endDist = de; closestEndRec = recId; }
                 }
-                if (closestToStart) {
-                    closestToStart.fx = plStart[0];
-                    closestToStart.fy = plStart[1];
-                    closestToStart.isAnchor = true;
+                if (closestStartRec) {
+                    const head = kinksByRecord.get(closestStartRec)[0];
+                    head.fx = plStart[0];
+                    head.fy = plStart[1];
+                    head.isAnchor = true;
                 }
-                if (closestToEnd && closestToEnd !== closestToStart) {
-                    closestToEnd.fx = plEnd[0];
-                    closestToEnd.fy = plEnd[1];
-                    closestToEnd.isAnchor = true;
+                if (closestEndRec && closestEndRec !== closestStartRec) {
+                    const kinks = kinksByRecord.get(closestEndRec);
+                    const tail = kinks[kinks.length - 1];
+                    tail.fx = plEnd[0];
+                    tail.fy = plEnd[1];
+                    tail.isAnchor = true;
                 }
             }
 
-            // Build links from sibling references
-            const chainNodeMap = new Map(chainNodes.map(n => [n.id, n]));
-            for (const n of chainNodes) {
-                if (!n.siblings) continue;
-                const nextId = n.siblings[1];
-                if (nextId != null) {
-                    const targetId = `b${nextId}`;
-                    const tgt = chainNodeMap.get(targetId);
-                    if (tgt) {
-                        const dist = Math.max(5, (Math.log10(n.seqLength + 1) + Math.log10(tgt.seqLength + 1)) * 3);
-                        newLinks.push({
-                            source: n.id, target: targetId,
-                            length: dist, chainId: chain.id,
-                        });
-                    }
-                }
+            // Inter-bubble links: connect tail kink of source to head kink of next sibling
+            for (const [recId, kinks] of kinksByRecord) {
+                const tailKink = kinks[kinks.length - 1];
+                const node = data.nodes.find(n => n.id === recId);
+                if (!node || !node.siblings) continue;
+                const nextId = node.siblings[1];
+                if (nextId == null) continue;
+                const targetRecId = `b${nextId}`;
+                const targetKinks = kinksByRecord.get(targetRecId);
+                if (!targetKinks) continue;
+                const headKink = targetKinks[0];
+                const dist = Math.max(5, Math.hypot(headKink.x - tailKink.x, headKink.y - tailKink.y));
+                newLinks.push({
+                    source: tailKink.id,
+                    target: headKink.id,
+                    length: dist,
+                    chainId: chain.id,
+                    isKinkLink: false,
+                });
             }
         }
 

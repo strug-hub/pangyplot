@@ -40,14 +40,23 @@ export function paintNode(ctx, node) {
 
 /**
  * Paint a single link using core app style.
- * link shape: { source: {x,y}, target: {x,y} }
+ * link shape: { source: {x,y}, target: {x,y}, isKinkLink }
+ * Kink links: thick, colored by node type (sausage body).
+ * Inter-bubble links: thin gray connectors.
  */
 export function paintLink(ctx, link) {
-    const w = Math.max(0.5, 1.5 / state.zoom);
-    const color = linkColor();
     const src = link.source;
     const tgt = link.target;
-    if (!src.x || !tgt.x) return;
-    ctx.globalAlpha = 0.5 * state.detailOpacity;
-    drawLine(ctx, src.x, src.y, tgt.x, tgt.y, w, color);
+    if (src.x == null || tgt.x == null) return;
+
+    if (link.isKinkLink) {
+        const w = Math.max(1, 5 / state.zoom);
+        const color = nodeColor(src.type || tgt.type);
+        ctx.globalAlpha = 0.85 * state.detailOpacity;
+        drawLine(ctx, src.x, src.y, tgt.x, tgt.y, w, color);
+    } else {
+        const w = Math.max(0.5, 1.5 / state.zoom);
+        ctx.globalAlpha = 0.5 * state.detailOpacity;
+        drawLine(ctx, src.x, src.y, tgt.x, tgt.y, w, linkColor());
+    }
 }

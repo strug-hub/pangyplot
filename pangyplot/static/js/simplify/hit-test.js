@@ -59,8 +59,9 @@ export function formatForceNodeTooltip(node) {
     const lengthStr = node.seqLength >= 1000
         ? (node.seqLength / 1000).toFixed(1) + 'kb'
         : node.seqLength + 'bp';
+    const displayId = node.recordId || node.id;
     const lines = [
-        `<span class="tt-label">${node.type}</span> <span class="tt-chain">${node.id}</span>`,
+        `<span class="tt-label">${node.type}</span> <span class="tt-chain">${displayId}</span>`,
         `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
         `<span class="tt-label">chain</span> <span class="tt-val" style="color:${color}">${node.chainId}</span>`,
     ];
