@@ -156,11 +156,48 @@ def load_segment_to_bubble(data_dir):
     return quick_index["segment_to_bubble"]
 
 
-def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain):
-    """For each run, determine dominant chain by majority vote of seg→bubble→chain.
+def _compute_chain_depths(chain_stats):
+    """Compute depth of each chain from parent links. Root chains have depth 0."""
+    depths = {}
+    if not chain_stats:
+        return depths
+    for cid in chain_stats:
+        if cid in depths:
+            continue
+        # Walk up to root, collecting ancestors
+        path = [cid]
+        cur = cid
+        while True:
+            info = chain_stats.get(cur)
+            parent = info.get("parent") if info else None
+            if parent is None:
+                break
+            if parent in depths:
+                break
+            path.append(parent)
+            cur = parent
+        # Base depth: parent's depth + 1, or 0 for root
+        info = chain_stats.get(cur)
+        parent = info.get("parent") if info else None
+        base = (depths[parent] + 1) if (parent is not None and parent in depths) else 0
+        # Assign depths: path is [cid, ..., cur], reversed = [cur, ..., cid]
+        for i, c in enumerate(reversed(path)):
+            depths[c] = base + i
+    return depths
+
+
+def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats=None):
+    """For each run, assign the deepest chain that has any vote.
+
+    Boundary segments (source/sink) of child bubbles map to the parent
+    chain, so a simple majority vote systematically misattributes child
+    chains. Instead, prefer the most deeply nested chain — it is the
+    most specific annotation. Ties at the same depth break by vote count.
 
     Returns list parallel to runs: chain_id or -1 if unmapped.
     """
+    depths = _compute_chain_depths(chain_stats) if chain_stats else {}
+
     chain_ids = []
     mapped = 0
     for run in runs:
@@ -171,7 +208,8 @@ def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain):
                 if bid != 0 and bid in bubble_to_chain:
                     votes[bubble_to_chain[bid]] += 1
         if votes:
-            chain_id = max(votes, key=votes.get)
+            # Deepest chain wins; break ties by vote count
+            chain_id = max(votes, key=lambda c: (depths.get(c, 0), votes[c]))
             chain_ids.append(chain_id)
             mapped += 1
         else:
@@ -586,7 +624,7 @@ def main():
 
         chain_ids = None
         if seg_to_bubble and bubble_to_chain:
-            chain_ids = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain)
+            chain_ids = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
         else:
             print("Warning: could not load bubble data, skipping chain annotation")
 

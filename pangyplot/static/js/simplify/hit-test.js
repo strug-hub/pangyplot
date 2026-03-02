@@ -6,7 +6,7 @@ import { selectLevel } from './lod.js';
 import { getViewport } from './viewport.js';
 
 const HIT_RADIUS_PX = 12;
-const SKELETON_HIT_RADIUS_PX = 8;
+const SKELETON_HIT_RADIUS_PX = 14;
 
 function pointToSegmentDist(px, py, ax, ay, bx, by) {
     const dx = bx - ax, dy = by - ay;

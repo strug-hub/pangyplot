@@ -26,6 +26,33 @@ async function init() {
         `${state.data.stats.junctionCount.toLocaleString()} junctions | ` +
         `${state.data.levels.length} grid levels`;
 
+    // Build chain family map: chainId → Set of self + all descendants
+    if (state.data.chainMeta) {
+        const meta = state.data.chainMeta;
+        const children = {};  // parent → [child, ...]
+        for (const cid in meta) {
+            const p = meta[cid].parent;
+            if (p != null) {
+                (children[p] || (children[p] = [])).push(Number(cid));
+            }
+        }
+        const family = {};
+        for (const cid in meta) {
+            const id = Number(cid);
+            const set = new Set([id]);
+            const stack = [id];
+            while (stack.length) {
+                const cur = stack.pop();
+                for (const ch of (children[cur] || [])) {
+                    set.add(ch);
+                    stack.push(ch);
+                }
+            }
+            family[id] = set;
+        }
+        state.data.chainFamily = family;
+    }
+
     precomputeBboxes();
     computeBounds();
 

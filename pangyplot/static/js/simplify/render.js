@@ -193,12 +193,16 @@ export function draw() {
     const skelAlpha = state.detailData ? state.skeletonOpacity : 1;
     const hovSkel = state.hoveredSkeletonPl;
     const hasSkeletonHover = hovSkel && hovSkel.levelIdx === li;
+    const hovChainId = hasSkeletonHover ? hovSkel.chainId : null;
+    const hovFamily = hovChainId !== null && state.data.chainFamily
+        ? state.data.chainFamily[hovChainId] : null;
     ctx.strokeStyle = `rgba(255, 255, 255, ${(hasSkeletonHover ? 0.3 : 0.75) * skelAlpha})`;
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
     const bboxes = state.levelBboxes[li];
+    const chainIds = level.chainIds;
     let visiblePl = 0;
 
     ctx.beginPath();
@@ -208,7 +212,7 @@ export function draw() {
             bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
 
         visiblePl++;
-        if (hasSkeletonHover && i === hovSkel.plIdx) continue;
+        if (hovFamily && hovFamily.has(chainIds[i])) continue;
         const pl = level.polylines[i];
         ctx.moveTo(pl[0][0], pl[0][1]);
         for (let j = 1; j < pl.length; j++) {
@@ -217,20 +221,24 @@ export function draw() {
     }
     ctx.stroke();
 
-    // --- Hovered skeleton polyline highlight ---
-    if (hasSkeletonHover) {
-        const hpl = level.polylines[hovSkel.plIdx];
-        if (hpl && hpl.length >= 2) {
-            ctx.strokeStyle = `rgba(91, 184, 240, ${skelAlpha})`;
-            ctx.lineWidth = Math.max(2, 3 / state.zoom);
-            ctx.beginPath();
-            ctx.moveTo(hpl[0][0], hpl[0][1]);
-            for (let j = 1; j < hpl.length; j++) {
-                ctx.lineTo(hpl[j][0], hpl[j][1]);
+    // --- Hovered chain + descendants highlight ---
+    if (hovFamily) {
+        ctx.strokeStyle = `rgba(91, 184, 240, ${skelAlpha})`;
+        ctx.lineWidth = Math.max(2, 3 / state.zoom);
+        ctx.beginPath();
+        for (let i = 0; i < level.polylines.length; i++) {
+            if (!hovFamily.has(chainIds[i])) continue;
+            const o = i * 4;
+            if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
+                bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
+            const pl = level.polylines[i];
+            ctx.moveTo(pl[0][0], pl[0][1]);
+            for (let j = 1; j < pl.length; j++) {
+                ctx.lineTo(pl[j][0], pl[j][1]);
             }
-            ctx.stroke();
-            ctx.lineWidth = lineWidth;
         }
+        ctx.stroke();
+        ctx.lineWidth = lineWidth;
     }
 
     // --- Gene-colored polylines (overdraw) ---
