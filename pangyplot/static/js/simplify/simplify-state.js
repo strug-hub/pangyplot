@@ -1,0 +1,70 @@
+// Shared singleton state — imported by almost every module.
+// DOM refs are gathered at module load time (type="module" is deferred).
+
+const canvas = document.getElementById('canvas');
+
+export const state = {
+    // Canvas
+    canvas,
+    ctx: canvas.getContext('2d'),
+
+    // Data (set by init)
+    data: null,
+
+    // Transform
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    isDragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+
+    // Bounds & LOD
+    dataBounds: { minX: 0, maxX: 1, minY: 0, maxY: 1 },
+    levelBboxes: [],
+    currentLevel: -1,
+    levelOffset: 0,
+
+    // Progressive detail
+    detailPhase: 'none',       // 'none' | 'fading-in' | 'static' | 'fading-out'
+    detailData: null,          // { chains, bubbles, totalBubbles }
+    detailCache: null,         // { bpStart, bpEnd, zoom, data }
+    detailOpacity: 0,
+    skeletonOpacity: 1,
+
+    // Hover
+    hoveredChain: null,
+    hoveredBubble: null,
+
+    // Config (from Jinja via window.__SIMPLIFY_CONFIG)
+    GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',
+
+    // Constants
+    NODE_BUDGET_STEPS: 1500,
+    FETCH_MARGIN: 0.2,
+    FADE_DURATION: 600,
+
+    // DOM element references
+    dom: {
+        levelLabel: document.getElementById('level-label'),
+        nodeCount: document.getElementById('node-count'),
+        polylineCount: document.getElementById('polyline-count'),
+        visibleCount: document.getElementById('visible-count'),
+        reduction: document.getElementById('reduction'),
+        stats: document.getElementById('stats'),
+        loading: document.getElementById('loading'),
+        lodOffset: document.getElementById('lod-offset'),
+        viewportBp: document.getElementById('viewport-bp'),
+        cursorBp: document.getElementById('cursor-bp'),
+        detailPhase: document.getElementById('detail-phase'),
+        detailBar: document.getElementById('detail-bar'),
+        detailPhase2: document.getElementById('detail-phase2'),
+        detailChains: document.getElementById('detail-chains'),
+        detailExposed: document.getElementById('detail-exposed'),
+        detailNodes: document.getElementById('detail-nodes'),
+        detailRange: document.getElementById('detail-range'),
+        detailOpacity: document.getElementById('detail-opacity'),
+        detailSteps: document.getElementById('detail-steps'),
+        tooltip: document.getElementById('tooltip'),
+    },
+};
