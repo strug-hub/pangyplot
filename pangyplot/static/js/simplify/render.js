@@ -29,18 +29,18 @@ export function updateDetailBar() {
 // Detail rendering helpers (within data-space transform)
 // ---------------------------------------------------------------
 
-function drawChainPolylines(chains, baseWidth, hovSet) {
+function drawChainPolylines(chains, baseWidth, hovChain) {
     const ctx = state.ctx;
     for (const chain of chains) {
         const pl = chain.polyline;
         if (pl.length < 2) continue;
-        const isHovered = hovSet && hovSet.has(chain);
+        const isHovered = hovChain && chain === hovChain;
 
         // All chains (including connectors) use uniform skeleton-matched style
         ctx.setLineDash([]);
         ctx.strokeStyle = isHovered ? '#5bb8f0' : '#fff';
         ctx.lineWidth = isHovered ? baseWidth * 1.5 : baseWidth;
-        if (hovSet && !isHovered) {
+        if (hovChain && !isHovered) {
             ctx.globalAlpha = 0.25 * state.detailOpacity;
         } else if (isHovered) {
             ctx.globalAlpha = state.detailOpacity;
@@ -55,7 +55,7 @@ function drawChainPolylines(chains, baseWidth, hovSet) {
         }
         ctx.stroke();
 
-        if (hovSet) {
+        if (hovChain) {
             ctx.globalAlpha = state.detailOpacity;
         }
     }
@@ -68,34 +68,11 @@ function drawDetail() {
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // Build hover family set: hovered chain + all siblings sharing the same parent,
-    // then walk up through chainMeta to include cousins at ancestor levels.
-    let hovSet = null;
-    if (state.hoveredChain) {
-        hovSet = new Set();
-        const chainMeta = state.data.chainMeta;
-
-        // Collect the set of parent chain IDs to match against, walking up the hierarchy
-        const parentIds = new Set();
-        let cur = state.hoveredChain.parentChain; // e.g. "c122"
-        while (cur) {
-            parentIds.add(cur);
-            // Walk further up: strip "c" prefix, look up in chainMeta
-            const numId = cur.startsWith('c') ? cur.slice(1) : cur;
-            const meta = chainMeta?.[numId];
-            cur = meta?.parent != null ? `c${meta.parent}` : null;
-        }
-
-        for (const c of state.detailData.chains) {
-            if (c === state.hoveredChain || parentIds.has(c.parentChain)) {
-                hovSet.add(c);
-            }
-        }
-    }
+    const hovChain = state.hoveredChain;
 
     // --- Chain polylines ---
     const baseWidth = Math.max(1.5, 3 / state.zoom);
-    drawChainPolylines(state.detailData.chains, baseWidth, hovSet);
+    drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
 
     // --- Gap-fillers: dashed connectors between sibling chains ---
     {
@@ -126,20 +103,23 @@ function drawDetail() {
         }
     }
 
-    // --- Hover highlight (glow for entire hover family) ---
-    if (hovSet) {
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
-        ctx.globalAlpha = 0.3 * state.detailOpacity;
-        ctx.beginPath();
-        for (const hc of hovSet) {
-            const pl = hc.polyline;
-            if (pl.length < 2) continue;
+    // --- Hover highlight ---
+    if (state.hoveredChain) {
+        const hc = state.hoveredChain;
+        const pl = hc.polyline;
+
+        if (pl.length >= 2) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
+            ctx.globalAlpha = 0.3 * state.detailOpacity;
+            ctx.beginPath();
             ctx.moveTo(pl[0][0], pl[0][1]);
-            for (let i = 1; i < pl.length; i++) ctx.lineTo(pl[i][0], pl[i][1]);
+            for (let i = 1; i < pl.length; i++) {
+                ctx.lineTo(pl[i][0], pl[i][1]);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = state.detailOpacity;
         }
-        ctx.stroke();
-        ctx.globalAlpha = state.detailOpacity;
     }
 
     ctx.globalAlpha = 1;

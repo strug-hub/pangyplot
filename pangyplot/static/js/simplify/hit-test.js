@@ -92,8 +92,19 @@ export function formatTooltip(chain) {
     const color = subtypeColors[chain.subtype] || '#90d94a';
     const lengthStr = chain.length >= 1000 ? (chain.length/1000).toFixed(1) + 'kb' : chain.length + 'bp';
     const typeLabel = `<span class="tt-subtype" style="color:${color}">${chain.subtype}</span>`;
+
+    // Build ancestry string e.g. "c122_r1 > c122 > c5"
+    let ancestry = chain.id;
+    let cur = chain.parentChain;
+    while (cur) {
+        ancestry += ` > ${cur}`;
+        const numId = cur.startsWith('c') ? cur.slice(1) : cur;
+        const meta = state.data.chainMeta?.[numId];
+        cur = meta?.parent != null ? `c${meta.parent}` : null;
+    }
+
     const lines = [
-        `<span class="tt-label">chain</span> <span class="tt-chain">${chain.id}</span>`,
+        `<span class="tt-label">chain</span> <span class="tt-chain">${ancestry}</span>`,
         `<span class="tt-label">type</span> ${typeLabel}`,
         `<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`,
         `<span class="tt-label">bubbles</span> <span class="tt-val">${chain.nBubbles}</span>`,
