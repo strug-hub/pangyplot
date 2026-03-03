@@ -148,6 +148,29 @@ def chains():
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 
+    # Strip internal fields not meant for this endpoint's response
+    for c in result.get("chains", []):
+        c.pop("_bubble_ids", None)
+        c.pop("_layout_span", None)
+
+    return jsonify(result)
+
+@bp.route('/detail-tiles', methods=["GET"])
+def detail_tiles():
+    genome = request.args.get("genome")
+    chrom = request.args.get("chromosome")
+    start = int(request.args.get("start"))
+    end = int(request.args.get("end"))
+    ppbp = float(request.args.get("ppbp"))
+    expand = request.args.get("expand", type=int, default=None)
+
+    print(f"Getting detail tile for {genome}#{chrom}:{start}-{end} ppbp={ppbp:.6f} expand={expand}...")
+    try:
+        result = query.get_detail_tile(current_app, genome, chrom, start, end,
+                                       ppbp, expand_threshold=expand)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
     return jsonify(result)
 
 @bp.route('/chain-graph', methods=["GET"])

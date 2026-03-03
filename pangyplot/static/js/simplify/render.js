@@ -6,8 +6,6 @@ import { getViewport, viewportStepCount } from './viewport.js';
 import { getGenePins } from './genes.js';
 import { formatBp } from './format-utils.js';
 import { xToBp, getChromosome } from './spine.js';
-import { getForceNodes, getForceLinks } from './simplify-force.js';
-import { paintNode, paintLink } from './simplify-painter.js';
 
 let rafId = null;
 
@@ -17,10 +15,10 @@ let rafId = null;
 export function updateDetailBar() {
     if (!state.detailData) return;
     state.dom.detailChains.textContent = state.detailData.chains.length.toLocaleString();
-    state.dom.detailExposed.textContent = (state.detailData.bubbles ? state.detailData.bubbles.length : 0).toLocaleString();
+    state.dom.detailExposed.textContent = '0';
     state.dom.detailNodes.textContent = (state.detailData.totalBubbles || 0).toLocaleString();
-    if (state.detailCache) {
-        state.dom.detailRange.textContent = `${formatBp(state.detailCache.bpStart)}-${formatBp(state.detailCache.bpEnd)}`;
+    if (state.detailData.bpStart != null) {
+        state.dom.detailRange.textContent = `${formatBp(state.detailData.bpStart)}-${formatBp(state.detailData.bpEnd)}`;
     }
     state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
     const steps = viewportStepCount();
@@ -31,18 +29,18 @@ export function updateDetailBar() {
 // Detail rendering helpers (within data-space transform)
 // ---------------------------------------------------------------
 
-function drawChainPolylines(chains, baseWidth, hovChain) {
+function drawChainPolylines(chains, baseWidth, hovSet) {
     const ctx = state.ctx;
     for (const chain of chains) {
         const pl = chain.polyline;
         if (pl.length < 2) continue;
-        const isHovered = hovChain && chain === hovChain;
+        const isHovered = hovSet && hovSet.has(chain);
 
         // All chains (including connectors) use uniform skeleton-matched style
         ctx.setLineDash([]);
         ctx.strokeStyle = isHovered ? '#5bb8f0' : '#fff';
         ctx.lineWidth = isHovered ? baseWidth * 1.5 : baseWidth;
-        if (hovChain && !isHovered) {
+        if (hovSet && !isHovered) {
             ctx.globalAlpha = 0.25 * state.detailOpacity;
         } else if (isHovered) {
             ctx.globalAlpha = state.detailOpacity;
@@ -57,86 +55,12 @@ function drawChainPolylines(chains, baseWidth, hovChain) {
         }
         ctx.stroke();
 
-        if (hovChain) {
+        if (hovSet) {
             ctx.globalAlpha = state.detailOpacity;
         }
     }
 }
 
-function drawPoppedGraph() {
-    const ctx = state.ctx;
-    const links = getForceLinks();
-    const nodes = getForceNodes();
-    if (nodes.length === 0) return;
-
-    const hovNode = state.hoveredForceNode;
-    const hovChainId = hovNode ? hovNode.chainId : null;
-
-    // Links first (behind nodes)
-    for (const link of links) {
-        if (hovNode) {
-            if (link.isInterChain) {
-                // Inter-chain links: highlight when either connected chain is hovered
-                const srcChain = link.source?.chainId;
-                const tgtChain = link.target?.chainId;
-                ctx.globalAlpha = (srcChain === hovChainId || tgtChain === hovChainId ? 0.6 : 0.15) * state.detailOpacity;
-            } else {
-                const linkChain = link.chainId || link.source?.chainId;
-                ctx.globalAlpha = (linkChain === hovChainId ? 0.6 : 0.15) * state.detailOpacity;
-            }
-        }
-        paintLink(ctx, link);
-    }
-
-    // Nodes on top
-    for (const node of nodes) {
-        if (hovNode) {
-            ctx.globalAlpha = (node.chainId === hovChainId ? 0.9 : 0.2) * state.detailOpacity;
-        }
-        paintNode(ctx, node);
-    }
-
-    // Anchor point indicators (diamond shape at chain connection points)
-    // Only show where anchor connects to an unpopped chain — if two anchors
-    // share the same pinned position, both chains are popped and no diamond needed.
-    const anchorCounts = new Map();
-    for (const node of nodes) {
-        if (!node.isAnchor) continue;
-        const ax = node.fx ?? node.x, ay = node.fy ?? node.y;
-        const key = `${ax.toFixed(1)},${ay.toFixed(1)}`;
-        anchorCounts.set(key, (anchorCounts.get(key) || 0) + 1);
-    }
-
-    ctx.globalAlpha = 0.7 * state.detailOpacity;
-    ctx.fillStyle = '#fff';
-    const anchorSize = Math.max(2, 4 / state.zoom);
-    for (const node of nodes) {
-        if (!node.isAnchor) continue;
-        const ax = node.fx ?? node.x, ay = node.fy ?? node.y;
-        const key = `${ax.toFixed(1)},${ay.toFixed(1)}`;
-        if (anchorCounts.get(key) >= 2) continue;
-        ctx.beginPath();
-        ctx.moveTo(node.x, node.y - anchorSize);
-        ctx.lineTo(node.x + anchorSize, node.y);
-        ctx.lineTo(node.x, node.y + anchorSize);
-        ctx.lineTo(node.x - anchorSize, node.y);
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    // Highlight ring on hovered node
-    if (hovNode) {
-        const r = Math.max(3, (hovNode.width || 6) / (2 * state.zoom)) + 2 / state.zoom;
-        ctx.globalAlpha = state.detailOpacity;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = Math.max(1, 2 / state.zoom);
-        ctx.beginPath();
-        ctx.arc(hovNode.x, hovNode.y, r, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-
-    ctx.globalAlpha = 1;
-}
 
 function drawDetail() {
     const ctx = state.ctx;
@@ -144,57 +68,78 @@ function drawDetail() {
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    const hovChain = state.hoveredChain;
-    const poppedChains = state.detailData.poppedChains;
+    // Build hover family set: hovered chain + all siblings sharing the same parent,
+    // then walk up through chainMeta to include cousins at ancestor levels.
+    let hovSet = null;
+    if (state.hoveredChain) {
+        hovSet = new Set();
+        const chainMeta = state.data.chainMeta;
 
-    // --- Chain polylines (skip popped chains) ---
-    const baseWidth = Math.max(1.5, 3 / state.zoom);
-    const visibleChains = poppedChains
-        ? state.detailData.chains.filter(c => !poppedChains.has(c.id))
-        : state.detailData.chains;
-    drawChainPolylines(visibleChains, baseWidth, hovChain);
+        // Collect the set of parent chain IDs to match against, walking up the hierarchy
+        const parentIds = new Set();
+        let cur = state.hoveredChain.parentChain; // e.g. "c122"
+        while (cur) {
+            parentIds.add(cur);
+            // Walk further up: strip "c" prefix, look up in chainMeta
+            const numId = cur.startsWith('c') ? cur.slice(1) : cur;
+            const meta = chainMeta?.[numId];
+            cur = meta?.parent != null ? `c${meta.parent}` : null;
+        }
 
-    // --- Faint guide polylines for popped chains (shows chain path) ---
-    if (poppedChains) {
-        ctx.globalAlpha = 0.15 * state.detailOpacity;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
-        ctx.setLineDash([4 / state.zoom, 6 / state.zoom]);
-        ctx.beginPath();
-        for (const chain of state.detailData.chains) {
-            if (!poppedChains.has(chain.id)) continue;
-            const pl = chain.polyline;
-            if (pl.length < 2) continue;
-            ctx.moveTo(pl[0][0], pl[0][1]);
-            for (let i = 1; i < pl.length; i++) {
-                ctx.lineTo(pl[i][0], pl[i][1]);
+        for (const c of state.detailData.chains) {
+            if (c === state.hoveredChain || parentIds.has(c.parentChain)) {
+                hovSet.add(c);
             }
         }
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = state.detailOpacity;
     }
 
-    // --- Popped chain subgraphs (force-simulated) ---
-    drawPoppedGraph();
+    // --- Chain polylines ---
+    const baseWidth = Math.max(1.5, 3 / state.zoom);
+    drawChainPolylines(state.detailData.chains, baseWidth, hovSet);
 
-    // --- Hover highlight ---
-    if (state.hoveredChain && (!poppedChains || !poppedChains.has(state.hoveredChain.id))) {
-        const hc = state.hoveredChain;
-        const pl = hc.polyline;
-
-        if (pl.length >= 2) {
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
-            ctx.globalAlpha = 0.3 * state.detailOpacity;
+    // --- Gap-fillers: dashed connectors between sibling chains ---
+    {
+        const byParent = new Map();
+        for (const chain of state.detailData.chains) {
+            if (!chain.parentChain) continue;
+            if (!byParent.has(chain.parentChain)) byParent.set(chain.parentChain, []);
+            byParent.get(chain.parentChain).push(chain);
+        }
+        if (byParent.size > 0) {
+            const dash = Math.max(2, 4 / state.zoom);
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
+            ctx.setLineDash([dash, dash]);
+            ctx.globalAlpha = 0.5 * state.detailOpacity;
             ctx.beginPath();
-            ctx.moveTo(pl[0][0], pl[0][1]);
-            for (let i = 1; i < pl.length; i++) {
-                ctx.lineTo(pl[i][0], pl[i][1]);
+            for (const [, siblings] of byParent) {
+                siblings.sort((a, b) => a.polyline[0][0] - b.polyline[0][0]);
+                for (let i = 0; i < siblings.length - 1; i++) {
+                    const aPl = siblings[i].polyline;
+                    const bPl = siblings[i + 1].polyline;
+                    ctx.moveTo(aPl[aPl.length - 1][0], aPl[aPl.length - 1][1]);
+                    ctx.lineTo(bPl[0][0], bPl[0][1]);
+                }
             }
             ctx.stroke();
-            ctx.globalAlpha = state.detailOpacity;
+            ctx.setLineDash([]);
         }
+    }
+
+    // --- Hover highlight (glow for entire hover family) ---
+    if (hovSet) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
+        ctx.globalAlpha = 0.3 * state.detailOpacity;
+        ctx.beginPath();
+        for (const hc of hovSet) {
+            const pl = hc.polyline;
+            if (pl.length < 2) continue;
+            ctx.moveTo(pl[0][0], pl[0][1]);
+            for (let i = 1; i < pl.length; i++) ctx.lineTo(pl[i][0], pl[i][1]);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = state.detailOpacity;
     }
 
     ctx.globalAlpha = 1;

@@ -100,6 +100,13 @@ def _build_chain_polyline(chain, stepidx, seg_index):
                 "pos": b.chain_step,
             })
 
+    # BP span on the reference path (for screen-width LOD decisions)
+    if min_step is not None and max_step is not None \
+       and min_step < len(stepidx.starts) and max_step < len(stepidx.ends):
+        bp_span = stepidx.ends[max_step] - stepidx.starts[min_step]
+    else:
+        bp_span = total_length
+
     span = max(abs(raw_polyline[-1][0] - raw_polyline[0][0]),
                 abs(raw_polyline[-1][1] - raw_polyline[0][1]))
     epsilon = max(0.5, span / 500)
@@ -109,11 +116,15 @@ def _build_chain_polyline(chain, stepidx, seg_index):
         "id": f"c{chain.id}",
         "polyline": [[round(x, 1), round(y, 1)] for x, y in polyline],
         "length": total_length,
+        "bp_span": bp_span,
         "n_bubbles": len(chain.bubbles),
         "subtype": subtype_counter.most_common(1)[0][0],
         "source_segs": chain.bubbles[0].source_segments,
         "sink_segs": chain.bubbles[-1].sink_segments,
         "bubble_positions": bubble_positions,
+        # Internal fields for inline popping (stripped before JSON response)
+        "_bubble_ids": [b.id for b in chain.bubbles],
+        "_layout_span": span,  # layout-coordinate extent for screen-size estimate
     }
 
 
@@ -135,6 +146,7 @@ def _build_connector(parent_chain, leaf_bubbles, stepidx, seg_index,
     entry["depth"] = depth
     entry["connector"] = True
     entry["bubble_ids"] = [b.id for b in leaf_bubbles]
+    entry["parent_chain"] = f"c{parent_chain.id}"
     return entry
 
 
@@ -175,6 +187,8 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
         child_chains = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
         for cc in child_chains:
             r = _chain_or_bubbles(cc, bubble_threshold, stepidx, seg_index, depth + 1)
+            for c in r["chains"]:
+                c["parent_chain"] = f"c{chain.id}"
             chains.extend(r["chains"])
             bubbles.extend(r["bubbles"])
 
@@ -463,3 +477,76 @@ def get_path(indexes, genome, chrom, start, end, sample):
 def get_path_order(indexes, genome, chrom):
     gfaidx = indexes.gfa_index[chrom]
     return gfaidx.get_sample_idx()
+
+
+def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
+                    expand_threshold=None):
+    """Single-request detail tile: chains + inline subgraphs for popped chains.
+
+    The backend decides which chains to pop based on screen width.
+    Uses ``_layout_span`` (layout-coordinate extent) converted to pixels
+    via a global bp→layout ratio, so chains without reference coordinates
+    (e.g. child chains from decomposed superbubbles) are handled correctly.
+    """
+    POP_THRESHOLD_PX = 30
+
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    gfaidx = indexes.gfa_index.get(chrom, None)
+
+    if stepidx is None or bubbleidx is None or gfaidx is None:
+        raise ValueError(
+            f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
+
+    # Compute pixels-per-layout-unit from ppbp using global bp↔layout ratio.
+    # This lets us estimate screen size for ALL chains (including non-ref ones
+    # that lack bp_span) from their layout-coordinate extent.
+    seg_index = gfaidx.segment_index
+    total_bp = stepidx.ends[-1] - stepidx.starts[0] if len(stepidx.ends) > 0 else 1
+    first_sid = stepidx.segments[0] if len(stepidx.segments) > 0 else 0
+    last_sid = stepidx.segments[-1] if len(stepidx.segments) > 0 else 0
+    x_first = (seg_index.x1[first_sid] + seg_index.x2[first_sid]) / 2.0
+    x_last = (seg_index.x1[last_sid] + seg_index.x2[last_sid]) / 2.0
+    total_layout_x = abs(x_last - x_first) or 1.0
+    pplp = ppbp * total_bp / total_layout_x  # pixels per layout unit
+
+    chain_result = get_chains(indexes, genome, chrom, start, end,
+                              expand_threshold=expand_threshold)
+
+    result_chains = []
+    for chain_data in chain_result["chains"]:
+        # Use layout span for screen-size estimate (works for all chains)
+        layout_span = chain_data.pop("_layout_span", 0)
+        screen_width = layout_span * pplp
+
+        # Extract internal bubble IDs (already loaded during get_chains)
+        # and strip from the response — connector chains keep their public
+        # "bubble_ids" field, regular chains had only the internal one.
+        bubble_ids = chain_data.pop("_bubble_ids", None)
+        if bubble_ids is None:
+            # Connector chains store IDs under "bubble_ids"
+            bubble_ids = chain_data.get("bubble_ids", [])
+
+        if screen_width >= POP_THRESHOLD_PX and chain_data["n_bubbles"] > 0:
+            try:
+                bubbles = [bubbleidx[bid] for bid in bubble_ids]
+                graph = _bubbles_to_subgraph(
+                    bubbles, bubbleidx, gfaidx, stepidx)
+                chain_data["popped"] = True
+                chain_data["graph"] = graph
+            except Exception as e:
+                print(f"  Inline pop failed for {chain_data['id']}: {e}")
+                chain_data["popped"] = False
+                chain_data["graph"] = None
+        else:
+            chain_data["popped"] = False
+            chain_data["graph"] = None
+
+        result_chains.append(chain_data)
+
+    return {
+        "tile_start": start,
+        "tile_end": end,
+        "chains": result_chains,
+        "bubbles": chain_result.get("bubbles", []),
+    }

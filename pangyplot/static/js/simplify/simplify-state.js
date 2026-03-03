@@ -27,8 +27,7 @@ export const state = {
 
     // Progressive detail
     detailPhase: 'none',       // 'none' | 'fading-in' | 'static' | 'fading-out'
-    detailData: null,          // { chains, bubbles, totalBubbles }
-    detailCache: null,         // { bpStart, bpEnd, zoom, data }
+    detailData: null,          // { chains, bubbles, poppedChains, totalBubbles, bpStart, bpEnd }
     detailOpacity: 0,
     skeletonOpacity: 1,
 
@@ -43,6 +42,7 @@ export const state = {
 
     // Constants
     DETAIL_CELL_THRESHOLD: 50,    // activate detail when targetCell <= this
+    DETAIL_EXIT_THRESHOLD: 120,   // must zoom out past this to leave detail mode
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 
