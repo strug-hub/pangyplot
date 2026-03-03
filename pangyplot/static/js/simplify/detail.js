@@ -99,7 +99,7 @@ export function exitDetailMode() {
 
     // Start collapse: pull nodes back to polyline positions
     setDetailPhase('collapsing');
-    collapseToAnchors(0.6);
+    collapseToAnchors();
 
     // After collapse settles, start the fade-out
     collapseTimer = setTimeout(() => {

@@ -40,16 +40,18 @@ function computeStableRadius(group, centroid, tolerance = 500) {
 }
 
 
-export default function bubbleCircularForce(forceGraph, strength = 0.01) {
-    return function circularForce(alpha) {
-        const nodes = forceGraph.graphData().nodes;
+export default function bubbleCircularForce() {
+    let nodes = [];
+    let strength = 0.01;
+
+    function force(alpha) {
         const bubbleGroups = groupNodesByBubble(nodes);
 
         for (const [bubbleId, group] of Object.entries(bubbleGroups)) {
             if (group.length < 2) continue;
 
             const centroid = computeNodeCentroid(group);
-            
+
             const avgRadius = d3.mean(group, n => {
                 const dx = n.x - centroid.x;
                 const dy = n.y - centroid.y;
@@ -59,7 +61,7 @@ export default function bubbleCircularForce(forceGraph, strength = 0.01) {
             //const stableRadius = computeStableRadius(group, centroid);
 
             //average radius tries to simply put the nodes in a circle
-            //stable radius tries to make nodes equally distant from the center (ie perfect circle) 
+            //stable radius tries to make nodes equally distant from the center (ie perfect circle)
 
             const radius = avgRadius;
 
@@ -78,7 +80,17 @@ export default function bubbleCircularForce(forceGraph, strength = 0.01) {
                 node.vy += pullY * strength * alpha;
             });
         }
+    }
+
+    force.initialize = _nodes => { nodes = _nodes || []; };
+
+    force.strength = _ => {
+        if (_ == null) return strength;
+        strength = +_;
+        return force;
     };
+
+    return force;
 }
 
 

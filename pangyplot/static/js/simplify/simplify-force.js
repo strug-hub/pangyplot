@@ -5,13 +5,10 @@
 import { state } from './simplify-state.js';
 import { scheduleFrame } from './render.js';
 import defaults from '../graph/forces/settings/force-defaults.js';
+import layoutForce from '../graph/forces/layout-force.js';
+import bubbleCircularForce from '../graph/forces/bubble-circular-force.js';
 
 let sim = null;
-const homePos = new WeakMap();  // node → { x, y }
-
-// Scale factor: core defaults are for ForceGraph screen-space;
-// simplify operates in ODGI data-space with much larger distances.
-const SIMPLIFY_CHARGE_SCALE = 0.15;
 
 // ---------------------------------------------------------------
 // Simulation lifecycle
@@ -24,11 +21,11 @@ export function initForce() {
         .alpha(0)
         .alphaDecay(defaults.HEAT_DECAY)
         .velocityDecay(defaults.FRICTION)
-        .force('link', d3.forceLink([]).id(d => d.iid).distance(d => d.length || 10).strength(defaults.LINK_STRENGTH))
-        .force('charge', d3.forceManyBody().strength(defaults.CHARGE_STRENGTH * SIMPLIFY_CHARGE_SCALE).distanceMax(100))
-        .force('collide', d3.forceCollide().radius(d => d.radius || 3).strength(defaults.COLLISION_STRENGTH).iterations(2))
-        .force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(0.15))
-        .force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(0.15))
+        .force('link', d3.forceLink([]).id(d => d.iid).distance(d => d.length * defaults.LINK_STRENGTH))
+        .force('charge', d3.forceManyBody().strength(defaults.CHARGE_STRENGTH).distanceMax(defaults.CHARGE_DISTANCE))
+        .force('collide', d3.forceCollide().radius(defaults.COLLISION_RADIUS).strength(defaults.COLLISION_STRENGTH))
+        .force('layout', layoutForce().strengthLevel(defaults.LAYOUT_LEVEL))
+        .force('bubbleRoundness', bubbleCircularForce())
         .on('tick', onTick);
     sim.stop();  // Don't auto-run — we control when to reheat
 }
@@ -52,10 +49,10 @@ function onTick() {
 export function addPoppedNodes(nodes, links) {
     if (!sim) initForce();
 
-    // Stash home positions for anchor forces.
-    // Anchor nodes use their fixed position; others use ODGI layout centroid.
+    // Stash home positions on nodes for layout force.
     for (const n of nodes) {
-        homePos.set(n, { x: n.fx ?? n.x, y: n.fy ?? n.y });
+        n.homeX = n.fx ?? n.x;
+        n.homeY = n.fy ?? n.y;
     }
 
     // Merge into existing simulation
@@ -64,8 +61,7 @@ export function addPoppedNodes(nodes, links) {
 
     sim.nodes(allNodes);
     sim.force('link').links(allLinks);
-    sim.force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(0.05));
-    sim.force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(0.05));
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
 
     // Reheat
     sim.alpha(0.3).restart();
@@ -94,6 +90,27 @@ export function removePoppedNodes(chainId) {
 }
 
 /**
+ * Add inter-chain links into the simulation (merges with existing links).
+ */
+export function addInterChainLinks(links) {
+    if (!sim) return;
+
+    const allLinks = [...sim.force('link').links(), ...links];
+    sim.force('link').links(allLinks);
+    sim.alpha(0.1).restart();
+}
+
+/**
+ * Remove all inter-chain links from the simulation.
+ */
+export function removeInterChainLinks() {
+    if (!sim) return;
+
+    const remaining = sim.force('link').links().filter(l => !l.isInterChain);
+    sim.force('link').links(remaining);
+}
+
+/**
  * Clear all popped nodes and stop simulation.
  */
 export function clearForce() {
@@ -104,12 +121,12 @@ export function clearForce() {
 }
 
 /**
- * Release fixed positions and increase anchor strength to collapse nodes
+ * Release fixed positions and increase layout strength to collapse nodes
  * back to their home positions. Call this on zoom-out before clearing.
  */
-export function collapseToAnchors(strength = 0.5) {
+export function collapseToAnchors() {
     if (!sim || sim.nodes().length === 0) return;
-    // Release fixed positions so anchor forces can pull nodes back
+    // Release fixed positions so layout force can pull nodes back
     for (const n of sim.nodes()) {
         if (n.fx != null) {
             n.x = n.fx;
@@ -118,27 +135,24 @@ export function collapseToAnchors(strength = 0.5) {
             delete n.fy;
         }
     }
-    sim.force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(strength));
-    sim.force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(strength));
+    sim.force('layout').strengthLevel(5);
     sim.alpha(0.3).restart();
 }
 
 /**
- * Restore fixed positions on anchor nodes and reset anchor force strength.
+ * Restore fixed positions on anchor nodes and reset layout strength.
  * Called when a collapse is cancelled (user zoomed back in).
  */
 export function restoreAnchors() {
     if (!sim || sim.nodes().length === 0) return;
     for (const n of sim.nodes()) {
         if (!n.isAnchor) continue;
-        const home = homePos.get(n);
-        if (home) {
-            n.fx = home.x;
-            n.fy = home.y;
+        if (n.homeX != null) {
+            n.fx = n.homeX;
+            n.fy = n.homeY;
         }
     }
-    sim.force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(0.05));
-    sim.force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(0.05));
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
     sim.alpha(0.15).restart();
 }
 

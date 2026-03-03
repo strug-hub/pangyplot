@@ -77,7 +77,7 @@ export default function setUpForceManager(forceGraph){
     //pauseAllForces(forceGraph);
     // --- Force pause toggle (debugging) ---
     
-    forceGraph.d3Force('bubbleRoundness', bubbleCircularForce(forceGraph));
+    forceGraph.d3Force('bubbleRoundness', bubbleCircularForce());
     
     // Custom force to repel from deleted links
     //forceGraph.d3Force('delLinkForce', delLinkForce());
