@@ -97,6 +97,7 @@ def _build_chain_polyline(chain, stepidx, seg_index):
                 "subtype": b.subtype,
                 "length": b.length,
                 "id": f"b{b.id}",
+                "pos": b.chain_step,
             })
 
     span = max(abs(raw_polyline[-1][0] - raw_polyline[0][0]),
@@ -312,6 +313,10 @@ def _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx):
                     seg_to_bubble[sid] = child.id
                 child_seg_set.update(c_segs)
 
+            # Children's segments must be in all_seg_ids so get_subgraph
+            # discovers links between them (parent's inside is empty).
+            all_seg_ids.update(child_seg_set)
+
             # Naked segments = parent's segments minus everything owned by children
             visible_seg_ids.update(b_segs - child_seg_set)
 
@@ -354,7 +359,7 @@ def _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx):
     }
 
 
-def get_chain_graph(indexes, chain_id, genome, chrom):
+def get_chain_graph(indexes, chain_id, genome, chrom, start_pos=None, end_pos=None):
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
     gfaidx = indexes.gfa_index.get(chrom, None)
@@ -362,14 +367,22 @@ def get_chain_graph(indexes, chain_id, genome, chrom):
     if stepidx is None or bubbleidx is None or gfaidx is None:
         raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
-    chain_ends = bubbleidx.get_chain_ends(chain_id)
-    if chain_ends is None:
-        return {"nodes": [], "links": []}
-
-    (_, min_step), (_, max_step) = chain_ends
     from pangyplot.db.sqlite import bubble_db as db
-    bubble_ids = db.get_bubble_ids_from_chain(
-        bubbleidx.dir, chain_id, min_step, max_step)
+
+    if start_pos is not None and end_pos is not None:
+        # Partial: fetch only bubbles in the given chain_step range
+        bubble_ids = db.get_bubble_ids_from_chain(
+            bubbleidx.dir, chain_id, start_pos, end_pos)
+    else:
+        # Full chain (existing behavior)
+        chain_ends = bubbleidx.get_chain_ends(chain_id)
+        if chain_ends is None:
+            return {"nodes": [], "links": []}
+
+        (_, min_step), (_, max_step) = chain_ends
+        bubble_ids = db.get_bubble_ids_from_chain(
+            bubbleidx.dir, chain_id, min_step, max_step)
+
     bubbles = [bubbleidx[bid] for bid in bubble_ids]
 
     return _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx)

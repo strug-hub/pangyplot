@@ -75,9 +75,15 @@ function drawPoppedGraph() {
     // Links first (behind nodes)
     for (const link of links) {
         if (hovNode) {
-            // Dim links not in hovered chain
-            const linkChain = link.chainId || link.source?.chainId;
-            ctx.globalAlpha = (linkChain === hovChainId ? 0.6 : 0.15) * state.detailOpacity;
+            if (link.isInterChain) {
+                // Inter-chain links: highlight when either connected chain is hovered
+                const srcChain = link.source?.chainId;
+                const tgtChain = link.target?.chainId;
+                ctx.globalAlpha = (srcChain === hovChainId || tgtChain === hovChainId ? 0.6 : 0.15) * state.detailOpacity;
+            } else {
+                const linkChain = link.chainId || link.source?.chainId;
+                ctx.globalAlpha = (linkChain === hovChainId ? 0.6 : 0.15) * state.detailOpacity;
+            }
         }
         paintLink(ctx, link);
     }

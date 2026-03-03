@@ -1,6 +1,6 @@
 # Simplify Viewer — Module Architecture
 
-The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. It was extracted from a 1,350-line monolith into 12 ES modules following the same patterns as the main `static/js/graph/` codebase.
+The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. It was extracted from a monolith into 14 ES modules following the same patterns as the main `static/js/graph/` codebase.
 
 ## Module Map
 
@@ -19,7 +19,6 @@ pangyplot/static/js/simplify/
 ├── render.js              Main draw(), skeleton pass, detail pass, force graph, gene labels
 ├── interaction.js         Mouse/wheel handlers, pan/drag, zoom, dblclick, LOD buttons
 ├── hit-test.js            Chain/bubble hover detection, tooltip formatting
-├── physics.js             Legacy bubble ellipse physics (unused, kept for reference)
 └── format-utils.js        formatBp(), subtypeColor()
 ```
 
@@ -103,25 +102,30 @@ user zooms in. The goal is a seamless visual transition from skeleton → chains
 - Chains too complex to pop (>50 bubbles) stay as polylines
 
 ### Chain Popping (graph layer)
-When the detail layer activates, chains under a complexity threshold (≤50
-bubbles) are "popped" — their polyline is replaced by actual bubble-segment
-nodes+links from the `/select` API, rendered with d3-force physics and
-core pangyplot colors via `simplify-painter.js`.
+When the detail layer activates, chains under a complexity threshold (budget
+of 2000 total bubbles) are "popped" — their polyline is replaced by actual
+bubble-segment nodes+links from the `/select` API, rendered with d3-force
+physics and core pangyplot colors via `simplify-painter.js`.
 
 **Single simulation**: One d3-force simulation for all popped nodes. Chain
 polylines and skeleton polylines are NOT in the simulation — they're static
-canvas draws.
+canvas draws. A faint dashed guide polyline is drawn behind popped chains
+to show the chain path.
 
-**Anchoring**: Popped nodes are positioned near their chain's polyline region.
-Source/sink segment positions serve as anchor points. Force pulls nodes back
-toward these origins on zoom-out.
+**Anchoring**: Source/sink nodes of each popped chain are pinned (`fx`/`fy`)
+to the chain polyline endpoints. This physically connects the expanded
+bubble subgraph to the adjacent chain polylines. Interior nodes are held
+by link forces between the pinned endpoints + weak anchor forces toward
+their ODGI layout centroids. Diamond indicators mark anchor points.
 
-**Zoom-out collapse**: As the user zooms out, spring forces pull movable nodes
-back to their origin positions on the polyline, then the chain reverts to
-its polyline representation.
+**Zoom-out collapse**: On zoom-out, `collapseToAnchors()` releases fixed
+positions and increases anchor force strength (0.6), pulling all nodes back
+to their home positions. After 400ms settling, the detail layer fades out.
+If the user zooms back in during collapse, `restoreAnchors()` re-pins the
+anchor nodes and restores normal force strength.
 
-**Complexity gate**: Chains above a node-count threshold stay as polylines
-with arrow markers. Only chains simple enough to render clearly get popped.
+**Complexity gate**: Chains are sorted by bubble count (smallest first) and
+greedily filled up to the POP_BUDGET (2000). Connector chains are excluded.
 
 ### Implementation Pieces
 

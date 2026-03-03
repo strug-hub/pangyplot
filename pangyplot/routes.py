@@ -176,9 +176,13 @@ def chain_graph():
     # Strip "c" prefix to get integer chain ID
     chain_id = int(raw_id.lstrip("c"))
 
-    print(f"Getting chain graph for chain {chain_id} in {genome}#{chrom}...")
+    start_pos = request.args.get("start_pos", type=int, default=None)
+    end_pos = request.args.get("end_pos", type=int, default=None)
+
+    print(f"Getting chain graph for chain {chain_id} in {genome}#{chrom} (pos={start_pos}-{end_pos})...")
     try:
-        graph = query.get_chain_graph(current_app, chain_id, genome, chrom)
+        graph = query.get_chain_graph(current_app, chain_id, genome, chrom,
+                                      start_pos=start_pos, end_pos=end_pos)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 

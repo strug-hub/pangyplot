@@ -5,8 +5,8 @@ import { xToBp, getChromosome, isReady } from './spine.js';
 import { getViewport } from './viewport.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
 import { selectLevel } from './lod.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, collapseToAnchors, restoreAnchors } from './simplify-force.js';
-import { deserializeChainGraph } from './simplify-detail-adapter.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, collapseToAnchors, restoreAnchors, getForceNodes, addInterChainLinks, removeInterChainLinks } from './simplify-force.js';
+import { deserializeChainGraph, createInterChainLinks } from './simplify-detail-adapter.js';
 
 let fadeStartTime = 0;
 let fetchController = null;
@@ -82,7 +82,7 @@ export function setDetailPhase(phase) {
 function finishExit() {
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
     clearForce();
-    currentPoppedIds = null;
+    currentPoppedMap = null;
     state.detailData = null;
     state.detailCache = null;
     state.detailOpacity = 0;
@@ -215,7 +215,7 @@ export async function fetchChainsForViewport() {
 
         state.detailCache = { bpStart: fetchStart, bpEnd: fetchEnd, expandThreshold, data: processed };
         // Carry over poppedChains so polylines stay hidden during async pop
-        if (currentPoppedIds) processed.poppedChains = currentPoppedIds;
+        if (currentPoppedMap) processed.poppedChains = new Set(currentPoppedMap.keys());
         state.detailData = processed;
 
         // Pop chains into force simulation
@@ -244,24 +244,153 @@ export async function fetchChainsForViewport() {
 }
 
 // ---------------------------------------------------------------
+// Viewport-clipped partial chain helpers
+// ---------------------------------------------------------------
+
+/** Get bp extent of a chain from its polyline endpoints via xToBp(). */
+function chainBpExtent(chain) {
+    const pl = chain.polyline;
+    if (!pl || pl.length < 2) return null;
+    const bpStart = xToBp(pl[0][0]);
+    const bpEnd = xToBp(pl[pl.length - 1][0]);
+    if (bpStart === null || bpEnd === null) return null;
+    return { bpStart: Math.min(bpStart, bpEnd), bpEnd: Math.max(bpStart, bpEnd) };
+}
+
+/** Returns true if chain spans > 2× viewport and has > 50 bubbles. */
+function isLargeChain(chain, vpBpStart, vpBpEnd) {
+    if (chain.bubbleIds) return false;  // connector chains use explicit IDs
+    if (chain.nBubbles <= 50) return false;
+    const ext = chainBpExtent(chain);
+    if (!ext) return false;
+    const vpSpan = vpBpEnd - vpBpStart;
+    const chainSpan = ext.bpEnd - ext.bpStart;
+    return chainSpan > vpSpan * 2;
+}
+
+/**
+ * Determine the visible chain_step range for a chain within the viewport.
+ * margin is a fractional extension (e.g. 0.2 = 20% extra on each side).
+ */
+function visiblePosRange(chain, vpBpStart, vpBpEnd, margin) {
+    const bp = chain.bubblePositions;
+    if (!bp || bp.length === 0) return null;
+
+    const ext = chainBpExtent(chain);
+    if (!ext) return null;
+
+    const chainBpSpan = ext.bpEnd - ext.bpStart;
+    if (chainBpSpan <= 0) return null;
+
+    // Convert viewport bp boundaries to fractional t along the chain
+    let tStart = (vpBpStart - ext.bpStart) / chainBpSpan;
+    let tEnd = (vpBpEnd - ext.bpStart) / chainBpSpan;
+
+    // Apply margin
+    const tMargin = (tEnd - tStart) * margin;
+    tStart -= tMargin;
+    tEnd += tMargin;
+
+    // Filter bubblePositions to those within [tStart, tEnd]
+    let minPos = Infinity, maxPos = -Infinity;
+    for (const bp_entry of bp) {
+        if (bp_entry.t >= tStart && bp_entry.t <= tEnd) {
+            if (bp_entry.pos < minPos) minPos = bp_entry.pos;
+            if (bp_entry.pos > maxPos) maxPos = bp_entry.pos;
+        }
+    }
+
+    if (minPos === Infinity) return null;
+    return { startPos: minPos, endPos: maxPos, tStart, tEnd };
+}
+
+/** Estimate how many bubbles are visible for budget purposes. */
+function estimateVisibleBubbles(chain, vpBpStart, vpBpEnd) {
+    const ext = chainBpExtent(chain);
+    if (!ext) return chain.nBubbles;
+    const chainSpan = ext.bpEnd - ext.bpStart;
+    if (chainSpan <= 0) return chain.nBubbles;
+    const visibleSpan = Math.min(vpBpEnd, ext.bpEnd) - Math.max(vpBpStart, ext.bpStart);
+    const fraction = Math.max(0, Math.min(1, visibleSpan / chainSpan));
+    return Math.ceil(chain.nBubbles * fraction);
+}
+
+// ---------------------------------------------------------------
 // Pop chains: fetch subgraphs and add to force simulation
 // ---------------------------------------------------------------
 const POP_BUDGET = 2000;  // total bubble budget across all popped chains
-let currentPoppedIds = null;  // Set of chain IDs currently in the force sim
+// Map of chainId → { startPos, endPos, isPartial } for tracking what's fetched
+let currentPoppedMap = null;
+
+function buildInterChainLinks(chains) {
+    removeInterChainLinks();
+
+    if (!currentPoppedMap || currentPoppedMap.size < 2) return;
+
+    const poppedChains = chains.filter(c => currentPoppedMap.has(c.id));
+    const forceNodes = getForceNodes();
+    const links = createInterChainLinks(poppedChains, forceNodes);
+
+    if (links.length > 0) {
+        addInterChainLinks(links);
+    }
+}
+
+/** Check if a partially-fetched chain needs refetch because viewport shifted. */
+function needsRefetch(chainId, chain, vpBpStart, vpBpEnd) {
+    const entry = currentPoppedMap.get(chainId);
+    if (!entry) return true;        // not yet fetched
+    if (!entry.isPartial) return false;  // full fetch, never needs refetch
+
+    const range = visiblePosRange(chain, vpBpStart, vpBpEnd, 0.2);
+    if (!range) return false;
+
+    // Refetch if the visible range exceeds what we already fetched
+    return range.startPos < entry.startPos || range.endPos > entry.endPos;
+}
 
 async function popChainsForViewport(chains, chr, signal) {
+    // Compute viewport bp range for partial clipping
+    const vp = getViewport();
+    const vpBpStart = xToBp(vp.minX);
+    const vpBpEnd = xToBp(vp.maxX);
+
     // Sort candidates by bubble count (smallest first) to maximize chains popped
     const candidates = chains
         .filter(c => c.nBubbles > 0)
         .sort((a, b) => a.nBubbles - b.nBubbles);
 
-    // Fill budget greedily
+    // Fill budget greedily, using estimated visible bubbles for large chains
     const toPop = [];
     let budget = 0;
     for (const c of candidates) {
-        if (budget + c.nBubbles > POP_BUDGET) continue;
+        const cost = (vpBpStart !== null && vpBpEnd !== null && isLargeChain(c, vpBpStart, vpBpEnd))
+            ? estimateVisibleBubbles(c, vpBpStart, vpBpEnd)
+            : c.nBubbles;
+        if (budget + cost > POP_BUDGET) continue;
         toPop.push(c);
-        budget += c.nBubbles;
+        budget += cost;
+    }
+
+    // Annotate large chains with visible position range
+    if (vpBpStart !== null && vpBpEnd !== null) {
+        for (const c of toPop) {
+            if (isLargeChain(c, vpBpStart, vpBpEnd)) {
+                const range = visiblePosRange(c, vpBpStart, vpBpEnd, 0.3);
+                if (range) {
+                    c._startPos = range.startPos;
+                    c._endPos = range.endPos;
+                    c._clipTStart = range.tStart;
+                    c._clipTEnd = range.tEnd;
+                } else {
+                    c._startPos = null;
+                    c._endPos = null;
+                }
+            } else {
+                c._startPos = null;
+                c._endPos = null;
+            }
+        }
     }
 
     const newIds = new Set(toPop.map(c => c.id));
@@ -269,35 +398,57 @@ async function popChainsForViewport(chains, chr, signal) {
     // Nothing to pop — clear everything
     if (toPop.length === 0) {
         clearForce();
-        currentPoppedIds = null;
+        currentPoppedMap = null;
         if (state.detailData) state.detailData.poppedChains = null;
         return;
     }
 
-    // Identical set already popped — nothing to do
-    if (currentPoppedIds && newIds.size === currentPoppedIds.size &&
-        [...newIds].every(id => currentPoppedIds.has(id))) {
+    // --- Determine which chains to fetch/keep/remove ---
+    const toFetch = [];
+    const keptSet = new Set();
+
+    if (currentPoppedMap) {
+        for (const c of toPop) {
+            if (currentPoppedMap.has(c.id)) {
+                // Check if partial chain needs refetch due to viewport shift
+                if (vpBpStart !== null && vpBpEnd !== null &&
+                    needsRefetch(c.id, c, vpBpStart, vpBpEnd)) {
+                    toFetch.push(c);
+                } else {
+                    keptSet.add(c.id);
+                }
+            } else {
+                toFetch.push(c);
+            }
+        }
+    } else {
+        toFetch.push(...toPop);
+    }
+
+    // Nothing changed — keep everything as is
+    if (toFetch.length === 0 && currentPoppedMap &&
+        keptSet.size === currentPoppedMap.size) {
         if (state.detailData) state.detailData.poppedChains = newIds;
         return;
     }
 
-    // --- Incremental update: remove stale, keep existing, fetch new ---
-    const kept = currentPoppedIds ? [...currentPoppedIds].filter(id => newIds.has(id)) : [];
-    const keptSet = new Set(kept);
-    const toRemove = currentPoppedIds ? [...currentPoppedIds].filter(id => !newIds.has(id)) : [];
-    const toFetch = toPop.filter(c => !keptSet.has(c.id));
-
-    // Remove chains no longer in the set (keeps existing nodes in place)
+    // Remove chains no longer in the set + chains being refetched
+    const toRemove = currentPoppedMap
+        ? [...currentPoppedMap.keys()].filter(id => !keptSet.has(id))
+        : [];
     for (const id of toRemove) {
         removePoppedNodes(id);
     }
 
-    // Fetch subgraphs only for newly added chains
+    // Fetch subgraphs only for newly added / refetched chains
     if (toFetch.length > 0) {
         const fetches = toFetch.map(async (chain) => {
             let url = `/chain-graph?id=${encodeURIComponent(chain.id)}&genome=${encodeURIComponent(state.GENOME)}&chromosome=${encodeURIComponent(chr)}`;
             if (chain.bubbleIds) {
                 url += `&bubbles=${chain.bubbleIds.join(',')}`;
+            }
+            if (chain._startPos != null) {
+                url += `&start_pos=${chain._startPos}&end_pos=${chain._endPos}`;
             }
             try {
                 const resp = await fetch(url, { signal });
@@ -320,7 +471,11 @@ async function popChainsForViewport(chains, chr, signal) {
             fetchedIds.push(result.chain.id);
             const { chain, data } = result;
 
-            const { nodes, links } = deserializeChainGraph(data, chain);
+            const clipRange = (chain._startPos != null && chain._clipTStart != null)
+                ? { tStart: chain._clipTStart, tEnd: chain._clipTEnd }
+                : null;
+
+            const { nodes, links } = deserializeChainGraph(data, chain, clipRange);
             newNodes.push(...nodes);
             newLinks.push(...links);
         }
@@ -330,15 +485,27 @@ async function popChainsForViewport(chains, chr, signal) {
         }
 
         // Only mark chains as popped if they actually produced nodes
-        // (kept chains already have nodes; newly fetched need confirmation)
         for (const id of toFetch.map(c => c.id)) {
             if (!fetchedIds.includes(id)) newIds.delete(id);
         }
     }
 
-    // Update tracking
-    currentPoppedIds = newIds;
+    // Update tracking map
+    const newMap = new Map();
+    for (const c of toPop) {
+        if (!newIds.has(c.id)) continue;
+        if (c._startPos != null) {
+            newMap.set(c.id, { startPos: c._startPos, endPos: c._endPos, isPartial: true });
+        } else {
+            newMap.set(c.id, { startPos: null, endPos: null, isPartial: false });
+        }
+    }
+    currentPoppedMap = newMap;
     if (state.detailData) state.detailData.poppedChains = newIds;
+
+    // Build inter-chain links between adjacent popped chains
+    buildInterChainLinks(chains);
+
     scheduleFrame();
 }
 
