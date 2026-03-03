@@ -160,3 +160,80 @@ nodes back onto the polyline, then swap to polyline representation.
 - Share format-utils with main codebase (DRY)
 - Add touch event support for mobile
 - Consider extracting gene landmarks to server-side annotation data
+
+---
+
+## Detail Layer: Single Viewport Fetch + Visual Connectivity
+
+### Single Viewport Fetch (replaced tile grid)
+
+`detail.js` previously fetched fixed-width tiles and stitched them with a `TileCache`. This caused chain splitting at tile boundaries — the decomposition ran independently per tile, so the same chain could appear differently on each side of a boundary.
+
+**Replacement**: one fetch for the entire visible region (plus 30% margin).
+
+- Module-level `fetchedRegion = { minX, maxX, chr, expandThreshold }` tracks the last buffered region in **layout coordinates** (not bp). No re-fetch while the viewport stays inside this region.
+- bp conversion happens only at the moment the API URL is built.
+- On pan past the 30% margin, a new single fetch fires and replaces all chain data atomically — no boundary artifacts.
+- `clearDetailState()` resets `fetchedRegion` and `state.detailData` together.
+- `fetchController` (AbortController) cancels any in-flight request before starting a new one.
+
+### Chain Hierarchy: `parent_chain` Field
+
+When the backend decomposes a large chain (e.g. c122 → c122_r1, c122_r2, c123, c621…), child chains and connector runs now carry `parent_chain: "c122"` in the API response.
+
+- Set in `_decompose_chain()` for child chains from expanded superbubbles.
+- Set in `_build_connector()` for leaf-bubble connector runs.
+- Parsed in `detail.js` `processResponse()` as `parentChain`.
+
+### Visual Gap-Fillers (dashed lines between siblings)
+
+`render.js drawDetail()` groups chains by `parentChain`, sorts each sibling group by first-point x, then draws dashed grey lines from the last point of each sibling to the first point of the next. This bridges the visual gap at chain boundaries where the parent chain was decomposed.
+
+```js
+// In drawDetail():
+const byParent = new Map();
+for (const chain of state.detailData.chains) {
+    if (!chain.parentChain) continue;
+    ...
+}
+// Sorted by polyline[0][0], dashed from aPl[-1] to bPl[0]
+```
+
+Style: `strokeStyle '#aaa'`, `lineWidth max(0.8, 1.8/zoom)`, `globalAlpha 0.5`.
+
+### Inter-Chain Connectors (naked GFA segments)
+
+Some top-level chains (e.g. c625, c82, c371) have no shared `parentChain` but are visually adjacent in the skeleton because they are connected via short naked GFA segments — segments not owned by any bubble.
+
+**Backend** (`query.py: _find_inter_chain_connectors`):
+- Builds a map of all chain endpoint segments (both `source_segs` and `sink_segs` of all returned chains).
+- For each chain, BFS **undirected** (all GFA neighbors, not just forward) from each endpoint segment through naked segments (`bubbleidx.segment_in_bubble(nxt) is None`).
+- Stops when reaching another chain's endpoint segment — records a connector polyline from the path segment centroids.
+- Deduplicates chain pairs with `tuple(sorted([from_chain_id, to_chain_id]))`.
+- MAX_HOPS = 8.
+- Result appended to `/detail-tiles` response as `"inter_connectors"`.
+
+Why undirected: GFA strand orientation doesn't reliably align with the chain's visual left→right direction; a forward BFS from sink_segs misses connections that flow "backward" through junction segments.
+
+**Frontend** (`render.js`):
+- Draws connector polylines before chain polylines (underneath).
+- **Extends** each connector to the nearest endpoint of the `from_chain` and `to_chain` rendered polylines (using squared-distance comparison), so connector lines visually attach to the chain polyline tips rather than stopping at the raw segment centroid.
+
+```js
+const nearestEnd = (pl, pt) =>
+    dist2(pl[0], pt) <= dist2(pl[pl.length-1], pt) ? pl[0] : pl[pl.length-1];
+// draws: chain_A_endpoint → [naked seg centroids] → chain_B_endpoint
+```
+
+Style: `strokeStyle '#888'`, `lineWidth max(0.8, 1.8/zoom)`, `globalAlpha 0.5`, solid line.
+
+### Chain Ancestry in Tooltips
+
+`hit-test.js formatTooltip()` walks the ancestry chain when hovering a detail-mode chain:
+1. Start with `chain.parentChain` (the decomposition parent, e.g. `"c122"`)
+2. Walk `state.data.chainMeta[numId].parent` to climb the skeleton hierarchy
+3. Builds a string like `"c122_r1 > c122 > c5"` matching skeleton hover tooltip style.
+
+### Skeleton Opacity in Detail Mode
+
+When detail mode is active, the skeleton fades to `skeletonOpacity = 0.06` (floor), giving the detail chains visual priority while keeping the skeleton as a faint reference.

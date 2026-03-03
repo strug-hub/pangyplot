@@ -479,6 +479,86 @@ def get_path_order(indexes, genome, chrom):
     return gfaidx.get_sample_idx()
 
 
+def _find_inter_chain_connectors(chains_data, gfaidx, bubbleidx, seg_index):
+    """Find naked GFA segments connecting chain endpoints.
+
+    BFS from each chain's endpoint segs (source + sink) in all directions
+    through segments not owned by any bubble, stopping when reaching
+    another chain's endpoint segs. Returns connector polylines for
+    chain-to-chain links not represented by any bubble.
+
+    Uses undirected BFS because the GFA strand orientation may not align
+    with the chain's conceptual left→right direction.
+    """
+    from collections import deque
+    MAX_HOPS = 8
+
+    # Map: seg_id → chain_id (for ALL endpoint segs: source + sink)
+    endpoint_seg_to_chain = {}
+    for cd in chains_data:
+        for sid in (cd.get("source_segs") or []):
+            endpoint_seg_to_chain[sid] = cd["id"]
+        for sid in (cd.get("sink_segs") or []):
+            endpoint_seg_to_chain[sid] = cd["id"]
+
+    connectors = []
+    seen_pairs = set()
+
+    for cd in chains_data:
+        from_chain_id = cd["id"]
+        all_endpoints = (
+            list(cd.get("source_segs") or []) +
+            list(cd.get("sink_segs") or [])
+        )
+
+        for start_seg in all_endpoints:
+            # Undirected BFS; state = (seg_id, path_from_start_inclusive)
+            queue = deque([(start_seg, [start_seg])])
+            visited = {start_seg}
+
+            while queue:
+                cur, path = queue.popleft()
+                if len(path) > MAX_HOPS + 1:
+                    continue
+
+                # get_neighbors(None) returns both forward and backward neighbors
+                for nxt in gfaidx.get_neighbors(cur):
+                    if nxt in visited:
+                        continue
+
+                    # Reached another chain's endpoint → record connector
+                    if nxt in endpoint_seg_to_chain:
+                        to_chain_id = endpoint_seg_to_chain[nxt]
+                        if to_chain_id != from_chain_id:
+                            pair_key = tuple(sorted([from_chain_id, to_chain_id]))
+                            if pair_key not in seen_pairs:
+                                seen_pairs.add(pair_key)
+                                pts = []
+                                for sid in path + [nxt]:
+                                    pt = _seg_centroid(sid, seg_index)
+                                    if pt:
+                                        pts.append(pt)
+                                if len(pts) >= 2:
+                                    connectors.append({
+                                        "from_chain": from_chain_id,
+                                        "to_chain": to_chain_id,
+                                        "polyline": [
+                                            [round(x, 1), round(y, 1)]
+                                            for x, y in pts
+                                        ],
+                                    })
+                        continue  # don't traverse through endpoint segs
+
+                    # Only traverse naked segments (not owned by any bubble)
+                    if bubbleidx.segment_in_bubble(nxt) is not None:
+                        continue
+
+                    visited.add(nxt)
+                    queue.append((nxt, path + [nxt]))
+
+    return connectors
+
+
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     expand_threshold=None):
     """Single-request detail tile: chains + inline subgraphs for popped chains.
@@ -544,9 +624,13 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
         result_chains.append(chain_data)
 
+    inter_connectors = _find_inter_chain_connectors(
+        result_chains, gfaidx, bubbleidx, seg_index)
+
     return {
         "tile_start": start,
         "tile_end": end,
         "chains": result_chains,
         "bubbles": chain_result.get("bubbles", []),
+        "inter_connectors": inter_connectors,
     }

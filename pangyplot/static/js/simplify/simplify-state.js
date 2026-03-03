@@ -42,7 +42,6 @@ export const state = {
 
     // Constants
     DETAIL_CELL_THRESHOLD: 50,    // activate detail when targetCell <= this
-    DETAIL_EXIT_THRESHOLD: 120,   // must zoom out past this to leave detail mode
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 

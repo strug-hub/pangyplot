@@ -46,6 +46,7 @@ function processResponse(apiResponse) {
         chains, totalBubbles,
         bpStart: apiResponse.tile_start,
         bpEnd: apiResponse.tile_end,
+        interConnectors: apiResponse.inter_connectors || [],
     };
 }
 
@@ -101,18 +102,18 @@ export function updateDetailOpacity() {
 
     if (state.detailPhase === 'fading-in') {
         state.detailOpacity = t;
-        state.skeletonOpacity = Math.max(0.1, 1 - t);
+        state.skeletonOpacity = Math.max(0.06, 1 - t);
 
         if (t < 1) {
             scheduleFadeFrame();
         } else {
             state.detailOpacity = 1;
-            state.skeletonOpacity = 0.1;
+            state.skeletonOpacity = 0.06;
             setDetailPhase('static');
         }
     } else if (state.detailPhase === 'fading-out') {
         state.detailOpacity = 1 - t;
-        state.skeletonOpacity = Math.max(0.1, t);
+        state.skeletonOpacity = Math.max(0.06, t);
 
         if (t < 1) {
             scheduleFadeFrame();

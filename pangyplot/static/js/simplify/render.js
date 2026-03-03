@@ -70,11 +70,45 @@ function drawDetail() {
 
     const hovChain = state.hoveredChain;
 
+    // --- Inter-chain connectors (naked GFA segments between chain endpoints) ---
+    if (state.detailData.interConnectors && state.detailData.interConnectors.length > 0) {
+        // Build lookup so we can extend connectors to the chain polyline endpoints
+        const chainById = new Map();
+        for (const ch of state.detailData.chains) chainById.set(ch.id, ch);
+
+        const dist2 = (a, b) => (a[0]-b[0])**2 + (a[1]-b[1])**2;
+        // Return whichever polyline endpoint (first or last) is nearest to pt
+        const nearestEnd = (pl, pt) =>
+            dist2(pl[0], pt) <= dist2(pl[pl.length-1], pt) ? pl[0] : pl[pl.length-1];
+
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.5 * state.detailOpacity;
+        ctx.beginPath();
+        for (const conn of state.detailData.interConnectors) {
+            const pl = conn.polyline;
+            if (pl.length < 2) continue;
+
+            // Extend to each chain's rendered polyline endpoint
+            const fromCh = chainById.get(conn.from_chain);
+            const toCh   = chainById.get(conn.to_chain);
+            const start = fromCh ? nearestEnd(fromCh.polyline, pl[0])   : pl[0];
+            const end   = toCh   ? nearestEnd(toCh.polyline,   pl[pl.length-1]) : pl[pl.length-1];
+
+            ctx.moveTo(start[0], start[1]);
+            for (const pt of pl) ctx.lineTo(pt[0], pt[1]);
+            ctx.lineTo(end[0], end[1]);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = state.detailOpacity;
+    }
+
     // --- Chain polylines ---
     const baseWidth = Math.max(1.5, 3 / state.zoom);
     drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
 
-    // --- Gap-fillers: dashed connectors between sibling chains ---
+    // --- Gap-fillers: dashed connectors between sibling chains (same parent) ---
     {
         const byParent = new Map();
         for (const chain of state.detailData.chains) {
@@ -85,7 +119,7 @@ function drawDetail() {
         if (byParent.size > 0) {
             const dash = Math.max(2, 4 / state.zoom);
             ctx.strokeStyle = '#aaa';
-            ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
+            ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);
             ctx.setLineDash([dash, dash]);
             ctx.globalAlpha = 0.5 * state.detailOpacity;
             ctx.beginPath();
