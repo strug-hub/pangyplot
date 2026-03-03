@@ -1,7 +1,7 @@
 // Main canvas rendering: skeleton pass, detail pass, gene labels, stats.
 
 import { state } from './simplify-state.js';
-import { selectLevel } from './lod.js';
+import { selectLevel, updateGridMeter } from './lod.js';
 import { getViewport, viewportStepCount } from './viewport.js';
 import { getGenePins } from './genes.js';
 import { formatBp } from './format-utils.js';
@@ -96,7 +96,8 @@ function drawPoppedGraph() {
     const anchorCounts = new Map();
     for (const node of nodes) {
         if (!node.isAnchor) continue;
-        const key = `${node.fx.toFixed(1)},${node.fy.toFixed(1)}`;
+        const ax = node.fx ?? node.x, ay = node.fy ?? node.y;
+        const key = `${ax.toFixed(1)},${ay.toFixed(1)}`;
         anchorCounts.set(key, (anchorCounts.get(key) || 0) + 1);
     }
 
@@ -105,7 +106,8 @@ function drawPoppedGraph() {
     const anchorSize = Math.max(2, 4 / state.zoom);
     for (const node of nodes) {
         if (!node.isAnchor) continue;
-        const key = `${node.fx.toFixed(1)},${node.fy.toFixed(1)}`;
+        const ax = node.fx ?? node.x, ay = node.fy ?? node.y;
+        const key = `${ax.toFixed(1)},${ay.toFixed(1)}`;
         if (anchorCounts.get(key) >= 2) continue;
         ctx.beginPath();
         ctx.moveTo(node.x, node.y - anchorSize);
@@ -210,7 +212,11 @@ export function draw() {
     if (!level) return;
 
     const levelChanged = li !== state.currentLevel;
-    state.currentLevel = li;
+    updateGridMeter(li);
+
+    // Update zoom readout
+    state.dom.zoomVal.textContent = state.zoom < 1
+        ? state.zoom.toFixed(4) : state.zoom.toFixed(1);
 
     // Update detail bar readouts (steps change with pan/zoom)
     if (state.detailPhase !== 'none') updateDetailBar();

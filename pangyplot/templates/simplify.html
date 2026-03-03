@@ -41,32 +41,20 @@
             font-size: 12px;
         }
 
-        .lod-btn {
-            background: #222;
-            border: 1px solid #444;
-            color: #ccc;
-            width: 26px;
-            height: 26px;
-            font-size: 16px;
-            cursor: pointer;
+        #grid-meter {
             display: flex;
             align-items: center;
-            justify-content: center;
-            line-height: 1;
+            gap: 2px;
         }
-        .lod-btn:hover { background: #333; border-color: #666; }
-        .lod-btn:active { background: #444; }
-
-        #lod-controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        #grid-meter .bar {
+            width: 6px;
+            height: 14px;
+            background: #333;
+            border-radius: 1px;
+            transition: background 0.15s;
         }
-        #lod-offset {
-            color: #0ff;
-            font-weight: 600;
-            min-width: 40px;
-            text-align: center;
+        #grid-meter .bar.active {
+            background: #0ff;
         }
 
         #canvas-container {
@@ -143,11 +131,8 @@
         <span><span id="polyline-count" class="val">--</span> lines</span>
         <span><span id="visible-count" class="val">--</span> visible</span>
         <span><span id="reduction" class="val">--</span> reduction</span>
-        <div id="lod-controls">
-            <button class="lod-btn" id="lod-finer" title="Finer (more detail)">&#9664;</button>
-            <span id="lod-offset">AUTO</span>
-            <button class="lod-btn" id="lod-coarser" title="Coarser (less detail)">&#9654;</button>
-        </div>
+        <div id="grid-meter"></div>
+        <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
         <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
         <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
         <span id="detail-phase" class="none"></span>
@@ -155,7 +140,7 @@
     </div>
     <div id="detail-bar">
         <span id="detail-phase2" class="none"></span>
-        <span><span id="detail-chains" class="val">--</span> chains</span>
+        <span><span id="detail-chains" class="val">--</span> details</span>
         <span><span id="detail-exposed" class="val">--</span> exposed</span>
         <span><span id="detail-nodes" class="val">--</span> bubbles</span>
         <span><span id="detail-range" class="val">--</span></span>

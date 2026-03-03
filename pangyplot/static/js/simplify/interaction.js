@@ -1,4 +1,4 @@
-// Mouse/wheel handlers, pan/drag, zoom, dblclick, LOD buttons, resize.
+// Mouse/wheel handlers, pan/drag, zoom, dblclick, resize.
 
 import { state } from './simplify-state.js';
 import { scheduleFrame } from './render.js';
@@ -8,7 +8,6 @@ import { resizeCanvas, fitToScreen } from './viewport.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
 import { formatBp } from './format-utils.js';
 import { hitTestForceNodes, hitTestBubbles, hitTestChains, hitTestSkeleton, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from './hit-test.js';
-import { updateLodDisplay } from './lod.js';
 
 export function setupInteraction() {
     const canvas = state.canvas;
@@ -132,24 +131,6 @@ export function setupInteraction() {
         scheduleFrame();
         scheduleDetailFetch();
         scheduleHashUpdate();
-    });
-
-    // --- LOD override buttons ---
-    document.getElementById('lod-finer').addEventListener('click', () => {
-        state.levelOffset--;
-        updateLodDisplay();
-        scheduleFrame();
-    });
-    document.getElementById('lod-coarser').addEventListener('click', () => {
-        state.levelOffset++;
-        updateLodDisplay();
-        scheduleFrame();
-    });
-    // Double-click offset label to reset to auto
-    state.dom.lodOffset.addEventListener('dblclick', () => {
-        state.levelOffset = 0;
-        updateLodDisplay();
-        scheduleFrame();
     });
 
     // --- Resize ---

@@ -1,4 +1,4 @@
-// Auto-LOD: pick grid level based on zoom, with manual offset.
+// Auto-LOD: pick grid level based on zoom, with grid meter display.
 
 import { state } from './simplify-state.js';
 
@@ -7,29 +7,40 @@ export function selectLevel() {
     const cw = state.canvas.width / dpr;
     const viewportWidth = cw / state.zoom;
     // Target ~2000 grid cells across viewport -- keeps resolution high
-    const targetCell = viewportWidth / 2000;
+    state.targetCell = viewportWidth / 2000;
 
     // Levels sorted finest -> coarsest. Pick finest whose cellSize <= target.
     let best = 0;
     for (let i = state.data.levels.length - 1; i >= 0; i--) {
-        if (state.data.levels[i].cellSize <= targetCell) {
+        if (state.data.levels[i].cellSize <= state.targetCell) {
             best = i;
             break;
         }
     }
-    // Apply manual offset, clamped to valid range
-    const final = Math.max(0, Math.min(state.data.levels.length - 1, best + state.levelOffset));
-    return final;
+    return best;
 }
 
-export function updateLodDisplay() {
-    const el = state.dom.lodOffset;
-    if (state.levelOffset === 0) {
-        el.textContent = 'AUTO';
-        el.style.color = '#0ff';
-    } else {
-        const sign = state.levelOffset > 0 ? '+' : '';
-        el.textContent = `${sign}${state.levelOffset}`;
-        el.style.color = '#ff0';
+/** Build the grid meter bars once data is loaded. */
+export function initGridMeter() {
+    const meter = state.dom.gridMeter;
+    meter.innerHTML = '';
+    for (let i = 0; i < state.data.levels.length; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        meter.appendChild(bar);
+    }
+}
+
+/** Light up bars left to right as zoom increases (finer levels). */
+export function updateGridMeter(levelIndex) {
+    if (levelIndex === state.currentLevel) return;
+    state.currentLevel = levelIndex;
+    const bars = state.dom.gridMeter.children;
+    const n = bars.length;
+    // Bars laid out L→R: index 0 = coarsest, n-1 = finest.
+    // Active when the bar's level (coarsest-first) is >= current level index.
+    // levelIndex 0 = finest → all bars lit. levelIndex n-1 = coarsest → only first bar lit.
+    for (let i = 0; i < n; i++) {
+        bars[i].classList.toggle('active', i < n - levelIndex);
     }
 }

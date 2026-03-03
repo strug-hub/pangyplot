@@ -4,9 +4,14 @@
 
 import { state } from './simplify-state.js';
 import { scheduleFrame } from './render.js';
+import defaults from '../graph/forces/settings/force-defaults.js';
 
 let sim = null;
 const homePos = new WeakMap();  // node → { x, y }
+
+// Scale factor: core defaults are for ForceGraph screen-space;
+// simplify operates in ODGI data-space with much larger distances.
+const SIMPLIFY_CHARGE_SCALE = 0.15;
 
 // ---------------------------------------------------------------
 // Simulation lifecycle
@@ -14,15 +19,14 @@ const homePos = new WeakMap();  // node → { x, y }
 
 export function initForce() {
     if (sim) return;
-    // Force parameters: core app inspired but tuned for simplify's data-space
     sim = d3.forceSimulation([])
         .alphaMin(0.001)
         .alpha(0)
-        .alphaDecay(0.005)           // moderate cooldown
-        .velocityDecay(0.3)          // moderate friction
-        .force('link', d3.forceLink([]).id(d => d.id).distance(d => d.length || 10).strength(0.8))
-        .force('charge', d3.forceManyBody().strength(-30).distanceMax(100))
-        .force('collide', d3.forceCollide().radius(d => d.radius || 3).strength(0.5).iterations(2))
+        .alphaDecay(defaults.HEAT_DECAY)
+        .velocityDecay(defaults.FRICTION)
+        .force('link', d3.forceLink([]).id(d => d.iid).distance(d => d.length || 10).strength(defaults.LINK_STRENGTH))
+        .force('charge', d3.forceManyBody().strength(defaults.CHARGE_STRENGTH * SIMPLIFY_CHARGE_SCALE).distanceMax(100))
+        .force('collide', d3.forceCollide().radius(d => d.radius || 3).strength(defaults.COLLISION_STRENGTH).iterations(2))
         .force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(0.15))
         .force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(0.15))
         .on('tick', onTick);
@@ -48,9 +52,10 @@ function onTick() {
 export function addPoppedNodes(nodes, links) {
     if (!sim) initForce();
 
-    // Stash home positions for anchor forces
+    // Stash home positions for anchor forces.
+    // Anchor nodes use their fixed position; others use ODGI layout centroid.
     for (const n of nodes) {
-        homePos.set(n, { x: n.x, y: n.y });
+        homePos.set(n, { x: n.fx ?? n.x, y: n.fy ?? n.y });
     }
 
     // Merge into existing simulation
@@ -73,9 +78,9 @@ export function removePoppedNodes(chainId) {
     if (!sim) return;
 
     const remaining = sim.nodes().filter(n => n.chainId !== chainId);
-    const remainingIds = new Set(remaining.map(n => n.id));
+    const remainingIds = new Set(remaining.map(n => n.iid));
     const remainingLinks = sim.force('link').links().filter(
-        l => remainingIds.has(l.source.id || l.source) && remainingIds.has(l.target.id || l.target)
+        l => remainingIds.has(l.source.iid || l.source) && remainingIds.has(l.target.iid || l.target)
     );
 
     sim.nodes(remaining);
@@ -99,14 +104,42 @@ export function clearForce() {
 }
 
 /**
- * Increase anchor strength to collapse nodes back to polyline positions.
- * Call this on zoom-out before clearing.
+ * Release fixed positions and increase anchor strength to collapse nodes
+ * back to their home positions. Call this on zoom-out before clearing.
  */
 export function collapseToAnchors(strength = 0.5) {
     if (!sim || sim.nodes().length === 0) return;
+    // Release fixed positions so anchor forces can pull nodes back
+    for (const n of sim.nodes()) {
+        if (n.fx != null) {
+            n.x = n.fx;
+            n.y = n.fy;
+            delete n.fx;
+            delete n.fy;
+        }
+    }
     sim.force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(strength));
     sim.force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(strength));
     sim.alpha(0.3).restart();
+}
+
+/**
+ * Restore fixed positions on anchor nodes and reset anchor force strength.
+ * Called when a collapse is cancelled (user zoomed back in).
+ */
+export function restoreAnchors() {
+    if (!sim || sim.nodes().length === 0) return;
+    for (const n of sim.nodes()) {
+        if (!n.isAnchor) continue;
+        const home = homePos.get(n);
+        if (home) {
+            n.fx = home.x;
+            n.fy = home.y;
+        }
+    }
+    sim.force('anchorX', d3.forceX(d => homePos.get(d)?.x ?? d.x).strength(0.05));
+    sim.force('anchorY', d3.forceY(d => homePos.get(d)?.y ?? d.y).strength(0.05));
+    sim.alpha(0.15).restart();
 }
 
 /**

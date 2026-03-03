@@ -23,7 +23,7 @@ export const state = {
     dataBounds: { minX: 0, maxX: 1, minY: 0, maxY: 1 },
     levelBboxes: [],
     currentLevel: -1,
-    levelOffset: 0,
+    currentLevel: -1,
 
     // Progressive detail
     detailPhase: 'none',       // 'none' | 'fading-in' | 'static' | 'fading-out'
@@ -42,7 +42,7 @@ export const state = {
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',
 
     // Constants
-    DETAIL_CELL_THRESHOLD: 100,   // activate detail when skeleton cellSize <= this
+    DETAIL_CELL_THRESHOLD: 50,    // activate detail when targetCell <= this
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 
@@ -55,7 +55,8 @@ export const state = {
         reduction: document.getElementById('reduction'),
         stats: document.getElementById('stats'),
         loading: document.getElementById('loading'),
-        lodOffset: document.getElementById('lod-offset'),
+        gridMeter: document.getElementById('grid-meter'),
+        zoomVal: document.getElementById('zoom-val'),
         viewportBp: document.getElementById('viewport-bp'),
         cursorBp: document.getElementById('cursor-bp'),
         detailPhase: document.getElementById('detail-phase'),

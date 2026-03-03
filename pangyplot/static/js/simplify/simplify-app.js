@@ -8,6 +8,7 @@ import { navigateToHash, scheduleHashUpdate } from './hash-navigation.js';
 import { scheduleFrame } from './render.js';
 import { scheduleDetailFetch } from './detail.js';
 import { setupInteraction } from './interaction.js';
+import { initGridMeter } from './lod.js';
 
 async function init() {
     try {
@@ -53,6 +54,7 @@ async function init() {
         state.data.chainFamily = family;
     }
 
+    initGridMeter();
     precomputeBboxes();
     computeBounds();
 
