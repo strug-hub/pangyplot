@@ -48,6 +48,7 @@ function processResponse(apiResponse) {
         bpEnd: apiResponse.tile_end,
         junctionNodes: apiResponse.junction_nodes || [],
         junctionLinks: apiResponse.junction_links || [],
+        siblingConnectors: apiResponse.sibling_connectors || [],
     };
 }
 

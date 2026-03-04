@@ -89,33 +89,20 @@ function drawDetail() {
     const baseWidth = Math.max(1.5, 3 / state.zoom);
     drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
 
-    // --- Gap-fillers: dashed connectors between sibling chains (same parent) ---
-    {
-        const byParent = new Map();
-        for (const chain of state.detailData.chains) {
-            if (!chain.parentChain) continue;
-            if (!byParent.has(chain.parentChain)) byParent.set(chain.parentChain, []);
-            byParent.get(chain.parentChain).push(chain);
+    // --- Gap-fillers: dashed connectors between GFA-adjacent sibling chains ---
+    if (state.detailData.siblingConnectors && state.detailData.siblingConnectors.length > 0) {
+        const dash = Math.max(2, 4 / state.zoom);
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);
+        ctx.setLineDash([dash, dash]);
+        ctx.globalAlpha = 0.5 * state.detailOpacity;
+        ctx.beginPath();
+        for (const link of state.detailData.siblingConnectors) {
+            ctx.moveTo(link[0][0], link[0][1]);
+            ctx.lineTo(link[1][0], link[1][1]);
         }
-        if (byParent.size > 0) {
-            const dash = Math.max(2, 4 / state.zoom);
-            ctx.strokeStyle = '#aaa';
-            ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);
-            ctx.setLineDash([dash, dash]);
-            ctx.globalAlpha = 0.5 * state.detailOpacity;
-            ctx.beginPath();
-            for (const [, siblings] of byParent) {
-                siblings.sort((a, b) => a.polyline[0][0] - b.polyline[0][0]);
-                for (let i = 0; i < siblings.length - 1; i++) {
-                    const aPl = siblings[i].polyline;
-                    const bPl = siblings[i + 1].polyline;
-                    ctx.moveTo(aPl[aPl.length - 1][0], aPl[aPl.length - 1][1]);
-                    ctx.lineTo(bPl[0][0], bPl[0][1]);
-                }
-            }
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
+        ctx.stroke();
+        ctx.setLineDash([]);
     }
 
     // --- Hover highlight ---

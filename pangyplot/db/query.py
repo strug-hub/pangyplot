@@ -641,6 +641,84 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
     return junction_nodes, junction_links
 
 
+def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
+    """Find gap-filler lines between sibling chains connected through the parent bubble.
+
+    For each sibling endpoint, BFS through segments owned by the same parent
+    bubble (up to a few hops) to find other sibling endpoints.  Returns a list
+    of [[x1,y1],[x2,y2]] pairs using polyline endpoint coordinates.
+    """
+    from collections import defaultdict, deque
+    MAX_HOPS = 4
+
+    # Group chains by parent
+    by_parent = defaultdict(list)
+    for cd in chains_data:
+        parent = cd.get("parent_chain")
+        if parent:
+            by_parent[parent].append(cd)
+
+    if not by_parent:
+        return []
+
+    # Build seg → polyline coordinate for all endpoint segs
+    seg_to_coord = {}
+    for cd in chains_data:
+        pl = cd.get("polyline")
+        if not pl or len(pl) < 2:
+            continue
+        start_seg = cd.get("_start_seg")
+        end_seg = cd.get("_end_seg")
+        if start_seg is not None:
+            seg_to_coord[start_seg] = pl[0]
+        if end_seg is not None:
+            seg_to_coord[end_seg] = pl[-1]
+
+    connectors = []
+    seen = set()  # frozenset of (chain_id_a, endpoint_seg_a, chain_id_b, endpoint_seg_b)
+
+    for siblings in by_parent.values():
+        # Build seg → chain_id for this family's endpoint segs
+        ep_seg_to_chain = {}
+        for cd in siblings:
+            for sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
+                ep_seg_to_chain[sid] = cd["id"]
+
+        # BFS from each endpoint through the parent bubble's segments
+        for cd in siblings:
+            for start_sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
+                if start_sid not in seg_to_coord:
+                    continue
+                start_bub = bubbleidx.segment_in_bubble(start_sid)
+
+                queue = deque([(start_sid, 0)])
+                visited = {start_sid}
+
+                while queue:
+                    cur, hops = queue.popleft()
+                    if hops > MAX_HOPS:
+                        continue
+                    for nxt in gfaidx.get_neighbors(cur):
+                        if nxt in visited:
+                            continue
+                        # Reached another sibling's endpoint?
+                        if nxt in ep_seg_to_chain and ep_seg_to_chain[nxt] != cd["id"]:
+                            if nxt in seg_to_coord:
+                                key = frozenset([start_sid, nxt])
+                                if key not in seen:
+                                    seen.add(key)
+                                    connectors.append([seg_to_coord[start_sid],
+                                                       seg_to_coord[nxt]])
+                            continue
+                        # Only traverse segments in the same parent bubble
+                        if bubbleidx.segment_in_bubble(nxt) != start_bub:
+                            continue
+                        visited.add(nxt)
+                        queue.append((nxt, hops + 1))
+
+    return connectors
+
+
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     expand_threshold=None):
     """Single-request detail tile: chains + inline subgraphs for popped chains.
@@ -709,6 +787,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     junction_nodes, junction_links = \
         _find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index)
+    sibling_connectors = _find_sibling_connectors(result_chains, gfaidx, bubbleidx)
 
     return {
         "tile_start": start,
@@ -717,4 +796,5 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "bubbles": chain_result.get("bubbles", []),
         "junction_nodes": junction_nodes,
         "junction_links": junction_links,
+        "sibling_connectors": sibling_connectors,
     }
