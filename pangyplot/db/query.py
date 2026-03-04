@@ -190,7 +190,7 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
         return _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth)
 
     # Replace the parent chain with child chains from all its bubbles.
-    # Only decompose one level: child chains are returned as-is (or as bubbles).
+    # Recurse into child chains up to max_depth.
     # Runs of leaf bubbles between expanded superbubbles become connectors.
     chains = []
     bubbles = []
@@ -202,7 +202,8 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
         child_bubbles = [bubbleidx[cid] for cid in b.children]
         child_chains = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
         for cc in child_chains:
-            r = _chain_or_bubbles(cc, bubble_threshold, stepidx, seg_index, depth + 1)
+            r = _decompose_chain(cc, expand_threshold, bubble_threshold,
+                                 bubbleidx, stepidx, seg_index, depth + 1, max_depth)
             for c in r["chains"]:
                 c["parent_chain"] = f"c{chain.id}"
             chains.extend(r["chains"])
