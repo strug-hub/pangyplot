@@ -6,7 +6,7 @@ Chains are sequences of bubbles. The polyline follows:
 This is reference-path independent — coordinates come from the ODGI layout.
 
 Decomposition splits a parent chain into child chains from superbubbles
-and _r connector sub-runs from leaf bubble runs.  Adjacency between
+and .N connector sub-runs from leaf bubble runs.  Adjacency between
 consecutive groups is emitted from the interleaving order.
 """
 
@@ -143,16 +143,16 @@ def build_connector(parent_chain, leaf_bubbles, stepidx, seg_index,
                     connector_idx, depth):
     """Build a connector polyline from a run of leaf bubbles.
 
-    Connectors are the _r sub-runs between expanded superbubbles
+    Connectors are the .N sub-runs between expanded superbubbles
     within a decomposed parent chain.
     """
     sub_chain = Chain(
-        chain_id=f"{parent_chain.id}_r{connector_idx}",
+        chain_id=f"{parent_chain.id}.{connector_idx}",
         bubbles=leaf_bubbles)
     entry = build_chain_polyline(sub_chain, stepidx, seg_index)
     if entry is None:
         return None
-    entry["id"] = f"c{parent_chain.id}_r{connector_idx}"
+    entry["id"] = f"c{parent_chain.id}.{connector_idx}"
     entry["depth"] = depth
     entry["connector"] = True
     entry["bubble_ids"] = [b.id for b in leaf_bubbles]
@@ -203,7 +203,7 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     for b in chain.bubbles:
         if b.children:
             # Flush leaf run as connector
-            if len(leaf_run) >= 2:
+            if len(leaf_run) >= 1:
                 conn = build_connector(
                     chain, leaf_run, stepidx, seg_index, connector_idx, depth)
                 if conn:
@@ -233,7 +233,7 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
             leaf_run.append(b)
 
     # Trailing leaf run
-    if len(leaf_run) >= 2:
+    if len(leaf_run) >= 1:
         conn = build_connector(
             chain, leaf_run, stepidx, seg_index, connector_idx, depth)
         if conn:
