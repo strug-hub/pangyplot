@@ -3,6 +3,7 @@
 import { state } from './simplify-state.js';
 import { scheduleFrame } from './render.js';
 import { scheduleDetailFetch, exitDetailMode } from './detail.js';
+import { togglePhysicsDebug } from './physics-zone.js';
 import { scheduleHashUpdate } from './hash-navigation.js';
 import { resizeCanvas, fitToScreen } from './viewport.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
@@ -121,6 +122,14 @@ export function setupInteraction() {
             state.hoveredSkeletonPl = null;
             tooltipEl.style.display = 'none';
             canvas.style.cursor = 'grab';
+            scheduleFrame();
+        }
+    });
+
+    // --- L key: toggle physics zone debug overlay ---
+    window.addEventListener('keydown', e => {
+        if (e.code === 'KeyL' && !e.repeat) {
+            togglePhysicsDebug();
             scheduleFrame();
         }
     });

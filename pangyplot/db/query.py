@@ -534,8 +534,11 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
     naked_visited = set()
     # Also track which endpoint segs were reached (for endpoint→naked links)
     endpoint_reached = set()
+    # Chain adjacency discovered during BFS
+    chain_adj = {}  # chain_id → set of chain_ids
 
     for cd in chains_data:
+        chain_id = cd["id"]
         all_endpoints = (
             list(cd.get("source_segs") or []) +
             list(cd.get("sink_segs") or [])
@@ -554,10 +557,13 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
                     if nxt in visited:
                         continue
 
-                    # Reached another chain's endpoint — note it but don't traverse
+                    # Reached another chain's endpoint — record adjacency
                     if nxt in endpoint_seg_to_chain:
+                        other_chain = endpoint_seg_to_chain[nxt]
+                        if other_chain != chain_id:
+                            chain_adj.setdefault(chain_id, set()).add(other_chain)
+                            chain_adj.setdefault(other_chain, set()).add(chain_id)
                         endpoint_reached.add(nxt)
-                        # Also note cur if it's an endpoint (direct endpoint↔endpoint)
                         if cur in endpoint_seg_to_chain:
                             endpoint_reached.add(cur)
                         continue
@@ -602,7 +608,8 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
             if bubbleidx.segment_in_bubble(sid) is None:
                 junction_nodes.append(coord)
 
-    # Build junction links from GFA edges
+    # Build junction links from GFA edges (visual only — adjacency already
+    # captured in chain_adj during BFS above)
     junction_links = []
     link_seen = set()
 
@@ -639,7 +646,10 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
             link_seen.add(key)
             junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt]])
 
-    return junction_nodes, junction_links
+    # Serialize adjacency as {chain_id: [neighbor_ids...]}
+    chain_adjacency = {k: sorted(v) for k, v in chain_adj.items()}
+
+    return junction_nodes, junction_links, chain_adjacency
 
 
 def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
@@ -677,6 +687,7 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
 
     connectors = []
     seen = set()  # frozenset of (chain_id_a, endpoint_seg_a, chain_id_b, endpoint_seg_b)
+    sibling_adj = {}  # chain_id → set of chain_ids
 
     for siblings in by_parent.values():
         # Build seg → chain_id for this family's endpoint segs
@@ -704,6 +715,9 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
                             continue
                         # Reached another sibling's endpoint?
                         if nxt in ep_seg_to_chain and ep_seg_to_chain[nxt] != cd["id"]:
+                            other_chain = ep_seg_to_chain[nxt]
+                            sibling_adj.setdefault(cd["id"], set()).add(other_chain)
+                            sibling_adj.setdefault(other_chain, set()).add(cd["id"])
                             if nxt in seg_to_coord:
                                 key = frozenset([start_sid, nxt])
                                 if key not in seen:
@@ -717,7 +731,7 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
                         visited.add(nxt)
                         queue.append((nxt, hops + 1))
 
-    return connectors
+    return connectors, sibling_adj
 
 
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
@@ -806,10 +820,18 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
         result_chains.append(chain_data)
 
-    junction_nodes, junction_links = \
+    junction_nodes, junction_links, junction_adj = \
         _find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index)
-    sibling_connectors = _find_sibling_connectors(result_chains, gfaidx, bubbleidx)
+    sibling_connectors, sibling_adj = \
+        _find_sibling_connectors(result_chains, gfaidx, bubbleidx)
+
+    # Merge junction + sibling adjacency into one map
+    chain_adjacency = {}
+    for src in (junction_adj, sibling_adj):
+        for k, v in src.items():
+            chain_adjacency.setdefault(k, set()).update(v)
+    chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
 
     return {
         "tile_start": start,
@@ -818,5 +840,6 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "bubbles": chain_result.get("bubbles", []),
         "junction_nodes": junction_nodes,
         "junction_links": junction_links,
+        "chain_adjacency": chain_adjacency,
         "sibling_connectors": sibling_connectors,
     }

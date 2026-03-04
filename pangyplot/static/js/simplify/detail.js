@@ -39,6 +39,8 @@ function processResponse(apiResponse) {
             sinkSegs: chain.sink_segs,
             bubblePositions: chain.bubble_positions || null,
             parentChain: chain.parent_chain || null,
+            popped: !!chain.graph,
+            graph: chain.graph || null,
         });
         totalBubbles += chain.n_bubbles;
     }
@@ -48,6 +50,7 @@ function processResponse(apiResponse) {
         bpEnd: apiResponse.tile_end,
         junctionNodes: apiResponse.junction_nodes || [],
         junctionLinks: apiResponse.junction_links || [],
+        chainAdjacency: apiResponse.chain_adjacency || {},
         siblingConnectors: apiResponse.sibling_connectors || [],
     };
 }

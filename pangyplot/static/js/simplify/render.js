@@ -6,6 +6,7 @@ import { getViewport, viewportStepCount } from './viewport.js';
 import { getGenePins } from './genes.js';
 import { formatBp } from './format-utils.js';
 import { xToBp, getChromosome } from './spine.js';
+import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
 
 let rafId = null;
 
@@ -295,7 +296,17 @@ export function draw() {
         drawDetail();
     }
 
+    // ===== PHYSICS DEBUG OVERLAY (data-space) =====
+    if (isPhysicsDebugActive() && state.detailData) {
+        drawPhysicsDebugOverlay(ctx, vp);
+    }
+
     ctx.restore();
+
+    // ===== PHYSICS DEBUG HUD (screen-space) =====
+    if (isPhysicsDebugActive() && state.detailData) {
+        drawPhysicsDebugHUD(ctx, cw);
+    }
 
     // --- Gene labels (screen coords) ---
     if (genePins.length > 0) {
