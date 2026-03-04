@@ -68,6 +68,83 @@ export function formatForceNodeTooltip(node) {
     return lines.join('<br>');
 }
 
+/**
+ * Return all detail chains whose polyline has at least one vertex inside the given
+ * data-space rectangle, or whose polyline segment crosses the rectangle boundary.
+ * For practical purposes vertex-in-box is sufficient since polylines have dense points.
+ */
+export function chainsInRect(minX, minY, maxX, maxY) {
+    if (!state.detailData) return [];
+    const result = [];
+    for (const chain of state.detailData.chains) {
+        if (state.poppedChainIds && state.poppedChainIds.has(chain.id)) continue;
+        const pl = chain.polyline;
+        if (!pl || pl.length === 0) continue;
+
+        // Fast AABB reject: compute polyline bbox
+        let plMinX = Infinity, plMaxX = -Infinity;
+        let plMinY = Infinity, plMaxY = -Infinity;
+        for (let i = 0; i < pl.length; i++) {
+            const x = pl[i][0], y = pl[i][1];
+            if (x < plMinX) plMinX = x;
+            if (x > plMaxX) plMaxX = x;
+            if (y < plMinY) plMinY = y;
+            if (y > plMaxY) plMaxY = y;
+        }
+        if (plMaxX < minX || plMinX > maxX || plMaxY < minY || plMinY > maxY) continue;
+
+        // Check if any vertex falls inside the rect
+        let hit = false;
+        for (let i = 0; i < pl.length; i++) {
+            const x = pl[i][0], y = pl[i][1];
+            if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) {
+            // Check if any segment crosses the rect boundary
+            for (let i = 0; i < pl.length - 1; i++) {
+                if (segmentIntersectsRect(pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1], minX, minY, maxX, maxY)) {
+                    hit = true;
+                    break;
+                }
+            }
+        }
+        if (hit) result.push(chain);
+    }
+    return result;
+}
+
+/** Check if line segment (ax,ay)-(bx,by) intersects axis-aligned rect */
+function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
+    // Cohen-Sutherland-style: if both endpoints on same side, no intersection
+    // Otherwise just check if segment crosses any rect edge
+    const dx = bx - ax, dy = by - ay;
+
+    // Check against each edge using parametric t
+    let tMin = 0, tMax = 1;
+    if (dx !== 0) {
+        let t1 = (minX - ax) / dx, t2 = (maxX - ax) / dx;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return false;
+    } else {
+        if (ax < minX || ax > maxX) return false;
+    }
+    if (dy !== 0) {
+        let t1 = (minY - ay) / dy, t2 = (maxY - ay) / dy;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return false;
+    } else {
+        if (ay < minY || ay > maxY) return false;
+    }
+    return true;
+}
+
 export function hitTestChains(dataX, dataY) {
     if (!state.detailData || state.detailOpacity < 0.5) return null;
     const hitR = HIT_RADIUS_PX / state.zoom;

@@ -37,6 +37,10 @@ export const state = {
     activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)
     poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
 
+    // Selection (Shift+drag rectangle)
+    selectedChains: new Set(),   // Set of chain objects currently selected
+    selectionBox: null,          // { startX, startY, endX, endY } in screen coords, or null
+
     // Hover
     hoveredChain: null,
     hoveredBubble: null,

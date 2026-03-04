@@ -8,15 +8,32 @@ import { scheduleHashUpdate } from './hash-navigation.js';
 import { resizeCanvas, fitToScreen } from './viewport.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
 import { formatBp } from './format-utils.js';
-import { hitTestForceNodes, hitTestBubbles, hitTestChains, hitTestSkeleton, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from './hit-test.js';
+import { hitTestForceNodes, hitTestBubbles, hitTestChains, hitTestSkeleton, chainsInRect, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from './hit-test.js';
 
 export function setupInteraction() {
     const canvas = state.canvas;
     const tooltipEl = state.dom.tooltip;
     const cursorBpEl = state.dom.cursorBp;
 
-    // --- Pan & drag ---
+    let isSelecting = false;
+
+    // --- Pan & drag / Shift+drag selection ---
     canvas.addEventListener('mousedown', e => {
+        if (e.shiftKey && state.detailData) {
+            // Start rectangle selection
+            isSelecting = true;
+            const rect = canvas.getBoundingClientRect();
+            const sx = e.clientX - rect.left;
+            const sy = e.clientY - rect.top;
+            state.selectionBox = { startX: sx, startY: sy, endX: sx, endY: sy };
+            canvas.style.cursor = 'crosshair';
+            return;
+        }
+        // Clear selection on non-shift click
+        if (state.selectedChains.size > 0 && !state.hoveredChain) {
+            state.selectedChains.clear();
+            scheduleFrame();
+        }
         state.isDragging = true;
         state.dragStartX = e.clientX - state.panX;
         state.dragStartY = e.clientY - state.panY;
@@ -24,6 +41,26 @@ export function setupInteraction() {
     });
 
     window.addEventListener('mousemove', e => {
+        if (isSelecting) {
+            const rect = canvas.getBoundingClientRect();
+            state.selectionBox.endX = e.clientX - rect.left;
+            state.selectionBox.endY = e.clientY - rect.top;
+            // Convert screen box to data coords
+            const box = state.selectionBox;
+            const sMinX = Math.min(box.startX, box.endX);
+            const sMaxX = Math.max(box.startX, box.endX);
+            const sMinY = Math.min(box.startY, box.endY);
+            const sMaxY = Math.max(box.startY, box.endY);
+            const dMinX = (sMinX - state.panX) / state.zoom;
+            const dMaxX = (sMaxX - state.panX) / state.zoom;
+            const dMinY = (sMinY - state.panY) / state.zoom;
+            const dMaxY = (sMaxY - state.panY) / state.zoom;
+            const hits = chainsInRect(dMinX, dMinY, dMaxX, dMaxY);
+            state.selectedChains.clear();
+            for (const c of hits) state.selectedChains.add(c);
+            scheduleFrame();
+            return;
+        }
         if (!state.isDragging) return;
         state.panX = e.clientX - state.dragStartX;
         state.panY = e.clientY - state.dragStartY;
@@ -32,6 +69,12 @@ export function setupInteraction() {
     });
 
     window.addEventListener('mouseup', () => {
+        if (isSelecting) {
+            isSelecting = false;
+            state.selectionBox = null;
+            scheduleFrame();
+            return;
+        }
         if (!state.isDragging) return;
         state.isDragging = false;
         canvas.style.cursor = 'grab';
@@ -57,7 +100,7 @@ export function setupInteraction() {
 
     // --- Cursor coordinate readout + hover hit-test ---
     canvas.addEventListener('mousemove', e => {
-        if (state.isDragging || !isReady()) return;
+        if (state.isDragging || isSelecting || !isReady()) return;
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
@@ -148,14 +191,33 @@ export function setupInteraction() {
         }
     });
 
-    // --- X key: pop/unpop hovered chain ---
+    // --- X key: pop/unpop selected chains or hovered chain ---
     window.addEventListener('keydown', e => {
         if (e.code !== 'KeyX' || e.repeat) return;
         if (!state.detailData) return;
+        if (state.selectedChains.size > 0) {
+            for (const chain of state.selectedChains) {
+                togglePopChain(chain);
+            }
+            state.selectedChains.clear();
+            scheduleFrame();
+            return;
+        }
         const chain = state.hoveredChain;
         if (!chain) return;
         togglePopChain(chain);
         scheduleFrame();
+    });
+
+    // --- Escape key: clear selection ---
+    window.addEventListener('keydown', e => {
+        if (e.code !== 'Escape') return;
+        if (state.selectedChains.size > 0 || state.selectionBox) {
+            state.selectedChains.clear();
+            state.selectionBox = null;
+            isSelecting = false;
+            scheduleFrame();
+        }
     });
 
     // --- Double-click to reset view ---

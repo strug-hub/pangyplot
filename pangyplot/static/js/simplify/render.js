@@ -146,6 +146,26 @@ function drawDetail() {
         ctx.setLineDash([]);
     }
 
+    // --- Selection highlight ---
+    if (state.selectedChains.size > 0) {
+        ctx.strokeStyle = '#5bb8f0';
+        ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.9 * state.detailOpacity;
+        ctx.beginPath();
+        for (const chain of state.selectedChains) {
+            if (state.poppedChainIds.size > 0 && state.poppedChainIds.has(chain.id)) continue;
+            const pl = chain.polyline;
+            if (pl.length < 2) continue;
+            ctx.moveTo(pl[0][0], pl[0][1]);
+            for (let i = 1; i < pl.length; i++) {
+                ctx.lineTo(pl[i][0], pl[i][1]);
+            }
+        }
+        ctx.stroke();
+        ctx.globalAlpha = state.detailOpacity;
+    }
+
     // --- Hover highlight ---
     if (state.hoveredChain) {
         const hc = state.hoveredChain;
@@ -346,6 +366,22 @@ export function draw() {
     // ===== PHYSICS DEBUG HUD (screen-space) =====
     if (isPhysicsDebugActive() && state.detailData) {
         drawPhysicsDebugHUD(ctx, cw);
+    }
+
+    // --- Selection rectangle (screen coords) ---
+    if (state.selectionBox) {
+        const box = state.selectionBox;
+        const sx = Math.min(box.startX, box.endX);
+        const sy = Math.min(box.startY, box.endY);
+        const sw = Math.abs(box.endX - box.startX);
+        const sh = Math.abs(box.endY - box.startY);
+        ctx.fillStyle = 'rgba(91, 184, 240, 0.08)';
+        ctx.fillRect(sx, sy, sw, sh);
+        ctx.strokeStyle = 'rgba(91, 184, 240, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.setLineDash([]);
     }
 
     // --- Gene labels (screen coords) ---
