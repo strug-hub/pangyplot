@@ -30,6 +30,7 @@ export const state = {
     detailData: null,          // { chains, bubbles, poppedChains, totalBubbles, bpStart, bpEnd }
     detailOpacity: 0,
     skeletonOpacity: 1,
+    detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
 
     // Hover
     hoveredChain: null,

@@ -214,10 +214,14 @@ export function scheduleDetailFetch() {
     if (fetchTimer) clearTimeout(fetchTimer);
     fetchTimer = setTimeout(() => {
         selectLevel();
-        if (state.targetCell <= state.DETAIL_CELL_THRESHOLD) {
-            fetchDetailForViewport();
-        } else {
+        if (state.targetCell > state.DETAIL_CELL_THRESHOLD) {
+            // Zoomed out past threshold — clear suppression and exit detail
+            state.detailSuppressed = false;
             exitDetailMode();
+        } else if (state.detailSuppressed) {
+            exitDetailMode();
+        } else {
+            fetchDetailForViewport();
         }
     }, 200);
 }

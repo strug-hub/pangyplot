@@ -2,7 +2,7 @@
 
 import { state } from './simplify-state.js';
 import { scheduleFrame } from './render.js';
-import { scheduleDetailFetch } from './detail.js';
+import { scheduleDetailFetch, exitDetailMode } from './detail.js';
 import { scheduleHashUpdate } from './hash-navigation.js';
 import { resizeCanvas, fitToScreen } from './viewport.js';
 import { xToBp, getChromosome, isReady } from './spine.js';
@@ -122,6 +122,20 @@ export function setupInteraction() {
             tooltipEl.style.display = 'none';
             canvas.style.cursor = 'grab';
             scheduleFrame();
+        }
+    });
+
+    // --- Spacebar: toggle detail ↔ skeleton while zoomed in ---
+    window.addEventListener('keydown', e => {
+        if (e.code !== 'Space' || e.repeat) return;
+        // Only toggle when zoomed in enough for detail mode
+        if (state.targetCell > state.DETAIL_CELL_THRESHOLD) return;
+        e.preventDefault();
+        state.detailSuppressed = !state.detailSuppressed;
+        if (state.detailSuppressed) {
+            exitDetailMode();
+        } else {
+            scheduleDetailFetch();
         }
     });
 
