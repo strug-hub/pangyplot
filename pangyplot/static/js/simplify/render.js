@@ -100,7 +100,9 @@ function drawDetail() {
         ctx.beginPath();
         for (const link of state.detailData.siblingConnectors) {
             ctx.moveTo(link[0][0], link[0][1]);
-            ctx.lineTo(link[1][0], link[1][1]);
+            for (let i = 1; i < link.length; i++) {
+                ctx.lineTo(link[i][0], link[i][1]);
+            }
         }
         ctx.stroke();
         ctx.setLineDash([]);

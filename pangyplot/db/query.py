@@ -1,5 +1,5 @@
 from pangyplot.db.chain_polyline import (
-    _seg_centroid, decompose_chain,
+    decompose_chain, find_junction_graph, find_sibling_connectors,
 )
 
 
@@ -22,7 +22,7 @@ def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
     for chain in chains:
         r = decompose_chain(
             chain, expand_threshold, bubble_threshold,
-            bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
+            bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
         chain_results.extend(r["chains"])
         bubble_results.extend(r["bubbles"])
 
@@ -218,246 +218,6 @@ def get_path_order(indexes, genome, chrom):
     return gfaidx.get_sample_idx()
 
 
-def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
-    """Find naked GFA segments forming junction graphs between chains.
-
-    BFS from each chain's endpoint segs through segments not owned by any
-    bubble. Collects all visited naked segment centroids as junction nodes
-    and GFA links between them (or to chain endpoint segs) as junction links.
-
-    Returns (junction_nodes, junction_links) — the raw graph topology at
-    inter-chain junction areas.
-    """
-    from collections import deque
-    MAX_HOPS = 8
-
-    # Map: seg_id → chain_id (for ALL endpoint segs: source + sink)
-    # Also: seg_id → [x, y] polyline coordinate.
-    # Uses _start_seg/_end_seg (the actual segment IDs at each polyline end)
-    # to build an exact mapping — no orientation guessing needed.
-    endpoint_seg_to_chain = {}
-    endpoint_polyline_coord = {}  # seg_id → [x, y] from chain polyline
-    for cd in chains_data:
-        pl = cd.get("polyline")
-        for sid in (cd.get("source_segs") or []):
-            endpoint_seg_to_chain[sid] = cd["id"]
-        for sid in (cd.get("sink_segs") or []):
-            endpoint_seg_to_chain[sid] = cd["id"]
-        # Map the segments that actually produced polyline[0] and polyline[-1]
-        if pl and len(pl) >= 2:
-            start_seg = cd.get("_start_seg")
-            end_seg = cd.get("_end_seg")
-            if start_seg is not None:
-                endpoint_polyline_coord[start_seg] = pl[0]
-            if end_seg is not None:
-                endpoint_polyline_coord[end_seg] = pl[-1]
-
-    # Collect naked segment IDs visited during BFS
-    naked_visited = set()
-    # Also track which endpoint segs were reached (for endpoint→naked links)
-    endpoint_reached = set()
-    # Chain adjacency discovered during BFS
-    chain_adj = {}  # chain_id → set of chain_ids
-
-    for cd in chains_data:
-        chain_id = cd["id"]
-        all_endpoints = (
-            list(cd.get("source_segs") or []) +
-            list(cd.get("sink_segs") or [])
-        )
-
-        for start_seg in all_endpoints:
-            queue = deque([(start_seg, 0)])  # (seg_id, hops)
-            visited = {start_seg}
-
-            while queue:
-                cur, hops = queue.popleft()
-                if hops > MAX_HOPS:
-                    continue
-
-                for nxt in gfaidx.get_neighbors(cur):
-                    if nxt in visited:
-                        continue
-
-                    # Reached another chain's endpoint — record adjacency
-                    if nxt in endpoint_seg_to_chain:
-                        other_chain = endpoint_seg_to_chain[nxt]
-                        if other_chain != chain_id:
-                            chain_adj.setdefault(chain_id, set()).add(other_chain)
-                            chain_adj.setdefault(other_chain, set()).add(chain_id)
-                        endpoint_reached.add(nxt)
-                        if cur in endpoint_seg_to_chain:
-                            endpoint_reached.add(cur)
-                        continue
-
-                    # Only traverse naked segments (not owned by any bubble)
-                    if bubbleidx.segment_in_bubble(nxt) is not None:
-                        continue
-
-                    visited.add(nxt)
-                    naked_visited.add(nxt)
-                    queue.append((nxt, hops + 1))
-
-    # Build junction nodes: centroid of each naked segment
-    junction_nodes = []
-    naked_centroids = {}  # seg_id → [x, y]
-    for sid in naked_visited:
-        pt = _seg_centroid(sid, seg_index)
-        if pt:
-            coord = [round(pt[0], 1), round(pt[1], 1)]
-            naked_centroids[sid] = coord
-            junction_nodes.append(coord)
-
-    # Cache coordinates for endpoint segs (for links to/from them).
-    # Prefer the chain polyline endpoint coordinate over the segment centroid,
-    # because child chains (depth > 0) have polyline endpoints that diverge
-    # significantly from segment centroids.
-    # Endpoint segs that are naked (not owned by any bubble) also get added
-    # to junction_nodes — they're visual hubs even though they're chain ends.
-    endpoint_centroids = {}
-    for sid in endpoint_reached | set(endpoint_seg_to_chain.keys()):
-        if sid not in naked_centroids:
-            # Prefer polyline coordinate (matches visual chain position)
-            if sid in endpoint_polyline_coord:
-                plpt = endpoint_polyline_coord[sid]
-                coord = [round(plpt[0], 1), round(plpt[1], 1)]
-            else:
-                pt = _seg_centroid(sid, seg_index)
-                if not pt:
-                    continue
-                coord = [round(pt[0], 1), round(pt[1], 1)]
-            endpoint_centroids[sid] = coord
-            if bubbleidx.segment_in_bubble(sid) is None:
-                junction_nodes.append(coord)
-
-    # Build junction links from GFA edges (visual only — adjacency already
-    # captured in chain_adj during BFS above)
-    junction_links = []
-    link_seen = set()
-
-    # Helper to get centroid from either map
-    def _centroid(sid):
-        return naked_centroids.get(sid) or endpoint_centroids.get(sid)
-
-    # Links from naked segments
-    for sid in naked_visited:
-        if sid not in naked_centroids:
-            continue
-        for nxt in gfaidx.get_neighbors(sid):
-            nxt_pt = _centroid(nxt)
-            if not nxt_pt:
-                continue
-            key = frozenset([sid, nxt])
-            if key in link_seen:
-                continue
-            link_seen.add(key)
-            junction_links.append([naked_centroids[sid], nxt_pt])
-
-    # Links between endpoint segs (direct GFA neighbors, no naked seg between)
-    for sid in endpoint_reached:
-        if sid not in endpoint_centroids:
-            continue
-        for nxt in gfaidx.get_neighbors(sid):
-            if nxt not in endpoint_centroids or nxt == sid:
-                continue
-            if endpoint_seg_to_chain.get(sid) == endpoint_seg_to_chain.get(nxt):
-                continue  # same chain
-            key = frozenset([sid, nxt])
-            if key in link_seen:
-                continue
-            link_seen.add(key)
-            junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt]])
-
-    # Serialize adjacency as {chain_id: [neighbor_ids...]}
-    chain_adjacency = {k: sorted(v) for k, v in chain_adj.items()}
-
-    return junction_nodes, junction_links, chain_adjacency
-
-
-def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
-    """Find gap-filler lines between sibling chains connected through the parent bubble.
-
-    For each sibling endpoint, BFS through segments owned by any bubble
-    (up to a few hops) to find other sibling endpoints.  Returns a list
-    of [[x1,y1],[x2,y2]] pairs using polyline endpoint coordinates.
-
-    Adjacency between siblings is now primarily computed during
-    decomposition; this function focuses on the visual connector lines.
-    """
-    from collections import defaultdict, deque
-    MAX_HOPS = 6
-
-    # Group chains by parent
-    by_parent = defaultdict(list)
-    for cd in chains_data:
-        parent = cd.get("parent_chain")
-        if parent:
-            by_parent[parent].append(cd)
-
-    if not by_parent:
-        return [], {}
-
-    # Build seg → polyline coordinate for all endpoint segs
-    seg_to_coord = {}
-    for cd in chains_data:
-        pl = cd.get("polyline")
-        if not pl or len(pl) < 2:
-            continue
-        start_seg = cd.get("_start_seg")
-        end_seg = cd.get("_end_seg")
-        if start_seg is not None:
-            seg_to_coord[start_seg] = pl[0]
-        if end_seg is not None:
-            seg_to_coord[end_seg] = pl[-1]
-
-    connectors = []
-    seen = set()
-    sibling_adj = {}  # chain_id → set of chain_ids
-
-    for siblings in by_parent.values():
-        # Build seg → chain_id for this family's endpoint segs
-        ep_seg_to_chain = {}
-        for cd in siblings:
-            for sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
-                ep_seg_to_chain[sid] = cd["id"]
-
-        # BFS from each endpoint through bubble-owned segments
-        for cd in siblings:
-            for start_sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
-                if start_sid not in seg_to_coord:
-                    continue
-
-                queue = deque([(start_sid, 0)])
-                visited = {start_sid}
-
-                while queue:
-                    cur, hops = queue.popleft()
-                    if hops > MAX_HOPS:
-                        continue
-                    for nxt in gfaidx.get_neighbors(cur):
-                        if nxt in visited:
-                            continue
-                        # Reached another sibling's endpoint?
-                        if nxt in ep_seg_to_chain and ep_seg_to_chain[nxt] != cd["id"]:
-                            other_chain = ep_seg_to_chain[nxt]
-                            sibling_adj.setdefault(cd["id"], set()).add(other_chain)
-                            sibling_adj.setdefault(other_chain, set()).add(cd["id"])
-                            if nxt in seg_to_coord:
-                                key = frozenset([start_sid, nxt])
-                                if key not in seen:
-                                    seen.add(key)
-                                    connectors.append([seg_to_coord[start_sid],
-                                                       seg_to_coord[nxt]])
-                            continue
-                        # Allow traversal through any bubble-owned segment
-                        if bubbleidx.segment_in_bubble(nxt) is None:
-                            continue
-                        visited.add(nxt)
-                        queue.append((nxt, hops + 1))
-
-    return connectors, sibling_adj
-
-
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     expand_threshold=None,
                     layout_min_x=None, layout_max_x=None):
@@ -493,8 +253,9 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     total_layout_x = abs(x_last - x_first) or 1.0
     pplp = ppbp * total_bp / total_layout_x  # pixels per layout unit
 
-    # Decompose chains and collect structural adjacency
+    # Decompose chains and collect structural adjacency + bypass links
     decomp_adj = {}
+    bypass_links = []
 
     if layout_min_x is not None and layout_max_x is not None:
         chains = bubbleidx.get_top_level_bubbles_by_layout(
@@ -504,9 +265,10 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         for chain in chains:
             r = decompose_chain(
                 chain, expand_threshold, None,
-                bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
+                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
             chain_results.extend(r["chains"])
             bubble_results.extend(r["bubbles"])
+            bypass_links.extend(r.get("bypass_links", []))
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
@@ -519,9 +281,10 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         for chain in top_chains:
             r = decompose_chain(
                 chain, expand_threshold, None,
-                bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
+                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
             chain_results.extend(r["chains"])
             bubble_results.extend(r["bubbles"])
+            bypass_links.extend(r.get("bypass_links", []))
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
@@ -558,10 +321,10 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         result_chains.append(chain_data)
 
     junction_nodes, junction_links, junction_adj = \
-        _find_junction_graph(
+        find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index)
     sibling_connectors, sibling_adj = \
-        _find_sibling_connectors(result_chains, gfaidx, bubbleidx)
+        find_sibling_connectors(result_chains, gfaidx, bubbleidx)
 
     # Merge all adjacency sources: decomposition + junction + sibling
     chain_adjacency = {}
@@ -578,5 +341,5 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "junction_nodes": junction_nodes,
         "junction_links": junction_links,
         "chain_adjacency": chain_adjacency,
-        "sibling_connectors": sibling_connectors,
+        "sibling_connectors": sibling_connectors + bypass_links,
     }
