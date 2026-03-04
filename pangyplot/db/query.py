@@ -1,126 +1,6 @@
 from pangyplot.db.chain_polyline import (
-    _seg_centroid, build_chain_polyline, build_connector,
+    _seg_centroid, decompose_chain,
 )
-
-
-def _bubble_layout_span(bubble):
-    """Layout coordinate extent (max of x and y span)."""
-    return max(abs(bubble.x2 - bubble.x1), abs(bubble.y2 - bubble.y1))
-
-
-def _decompose_chain(chain, expand_threshold, bubble_threshold,
-                     bubbleidx, stepidx, seg_index, depth, max_depth):
-    """Decompose a chain into sub-chains or individual bubbles.
-
-    Two thresholds control progressive detail:
-    - expand_threshold: if any bubble exceeds this, replace the chain
-      with child chains from inside its bubbles (one level).
-    - bubble_threshold: if the chain's layout span exceeds this (and it
-      wasn't decomposed into sub-chains), expose individual bubbles.
-    """
-    # No expansion: return chain as-is or expose bubbles
-    if expand_threshold is None or depth >= max_depth:
-        return _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth)
-
-    # Gate: does any bubble in this chain exceed the threshold?
-    should_decompose = any(
-        b.children and _bubble_layout_span(b) > expand_threshold
-        for b in chain.bubbles
-    )
-
-    if not should_decompose:
-        return _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth)
-
-    # Replace the parent chain with child chains from all its bubbles.
-    # Recurse into child chains up to max_depth.
-    # Runs of leaf bubbles between expanded superbubbles become connectors.
-    chains = []
-    bubbles = []
-
-    # Collect child chains from inside expanded superbubbles
-    for b in chain.bubbles:
-        if not b.children:
-            continue
-        child_bubbles = [bubbleidx[cid] for cid in b.children]
-        child_chains = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
-        for cc in child_chains:
-            r = _decompose_chain(cc, expand_threshold, bubble_threshold,
-                                 bubbleidx, stepidx, seg_index, depth + 1, max_depth)
-            for c in r["chains"]:
-                c["parent_chain"] = f"c{chain.id}"
-            chains.extend(r["chains"])
-            bubbles.extend(r["bubbles"])
-
-    # Build connector polylines from runs of leaf bubbles
-    leaf_run = []
-    connector_idx = 0
-    for b in chain.bubbles:
-        if b.children:
-            if len(leaf_run) >= 2:
-                connector = build_connector(
-                    chain, leaf_run, stepidx, seg_index, connector_idx, depth)
-                if connector:
-                    chains.append(connector)
-                    connector_idx += 1
-            leaf_run = []
-        else:
-            leaf_run.append(b)
-    # Trailing run
-    if len(leaf_run) >= 2:
-        connector = build_connector(
-            chain, leaf_run, stepidx, seg_index, connector_idx, depth)
-        if connector:
-            chains.append(connector)
-
-    return {"chains": chains, "bubbles": bubbles}
-
-
-def _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth):
-    """Return a chain as a polyline with inline bubble_positions."""
-    entry = build_chain_polyline(chain, stepidx, seg_index)
-    if entry is None:
-        return {"chains": [], "bubbles": []}
-    entry["depth"] = depth
-    return {"chains": [entry], "bubbles": []}
-
-
-def _expose_chain_bubbles(chain):
-    """Return individual bubbles from a chain as point features.
-
-    Skips superbubbles with children — those are intermediate hierarchy
-    nodes that will be decomposed into child chains on further zoom.
-    Only leaf bubbles (no children) are exposed as visible features.
-    """
-    bubbles = []
-    for b in chain.bubbles:
-        if b.children:
-            continue
-        cx = (b.x1 + b.x2) / 2.0
-        cy = (b.y1 + b.y2) / 2.0
-        rx = abs(b.x2 - b.x1) / 2.0
-        ry = abs(b.y2 - b.y1) / 2.0
-        bubbles.append({
-            "id": f"b{b.id}",
-            "x": round(cx, 1),
-            "y": round(cy, 1),
-            "rx": round(max(rx, 0.5), 1),
-            "ry": round(max(ry, 0.5), 1),
-            "subtype": b.subtype,
-            "length": b.length,
-            "chain": f"c{chain.id}",
-        })
-    return bubbles
-
-
-def _chain_layout_span(chain):
-    """Layout span of a chain from its bubbles' bounding boxes."""
-    if not chain.bubbles:
-        return 0
-    min_x = min(b.x1 for b in chain.bubbles)
-    max_x = max(b.x2 for b in chain.bubbles)
-    min_y = min(b.y1 for b in chain.bubbles)
-    max_y = max(b.y2 for b in chain.bubbles)
-    return max(max_x - min_x, max_y - min_y)
 
 
 def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
@@ -140,7 +20,7 @@ def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
     chain_results = []
     bubble_results = []
     for chain in chains:
-        r = _decompose_chain(
+        r = decompose_chain(
             chain, expand_threshold, bubble_threshold,
             bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
         chain_results.extend(r["chains"])
@@ -497,12 +377,15 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
 def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
     """Find gap-filler lines between sibling chains connected through the parent bubble.
 
-    For each sibling endpoint, BFS through segments owned by the same parent
-    bubble (up to a few hops) to find other sibling endpoints.  Returns a list
+    For each sibling endpoint, BFS through segments owned by any bubble
+    (up to a few hops) to find other sibling endpoints.  Returns a list
     of [[x1,y1],[x2,y2]] pairs using polyline endpoint coordinates.
+
+    Adjacency between siblings is now primarily computed during
+    decomposition; this function focuses on the visual connector lines.
     """
     from collections import defaultdict, deque
-    MAX_HOPS = 4
+    MAX_HOPS = 6
 
     # Group chains by parent
     by_parent = defaultdict(list)
@@ -512,7 +395,7 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
             by_parent[parent].append(cd)
 
     if not by_parent:
-        return []
+        return [], {}
 
     # Build seg → polyline coordinate for all endpoint segs
     seg_to_coord = {}
@@ -528,7 +411,7 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
             seg_to_coord[end_seg] = pl[-1]
 
     connectors = []
-    seen = set()  # frozenset of (chain_id_a, endpoint_seg_a, chain_id_b, endpoint_seg_b)
+    seen = set()
     sibling_adj = {}  # chain_id → set of chain_ids
 
     for siblings in by_parent.values():
@@ -538,12 +421,11 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
             for sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
                 ep_seg_to_chain[sid] = cd["id"]
 
-        # BFS from each endpoint through the parent bubble's segments
+        # BFS from each endpoint through bubble-owned segments
         for cd in siblings:
             for start_sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
                 if start_sid not in seg_to_coord:
                     continue
-                start_bub = bubbleidx.segment_in_bubble(start_sid)
 
                 queue = deque([(start_sid, 0)])
                 visited = {start_sid}
@@ -567,8 +449,8 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
                                     connectors.append([seg_to_coord[start_sid],
                                                        seg_to_coord[nxt]])
                             continue
-                        # Only traverse segments in the same parent bubble
-                        if bubbleidx.segment_in_bubble(nxt) != start_bub:
+                        # Allow traversal through any bubble-owned segment
+                        if bubbleidx.segment_in_bubble(nxt) is None:
                             continue
                         visited.add(nxt)
                         queue.append((nxt, hops + 1))
@@ -602,8 +484,6 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
     # Compute pixels-per-layout-unit from ppbp using global bp↔layout ratio.
-    # This lets us estimate screen size for ALL chains (including non-ref ones
-    # that lack bp_span) from their layout-coordinate extent.
     seg_index = gfaidx.segment_index
     total_bp = stepidx.ends[-1] - stepidx.starts[0] if len(stepidx.ends) > 0 else 1
     first_sid = stepidx.segments[0] if len(stepidx.segments) > 0 else 0
@@ -613,23 +493,38 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     total_layout_x = abs(x_last - x_first) or 1.0
     pplp = ppbp * total_bp / total_layout_x  # pixels per layout unit
 
+    # Decompose chains and collect structural adjacency
+    decomp_adj = {}
+
     if layout_min_x is not None and layout_max_x is not None:
-        # Layout-based query: catches bubbles whose step range is outside
-        # the bp viewport but whose layout coordinates are on-screen.
         chains = bubbleidx.get_top_level_bubbles_by_layout(
             layout_min_x, layout_max_x, as_chains=True)
         chain_results = []
         bubble_results = []
         for chain in chains:
-            r = _decompose_chain(
+            r = decompose_chain(
                 chain, expand_threshold, None,
                 bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
             chain_results.extend(r["chains"])
             bubble_results.extend(r["bubbles"])
+            for k, v in r.get("adjacency", {}).items():
+                decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
     else:
-        chain_result = get_chains(indexes, genome, chrom, start, end,
-                                  expand_threshold=expand_threshold)
+        # get_chains doesn't propagate adjacency, so decompose directly
+        start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
+        top_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
+        chain_results = []
+        bubble_results = []
+        for chain in top_chains:
+            r = decompose_chain(
+                chain, expand_threshold, None,
+                bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
+            chain_results.extend(r["chains"])
+            bubble_results.extend(r["bubbles"])
+            for k, v in r.get("adjacency", {}).items():
+                decomp_adj.setdefault(k, set()).update(v)
+        chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
     result_chains = []
     for chain_data in chain_result["chains"]:
@@ -668,9 +563,9 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     sibling_connectors, sibling_adj = \
         _find_sibling_connectors(result_chains, gfaidx, bubbleidx)
 
-    # Merge junction + sibling adjacency into one map
+    # Merge all adjacency sources: decomposition + junction + sibling
     chain_adjacency = {}
-    for src in (junction_adj, sibling_adj):
+    for src in (decomp_adj, junction_adj, sibling_adj):
         for k, v in src.items():
             chain_adjacency.setdefault(k, set()).update(v)
     chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
