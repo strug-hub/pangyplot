@@ -184,6 +184,7 @@ async function fetchDetailForViewport() {
         + `&ppbp=${ppbp}&expand=${expandThreshold}`
         + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
 
+    state.dom.fetchIndicator.classList.add('active');
     try {
         const resp = await fetch(url, { signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -207,6 +208,8 @@ async function fetchDetailForViewport() {
         scheduleFrame();
     } catch (e) {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);
+    } finally {
+        state.dom.fetchIndicator.classList.remove('active');
     }
 }
 

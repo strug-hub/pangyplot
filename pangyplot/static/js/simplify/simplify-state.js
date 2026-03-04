@@ -42,7 +42,7 @@ export const state = {
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',
 
     // Constants
-    DETAIL_CELL_THRESHOLD: 50,    // activate detail when targetCell <= this
+    DETAIL_CELL_THRESHOLD: 500,   // activate detail when targetCell <= this
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 
@@ -69,5 +69,6 @@ export const state = {
         detailOpacity: document.getElementById('detail-opacity'),
         detailSteps: document.getElementById('detail-steps'),
         tooltip: document.getElementById('tooltip'),
+        fetchIndicator: document.getElementById('fetch-indicator'),
     },
 };

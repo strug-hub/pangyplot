@@ -78,6 +78,27 @@
             color: #666;
         }
 
+        #fetch-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+        }
+        #fetch-indicator.active {
+            opacity: 1;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
         #detail-phase {
             font-size: 11px;
             font-family: 'SF Mono', Consolas, monospace;
@@ -150,6 +171,7 @@
     <div id="canvas-container">
         <canvas id="canvas"></canvas>
         <div id="loading">Loading graph data...</div>
+        <div id="fetch-indicator"></div>
         <div id="tooltip"></div>
     </div>
 
