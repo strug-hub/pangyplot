@@ -93,15 +93,17 @@ export function formatTooltip(chain) {
     const lengthStr = chain.length >= 1000 ? (chain.length/1000).toFixed(1) + 'kb' : chain.length + 'bp';
     const typeLabel = `<span class="tt-subtype" style="color:${color}">${chain.subtype}</span>`;
 
-    // Build ancestry string e.g. "c122_r1 > c122 > c5"
-    let ancestry = chain.id;
+    // Build ancestry string e.g. "c5 > c122 > c122_r1" (root → leaf)
+    const parts = [chain.id];
     let cur = chain.parentChain;
     while (cur) {
-        ancestry += ` > ${cur}`;
+        parts.push(cur);
         const numId = cur.startsWith('c') ? cur.slice(1) : cur;
         const meta = state.data.chainMeta?.[numId];
         cur = meta?.parent != null ? `c${meta.parent}` : null;
     }
+    parts.reverse();
+    const ancestry = parts.join(' > ');
 
     const lines = [
         `<span class="tt-label">chain</span> <span class="tt-chain">${ancestry}</span>`,
@@ -167,17 +169,19 @@ export function formatSkeletonTooltip(hit) {
     const cid = String(hit.chainId);
     const info = meta ? meta[cid] : null;
 
-    // Build ancestry string (e.g. "c489 > c122 > c1")
-    let ancestry = 'c' + cid;
+    // Build ancestry string (e.g. "c1 > c122 > c489") (root → leaf)
+    const parts = ['c' + cid];
     if (meta) {
         let cur = cid;
         for (let depth = 0; depth < 10; depth++) {
             const m = meta[cur];
             if (!m || m.parent == null) break;
-            ancestry += ` > c${m.parent}`;
+            parts.push(`c${m.parent}`);
             cur = String(m.parent);
         }
     }
+    parts.reverse();
+    const ancestry = parts.join(' > ');
 
     const lines = [
         `<span class="tt-label">chain</span> <span class="tt-chain">${ancestry}</span>`,

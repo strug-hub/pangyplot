@@ -46,7 +46,8 @@ function processResponse(apiResponse) {
         chains, totalBubbles,
         bpStart: apiResponse.tile_start,
         bpEnd: apiResponse.tile_end,
-        interConnectors: apiResponse.inter_connectors || [],
+        junctionNodes: apiResponse.junction_nodes || [],
+        junctionLinks: apiResponse.junction_links || [],
     };
 }
 

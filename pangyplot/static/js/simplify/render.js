@@ -70,35 +70,16 @@ function drawDetail() {
 
     const hovChain = state.hoveredChain;
 
-    // --- Inter-chain connectors (naked GFA segments between chain endpoints) ---
-    if (state.detailData.interConnectors && state.detailData.interConnectors.length > 0) {
-        // Build lookup so we can extend connectors to the chain polyline endpoints
-        const chainById = new Map();
-        for (const ch of state.detailData.chains) chainById.set(ch.id, ch);
-
-        const dist2 = (a, b) => (a[0]-b[0])**2 + (a[1]-b[1])**2;
-        // Return whichever polyline endpoint (first or last) is nearest to pt
-        const nearestEnd = (pl, pt) =>
-            dist2(pl[0], pt) <= dist2(pl[pl.length-1], pt) ? pl[0] : pl[pl.length-1];
-
-        ctx.strokeStyle = '#888';
+    // --- Junction links (GFA edges between naked segments / chain endpoints) ---
+    if (state.detailData.junctionLinks && state.detailData.junctionLinks.length > 0) {
+        ctx.strokeStyle = '#999';
         ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);
         ctx.setLineDash([]);
-        ctx.globalAlpha = 0.5 * state.detailOpacity;
+        ctx.globalAlpha = 0.7 * state.detailOpacity;
         ctx.beginPath();
-        for (const conn of state.detailData.interConnectors) {
-            const pl = conn.polyline;
-            if (pl.length < 2) continue;
-
-            // Extend to each chain's rendered polyline endpoint
-            const fromCh = chainById.get(conn.from_chain);
-            const toCh   = chainById.get(conn.to_chain);
-            const start = fromCh ? nearestEnd(fromCh.polyline, pl[0])   : pl[0];
-            const end   = toCh   ? nearestEnd(toCh.polyline,   pl[pl.length-1]) : pl[pl.length-1];
-
-            ctx.moveTo(start[0], start[1]);
-            for (const pt of pl) ctx.lineTo(pt[0], pt[1]);
-            ctx.lineTo(end[0], end[1]);
+        for (const link of state.detailData.junctionLinks) {
+            ctx.moveTo(link[0][0], link[0][1]);
+            ctx.lineTo(link[1][0], link[1][1]);
         }
         ctx.stroke();
         ctx.globalAlpha = state.detailOpacity;

@@ -479,16 +479,15 @@ def get_path_order(indexes, genome, chrom):
     return gfaidx.get_sample_idx()
 
 
-def _find_inter_chain_connectors(chains_data, gfaidx, bubbleidx, seg_index):
-    """Find naked GFA segments connecting chain endpoints.
+def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
+    """Find naked GFA segments forming junction graphs between chains.
 
-    BFS from each chain's endpoint segs (source + sink) in all directions
-    through segments not owned by any bubble, stopping when reaching
-    another chain's endpoint segs. Returns connector polylines for
-    chain-to-chain links not represented by any bubble.
+    BFS from each chain's endpoint segs through segments not owned by any
+    bubble. Collects all visited naked segment centroids as junction nodes
+    and GFA links between them (or to chain endpoint segs) as junction links.
 
-    Uses undirected BFS because the GFA strand orientation may not align
-    with the chain's conceptual left→right direction.
+    Returns (junction_nodes, junction_links) — the raw graph topology at
+    inter-chain junction areas.
     """
     from collections import deque
     MAX_HOPS = 8
@@ -501,62 +500,107 @@ def _find_inter_chain_connectors(chains_data, gfaidx, bubbleidx, seg_index):
         for sid in (cd.get("sink_segs") or []):
             endpoint_seg_to_chain[sid] = cd["id"]
 
-    connectors = []
-    seen_pairs = set()
+    # Collect naked segment IDs visited during BFS
+    naked_visited = set()
+    # Also track which endpoint segs were reached (for endpoint→naked links)
+    endpoint_reached = set()
 
     for cd in chains_data:
-        from_chain_id = cd["id"]
         all_endpoints = (
             list(cd.get("source_segs") or []) +
             list(cd.get("sink_segs") or [])
         )
 
         for start_seg in all_endpoints:
-            # Undirected BFS; state = (seg_id, path_from_start_inclusive)
-            queue = deque([(start_seg, [start_seg])])
+            queue = deque([(start_seg, 0)])  # (seg_id, hops)
             visited = {start_seg}
 
             while queue:
-                cur, path = queue.popleft()
-                if len(path) > MAX_HOPS + 1:
+                cur, hops = queue.popleft()
+                if hops > MAX_HOPS:
                     continue
 
-                # get_neighbors(None) returns both forward and backward neighbors
                 for nxt in gfaidx.get_neighbors(cur):
                     if nxt in visited:
                         continue
 
-                    # Reached another chain's endpoint → record connector
+                    # Reached another chain's endpoint — note it but don't traverse
                     if nxt in endpoint_seg_to_chain:
-                        to_chain_id = endpoint_seg_to_chain[nxt]
-                        if to_chain_id != from_chain_id:
-                            pair_key = tuple(sorted([from_chain_id, to_chain_id]))
-                            if pair_key not in seen_pairs:
-                                seen_pairs.add(pair_key)
-                                pts = []
-                                for sid in path + [nxt]:
-                                    pt = _seg_centroid(sid, seg_index)
-                                    if pt:
-                                        pts.append(pt)
-                                if len(pts) >= 2:
-                                    connectors.append({
-                                        "from_chain": from_chain_id,
-                                        "to_chain": to_chain_id,
-                                        "polyline": [
-                                            [round(x, 1), round(y, 1)]
-                                            for x, y in pts
-                                        ],
-                                    })
-                        continue  # don't traverse through endpoint segs
+                        endpoint_reached.add(nxt)
+                        # Also note cur if it's an endpoint (direct endpoint↔endpoint)
+                        if cur in endpoint_seg_to_chain:
+                            endpoint_reached.add(cur)
+                        continue
 
                     # Only traverse naked segments (not owned by any bubble)
                     if bubbleidx.segment_in_bubble(nxt) is not None:
                         continue
 
                     visited.add(nxt)
-                    queue.append((nxt, path + [nxt]))
+                    naked_visited.add(nxt)
+                    queue.append((nxt, hops + 1))
 
-    return connectors
+    # Build junction nodes: centroid of each naked segment
+    junction_nodes = []
+    naked_centroids = {}  # seg_id → [x, y]
+    for sid in naked_visited:
+        pt = _seg_centroid(sid, seg_index)
+        if pt:
+            coord = [round(pt[0], 1), round(pt[1], 1)]
+            naked_centroids[sid] = coord
+            junction_nodes.append(coord)
+
+    # Also cache centroids for endpoint segs (for links to/from them).
+    # Endpoint segs that are naked (not owned by any bubble) also get added
+    # to junction_nodes — they're visual hubs even though they're chain ends.
+    endpoint_centroids = {}
+    for sid in endpoint_reached | set(endpoint_seg_to_chain.keys()):
+        if sid not in naked_centroids:
+            pt = _seg_centroid(sid, seg_index)
+            if pt:
+                coord = [round(pt[0], 1), round(pt[1], 1)]
+                endpoint_centroids[sid] = coord
+                if bubbleidx.segment_in_bubble(sid) is None:
+                    junction_nodes.append(coord)
+
+    # Build junction links from GFA edges
+    junction_links = []
+    link_seen = set()
+
+    # Helper to get centroid from either map
+    def _centroid(sid):
+        return naked_centroids.get(sid) or endpoint_centroids.get(sid)
+
+    # Links from naked segments
+    for sid in naked_visited:
+        if sid not in naked_centroids:
+            continue
+        for nxt in gfaidx.get_neighbors(sid):
+            nxt_pt = _centroid(nxt)
+            if not nxt_pt:
+                continue
+            key = frozenset([sid, nxt])
+            if key in link_seen:
+                continue
+            link_seen.add(key)
+            junction_links.append([naked_centroids[sid], nxt_pt])
+
+    # Links between endpoint segs (direct GFA neighbors, no naked seg between)
+    for sid in endpoint_reached:
+        if sid not in endpoint_centroids:
+            continue
+        for nxt in gfaidx.get_neighbors(sid):
+            if nxt not in endpoint_centroids or nxt == sid:
+                continue
+            if endpoint_seg_to_chain.get(sid) == endpoint_seg_to_chain.get(nxt):
+                continue  # same chain
+            key = frozenset([sid, nxt])
+            if key in link_seen:
+                continue
+            link_seen.add(key)
+            junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt]])
+
+    return junction_nodes, junction_links
 
 
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
@@ -624,13 +668,15 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
         result_chains.append(chain_data)
 
-    inter_connectors = _find_inter_chain_connectors(
-        result_chains, gfaidx, bubbleidx, seg_index)
+    junction_nodes, junction_links = \
+        _find_junction_graph(
+            result_chains, gfaidx, bubbleidx, seg_index)
 
     return {
         "tile_start": start,
         "tile_end": end,
         "chains": result_chains,
         "bubbles": chain_result.get("bubbles", []),
-        "inter_connectors": inter_connectors,
+        "junction_nodes": junction_nodes,
+        "junction_links": junction_links,
     }

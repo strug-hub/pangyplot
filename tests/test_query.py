@@ -193,3 +193,71 @@ class TestPopInsideSegs:
         """A leaf bubble has no children so child_bubbles is empty."""
         leaf_pop = query.pop_bubble(indexes, LEAF_BUBBLE_ID, GENOME, CHROM)
         assert leaf_pop["child_bubbles"] == []
+
+
+# ---------------------------------------------------------------------------
+# /detail-tiles inter-chain connectors
+#
+# Region: GRCh38 24,100,000-24,135,000 on chrY.
+# At this location, top-level chains c625, c82, and c371 are returned.
+# They share a small junction of naked GFA segments (not owned by any bubble)
+# that connect their endpoints in the GFA graph.
+# ---------------------------------------------------------------------------
+
+JUNCTION_START = 24_100_000
+JUNCTION_END   = 24_135_000
+
+
+class TestJunctionGraph:
+
+    @pytest.fixture(scope="class")
+    def tile(self, indexes):
+        return query.get_detail_tile(
+            indexes, GENOME, CHROM, JUNCTION_START, JUNCTION_END,
+            ppbp=0.001, expand_threshold=100,
+        )
+
+    def test_junction_nodes_key_present(self, tile):
+        assert "junction_nodes" in tile
+
+    def test_junction_links_key_present(self, tile):
+        assert "junction_links" in tile
+
+    def test_three_chains_returned(self, tile):
+        """The junction region should yield exactly c625, c82, c371."""
+        chain_ids = {c["id"] for c in tile["chains"]}
+        assert chain_ids == {"c625", "c82", "c371"}
+
+    def test_at_least_one_junction_node(self, tile):
+        assert len(tile["junction_nodes"]) >= 1
+
+    def test_at_least_one_junction_link(self, tile):
+        assert len(tile["junction_links"]) >= 1
+
+    def test_junction_nodes_are_coordinate_pairs(self, tile):
+        for node in tile["junction_nodes"]:
+            assert len(node) == 2
+            assert isinstance(node[0], (int, float))
+            assert isinstance(node[1], (int, float))
+
+    def test_junction_links_are_coordinate_pair_pairs(self, tile):
+        for link in tile["junction_links"]:
+            assert len(link) == 2
+            for pt in link:
+                assert len(pt) == 2
+                assert isinstance(pt[0], (int, float))
+                assert isinstance(pt[1], (int, float))
+
+    def test_no_duplicate_links(self, tile):
+        """Each link (unordered endpoint pair) should appear once."""
+        seen = set()
+        for link in tile["junction_links"]:
+            key = frozenset([tuple(link[0]), tuple(link[1])])
+            assert key not in seen, f"Duplicate junction link: {link}"
+            seen.add(key)
+
+    def test_old_keys_absent(self, tile):
+        """Old connector/stub/dot keys should not be in the response."""
+        assert "inter_connectors" not in tile
+        assert "junction_stubs" not in tile
+        assert "junction_dots" not in tile
