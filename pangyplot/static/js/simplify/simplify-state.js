@@ -31,7 +31,7 @@ export const state = {
     detailOpacity: 0,
     skeletonOpacity: 1,
     detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
-    physicsDebug: false,        // L-key toggle: show physics activation zone overlay
+    physicsDebug: true,         // L-key toggle: show physics activation zone overlay
 
     // Hover
     hoveredChain: null,
@@ -44,7 +44,7 @@ export const state = {
 
     // Constants
     DETAIL_CELL_THRESHOLD: 500,   // activate detail when targetCell <= this
-    PHYSICS_NODE_BUDGET: 2000,    // max estimated D3 nodes for physics zone
+    PHYSICS_NODE_BUDGET: 1500,    // max estimated D3 nodes for physics zone
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 

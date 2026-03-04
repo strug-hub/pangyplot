@@ -4,7 +4,7 @@
 import { state } from './simplify-state.js';
 import { getViewport } from './viewport.js';
 
-let debugActive = false;
+let debugActive = true;
 let activationSet = null;
 let adjacency = null;          // Map<chainId, Set<chainId>>
 let adjacencyDataId = null;    // identity ref to track detailData changes
@@ -230,9 +230,9 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         const popped = !!chain.graph;
         let fullCost;
         if (popped) {
-            fullCost = chain.graph.nodes.length * 2;
+            fullCost = chain.graph.nodes.length;
         } else {
-            fullCost = (chain.nBubbles || 1) * 3;
+            fullCost = (chain.nBubbles || 1);
         }
         const clippedCost = Math.ceil(fullCost * tFraction);
 
@@ -261,18 +261,19 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
 
     if (seedId === null) return null;
 
-    // BFS walk with budget — prefer smallest-cost neighbor first
+    // BFS walk with budget — prefer closest-to-center chains first
     const activated = new Map();
-    const queue = [{ id: seedId, depth: 0, cost: chainInfo.get(seedId).clippedCost }];
+    const seedInfo = chainInfo.get(seedId);
+    const queue = [{ id: seedId, depth: 0, dist: seedInfo.distToCenter }];
     const visited = new Set([seedId]);
     let totalClippedCost = 0;
     let totalFullCost = 0;
 
     while (queue.length > 0) {
-        // Pick the lowest-cost entry from the queue
+        // Pick the closest-to-center entry from the queue
         let bestIdx = 0;
         for (let i = 1; i < queue.length; i++) {
-            if (queue[i].cost < queue[bestIdx].cost) bestIdx = i;
+            if (queue[i].dist < queue[bestIdx].dist) bestIdx = i;
         }
         const { id, depth } = queue[bestIdx];
         queue[bestIdx] = queue[queue.length - 1];
@@ -283,7 +284,7 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
 
         // Check budget
         if (totalClippedCost + info.clippedCost > budget && activated.size > 0) {
-            continue; // skip but keep going to try smaller chains
+            continue;
         }
 
         activated.set(id, {
@@ -304,7 +305,7 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
             if (visited.has(nid)) continue;
             visited.add(nid);
             const nInfo = chainInfo.get(nid);
-            queue.push({ id: nid, depth: depth + 1, cost: nInfo ? nInfo.clippedCost : Infinity });
+            queue.push({ id: nid, depth: depth + 1, dist: nInfo ? nInfo.distToCenter : Infinity });
         }
     }
 
@@ -499,7 +500,7 @@ export function drawPhysicsDebugHUD(ctx, cw) {
     const totalChains = state.detailData.chains.length;
 
     const lines = [
-        'PHYSICS ZONE',
+        'PHYSICS ZONE  [L]',
         `seed: ${seed}`,
         `chains: ${activated.size} / ${totalChains}`,
         `est. nodes: ${totalClippedCost} / ${budget}`,
