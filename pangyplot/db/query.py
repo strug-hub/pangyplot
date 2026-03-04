@@ -38,6 +38,10 @@ def _build_chain_polyline(chain, stepidx, seg_index):
                 max_step = re
 
     # Ref-path walk when we have step coordinates
+    # Track which segment produced each polyline endpoint.
+    polyline_start_seg = None
+    polyline_end_seg = None
+
     if min_step is not None and max_step is not None:
         total_steps = max_step - min_step + 1
         stride = max(1, total_steps // 200)
@@ -50,6 +54,9 @@ def _build_chain_polyline(chain, stepidx, seg_index):
                 pt = _seg_centroid(sid, seg_index)
                 if pt and (not raw_polyline or raw_polyline[-1] != pt):
                     raw_polyline.append(pt)
+                    if polyline_start_seg is None:
+                        polyline_start_seg = sid
+                    polyline_end_seg = sid
             step += stride
 
         # Always include the endpoint
@@ -58,13 +65,19 @@ def _build_chain_polyline(chain, stepidx, seg_index):
             pt = _seg_centroid(sid, seg_index)
             if pt and (not raw_polyline or raw_polyline[-1] != pt):
                 raw_polyline.append(pt)
+                polyline_end_seg = sid
     else:
-        # Non-ref chain: use bubble centroids from ODGI layout
+        # Non-ref chain: use bubble centroids from ODGI layout.
+        # Polyline follows bubble order (source→sink).
         raw_polyline = []
         for b in chain.bubbles:
             cx = (b.x1 + b.x2) / 2.0
             cy = (b.y1 + b.y2) / 2.0
             raw_polyline.append((cx, cy))
+        if chain.bubbles[0].source_segments:
+            polyline_start_seg = chain.bubbles[0].source_segments[0]
+        if chain.bubbles[-1].sink_segments:
+            polyline_end_seg = chain.bubbles[-1].sink_segments[0]
 
     if len(raw_polyline) < 2:
         # Single-point chain: use bubble bbox corners as a short segment
@@ -125,6 +138,9 @@ def _build_chain_polyline(chain, stepidx, seg_index):
         # Internal fields for inline popping (stripped before JSON response)
         "_bubble_ids": [b.id for b in chain.bubbles],
         "_layout_span": span,  # layout-coordinate extent for screen-size estimate
+        # Segment IDs at polyline endpoints (for junction graph wiring)
+        "_start_seg": polyline_start_seg,
+        "_end_seg": polyline_end_seg,
     }
 
 
@@ -493,12 +509,25 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
     MAX_HOPS = 8
 
     # Map: seg_id → chain_id (for ALL endpoint segs: source + sink)
+    # Also: seg_id → [x, y] polyline coordinate.
+    # Uses _start_seg/_end_seg (the actual segment IDs at each polyline end)
+    # to build an exact mapping — no orientation guessing needed.
     endpoint_seg_to_chain = {}
+    endpoint_polyline_coord = {}  # seg_id → [x, y] from chain polyline
     for cd in chains_data:
+        pl = cd.get("polyline")
         for sid in (cd.get("source_segs") or []):
             endpoint_seg_to_chain[sid] = cd["id"]
         for sid in (cd.get("sink_segs") or []):
             endpoint_seg_to_chain[sid] = cd["id"]
+        # Map the segments that actually produced polyline[0] and polyline[-1]
+        if pl and len(pl) >= 2:
+            start_seg = cd.get("_start_seg")
+            end_seg = cd.get("_end_seg")
+            if start_seg is not None:
+                endpoint_polyline_coord[start_seg] = pl[0]
+            if end_seg is not None:
+                endpoint_polyline_coord[end_seg] = pl[-1]
 
     # Collect naked segment IDs visited during BFS
     naked_visited = set()
@@ -550,18 +579,27 @@ def _find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
             naked_centroids[sid] = coord
             junction_nodes.append(coord)
 
-    # Also cache centroids for endpoint segs (for links to/from them).
+    # Cache coordinates for endpoint segs (for links to/from them).
+    # Prefer the chain polyline endpoint coordinate over the segment centroid,
+    # because child chains (depth > 0) have polyline endpoints that diverge
+    # significantly from segment centroids.
     # Endpoint segs that are naked (not owned by any bubble) also get added
     # to junction_nodes — they're visual hubs even though they're chain ends.
     endpoint_centroids = {}
     for sid in endpoint_reached | set(endpoint_seg_to_chain.keys()):
         if sid not in naked_centroids:
-            pt = _seg_centroid(sid, seg_index)
-            if pt:
+            # Prefer polyline coordinate (matches visual chain position)
+            if sid in endpoint_polyline_coord:
+                plpt = endpoint_polyline_coord[sid]
+                coord = [round(plpt[0], 1), round(plpt[1], 1)]
+            else:
+                pt = _seg_centroid(sid, seg_index)
+                if not pt:
+                    continue
                 coord = [round(pt[0], 1), round(pt[1], 1)]
-                endpoint_centroids[sid] = coord
-                if bubbleidx.segment_in_bubble(sid) is None:
-                    junction_nodes.append(coord)
+            endpoint_centroids[sid] = coord
+            if bubbleidx.segment_in_bubble(sid) is None:
+                junction_nodes.append(coord)
 
     # Build junction links from GFA edges
     junction_links = []
