@@ -4,7 +4,7 @@
 import { state } from './simplify-state.js';
 import { getViewport } from './viewport.js';
 
-let debugActive = true;
+let debugActive = false;
 let activationSet = null;
 let adjacency = null;          // Map<chainId, Set<chainId>>
 let adjacencyDataId = null;    // identity ref to track detailData changes
@@ -34,7 +34,6 @@ export function togglePhysicsDebug() {
         logActivationSet();
     } else {
         console.log('[physics-zone] OFF');
-        activationSet = null;
     }
 }
 
@@ -43,9 +42,18 @@ export function isPhysicsDebugActive() {
 }
 
 export function getActivationSet() {
-    if (!debugActive || !state.detailData) return null;
+    if (!state.detailData) return null;
     recomputeIfDirty();
     return activationSet;
+}
+
+/**
+ * Return the seed chain ID from the current activation set, or null.
+ * Always available (not gated on debug overlay).
+ */
+export function getSeedChainId() {
+    const set = getActivationSet();
+    return set ? set.seed : null;
 }
 
 // ---------------------------------------------------------------

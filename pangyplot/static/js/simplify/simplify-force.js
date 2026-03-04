@@ -31,7 +31,7 @@ export function initForce() {
 }
 
 function onTick() {
-    if (state.detailPhase === 'static' || state.detailPhase === 'collapsing') {
+    if (state.detailPhase !== 'none' && state.detailPhase !== 'fading-out') {
         scheduleFrame();
     }
 }

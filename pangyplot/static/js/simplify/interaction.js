@@ -2,7 +2,7 @@
 
 import { state } from './simplify-state.js';
 import { scheduleFrame } from './render.js';
-import { scheduleDetailFetch, exitDetailMode } from './detail.js';
+import { scheduleDetailFetch, exitDetailMode, togglePopChain } from './detail.js';
 import { togglePhysicsDebug } from './physics-zone.js';
 import { scheduleHashUpdate } from './hash-navigation.js';
 import { resizeCanvas, fitToScreen } from './viewport.js';
@@ -146,6 +146,16 @@ export function setupInteraction() {
         } else {
             scheduleDetailFetch();
         }
+    });
+
+    // --- X key: pop/unpop hovered chain ---
+    window.addEventListener('keydown', e => {
+        if (e.code !== 'KeyX' || e.repeat) return;
+        if (!state.detailData) return;
+        const chain = state.hoveredChain;
+        if (!chain) return;
+        togglePopChain(chain);
+        scheduleFrame();
     });
 
     // --- Double-click to reset view ---

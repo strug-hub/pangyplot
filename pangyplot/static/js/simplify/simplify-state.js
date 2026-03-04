@@ -31,7 +31,11 @@ export const state = {
     detailOpacity: 0,
     skeletonOpacity: 1,
     detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
-    physicsDebug: true,         // L-key toggle: show physics activation zone overlay
+    physicsDebug: false,        // L-key toggle: show physics activation zone overlay
+
+    // Force simulation
+    activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)
+    poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
 
     // Hover
     hoveredChain: null,

@@ -8,6 +8,9 @@ import { xToBp, getChromosome, isReady } from './spine.js';
 import { getViewport } from './viewport.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
 import { selectLevel } from './lod.js';
+import { clearForce, addPoppedNodes, removePoppedNodes } from './simplify-force.js';
+import { deserializeChainGraph } from './simplify-detail-adapter.js';
+import { getActivationSet } from './physics-zone.js';
 
 let fadeStartTime = 0;
 let fetchController = null;
@@ -61,6 +64,73 @@ function processResponse(apiResponse) {
 function clearDetailState() {
     fetchedRegion = null;
     state.detailData = null;
+    clearForce();
+    state.activeSeedChainId = null;
+    state.poppedChainIds.clear();
+}
+
+// ---------------------------------------------------------------
+// Populate force simulation with the seed chain's graph data
+// ---------------------------------------------------------------
+function populateSeedForce() {
+    clearForce();
+    state.activeSeedChainId = null;
+    state.poppedChainIds.clear();
+
+    const activation = getActivationSet();
+    if (!activation) return;
+
+    const seedId = activation.seed;
+    popChainById(seedId, activation);
+    if (state.poppedChainIds.has(seedId)) {
+        state.activeSeedChainId = seedId;
+    }
+}
+
+/**
+ * Pop a single chain into the force simulation by its ID.
+ * Returns true if the chain was successfully popped.
+ */
+function popChainById(chainId, activation) {
+    if (!state.detailData) return false;
+    const chain = state.detailData.chains.find(c => c.id === chainId);
+    if (!chain || !chain.graph) return false;
+
+    let clipRange = null;
+    if (activation) {
+        const clipInfo = activation.activated.get(chainId);
+        if (clipInfo && (clipInfo.tStart > 0 || clipInfo.tEnd < 1)) {
+            clipRange = { tStart: clipInfo.tStart, tEnd: clipInfo.tEnd };
+        }
+    }
+
+    const { nodes, links } = deserializeChainGraph(chain.graph, chain, clipRange);
+    if (nodes.length === 0) return false;
+
+    addPoppedNodes(nodes, links);
+    state.poppedChainIds.add(chainId);
+    return true;
+}
+
+/**
+ * Toggle pop/unpop for a chain. Called from X key handler.
+ * If the chain has no graph data, this is a no-op.
+ */
+export function togglePopChain(chain) {
+    if (!chain || !state.detailData) return;
+
+    if (state.poppedChainIds.has(chain.id)) {
+        // Unpop: remove from simulation
+        removePoppedNodes(chain.id);
+        state.poppedChainIds.delete(chain.id);
+        if (state.activeSeedChainId === chain.id) {
+            state.activeSeedChainId = null;
+        }
+    } else {
+        // Pop: add to simulation
+        const activation = getActivationSet();
+        popChainById(chain.id, activation);
+    }
 }
 
 // ---------------------------------------------------------------
@@ -189,20 +259,6 @@ async function fetchDetailForViewport() {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const apiData = await resp.json();
         if (signal.aborted) return;
-
-        if (apiData.timings) {
-            const t = apiData.timings;
-            console.log(
-                `%c[detail-tile]%c ${t.total}ms total | ` +
-                `decompose: ${t.decompose}ms | ` +
-                `inline_pop: ${t.inline_pop}ms (${t.n_popped}/${t.n_chains}) | ` +
-                `junction: ${t.junction_bfs}ms | ` +
-                `sibling: ${t.sibling_bfs}ms | ` +
-                `merge: ${t.merge_adj}ms | ` +
-                `bypasses: ${t.n_bypasses}`,
-                'color: #4488ff; font-weight: bold', 'color: inherit'
-            );
-        }
 
         fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr, expandThreshold };
         state.detailData = processResponse(apiData);

@@ -7,6 +7,7 @@ import { getGenePins } from './genes.js';
 import { formatBp } from './format-utils.js';
 import { xToBp, getChromosome } from './spine.js';
 import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
+import { getForceNodes, getForceLinks } from './simplify-force.js';
 
 let rafId = null;
 
@@ -33,6 +34,8 @@ export function updateDetailBar() {
 function drawChainPolylines(chains, baseWidth, hovChain) {
     const ctx = state.ctx;
     for (const chain of chains) {
+        // Skip popped chains — replaced by force graph
+        if (state.poppedChainIds.size > 0 && state.poppedChainIds.has(chain.id)) continue;
         const pl = chain.polyline;
         if (pl.length < 2) continue;
         const isHovered = hovChain && chain === hovChain;
@@ -63,6 +66,38 @@ function drawChainPolylines(chains, baseWidth, hovChain) {
 }
 
 
+function drawForceGraph(ctx, baseWidth) {
+    const nodes = getForceNodes();
+    const links = getForceLinks();
+    if (nodes.length === 0) return;
+
+    // Links
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.6 * state.detailOpacity;
+    ctx.beginPath();
+    for (const link of links) {
+        const s = link.source, t = link.target;
+        if (s.x == null || t.x == null) continue;
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+    }
+    ctx.stroke();
+
+    // Nodes — radius in data-space units; we're inside ctx.scale(zoom)
+    const nodeR = Math.max(1.5, 3 / state.zoom);
+    ctx.globalAlpha = state.detailOpacity;
+    for (const node of nodes) {
+        if (node.x == null) continue;
+        ctx.fillStyle = node.type === 'bubble' ? '#00cccc' : '#fff';
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeR, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = state.detailOpacity;
+}
+
 function drawDetail() {
     const ctx = state.ctx;
     ctx.globalAlpha = state.detailOpacity;
@@ -89,6 +124,9 @@ function drawDetail() {
     // --- Chain polylines ---
     const baseWidth = Math.max(1.5, 3 / state.zoom);
     drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
+
+    // --- Force graph (seed chain) ---
+    drawForceGraph(ctx, baseWidth);
 
     // --- Gap-fillers: dashed connectors between GFA-adjacent sibling chains ---
     if (state.detailData.siblingConnectors && state.detailData.siblingConnectors.length > 0) {
