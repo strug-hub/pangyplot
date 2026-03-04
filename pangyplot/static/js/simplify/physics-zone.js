@@ -261,15 +261,23 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
 
     if (seedId === null) return null;
 
-    // BFS walk with budget
+    // BFS walk with budget — prefer smallest-cost neighbor first
     const activated = new Map();
-    const queue = [{ id: seedId, depth: 0 }];
+    const queue = [{ id: seedId, depth: 0, cost: chainInfo.get(seedId).clippedCost }];
     const visited = new Set([seedId]);
     let totalClippedCost = 0;
     let totalFullCost = 0;
 
     while (queue.length > 0) {
-        const { id, depth } = queue.shift();
+        // Pick the lowest-cost entry from the queue
+        let bestIdx = 0;
+        for (let i = 1; i < queue.length; i++) {
+            if (queue[i].cost < queue[bestIdx].cost) bestIdx = i;
+        }
+        const { id, depth } = queue[bestIdx];
+        queue[bestIdx] = queue[queue.length - 1];
+        queue.pop();
+
         const info = chainInfo.get(id);
         if (!info || !info.visible) continue;
 
@@ -295,7 +303,8 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         for (const nid of neighbors) {
             if (visited.has(nid)) continue;
             visited.add(nid);
-            queue.push({ id: nid, depth: depth + 1 });
+            const nInfo = chainInfo.get(nid);
+            queue.push({ id: nid, depth: depth + 1, cost: nInfo ? nInfo.clippedCost : Infinity });
         }
     }
 

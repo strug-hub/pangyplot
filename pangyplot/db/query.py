@@ -1,169 +1,11 @@
-from collections import Counter
-from types import SimpleNamespace
-from pangyplot.objects.Chain import Chain
-from pangyplot.preprocess.skeleton.graph_simplify import rdp_simplify
-
-
-def _seg_centroid(sid, seg_index):
-    """Return (cx, cy) for a segment id, or None if invalid."""
-    if sid < len(seg_index.valid) and seg_index.valid[sid]:
-        return ((seg_index.x1[sid] + seg_index.x2[sid]) / 2.0,
-                (seg_index.y1[sid] + seg_index.y2[sid]) / 2.0)
-    return None
-
-
-def _build_chain_polyline(chain, stepidx, seg_index):
-    """Build an RDP-simplified polyline for a chain.
-
-    For ref-path chains (bubbles have range_inclusive), walks reference steps
-    at adaptive stride. For non-ref chains, falls back to bubble centroids.
-
-    Per-bubble fractional positions along the chain are returned in
-    ``bubble_positions``.
-    """
-    if not chain.bubbles:
-        return None
-
-    min_step = None
-    max_step = None
-    total_length = 0
-    subtype_counter = Counter()
-    for b in chain.bubbles:
-        total_length += b.length
-        subtype_counter[b.subtype] += 1
-        for rs, re in b.range_inclusive:
-            if min_step is None or rs < min_step:
-                min_step = rs
-            if max_step is None or re > max_step:
-                max_step = re
-
-    # Ref-path walk when we have step coordinates
-    # Track which segment produced each polyline endpoint.
-    polyline_start_seg = None
-    polyline_end_seg = None
-
-    if min_step is not None and max_step is not None:
-        total_steps = max_step - min_step + 1
-        stride = max(1, total_steps // 200)
-        raw_polyline = []
-
-        step = min_step
-        while step <= max_step:
-            if step < len(stepidx.segments):
-                sid = stepidx.segments[step]
-                pt = _seg_centroid(sid, seg_index)
-                if pt and (not raw_polyline or raw_polyline[-1] != pt):
-                    raw_polyline.append(pt)
-                    if polyline_start_seg is None:
-                        polyline_start_seg = sid
-                    polyline_end_seg = sid
-            step += stride
-
-        # Always include the endpoint
-        if max_step < len(stepidx.segments):
-            sid = stepidx.segments[max_step]
-            pt = _seg_centroid(sid, seg_index)
-            if pt and (not raw_polyline or raw_polyline[-1] != pt):
-                raw_polyline.append(pt)
-                polyline_end_seg = sid
-    else:
-        # Non-ref chain: use bubble centroids from ODGI layout.
-        # Polyline follows bubble order (source→sink).
-        raw_polyline = []
-        for b in chain.bubbles:
-            cx = (b.x1 + b.x2) / 2.0
-            cy = (b.y1 + b.y2) / 2.0
-            raw_polyline.append((cx, cy))
-        if chain.bubbles[0].source_segments:
-            polyline_start_seg = chain.bubbles[0].source_segments[0]
-        if chain.bubbles[-1].sink_segments:
-            polyline_end_seg = chain.bubbles[-1].sink_segments[0]
-
-    if len(raw_polyline) < 2:
-        # Single-point chain: use bubble bbox corners as a short segment
-        if len(chain.bubbles) == 1:
-            b = chain.bubbles[0]
-            p1 = ((b.x1 + b.x2) / 2.0 - 0.5, (b.y1 + b.y2) / 2.0)
-            p2 = ((b.x1 + b.x2) / 2.0 + 0.5, (b.y1 + b.y2) / 2.0)
-            raw_polyline = [p1, p2]
-        else:
-            return None
-
-    # Bubble positions: fractional t along chain for each leaf bubble
-    bubble_positions = []
-    step_span = (max_step - min_step) if (min_step is not None and max_step is not None and max_step > min_step) else 0
-    if step_span > 0:
-        for b in chain.bubbles:
-            if b.children:
-                continue
-            # Midpoint step of this bubble's range_inclusive
-            mid_step = None
-            for rs, re in b.range_inclusive:
-                mid_step = (rs + re) / 2.0
-                break
-            if mid_step is None:
-                continue
-            t = (mid_step - min_step) / step_span
-            t = max(0.0, min(1.0, t))
-            bubble_positions.append({
-                "t": round(t, 4),
-                "subtype": b.subtype,
-                "length": b.length,
-                "id": f"b{b.id}",
-                "pos": b.chain_step,
-            })
-
-    # BP span on the reference path (for screen-width LOD decisions)
-    if min_step is not None and max_step is not None \
-       and min_step < len(stepidx.starts) and max_step < len(stepidx.ends):
-        bp_span = stepidx.ends[max_step] - stepidx.starts[min_step]
-    else:
-        bp_span = total_length
-
-    span = max(abs(raw_polyline[-1][0] - raw_polyline[0][0]),
-                abs(raw_polyline[-1][1] - raw_polyline[0][1]))
-    epsilon = max(0.5, span / 500)
-    polyline = rdp_simplify(raw_polyline, epsilon)
-
-    return {
-        "id": f"c{chain.id}",
-        "polyline": [[round(x, 1), round(y, 1)] for x, y in polyline],
-        "length": total_length,
-        "bp_span": bp_span,
-        "n_bubbles": len(chain.bubbles),
-        "subtype": subtype_counter.most_common(1)[0][0],
-        "source_segs": chain.bubbles[0].source_segments,
-        "sink_segs": chain.bubbles[-1].sink_segments,
-        "bubble_positions": bubble_positions,
-        # Internal fields for inline popping (stripped before JSON response)
-        "_bubble_ids": [b.id for b in chain.bubbles],
-        "_layout_span": span,  # layout-coordinate extent for screen-size estimate
-        # Segment IDs at polyline endpoints (for junction graph wiring)
-        "_start_seg": polyline_start_seg,
-        "_end_seg": polyline_end_seg,
-    }
+from pangyplot.db.chain_polyline import (
+    _seg_centroid, build_chain_polyline, build_connector,
+)
 
 
 def _bubble_layout_span(bubble):
     """Layout coordinate extent (max of x and y span)."""
     return max(abs(bubble.x2 - bubble.x1), abs(bubble.y2 - bubble.y1))
-
-
-def _build_connector(parent_chain, leaf_bubbles, stepidx, seg_index,
-                     connector_idx, depth):
-    """Build a connector polyline from a run of leaf bubbles."""
-    sub_chain = Chain(
-        chain_id=f"{parent_chain.id}_r{connector_idx}",
-        bubbles=leaf_bubbles)
-    entry = _build_chain_polyline(sub_chain, stepidx, seg_index)
-    if entry is None:
-        return None
-    entry["id"] = f"c{parent_chain.id}_r{connector_idx}"
-    entry["depth"] = depth
-    entry["connector"] = True
-    entry["bubble_ids"] = [b.id for b in leaf_bubbles]
-    entry["parent_chain"] = f"c{parent_chain.id}"
-    return entry
 
 
 def _decompose_chain(chain, expand_threshold, bubble_threshold,
@@ -215,7 +57,7 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
     for b in chain.bubbles:
         if b.children:
             if len(leaf_run) >= 2:
-                connector = _build_connector(
+                connector = build_connector(
                     chain, leaf_run, stepidx, seg_index, connector_idx, depth)
                 if connector:
                     chains.append(connector)
@@ -225,7 +67,7 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
             leaf_run.append(b)
     # Trailing run
     if len(leaf_run) >= 2:
-        connector = _build_connector(
+        connector = build_connector(
             chain, leaf_run, stepidx, seg_index, connector_idx, depth)
         if connector:
             chains.append(connector)
@@ -235,7 +77,7 @@ def _decompose_chain(chain, expand_threshold, bubble_threshold,
 
 def _chain_or_bubbles(chain, bubble_threshold, stepidx, seg_index, depth):
     """Return a chain as a polyline with inline bubble_positions."""
-    entry = _build_chain_polyline(chain, stepidx, seg_index)
+    entry = build_chain_polyline(chain, stepidx, seg_index)
     if entry is None:
         return {"chains": [], "bubbles": []}
     entry["depth"] = depth
