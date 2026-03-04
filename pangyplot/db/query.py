@@ -233,8 +233,6 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     catches child chains whose parent superbubble step range is outside the
     viewport.
     """
-    POP_THRESHOLD_PX = 30
-
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
     gfaidx = indexes.gfa_index.get(chrom, None)
@@ -243,15 +241,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         raise ValueError(
             f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
-    # Compute pixels-per-layout-unit from ppbp using global bp↔layout ratio.
     seg_index = gfaidx.segment_index
-    total_bp = stepidx.ends[-1] - stepidx.starts[0] if len(stepidx.ends) > 0 else 1
-    first_sid = stepidx.segments[0] if len(stepidx.segments) > 0 else 0
-    last_sid = stepidx.segments[-1] if len(stepidx.segments) > 0 else 0
-    x_first = (seg_index.x1[first_sid] + seg_index.x2[first_sid]) / 2.0
-    x_last = (seg_index.x1[last_sid] + seg_index.x2[last_sid]) / 2.0
-    total_layout_x = abs(x_last - x_first) or 1.0
-    pplp = ppbp * total_bp / total_layout_x  # pixels per layout unit
 
     # --- Decompose chains and collect structural adjacency + bypass links ---
     decomp_adj = {}
@@ -289,13 +279,11 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
-    # --- Inline pop (subgraph expansion for wide chains) ---
+    # --- Inline pop (subgraph expansion for all chains with bubbles) ---
     n_popped = 0
     result_chains = []
     for chain_data in chain_result["chains"]:
-        # Use layout span for screen-size estimate (works for all chains)
-        layout_span = chain_data.pop("_layout_span", 0)
-        screen_width = layout_span * pplp
+        chain_data.pop("_layout_span", None)
 
         # Extract internal bubble IDs (already loaded during get_chains)
         # and strip from the response — connector chains keep their public
@@ -305,7 +293,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             # Connector chains store IDs under "bubble_ids"
             bubble_ids = chain_data.get("bubble_ids", [])
 
-        if screen_width >= POP_THRESHOLD_PX and chain_data["n_bubbles"] > 0:
+        if chain_data["n_bubbles"] > 0:
             try:
                 bubbles = [bubbleidx[bid] for bid in bubble_ids]
                 graph = _bubbles_to_subgraph(
