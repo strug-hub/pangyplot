@@ -721,13 +721,19 @@ def _find_sibling_connectors(chains_data, gfaidx, bubbleidx):
 
 
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
-                    expand_threshold=None):
+                    expand_threshold=None,
+                    layout_min_x=None, layout_max_x=None):
     """Single-request detail tile: chains + inline subgraphs for popped chains.
 
     The backend decides which chains to pop based on screen width.
     Uses ``_layout_span`` (layout-coordinate extent) converted to pixels
     via a global bp→layout ratio, so chains without reference coordinates
     (e.g. child chains from decomposed superbubbles) are handled correctly.
+
+    When ``layout_min_x``/``layout_max_x`` are provided, top-level bubbles
+    are queried by layout x-coordinate instead of bp→step conversion, which
+    catches child chains whose parent superbubble step range is outside the
+    viewport.
     """
     POP_THRESHOLD_PX = 30
 
@@ -751,8 +757,23 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     total_layout_x = abs(x_last - x_first) or 1.0
     pplp = ppbp * total_bp / total_layout_x  # pixels per layout unit
 
-    chain_result = get_chains(indexes, genome, chrom, start, end,
-                              expand_threshold=expand_threshold)
+    if layout_min_x is not None and layout_max_x is not None:
+        # Layout-based query: catches bubbles whose step range is outside
+        # the bp viewport but whose layout coordinates are on-screen.
+        chains = bubbleidx.get_top_level_bubbles_by_layout(
+            layout_min_x, layout_max_x, as_chains=True)
+        chain_results = []
+        bubble_results = []
+        for chain in chains:
+            r = _decompose_chain(
+                chain, expand_threshold, None,
+                bubbleidx, stepidx, seg_index, depth=0, max_depth=3)
+            chain_results.extend(r["chains"])
+            bubble_results.extend(r["bubbles"])
+        chain_result = {"chains": chain_results, "bubbles": bubble_results}
+    else:
+        chain_result = get_chains(indexes, genome, chrom, start, end,
+                                  expand_threshold=expand_threshold)
 
     result_chains = []
     for chain_data in chain_result["chains"]:

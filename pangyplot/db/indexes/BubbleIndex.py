@@ -1,5 +1,5 @@
 from collections import defaultdict
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from array import array
 
 import pangyplot.db.sqlite.bubble_db as db
@@ -40,17 +40,19 @@ class BubbleIndex:
             self.ids = array('I')
 
             parentless_bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
-            
+
             ranges = []
             for bubble in parentless_bubbles:
                 for start, end in bubble.get_ranges(exclusive=False):
                     ranges.append((start, end, bubble.id))
-            
+
             ranges.sort()
             for start, end, bid in ranges:
                 self.start_steps.append(start)
                 self.end_steps.append(end)
                 self.ids.append(bid)
+
+            self._build_layout_arrays(parentless_bubbles)
 
             self.save_quick_index()
 
@@ -67,13 +69,50 @@ class BubbleIndex:
             self.cached_bubbles.pop(next(iter(self.cached_bubbles)))  # Simple FIFO
         self.cached_bubbles[bubble_id] = bubble_obj
 
+    def _build_layout_arrays(self, parentless_bubbles):
+        """Build layout_x1/x2/ids arrays sorted by layout_x1, plus prefix_max_x2.
+
+        prefix_max_x2[i] = max(layout_x2[0..i]) — monotonically non-decreasing,
+        enabling bisect to skip the initial portion where no entry can overlap.
+        """
+        layout_entries = []
+        for bubble in parentless_bubbles:
+            lx1 = min(bubble.x1, bubble.x2)
+            lx2 = max(bubble.x1, bubble.x2)
+            layout_entries.append((lx1, lx2, bubble.id))
+        layout_entries.sort()
+
+        self.layout_x1 = array('f')
+        self.layout_x2 = array('f')
+        self.layout_ids = array('I')
+        for lx1, lx2, bid in layout_entries:
+            self.layout_x1.append(lx1)
+            self.layout_x2.append(lx2)
+            self.layout_ids.append(bid)
+
+        self._build_prefix_max()
+
+    def _build_prefix_max(self):
+        """Build prefix_max_x2 from layout_x2. Rebuilt on load, not serialized."""
+        n = len(self.layout_x2)
+        self.prefix_max_x2 = array('f', bytes(n * 4))
+        if n > 0:
+            self.prefix_max_x2[0] = self.layout_x2[0]
+            for i in range(1, n):
+                prev = self.prefix_max_x2[i - 1]
+                cur = self.layout_x2[i]
+                self.prefix_max_x2[i] = cur if cur > prev else prev
+
     def serialize(self):
         return {
             "bubble_to_parent": self.bubble_to_parent.tolist(),
             "segment_to_bubble": self.segment_to_bubble.tolist(),
             "start_steps": self.start_steps.tolist(),
             "end_steps": self.end_steps.tolist(),
-            "ids": self.ids.tolist()
+            "ids": self.ids.tolist(),
+            "layout_x1": self.layout_x1.tolist(),
+            "layout_x2": self.layout_x2.tolist(),
+            "layout_ids": self.layout_ids.tolist(),
         }
 
     def get_chain_ends(self, chain_id):
@@ -111,6 +150,19 @@ class BubbleIndex:
         self.start_steps = array('I', quick_index["start_steps"])
         self.end_steps = array('I', quick_index["end_steps"])
         self.ids = array('I', quick_index["ids"])
+
+        if "layout_x1" in quick_index:
+            self.layout_x1 = array('f', quick_index["layout_x1"])
+            self.layout_x2 = array('f', quick_index["layout_x2"])
+            self.layout_ids = array('I', quick_index["layout_ids"])
+            self._build_prefix_max()
+        else:
+            # Auto-rebuild: load parentless bubbles, build layout arrays, re-save
+            print(f"  [BubbleIndex] Rebuilding layout arrays for {self.dir}...")
+            parentless_bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
+            self._build_layout_arrays(parentless_bubbles)
+            self.save_quick_index()
+
         return True
 
     def create_chains(self, bubbles, parent_bubble=None):
@@ -145,6 +197,32 @@ class BubbleIndex:
             bubbles.extend(bubble_results)
 
         #results.extend(self._collect_non_ref(results))
+
+        if as_chains:
+            return self.create_chains(bubbles)
+
+        return bubbles
+
+    def get_top_level_bubbles_by_layout(self, min_x, max_x, as_chains=False):
+        """Return top-level bubbles whose layout bbox overlaps [min_x, max_x].
+
+        Unlike get_top_level_bubbles, returns whole superbubbles (no descendant
+        traversal) — _decompose_chain handles progressive detail.
+
+        Overlap condition: layout_x1 <= max_x AND layout_x2 >= min_x.
+        Two bisects narrow the scan range:
+        - bisect_right(layout_x1, max_x) → upper bound (x1 <= max_x)
+        - bisect_left(prefix_max_x2, min_x) → lower bound (no entry
+          before this can have x2 >= min_x, since prefix_max is non-decreasing)
+        """
+        bubbles = []
+
+        upper = bisect_right(self.layout_x1, max_x)
+        lower = bisect_left(self.prefix_max_x2, min_x, 0, upper)
+        for i in range(lower, upper):
+            if self.layout_x2[i] >= min_x:
+                bubble_id = self.layout_ids[i]
+                bubbles.append(self[bubble_id])
 
         if as_chains:
             return self.create_chains(bubbles)

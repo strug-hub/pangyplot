@@ -181,7 +181,8 @@ async function fetchDetailForViewport() {
     const url = `/detail-tiles?genome=${encodeURIComponent(state.GENOME)}`
         + `&chromosome=${encodeURIComponent(chr)}`
         + `&start=${Math.max(0, Math.round(bpLeft))}&end=${Math.round(bpRight)}`
-        + `&ppbp=${ppbp}&expand=${expandThreshold}`;
+        + `&ppbp=${ppbp}&expand=${expandThreshold}`
+        + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
 
     try {
         const resp = await fetch(url, { signal });

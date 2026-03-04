@@ -163,11 +163,15 @@ def detail_tiles():
     end = int(request.args.get("end"))
     ppbp = float(request.args.get("ppbp"))
     expand = request.args.get("expand", type=int, default=None)
+    layout_min_x = request.args.get("layout_min_x", type=float, default=None)
+    layout_max_x = request.args.get("layout_max_x", type=float, default=None)
 
-    print(f"Getting detail tile for {genome}#{chrom}:{start}-{end} ppbp={ppbp:.6f} expand={expand}...")
+    print(f"Getting detail tile for {genome}#{chrom}:{start}-{end} ppbp={ppbp:.6f} expand={expand} layout_x=[{layout_min_x},{layout_max_x}]...")
     try:
         result = query.get_detail_tile(current_app, genome, chrom, start, end,
-                                       ppbp, expand_threshold=expand)
+                                       ppbp, expand_threshold=expand,
+                                       layout_min_x=layout_min_x,
+                                       layout_max_x=layout_max_x)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 
