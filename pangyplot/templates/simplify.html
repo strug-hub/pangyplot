@@ -104,6 +104,7 @@
             font-family: 'SF Mono', Consolas, monospace;
         }
         #detail-phase.none { color: #555; }
+        #detail-phase.fetching { color: #e44; }
         #detail-phase.fading { color: #f90; }
         #detail-phase.static { color: #0f0; }
 
@@ -119,9 +120,7 @@
             font-size: 12px;
             font-variant-numeric: tabular-nums;
             color: #888;
-            visibility: hidden;
         }
-        #detail-bar.active { visibility: visible; }
         #detail-bar span.val { color: #5bb8f0; font-weight: 600; }
 
         #tooltip {
@@ -156,11 +155,10 @@
         <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
         <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
         <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
-        <span id="detail-phase" class="none"></span>
         <span id="stats"></span>
     </div>
     <div id="detail-bar">
-        <span id="detail-phase2" class="none"></span>
+        <span id="detail-phase" class="none">DETAILS</span>
         <span><span id="detail-chains" class="val">--</span> details</span>
         <span><span id="detail-exposed" class="val">--</span> exposed</span>
         <span><span id="detail-nodes" class="val">--</span> bubbles</span>

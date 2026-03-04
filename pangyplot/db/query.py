@@ -73,8 +73,8 @@ def _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx):
             # Naked segments = parent's segments minus everything owned by children
             visible_seg_ids.update(b_segs - child_seg_set)
 
-    # Fetch full subgraph for link discovery
-    segments, raw_links = gfaidx.get_subgraph(all_seg_ids, stepidx)
+    # Fetch full subgraph for link discovery (fast=True: in-memory link arrays)
+    segments, raw_links = gfaidx.get_subgraph(all_seg_ids, stepidx, fast=True)
     visible_segments = [s for s in segments if s.id in visible_seg_ids]
 
     # Redirect links: segment inside bubble → bubble node
@@ -233,6 +233,10 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     catches child chains whose parent superbubble step range is outside the
     viewport.
     """
+    import time
+    timings = {}
+    t0 = time.perf_counter()
+
     POP_THRESHOLD_PX = 30
 
     stepidx = indexes.step_index.get((chrom, genome), None)
@@ -253,7 +257,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     total_layout_x = abs(x_last - x_first) or 1.0
     pplp = ppbp * total_bp / total_layout_x  # pixels per layout unit
 
-    # Decompose chains and collect structural adjacency + bypass links
+    # --- Decompose chains and collect structural adjacency + bypass links ---
+    t1 = time.perf_counter()
     decomp_adj = {}
     bypass_links = []
 
@@ -288,7 +293,11 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
+    timings["decompose"] = round((time.perf_counter() - t1) * 1000, 1)
 
+    # --- Inline pop (subgraph expansion for wide chains) ---
+    t2 = time.perf_counter()
+    n_popped = 0
     result_chains = []
     for chain_data in chain_result["chains"]:
         # Use layout span for screen-size estimate (works for all chains)
@@ -310,6 +319,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     bubbles, bubbleidx, gfaidx, stepidx)
                 chain_data["popped"] = True
                 chain_data["graph"] = graph
+                n_popped += 1
             except Exception as e:
                 print(f"  Inline pop failed for {chain_data['id']}: {e}")
                 chain_data["popped"] = False
@@ -319,19 +329,34 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             chain_data["graph"] = None
 
         result_chains.append(chain_data)
+    timings["inline_pop"] = round((time.perf_counter() - t2) * 1000, 1)
 
+    # --- Junction graph BFS ---
+    t3 = time.perf_counter()
     junction_nodes, junction_links, junction_adj = \
         find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index)
+    timings["junction_bfs"] = round((time.perf_counter() - t3) * 1000, 1)
+
+    # --- Sibling connector BFS ---
+    t4 = time.perf_counter()
     sibling_connectors, sibling_adj = \
         find_sibling_connectors(result_chains, gfaidx, bubbleidx)
+    timings["sibling_bfs"] = round((time.perf_counter() - t4) * 1000, 1)
 
-    # Merge all adjacency sources: decomposition + junction + sibling
+    # --- Merge adjacency ---
+    t5 = time.perf_counter()
     chain_adjacency = {}
     for src in (decomp_adj, junction_adj, sibling_adj):
         for k, v in src.items():
             chain_adjacency.setdefault(k, set()).update(v)
     chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
+    timings["merge_adj"] = round((time.perf_counter() - t5) * 1000, 1)
+
+    timings["total"] = round((time.perf_counter() - t0) * 1000, 1)
+    timings["n_chains"] = len(result_chains)
+    timings["n_popped"] = n_popped
+    timings["n_bypasses"] = len(bypass_links)
 
     return {
         "tile_start": start,
@@ -342,4 +367,5 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "junction_links": junction_links,
         "chain_adjacency": chain_adjacency,
         "sibling_connectors": sibling_connectors + bypass_links,
+        "timings": timings,
     }

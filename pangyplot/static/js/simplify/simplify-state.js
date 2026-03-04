@@ -63,7 +63,6 @@ export const state = {
         cursorBp: document.getElementById('cursor-bp'),
         detailPhase: document.getElementById('detail-phase'),
         detailBar: document.getElementById('detail-bar'),
-        detailPhase2: document.getElementById('detail-phase2'),
         detailChains: document.getElementById('detail-chains'),
         detailExposed: document.getElementById('detail-exposed'),
         detailNodes: document.getElementById('detail-nodes'),

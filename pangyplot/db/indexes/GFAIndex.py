@@ -40,21 +40,25 @@ class GFAIndex:
         return self.path_index.get_paths(sample)
     
     def get_neighbors(self, seg_id, direction=None):
+        """Return neighbor segment IDs, reading directly from in-memory arrays."""
+        li = self.link_index
+        if seg_id >= len(li.seg_index_offsets) or seg_id < 0:
+            return []
+        offset = li.seg_index_offsets[seg_id]
+        count = li.seg_index_counts[seg_id]
         neighbors = []
-
-        for link in self.link_index[seg_id]:
-            if link.from_id == seg_id:
-                strand = link.from_strand
-                neighbor = link.to_id
-                dir_label = '+'  # going forward
+        for j in range(count):
+            idx = li.seg_index_flat[offset + j]
+            fid = li.from_ids[idx]
+            tid = li.to_ids[idx]
+            if fid == seg_id:
+                neighbor = tid
+                dir_label = '+'
             else:
-                strand = link.to_strand
-                neighbor = link.from_id
-                dir_label = '-'  # coming backward
-
+                neighbor = fid
+                dir_label = '-'
             if direction is None or direction == dir_label:
                 neighbors.append(neighbor)
-
         return neighbors
 
     def traverse(self, start_id, max_steps=10, direction=None):
@@ -137,14 +141,15 @@ class GFAIndex:
         
         return visited
 
-    def get_subgraph(self, seg_ids, step_index):
+    def get_subgraph(self, seg_ids, step_index, fast=False):
         segments = self.segment_index.get_by_ids(seg_ids, step_index)
-        
+
+        get_links = self.link_index.get_links_by_segment_fast if fast \
+            else self.link_index.get_links_by_segment
         links = []
         link_ids = set()
         for sid in seg_ids:
-            seg_links = self.get_links(sid)
-            for link in seg_links:
+            for link in get_links(sid):
                 lid = link.id()
                 if lid not in link_ids:
                     links.append(link)

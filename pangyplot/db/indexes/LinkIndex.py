@@ -119,3 +119,26 @@ class LinkIndex:
 
     def get_link_by_index(self, i):
         return db.get_link(self.dir, self._get_link_id(i))
+
+    def get_link_by_index_fast(self, i):
+        """Build a Link from in-memory arrays (no SQLite).
+
+        Returns a Link with from/to IDs and strands only — no haplotype,
+        frequency, or contained data.  Use for subgraph link discovery
+        where only topology matters.
+        """
+        link = Link()
+        link.from_id = self.from_ids[i]
+        link.to_id = self.to_ids[i]
+        link.from_strand = self.rev_strand_map[self.from_strands[i]]
+        link.to_strand = self.rev_strand_map[self.to_strands[i]]
+        return link
+
+    def get_links_by_segment_fast(self, seg_id):
+        """Like get_links_by_segment but uses in-memory arrays only."""
+        if seg_id >= len(self.seg_index_offsets) or seg_id < 0:
+            return []
+        offset = self.seg_index_offsets[seg_id]
+        count = self.seg_index_counts[seg_id]
+        return [self.get_link_by_index_fast(self.seg_index_flat[offset + j])
+                for j in range(count)]

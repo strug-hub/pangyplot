@@ -70,17 +70,11 @@ export function setDetailPhase(phase) {
     state.detailPhase = phase;
     const cls = (phase === 'fading-in' || phase === 'fading-out') ? 'fading' : phase;
     state.dom.detailPhase.className = cls;
-    state.dom.detailPhase2.className = cls;
-    const labels = {
-        'none': '', 'fading-in': 'DETAILS', 'fading-out': 'DETAILS', 'static': 'DETAILS',
-    };
-    state.dom.detailPhase.textContent = labels[phase] || '';
-    state.dom.detailPhase2.textContent = labels[phase] || '';
-
+    // Always show "DETAILS" text; append opacity when active
     if (phase === 'none') {
-        state.dom.detailBar.classList.remove('active');
+        state.dom.detailPhase.textContent = 'DETAILS';
     } else {
-        state.dom.detailBar.classList.add('active');
+        state.dom.detailPhase.textContent = `DETAILS ${state.detailOpacity.toFixed(2)}`;
         updateDetailBar();
     }
 }
@@ -128,6 +122,7 @@ export function updateDetailOpacity() {
         }
     }
     state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
+    state.dom.detailPhase.textContent = `DETAILS ${state.detailOpacity.toFixed(2)}`;
 }
 
 export function scheduleFadeFrame() {
@@ -188,11 +183,26 @@ async function fetchDetailForViewport() {
         + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
 
     state.dom.fetchIndicator.classList.add('active');
+    state.dom.detailPhase.className = 'fetching';
     try {
         const resp = await fetch(url, { signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const apiData = await resp.json();
         if (signal.aborted) return;
+
+        if (apiData.timings) {
+            const t = apiData.timings;
+            console.log(
+                `%c[detail-tile]%c ${t.total}ms total | ` +
+                `decompose: ${t.decompose}ms | ` +
+                `inline_pop: ${t.inline_pop}ms (${t.n_popped}/${t.n_chains}) | ` +
+                `junction: ${t.junction_bfs}ms | ` +
+                `sibling: ${t.sibling_bfs}ms | ` +
+                `merge: ${t.merge_adj}ms | ` +
+                `bypasses: ${t.n_bypasses}`,
+                'color: #4488ff; font-weight: bold', 'color: inherit'
+            );
+        }
 
         fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr, expandThreshold };
         state.detailData = processResponse(apiData);
@@ -213,6 +223,9 @@ async function fetchDetailForViewport() {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);
     } finally {
         state.dom.fetchIndicator.classList.remove('active');
+        // Restore phase class after fetch (fetching class was temporary)
+        const cls = (state.detailPhase === 'fading-in' || state.detailPhase === 'fading-out') ? 'fading' : state.detailPhase;
+        state.dom.detailPhase.className = cls;
     }
 }
 
