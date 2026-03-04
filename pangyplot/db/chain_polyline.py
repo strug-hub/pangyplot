@@ -253,16 +253,33 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     leaf_run = []
     connector_idx = 0
 
+    def _flush_leaf_run(run):
+        """Flush a leaf run as one or more connectors, splitting if too large."""
+        nonlocal connector_idx
+        if not run:
+            return
+        chunks = _split_balanced(run, MAX_BUBBLES_PER_CHAIN)
+        group_conns = []
+        for chunk in chunks:
+            conn = build_connector(
+                chain, chunk, stepidx, seg_index, connector_idx, depth)
+            if conn:
+                all_chains.append(conn)
+                group_conns.append(conn)
+                connector_idx += 1
+        # Wire consecutive chunks as adjacent
+        for i in range(len(group_conns) - 1):
+            a_id = group_conns[i]["id"]
+            b_id = group_conns[i + 1]["id"]
+            all_adj.setdefault(a_id, set()).add(b_id)
+            all_adj.setdefault(b_id, set()).add(a_id)
+        if group_conns:
+            groups.append({'chains': group_conns, 'super': None})
+
     for b in chain.bubbles:
         if b.children:
-            # Flush leaf run as connector
-            if len(leaf_run) >= 1:
-                conn = build_connector(
-                    chain, leaf_run, stepidx, seg_index, connector_idx, depth)
-                if conn:
-                    all_chains.append(conn)
-                    groups.append({'chains': [conn], 'super': None})
-                    connector_idx += 1
+            # Flush leaf run as connector(s)
+            _flush_leaf_run(leaf_run)
             leaf_run = []
 
             # Recurse into superbubble's children
@@ -293,12 +310,7 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
             leaf_run.append(b)
 
     # Trailing leaf run
-    if len(leaf_run) >= 1:
-        conn = build_connector(
-            chain, leaf_run, stepidx, seg_index, connector_idx, depth)
-        if conn:
-            all_chains.append(conn)
-            groups.append({'chains': [conn], 'super': None})
+    _flush_leaf_run(leaf_run)
 
     # --- Connect consecutive groups via shared boundary segments ---
     # Consecutive bubbles in a chain share boundary segments:
@@ -351,8 +363,53 @@ def _group_entry_chains(group):
                 if set(c.get('source_segs', [])) & bridge]
 
 
+MAX_BUBBLES_PER_CHAIN = 100
+
+
+def _split_balanced(items, max_size):
+    """Split a list into balanced chunks of at most max_size.
+
+    Uses ceil(n/ceil(n/max_size)) to avoid tiny remainders.
+    E.g. n=103, max=100 → 2 chunks of 52+51 (not 100+3).
+    Returns the original list in a single-element list if no split needed.
+    """
+    from math import ceil
+    n = len(items)
+    if n <= max_size:
+        return [items]
+    k = ceil(n / max_size)
+    chunk_size = ceil(n / k)
+    return [items[i:i + chunk_size] for i in range(0, n, chunk_size)]
+
+
 def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
-    """Return a chain as a single polyline (base case, no decomposition)."""
+    """Return a chain as a single polyline (base case, no decomposition).
+
+    If the chain has more than MAX_BUBBLES_PER_CHAIN bubbles, split it into
+    balanced sub-runs using the .N connector system.  This avoids extremely
+    long polylines that are slow to render and interact with.
+    """
+    n = len(chain.bubbles)
+
+    if n > MAX_BUBBLES_PER_CHAIN:
+        chunks = _split_balanced(chain.bubbles, MAX_BUBBLES_PER_CHAIN)
+
+        chains = []
+        adj = {}
+        for i, chunk in enumerate(chunks):
+            conn = build_connector(chain, chunk, stepidx, seg_index, i, depth)
+            if conn:
+                chains.append(conn)
+
+        # Wire consecutive chunks as adjacent
+        for i in range(len(chains) - 1):
+            a_id = chains[i]["id"]
+            b_id = chains[i + 1]["id"]
+            adj.setdefault(a_id, set()).add(b_id)
+            adj.setdefault(b_id, set()).add(a_id)
+
+        return {"chains": chains, "bubbles": [], "adjacency": adj}
+
     entry = build_chain_polyline(chain, stepidx, seg_index)
     if entry is None:
         return {"chains": [], "bubbles": [], "adjacency": {}}
