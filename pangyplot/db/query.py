@@ -319,7 +319,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         result_chains.append(chain_data)
 
     # --- Junction graph BFS ---
-    junction_nodes, junction_links, junction_adj = \
+    junction_nodes, junction_links, junction_adj, \
+        naked_visited, naked_seg_chains = \
         find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index)
 
@@ -388,6 +389,36 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 if cb:
                     _add_link(ca, cb)
 
+    # --- Serialize junction graph (full Segment/Link objects for physics) ---
+    all_junction_seg_ids = naked_visited | bypass_seg_ids
+    if all_junction_seg_ids:
+        jg_segments, jg_links = gfaidx.get_subgraph(
+            all_junction_seg_ids, stepidx, fast=True)
+        junction_graph = {
+            "nodes": [s.serialize() for s in jg_segments],
+            "links": [l.serialize() for l in jg_links],
+        }
+        # Build junction_seg_chains: seg_id → list of chain IDs
+        # Merge bypass segs into naked_seg_chains (bypass segs connect to
+        # the chains whose source/sink segs are GFA-adjacent)
+        ep_to_chain = {}
+        for cd in result_chains:
+            for sid in (cd.get("source_segs") or []):
+                ep_to_chain[sid] = cd["id"]
+            for sid in (cd.get("sink_segs") or []):
+                ep_to_chain[sid] = cd["id"]
+        for sid in bypass_seg_ids:
+            for nxt in gfaidx.get_neighbors(sid):
+                cid = ep_to_chain.get(nxt)
+                if cid:
+                    naked_seg_chains.setdefault(sid, set()).add(cid)
+        junction_seg_chains = {
+            f"s{k}": sorted(v) for k, v in naked_seg_chains.items()
+        }
+    else:
+        junction_graph = {"nodes": [], "links": []}
+        junction_seg_chains = {}
+
     # --- Sibling connector BFS ---
     sibling_connectors, sibling_adj = \
         find_sibling_connectors(result_chains, gfaidx, bubbleidx)
@@ -406,6 +437,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "bubbles": chain_result.get("bubbles", []),
         "junction_nodes": junction_nodes,
         "junction_links": junction_links,
+        "junction_graph": junction_graph,
+        "junction_seg_chains": junction_seg_chains,
         "chain_adjacency": chain_adjacency,
         "sibling_connectors": sibling_connectors + bypass_links,
     }

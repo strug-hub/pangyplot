@@ -90,13 +90,27 @@ function drawForceGraph(ctx, baseWidth) {
         ctx.stroke();
     }
 
-    // Regular links — thin
-    ctx.strokeStyle = '#888';
+    // Chain links (bubble-to-bubble) — thick, orange
+    ctx.lineWidth = nodeR * 2;
+    ctx.globalAlpha = 0.8 * state.detailOpacity;
+    ctx.strokeStyle = '#FF6700';
+    for (const link of links) {
+        if (link.isKinkLink || link.isJunctionLink || link.isInterChain) continue;
+        const s = link.source, t = link.target;
+        if (s.x == null || t.x == null) continue;
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.stroke();
+    }
+
+    // Junction + inter-chain links — thin gray
+    ctx.strokeStyle = '#969696';
     ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
     ctx.globalAlpha = 0.6 * state.detailOpacity;
     ctx.beginPath();
     for (const link of links) {
-        if (link.isKinkLink) continue;
+        if (link.isKinkLink || (!link.isJunctionLink && !link.isInterChain)) continue;
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
         ctx.moveTo(s.x, s.y);
