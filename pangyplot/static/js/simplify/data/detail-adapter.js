@@ -130,6 +130,7 @@ export function createInterChainLinks(siblingConnectors, poppedChainIds, chains,
         if (phantomCache.has(key)) return phantomCache.get(key);
         const phantom = {
             id: `phantom_${key}`,
+            iid: `phantom_${key}`,
             x: coord[0], y: coord[1],
             fx: coord[0], fy: coord[1],
             chainId: '__interchain__',
@@ -305,16 +306,55 @@ export function createJunctionToAnchorLinks(junctionRecordMap, allForceNodes, ju
         pushLink(sourceRecord, targetRecord, rawLink);
     }
 
+    // Tether junction nodes to their matching chain anchor when they
+    // represent the same physical segment.  Create direct kink-to-kink
+    // links (head→head, tail→tail) instead of strand-resolved links.
     for (const [juncId, juncRecord] of junctionRecordMap) {
         const segId = juncId.replace(/^s/, '');
         const anchorRecord = segToRecord.get(segId);
         if (!anchorRecord) continue;
-        pushLink(juncRecord, anchorRecord, {
-            source: juncId,
-            target: `anchor_${segId}`,
-            from_strand: '+',
-            to_strand: '+',
-        });
+        if (!juncRecord.elements || !anchorRecord.elements) continue;
+        const juncNodes = juncRecord.elements.nodes;
+        const anchorNodes = anchorRecord.elements.nodes;
+        if (!juncNodes.length || !anchorNodes.length) continue;
+
+        // Head-to-head tether
+        const jHead = juncNodes[0];
+        const aHead = anchorNodes[0];
+        const headKey = `${jHead.iid}→${aHead.iid}`;
+        if (!seen.has(headKey)) {
+            seen.add(headKey);
+            links.push({
+                source: jHead.iid,
+                target: aHead.iid,
+                sourceIid: jHead.iid,
+                targetIid: aHead.iid,
+                chainId: 'junction',
+                isKinkLink: false,
+                isJunctionLink: true,
+                length: 1,
+            });
+        }
+
+        // Tail-to-tail tether (if multi-kink)
+        if (juncNodes.length > 1 && anchorNodes.length > 1) {
+            const jTail = juncNodes[juncNodes.length - 1];
+            const aTail = anchorNodes[anchorNodes.length - 1];
+            const tailKey = `${jTail.iid}→${aTail.iid}`;
+            if (!seen.has(tailKey)) {
+                seen.add(tailKey);
+                links.push({
+                    source: jTail.iid,
+                    target: aTail.iid,
+                    sourceIid: jTail.iid,
+                    targetIid: aTail.iid,
+                    chainId: 'junction',
+                    isKinkLink: false,
+                    isJunctionLink: true,
+                    length: 1,
+                });
+            }
+        }
     }
 
     return links;
