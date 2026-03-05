@@ -215,6 +215,164 @@ export function createInterChainLinks(poppedChains, forceNodes) {
     return links;
 }
 
+/**
+ * Deserialize junction segments into force-ready nodes and links.
+ * Filters junctionGraph to only the requested segment IDs.
+ *
+ * @param {{ nodes: Object[], links: Object[] }} junctionGraph  Full junction graph from API
+ * @param {string[]} segIds  Segment IDs to activate (e.g. "s123")
+ * @returns {{ nodes: Object[], links: Object[] }}  D3 force-ready elements
+ */
+export function deserializeJunctionSegments(junctionGraph, segIds) {
+    const segIdSet = new Set(segIds);
+
+    // Filter nodes to only requested segments
+    const filteredNodes = junctionGraph.nodes.filter(
+        n => segIdSet.has(n.id || `s${n.segment_id}`));
+
+    if (filteredNodes.length === 0) return { nodes: [], links: [] };
+
+    const records = deserializeNodes(filteredNodes);
+    const allNodes = [];
+    const allLinks = [];
+    const recordMap = new Map();
+
+    for (const record of records) {
+        const els = createNodeElements(record);
+        record.elements = els;
+        recordMap.set(record.id, record);
+
+        for (const node of els.nodes) {
+            node.chainId = 'junction';
+            node.radius = node.width / 2;
+            node.recordId = node.id;
+            node.seqLength = record.seqLength;
+            allNodes.push(node);
+        }
+        for (const link of els.links) {
+            link.chainId = 'junction';
+            link.isKinkLink = link.class === 'node';
+            allLinks.push(link);
+        }
+    }
+
+    // Create inter-segment links within the junction graph
+    const filteredLinks = junctionGraph.links.filter(l => {
+        const sId = typeof l.source === 'string' ? l.source : `s${l.source}`;
+        const tId = typeof l.target === 'string' ? l.target : `s${l.target}`;
+        return recordMap.has(sId) && recordMap.has(tId);
+    });
+
+    for (const rawLink of filteredLinks) {
+        const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
+        const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
+        const sourceRecord = recordMap.get(sId);
+        const targetRecord = recordMap.get(tId);
+        if (!sourceRecord || !targetRecord) continue;
+
+        const linkRecord = new LinkRecord(rawLink, sourceRecord, targetRecord);
+        const els = createLinkElements(linkRecord);
+        for (const link of els.links) {
+            link.chainId = 'junction';
+            link.isKinkLink = false;
+            allLinks.push(link);
+        }
+    }
+
+    return { nodes: allNodes, links: allLinks, recordMap };
+}
+
+/**
+ * Create force links connecting junction nodes to chain anchor nodes.
+ * Mirrors core's deserializeLinks resolution pattern:
+ *   segToRecord.get(segId) || recordMap.get("s" + segId)
+ * where segToRecord maps chain boundary seg IDs → anchor records,
+ * and recordMap holds junction node records.
+ *
+ * @param {Map<string, Object>} junctionRecordMap  Junction node records by ID (from deserializeJunctionSegments)
+ * @param {Object[]} allForceNodes  All simulation nodes (to find anchor nodes)
+ * @param {{ nodes: Object[], links: Object[] }} junctionGraph  Raw junction graph from API
+ * @param {Object[]} poppedChains  Chain metadata [{id, sourceSegs, sinkSegs}, ...]
+ * @returns {Object[]}  Link elements connecting junctions to anchors
+ */
+export function createJunctionToAnchorLinks(junctionRecordMap, allForceNodes, junctionGraph, poppedChains) {
+    if (junctionRecordMap.size === 0) return [];
+
+    // 1. Build segToRecord: chain boundary seg IDs → anchor node's record
+    //    (analogous to core's viewState.segmentToNode)
+    const segToRecord = new Map();
+    for (const node of allForceNodes) {
+        if (!node.isAnchor || !node.anchorRecord) continue;
+        const chainMeta = poppedChains.find(c => c.id === node.chainId);
+        if (!chainMeta) continue;
+
+        if (node.anchorRole === 'source' || node.anchorRole === 'source+sink') {
+            if (chainMeta.sourceSegs) {
+                for (const seg of chainMeta.sourceSegs) {
+                    segToRecord.set(String(seg), node.anchorRecord);
+                }
+            }
+        }
+        if (node.anchorRole === 'sink' || node.anchorRole === 'source+sink') {
+            if (chainMeta.sinkSegs) {
+                for (const seg of chainMeta.sinkSegs) {
+                    segToRecord.set(String(seg), node.anchorRecord);
+                }
+            }
+        }
+    }
+
+    if (segToRecord.size === 0) return [];
+
+    // 2. Resolve junction graph links using core's pattern:
+    //    segToRecord.get(segId) || junctionRecordMap.get("s" + segId)
+    const links = [];
+    const seen = new Set();
+
+    for (const rawLink of junctionGraph.links) {
+        const srcSegId = typeof rawLink.source === 'string'
+            ? rawLink.source.replace(/^s/, '') : String(rawLink.source);
+        const tgtSegId = typeof rawLink.target === 'string'
+            ? rawLink.target.replace(/^s/, '') : String(rawLink.target);
+
+        const srcIsJunction = junctionRecordMap.has('s' + srcSegId);
+        const tgtIsJunction = junctionRecordMap.has('s' + tgtSegId);
+
+        // At least one endpoint must be a junction segment
+        if (!srcIsJunction && !tgtIsJunction) continue;
+
+        // Junction records take priority: if a seg is an active junction node,
+        // resolve to it (not the chain anchor it also serves as boundary for)
+        const sourceRecord = junctionRecordMap.get('s' + srcSegId) || segToRecord.get(srcSegId);
+        const targetRecord = junctionRecordMap.get('s' + tgtSegId) || segToRecord.get(tgtSegId);
+
+        if (!sourceRecord || !targetRecord) continue;
+        if (sourceRecord === targetRecord) continue;
+
+        const pairKey = `${sourceRecord.id}→${targetRecord.id}`;
+        if (seen.has(pairKey)) continue;
+        seen.add(pairKey);
+
+        const resolvedLink = {
+            ...rawLink,
+            id: `junc_${sourceRecord.id}_${targetRecord.id}`,
+            source: sourceRecord.id,
+            target: targetRecord.id,
+        };
+        const linkRecord = new LinkRecord(resolvedLink, sourceRecord, targetRecord);
+        const els = createLinkElements(linkRecord);
+
+        for (const link of els.links) {
+            link.chainId = 'junction';
+            link.isKinkLink = false;
+            link.isJunctionLink = true;
+            links.push(link);
+        }
+    }
+
+    return links;
+}
+
 function pinAnchors(nodes, polyline) {
     const plStart = polyline[0];
     const plEnd = polyline[polyline.length - 1];

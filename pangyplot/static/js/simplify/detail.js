@@ -8,8 +8,8 @@ import { xToBp, getChromosome, isReady } from './spine.js';
 import { getViewport } from './viewport.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
 import { selectLevel } from './lod.js';
-import { clearForce, addPoppedNodes, removePoppedNodes } from './simplify-force.js';
-import { deserializeChainGraph } from './simplify-detail-adapter.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, getForceNodes } from './simplify-force.js';
+import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks } from './simplify-detail-adapter.js';
 import { getActivationSet } from './physics-zone.js';
 
 let fadeStartTime = 0;
@@ -53,6 +53,8 @@ function processResponse(apiResponse) {
         bpEnd: apiResponse.tile_end,
         junctionNodes: apiResponse.junction_nodes || [],
         junctionLinks: apiResponse.junction_links || [],
+        junctionGraph: apiResponse.junction_graph || { nodes: [], links: [] },
+        junctionSegChains: apiResponse.junction_seg_chains || {},
         chainAdjacency: apiResponse.chain_adjacency || {},
         siblingConnectors: apiResponse.sibling_connectors || [],
     };
@@ -67,6 +69,7 @@ function clearDetailState() {
     clearForce();
     state.activeSeedChainId = null;
     state.poppedChainIds.clear();
+    state.activatedJunctionSegs.clear();
 }
 
 // ---------------------------------------------------------------
@@ -76,6 +79,7 @@ function populateSeedForce() {
     clearForce();
     state.activeSeedChainId = null;
     state.poppedChainIds.clear();
+    state.activatedJunctionSegs.clear();
 
     const activation = getActivationSet();
     if (!activation) return;
@@ -109,7 +113,130 @@ function popChainById(chainId, activation) {
 
     addPoppedNodes(nodes, links);
     state.poppedChainIds.add(chainId);
+
+    // Activate adjacent junction segments
+    activateJunctionSegs(chainId, nodes);
+
     return true;
+}
+
+/**
+ * Activate junction segments adjacent to a popped chain.
+ * Creates force nodes for junction segs and links connecting them
+ * to the chain's anchor nodes.
+ */
+function activateJunctionSegs(chainId, chainForceNodes) {
+    const dd = state.detailData;
+    if (!dd || !dd.junctionGraph || !dd.junctionSegChains) return;
+
+    // Find junction seg IDs adjacent to this chain
+    const segsToActivate = [];
+    const segsAlreadyActive = [];
+    for (const [segId, chainIds] of Object.entries(dd.junctionSegChains)) {
+        if (chainIds.includes(chainId)) {
+            if (!state.activatedJunctionSegs.has(segId)) {
+                segsToActivate.push(segId);
+            } else {
+                state.activatedJunctionSegs.get(segId).add(chainId);
+                segsAlreadyActive.push(segId);
+            }
+        }
+    }
+
+    // For already-active junction segs, create additional anchor links
+    // connecting them to the newly popped chain's anchors.
+    // Build recordMap from existing sim nodes (not re-deserialized) so
+    // link elements reference the correct kink nodes already in the sim.
+    if (segsAlreadyActive.length > 0) {
+        const activeSegSet = new Set(segsAlreadyActive);
+        const existingMap = new Map();
+        for (const node of getForceNodes()) {
+            if (node.chainId !== 'junction') continue;
+            const rid = node.recordId || node.id;
+            if (!activeSegSet.has(rid) || existingMap.has(rid)) continue;
+            if (node.record) existingMap.set(rid, node.record);
+        }
+        if (existingMap.size > 0) {
+            const poppedChains = dd.chains.filter(c => state.poppedChainIds.has(c.id));
+            const newAnchorLinks = createJunctionToAnchorLinks(
+                existingMap, getForceNodes(), dd.junctionGraph, poppedChains);
+            if (newAnchorLinks.length > 0) {
+                addInterChainLinks(newAnchorLinks);
+            }
+        }
+    }
+
+    if (segsToActivate.length === 0) return;
+
+    // Deserialize junction segments into force nodes/links
+    const { nodes, links, recordMap } = deserializeJunctionSegments(
+        dd.junctionGraph, segsToActivate);
+    if (nodes.length === 0) return;
+
+    // Create links from junction nodes to chain anchor nodes
+    const poppedChains = dd.chains.filter(c => state.poppedChainIds.has(c.id));
+    const anchorLinks = createJunctionToAnchorLinks(
+        recordMap, getForceNodes(), dd.junctionGraph, poppedChains);
+
+    // Add to simulation
+    addPoppedNodes(nodes, [...links, ...anchorLinks]);
+
+    // Record activation with refcount
+    for (const segId of segsToActivate) {
+        const refSet = new Set([chainId]);
+        state.activatedJunctionSegs.set(segId, refSet);
+    }
+}
+
+/**
+ * Deactivate junction segments when a chain is unpopped.
+ * Only removes segs whose refcount drops to 0.
+ */
+function deactivateJunctionSegs(chainId) {
+    const dd = state.detailData;
+    if (!dd || !dd.junctionSegChains) return;
+
+    const segsToRemove = [];
+    for (const [segId, chainIds] of Object.entries(dd.junctionSegChains)) {
+        if (!chainIds.includes(chainId)) continue;
+        const refSet = state.activatedJunctionSegs.get(segId);
+        if (!refSet) continue;
+
+        refSet.delete(chainId);
+        if (refSet.size === 0) {
+            segsToRemove.push(segId);
+            state.activatedJunctionSegs.delete(segId);
+        }
+    }
+
+    // Remove force nodes for deactivated segs
+    if (segsToRemove.length > 0) {
+        removePoppedNodes('junction');
+        // Re-add any still-activated junction segs
+        readdActiveJunctions();
+    }
+}
+
+/**
+ * Re-add all currently activated junction segments to the simulation.
+ * Called after a bulk removal of junction nodes.
+ */
+function readdActiveJunctions() {
+    if (state.activatedJunctionSegs.size === 0) return;
+    const dd = state.detailData;
+    if (!dd) return;
+
+    const activeSegIds = [...state.activatedJunctionSegs.keys()];
+    const { nodes, links, recordMap } = deserializeJunctionSegments(
+        dd.junctionGraph, activeSegIds);
+    if (nodes.length === 0) return;
+
+    // Rebuild anchor links to all currently popped chains
+    const poppedChains = dd.chains.filter(c => state.poppedChainIds.has(c.id));
+    const anchorLinks = createJunctionToAnchorLinks(
+        recordMap, getForceNodes(), dd.junctionGraph, poppedChains);
+
+    addPoppedNodes(nodes, [...links, ...anchorLinks]);
 }
 
 /**
@@ -121,6 +248,7 @@ export function togglePopChain(chain) {
 
     if (state.poppedChainIds.has(chain.id)) {
         // Unpop: remove from simulation
+        deactivateJunctionSegs(chain.id);
         removePoppedNodes(chain.id);
         state.poppedChainIds.delete(chain.id);
         if (state.activeSeedChainId === chain.id) {

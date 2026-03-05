@@ -169,6 +169,14 @@ export function setupInteraction() {
         }
     });
 
+    // --- C key: toggle chain overlay (polylines + junction dots) ---
+    window.addEventListener('keydown', e => {
+        if (e.code === 'KeyC' && !e.repeat) {
+            state.hideChainOverlay = !state.hideChainOverlay;
+            scheduleFrame();
+        }
+    });
+
     // --- L key: toggle physics zone debug overlay ---
     window.addEventListener('keydown', e => {
         if (e.code === 'KeyL' && !e.repeat) {

@@ -71,26 +71,42 @@ function drawForceGraph(ctx, baseWidth) {
     const links = getForceLinks();
     if (nodes.length === 0) return;
 
-    // Links
+    // Nodes — radius in data-space units; we're inside ctx.scale(zoom)
+    const nodeR = Math.max(1.5, 3 / state.zoom);
+
+    // Kink links (segment body) — thick, matching node diameter
+    ctx.lineCap = 'round';
+    ctx.lineWidth = nodeR * 2;
+    ctx.setLineDash([]);
+    ctx.globalAlpha = state.detailOpacity;
+    for (const link of links) {
+        if (!link.isKinkLink) continue;
+        const s = link.source, t = link.target;
+        if (s.x == null || t.x == null) continue;
+        ctx.strokeStyle = s.type === 'bubble' ? '#F2DC0F' : '#0762E5';
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.stroke();
+    }
+
+    // Regular links — thin
     ctx.strokeStyle = '#888';
     ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
-    ctx.setLineDash([]);
     ctx.globalAlpha = 0.6 * state.detailOpacity;
     ctx.beginPath();
     for (const link of links) {
+        if (link.isKinkLink) continue;
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
     }
     ctx.stroke();
-
-    // Nodes — radius in data-space units; we're inside ctx.scale(zoom)
-    const nodeR = Math.max(1.5, 3 / state.zoom);
     ctx.globalAlpha = state.detailOpacity;
     for (const node of nodes) {
         if (node.x == null) continue;
-        ctx.fillStyle = node.type === 'bubble' ? '#00cccc' : '#fff';
+        ctx.fillStyle = node.type === 'bubble' ? '#F2DC0F' : '#0762E5';
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeR, 0, Math.PI * 2);
         ctx.fill();
@@ -106,14 +122,35 @@ function drawDetail() {
 
     const hovChain = state.hoveredChain;
 
+    // --- Build set of activated junction coordinates to skip in static rendering ---
+    let activatedCoords = null;
+    if (state.activatedJunctionSegs.size > 0 && state.detailData.junctionGraph) {
+        activatedCoords = new Set();
+        for (const node of state.detailData.junctionGraph.nodes) {
+            const segId = node.id || `s${node.segment_id}`;
+            if (state.activatedJunctionSegs.has(segId)) {
+                // Use rounded centroid as coordinate key
+                const cx = Math.round(((node.x1 || 0) + (node.x2 || 0)) / 2 * 10) / 10;
+                const cy = Math.round(((node.y1 || 0) + (node.y2 || 0)) / 2 * 10) / 10;
+                activatedCoords.add(`${cx},${cy}`);
+            }
+        }
+    }
+
     // --- Junction links (GFA edges between naked segments / chain endpoints) ---
-    if (state.detailData.junctionLinks && state.detailData.junctionLinks.length > 0) {
+    if (!state.hideChainOverlay && state.detailData.junctionLinks && state.detailData.junctionLinks.length > 0) {
         ctx.strokeStyle = '#999';
         ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);
         ctx.setLineDash([]);
         ctx.globalAlpha = 0.7 * state.detailOpacity;
         ctx.beginPath();
         for (const link of state.detailData.junctionLinks) {
+            // Skip links where either endpoint is an activated junction
+            if (activatedCoords) {
+                const k0 = `${link[0][0]},${link[0][1]}`;
+                const k1 = `${link[1][0]},${link[1][1]}`;
+                if (activatedCoords.has(k0) || activatedCoords.has(k1)) continue;
+            }
             ctx.moveTo(link[0][0], link[0][1]);
             ctx.lineTo(link[1][0], link[1][1]);
         }
@@ -122,12 +159,14 @@ function drawDetail() {
     }
 
     // --- Junction nodes (naked segment dots between chains) ---
-    if (state.detailData.junctionNodes && state.detailData.junctionNodes.length > 0) {
-        const r = Math.max(1.5, 3 / state.zoom);
+    if (!state.hideChainOverlay && state.detailData.junctionNodes && state.detailData.junctionNodes.length > 0) {
+        const r = Math.max(0.8, 1.5 / state.zoom);
         ctx.fillStyle = '#999';
-        ctx.globalAlpha = 0.7 * state.detailOpacity;
+        ctx.globalAlpha = 0.5 * state.detailOpacity;
         ctx.beginPath();
         for (const [x, y] of state.detailData.junctionNodes) {
+            // Skip nodes that are activated in the force simulation
+            if (activatedCoords && activatedCoords.has(`${x},${y}`)) continue;
             ctx.moveTo(x + r, y);
             ctx.arc(x, y, r, 0, Math.PI * 2);
         }
@@ -137,13 +176,15 @@ function drawDetail() {
 
     // --- Chain polylines ---
     const baseWidth = Math.max(1.5, 3 / state.zoom);
-    drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
+    if (!state.hideChainOverlay) {
+        drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
+    }
 
     // --- Force graph (seed chain) ---
     drawForceGraph(ctx, baseWidth);
 
     // --- Gap-fillers: dashed connectors between GFA-adjacent sibling chains ---
-    if (state.detailData.siblingConnectors && state.detailData.siblingConnectors.length > 0) {
+    if (!state.hideChainOverlay && state.detailData.siblingConnectors && state.detailData.siblingConnectors.length > 0) {
         const dash = Math.max(2, 4 / state.zoom);
         ctx.strokeStyle = '#aaa';
         ctx.lineWidth = Math.max(0.8, 1.8 / state.zoom);

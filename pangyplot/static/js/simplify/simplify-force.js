@@ -176,3 +176,8 @@ export function getForceLinks() {
 export function isSimulating() {
     return sim && sim.alpha() > sim.alphaMin();
 }
+
+// ---------------------------------------------------------------
+// Debug introspection — call window.__debugSimState() from console
+// or Playwright evaluate to inspect current simulation contents.
+// ---------------------------------------------------------------
