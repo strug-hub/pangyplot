@@ -14,7 +14,7 @@ function drawChainPolylines(chains, baseWidth, hovChain) {
 
         // All chains (including connectors) use uniform skeleton-matched style
         ctx.setLineDash([]);
-        ctx.strokeStyle = isHovered ? '#5bb8f0' : '#fff';
+        ctx.strokeStyle = isHovered ? '#FAB3AE' : '#FF6700';
         ctx.lineWidth = isHovered ? baseWidth * 1.5 : baseWidth;
         if (hovChain && !isHovered) {
             ctx.globalAlpha = 0.25 * state.detailOpacity;
@@ -126,7 +126,7 @@ export function drawDetail() {
 
     // --- Selection highlight ---
     if (state.selectedChains.size > 0) {
-        ctx.strokeStyle = '#5bb8f0';
+        ctx.strokeStyle = '#FAB3AE';
         ctx.lineWidth = Math.max(2.5, 5 / state.zoom);
         ctx.setLineDash([]);
         ctx.globalAlpha = 0.9 * state.detailOpacity;

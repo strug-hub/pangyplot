@@ -55,12 +55,21 @@ export function drawForceGraph(ctx, baseWidth) {
     }
     ctx.stroke();
     ctx.globalAlpha = state.detailOpacity;
+    const hovNode = state.hoveredForceNode || state.hoveredBubble;
     for (const node of nodes) {
         if (node.x == null || node.isPhantom) continue;
         ctx.fillStyle = node.type === 'bubble' ? '#F2DC0F' : '#0762E5';
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeR, 0, Math.PI * 2);
         ctx.fill();
+    }
+    // Highlight ring on hovered node
+    if (hovNode && hovNode.x != null) {
+        ctx.strokeStyle = '#FAB3AE';
+        ctx.lineWidth = Math.max(1, 2 / state.zoom);
+        ctx.beginPath();
+        ctx.arc(hovNode.x, hovNode.y, nodeR * 1.8, 0, Math.PI * 2);
+        ctx.stroke();
     }
     ctx.globalAlpha = state.detailOpacity;
 }
