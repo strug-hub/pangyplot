@@ -137,82 +137,89 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
  * @param {Object[]} forceNodes    Current simulation nodes
  * @returns {Object[]}             Link elements tagged with isInterChain: true
  */
-export function createInterChainLinks(poppedChains, forceNodes) {
-    // 1. Build anchor index: chainId → { source: { node, record }, sink: { node, record } }
-    const anchorIndex = new Map();
+/**
+ * Create inter-chain links from sibling connectors.
+ * Each connector is [[x,y],[x,y]] where endpoints match chain polyline
+ * start/end points.
+ *
+ * If both endpoints belong to popped chains, links their anchor nodes.
+ * If only one endpoint is popped, creates a pinned phantom node at the
+ * static chain's polyline endpoint and links the anchor to it.
+ *
+ * @param {Object[]} siblingConnectors  [[x1,y1],[x2,y2]] pairs from API
+ * @param {Set} poppedChainIds          Currently popped chain IDs
+ * @param {Object[]} chains             All chain metadata from detailData
+ * @param {Object[]} forceNodes         Current simulation nodes
+ * @returns {{ nodes: Object[], links: Object[] }}  Phantom nodes + link elements
+ */
+export function createInterChainLinks(siblingConnectors, poppedChainIds, chains, forceNodes) {
+    if (!siblingConnectors || siblingConnectors.length === 0) return { nodes: [], links: [] };
+
+    // 1. Build coord→anchor map from popped chains' force nodes
+    const coordToAnchor = new Map();
     for (const node of forceNodes) {
-        if (!node.isAnchor || !node.anchorRole) continue;
-        const chainId = node.chainId;
-        if (!anchorIndex.has(chainId)) anchorIndex.set(chainId, {});
-        const entry = anchorIndex.get(chainId);
-
-        if (node.anchorRole === 'source' || node.anchorRole === 'source+sink') {
-            entry.source = { node, record: node.anchorRecord };
-        }
-        if (node.anchorRole === 'sink' || node.anchorRole === 'source+sink') {
-            entry.sink = { node, record: node.anchorRecord };
-        }
+        if (!node.isAnchor || !node.anchorRecord || node.fx == null) continue;
+        if (!poppedChainIds.has(node.chainId)) continue;
+        const key = `${Math.round(node.fx)},${Math.round(node.fy)}`;
+        coordToAnchor.set(key, { node, record: node.anchorRecord });
     }
 
-    // 2. Build segment-to-chain map from sourceSegs of popped chains
-    const sourceSegToChain = new Map();
-    for (const chain of poppedChains) {
-        if (!chain.sourceSegs) continue;
-        for (const seg of chain.sourceSegs) {
-            if (!sourceSegToChain.has(seg)) sourceSegToChain.set(seg, []);
-            sourceSegToChain.get(seg).push(chain.id);
-        }
-    }
+    if (coordToAnchor.size === 0) return { nodes: [], links: [] };
 
-    // 3. For each chain's sinkSegs, find chains whose sourceSegs overlap
+    // 2. For each connector, create a link if at least one side is popped
+    const nodes = [];
     const links = [];
     const seen = new Set();
+    const phantomCache = new Map(); // coord key → phantom node
 
-    for (const chain of poppedChains) {
-        if (!chain.sinkSegs) continue;
-        const sinkAnchor = anchorIndex.get(chain.id)?.sink;
-        if (!sinkAnchor) continue;
-
-        for (const seg of chain.sinkSegs) {
-            const adjacentChains = sourceSegToChain.get(seg);
-            if (!adjacentChains) continue;
-
-            for (const adjId of adjacentChains) {
-                if (adjId === chain.id) continue;
-
-                // Deduplicate: one link per directed pair
-                const pairKey = `${chain.id}→${adjId}`;
-                if (seen.has(pairKey)) continue;
-                seen.add(pairKey);
-
-                const sourceAnchor = anchorIndex.get(adjId)?.source;
-                if (!sourceAnchor) continue;
-
-                // 4. Create synthetic rawLink + LinkRecord
-                const rawLink = {
-                    id: `interchain_${chain.id}_${adjId}`,
-                    source: sinkAnchor.record.id,
-                    target: sourceAnchor.record.id,
-                    from_strand: '+',
-                    to_strand: '+',
-                };
-                const linkRecord = new LinkRecord(rawLink, sinkAnchor.record, sourceAnchor.record);
-
-                // 5. Create link elements via core pipeline
-                const els = createLinkElements(linkRecord);
-
-                // 6. Tag as inter-chain
-                for (const link of els.links) {
-                    link.isInterChain = true;
-                    link.chainId = null;
-                    link.isKinkLink = false;
-                    links.push(link);
-                }
-            }
-        }
+    function getOrCreatePhantom(coord) {
+        const key = `${Math.round(coord[0])},${Math.round(coord[1])}`;
+        if (phantomCache.has(key)) return phantomCache.get(key);
+        const phantom = {
+            id: `phantom_${key}`,
+            x: coord[0], y: coord[1],
+            fx: coord[0], fy: coord[1],
+            chainId: '__interchain__',
+            isPhantom: true,
+            radius: 0,
+            width: 0,
+        };
+        phantomCache.set(key, phantom);
+        nodes.push(phantom);
+        return phantom;
     }
 
-    return links;
+    for (const [coordA, coordB] of siblingConnectors) {
+        const keyA = `${Math.round(coordA[0])},${Math.round(coordA[1])}`;
+        const keyB = `${Math.round(coordB[0])},${Math.round(coordB[1])}`;
+
+        const anchorA = coordToAnchor.get(keyA);
+        const anchorB = coordToAnchor.get(keyB);
+
+        // Need at least one popped anchor
+        if (!anchorA && !anchorB) continue;
+
+        // Resolve each side to either its anchor node or a phantom
+        const nodeA = anchorA ? anchorA.node : getOrCreatePhantom(coordA);
+        const nodeB = anchorB ? anchorB.node : getOrCreatePhantom(coordB);
+        if (nodeA === nodeB) continue;
+
+        const pairKey = `${nodeA.id}↔${nodeB.id}`;
+        if (seen.has(pairKey)) continue;
+        seen.add(pairKey);
+        seen.add(`${nodeB.id}↔${nodeA.id}`);
+
+        // Simple D3-compatible link (no LinkRecord needed for cross-chain wires)
+        links.push({
+            source: nodeA,
+            target: nodeB,
+            isInterChain: true,
+            isKinkLink: false,
+            chainId: null,
+        });
+    }
+
+    return { nodes, links };
 }
 
 /**
@@ -324,10 +331,32 @@ export function createJunctionToAnchorLinks(junctionRecordMap, allForceNodes, ju
 
     if (segToRecord.size === 0) return [];
 
-    // 2. Resolve junction graph links using core's pattern:
-    //    segToRecord.get(segId) || junctionRecordMap.get("s" + segId)
+    // 2. Resolve junction graph links
     const links = [];
     const seen = new Set();
+
+    function pushLink(sourceRecord, targetRecord, rawLink) {
+        if (!sourceRecord || !targetRecord) return;
+        if (sourceRecord === targetRecord) return;
+        const pairKey = `${sourceRecord.id}→${targetRecord.id}`;
+        if (seen.has(pairKey)) return;
+        seen.add(pairKey);
+
+        const resolvedLink = {
+            ...rawLink,
+            id: `junc_${sourceRecord.id}_${targetRecord.id}`,
+            source: sourceRecord.id,
+            target: targetRecord.id,
+        };
+        const linkRecord = new LinkRecord(resolvedLink, sourceRecord, targetRecord);
+        const els = createLinkElements(linkRecord);
+        for (const link of els.links) {
+            link.chainId = 'junction';
+            link.isKinkLink = false;
+            link.isJunctionLink = true;
+            links.push(link);
+        }
+    }
 
     for (const rawLink of junctionGraph.links) {
         const srcSegId = typeof rawLink.source === 'string'
@@ -346,28 +375,25 @@ export function createJunctionToAnchorLinks(junctionRecordMap, allForceNodes, ju
         const sourceRecord = junctionRecordMap.get('s' + srcSegId) || segToRecord.get(srcSegId);
         const targetRecord = junctionRecordMap.get('s' + tgtSegId) || segToRecord.get(tgtSegId);
 
-        if (!sourceRecord || !targetRecord) continue;
-        if (sourceRecord === targetRecord) continue;
+        pushLink(sourceRecord, targetRecord, rawLink);
+    }
 
-        const pairKey = `${sourceRecord.id}→${targetRecord.id}`;
-        if (seen.has(pairKey)) continue;
-        seen.add(pairKey);
-
-        const resolvedLink = {
-            ...rawLink,
-            id: `junc_${sourceRecord.id}_${targetRecord.id}`,
-            source: sourceRecord.id,
-            target: targetRecord.id,
-        };
-        const linkRecord = new LinkRecord(resolvedLink, sourceRecord, targetRecord);
-        const els = createLinkElements(linkRecord);
-
-        for (const link of els.links) {
-            link.chainId = 'junction';
-            link.isKinkLink = false;
-            link.isJunctionLink = true;
-            links.push(link);
-        }
+    // 3. Direct junction↔anchor links: when a junction node's seg ID
+    //    is also a chain boundary seg, create a link from the junction
+    //    record to the chain's anchor record.  This handles cases where
+    //    GFA links go through bubble-internal segs (e.g. s137186→s137188
+    //    where s137186 is inside b7969 and unresolvable, but s137188 is
+    //    both a junction node and c122.1's source boundary seg).
+    for (const [juncId, juncRecord] of junctionRecordMap) {
+        const segId = juncId.replace(/^s/, '');
+        const anchorRecord = segToRecord.get(segId);
+        if (!anchorRecord) continue;
+        pushLink(juncRecord, anchorRecord, {
+            source: juncId,
+            target: `anchor_${segId}`,
+            from_strand: '+',
+            to_strand: '+',
+        });
     }
 
     return links;
@@ -384,30 +410,25 @@ function pinAnchors(nodes, polyline) {
         nodesByRecord.get(node.id).push(node);
     }
 
-    let closestStartRec = null, startDist = Infinity;
-    let closestEndRec = null, endDist = Infinity;
+    // Use first and last records (ordered by chain step from the API)
+    // rather than distance-based matching, which fails when bubble layout
+    // positions diverge from the chain polyline's segment centroids.
+    const recIds = [...nodesByRecord.keys()];
+    const firstRec = recIds[0];
+    const lastRec = recIds[recIds.length - 1];
 
-    for (const [recId, kinks] of nodesByRecord) {
-        const head = kinks[0];
-        const tail = kinks[kinks.length - 1];
-        const ds = Math.hypot(head.x - plStart[0], head.y - plStart[1]);
-        const de = Math.hypot(tail.x - plEnd[0], tail.y - plEnd[1]);
-        if (ds < startDist) { startDist = ds; closestStartRec = recId; }
-        if (de < endDist) { endDist = de; closestEndRec = recId; }
-    }
-
-    if (closestStartRec) {
-        const head = nodesByRecord.get(closestStartRec)[0];
+    if (firstRec) {
+        const head = nodesByRecord.get(firstRec)[0];
         head.fx = plStart[0];
         head.fy = plStart[1];
         head.isAnchor = true;
         head.anchorRole = 'source';
         head.anchorRecord = head.record;
     }
-    if (closestEndRec) {
-        const kinks = nodesByRecord.get(closestEndRec);
+    if (lastRec) {
+        const kinks = nodesByRecord.get(lastRec);
         const tail = kinks[kinks.length - 1];
-        if (closestEndRec !== closestStartRec || kinks.length > 1) {
+        if (lastRec !== firstRec || kinks.length > 1) {
             tail.fx = plEnd[0];
             tail.fy = plEnd[1];
             tail.isAnchor = true;

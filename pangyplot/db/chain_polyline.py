@@ -463,7 +463,10 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
 
     max_hops limits BFS depth (None = unlimited).
 
-    Returns (junction_nodes, junction_links, chain_adjacency).
+    Returns (junction_nodes, junction_links, chain_adjacency,
+             naked_visited, naked_seg_chains).
+    naked_visited: set of naked segment IDs found during BFS.
+    naked_seg_chains: dict mapping naked seg ID → set of adjacent chain IDs.
     """
 
     # Map: seg_id → chain_id (for ALL endpoint segs: source + sink)
@@ -487,6 +490,7 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
 
     # Collect naked segment IDs visited during BFS
     naked_visited = set()
+    naked_seg_chains = {}  # naked seg_id → set of adjacent chain IDs
     endpoint_reached = set()
     chain_adj = {}  # chain_id → set of chain_ids
 
@@ -498,6 +502,12 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
         )
 
         for start_seg in all_endpoints:
+            # If the chain's own boundary seg is naked, record it as a
+            # junction node adjacent to this chain.
+            if bubbleidx.segment_in_bubble(start_seg) is None:
+                naked_visited.add(start_seg)
+                naked_seg_chains.setdefault(start_seg, set()).add(chain_id)
+
             queue = deque([(start_seg, 0)])
             visited = {start_seg}
 
@@ -520,6 +530,10 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                         endpoint_reached.add(nxt)
                         if cur in endpoint_seg_to_chain:
                             endpoint_reached.add(cur)
+                        # Tag naked segs that led here as adjacent to both chains
+                        if cur in naked_visited:
+                            naked_seg_chains.setdefault(cur, set()).add(chain_id)
+                            naked_seg_chains.setdefault(cur, set()).add(other_chain)
                         continue
 
                     # Only traverse naked segments (not owned by any bubble)
@@ -528,6 +542,8 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
 
                     visited.add(nxt)
                     naked_visited.add(nxt)
+                    # This naked seg is reachable from chain_id's endpoint
+                    naked_seg_chains.setdefault(nxt, set()).add(chain_id)
                     queue.append((nxt, hops + 1))
 
     # Build junction nodes: centroid of each naked segment
@@ -596,7 +612,8 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
             junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt]])
 
     chain_adjacency = {k: sorted(v) for k, v in chain_adj.items()}
-    return junction_nodes, junction_links, chain_adjacency
+    return (junction_nodes, junction_links, chain_adjacency,
+            naked_visited, naked_seg_chains)
 
 
 def find_sibling_connectors(chains_data, gfaidx, bubbleidx):

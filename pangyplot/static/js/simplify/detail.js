@@ -8,8 +8,8 @@ import { xToBp, getChromosome, isReady } from './spine.js';
 import { getViewport } from './viewport.js';
 import { scheduleFrame, updateDetailBar } from './render.js';
 import { selectLevel } from './lod.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, getForceNodes } from './simplify-force.js';
-import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks } from './simplify-detail-adapter.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from './simplify-force.js';
+import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from './simplify-detail-adapter.js';
 import { getActivationSet } from './physics-zone.js';
 
 let fadeStartTime = 0;
@@ -117,7 +117,39 @@ function popChainById(chainId, activation) {
     // Activate adjacent junction segments
     activateJunctionSegs(chainId, nodes);
 
+    // Create inter-chain links to already-popped adjacent chains
+    createInterChainLinksForPopped();
+
     return true;
+}
+
+/**
+ * Create inter-chain links between popped chains and their neighbors
+ * using sibling connector coordinates.  When only one side is popped,
+ * a pinned phantom node is placed at the static chain's endpoint.
+ * Removes existing inter-chain phantom nodes and links first, then rebuilds.
+ */
+function createInterChainLinksForPopped() {
+    const dd = state.detailData;
+    if (!dd || state.poppedChainIds.size === 0) return;
+
+    // Remove existing inter-chain phantom nodes and links
+    removePoppedNodes('__interchain__');
+    removeInterChainLinks();
+
+    const { nodes, links } = createInterChainLinks(
+        dd.siblingConnectors, state.poppedChainIds, dd.chains, getForceNodes());
+    if (links.length > 0) {
+        // Phantom nodes get added to the sim; links between existing anchors
+        // go via addInterChainLinks (link-only, no new nodes)
+        if (nodes.length > 0) {
+            // Gather links that involve at least one phantom
+            const phantomLinks = links.filter(l => l.source?.isPhantom || l.target?.isPhantom);
+            addPoppedNodes(nodes, phantomLinks);
+        }
+        const anchorLinks = links.filter(l => !l.source?.isPhantom && !l.target?.isPhantom);
+        if (anchorLinks.length > 0) addInterChainLinks(anchorLinks);
+    }
 }
 
 /**
@@ -254,6 +286,8 @@ export function togglePopChain(chain) {
         if (state.activeSeedChainId === chain.id) {
             state.activeSeedChainId = null;
         }
+        // Rebuild inter-chain links (this chain's links need removing)
+        createInterChainLinksForPopped();
     } else {
         // Pop: add to simulation
         const activation = getActivationSet();

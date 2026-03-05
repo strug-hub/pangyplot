@@ -105,7 +105,7 @@ function drawForceGraph(ctx, baseWidth) {
     ctx.stroke();
     ctx.globalAlpha = state.detailOpacity;
     for (const node of nodes) {
-        if (node.x == null) continue;
+        if (node.x == null || node.isPhantom) continue;
         ctx.fillStyle = node.type === 'bubble' ? '#F2DC0F' : '#0762E5';
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeR, 0, Math.PI * 2);
