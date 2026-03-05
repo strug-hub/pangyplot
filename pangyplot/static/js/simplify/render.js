@@ -121,6 +121,20 @@ function drawDetail() {
         ctx.globalAlpha = state.detailOpacity;
     }
 
+    // --- Junction nodes (naked segment dots between chains) ---
+    if (state.detailData.junctionNodes && state.detailData.junctionNodes.length > 0) {
+        const r = Math.max(1.5, 3 / state.zoom);
+        ctx.fillStyle = '#999';
+        ctx.globalAlpha = 0.7 * state.detailOpacity;
+        ctx.beginPath();
+        for (const [x, y] of state.detailData.junctionNodes) {
+            ctx.moveTo(x + r, y);
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.globalAlpha = state.detailOpacity;
+    }
+
     // --- Chain polylines ---
     const baseWidth = Math.max(1.5, 3 / state.zoom);
     drawChainPolylines(state.detailData.chains, baseWidth, hovChain);
@@ -223,7 +237,7 @@ export function draw() {
     const vpMaxX = vp.maxX + margin;
     const vpMaxY = vp.maxY + margin;
 
-    // ===== SKELETON LAYER =====
+    // ===== SKELETON LAYER (skipped when detail is fully active) =====
     ctx.save();
     ctx.translate(state.panX, state.panY);
     ctx.scale(state.zoom, state.zoom);
@@ -231,6 +245,7 @@ export function draw() {
     // --- Polylines (culled) ---
     const lineWidth = Math.max(0.5, 1.2 / state.zoom);
     const skelAlpha = state.detailData ? state.skeletonOpacity : 1;
+    const skipSkeleton = state.detailData && state.detailPhase === 'static';
     const hovSkel = state.hoveredSkeletonPl;
     const hasSkeletonHover = hovSkel && hovSkel.levelIdx === li;
     const hovChainId = hasSkeletonHover ? hovSkel.chainId : null;
@@ -245,6 +260,7 @@ export function draw() {
     const chainIds = level.chainIds;
     let visiblePl = 0;
 
+  if (!skipSkeleton) {
     ctx.beginPath();
     for (let i = 0; i < level.polylines.length; i++) {
         const o = i * 4;
@@ -350,6 +366,7 @@ export function draw() {
         }
         ctx.fill();
     }
+  } // end !skipSkeleton
 
     // ===== DETAIL LAYER (drawn in same data-space transform) =====
     if (state.detailData && state.detailOpacity > 0) {

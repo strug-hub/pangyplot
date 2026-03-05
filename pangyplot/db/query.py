@@ -1,5 +1,6 @@
 from pangyplot.db.chain_polyline import (
     decompose_chain, find_junction_graph, find_sibling_connectors,
+    _seg_centroid,
 )
 
 
@@ -246,6 +247,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     # --- Decompose chains and collect structural adjacency + bypass links ---
     decomp_adj = {}
     bypass_links = []
+    bypass_seg_ids = set()
+    bypass_gfa_links = []
 
     if layout_min_x is not None and layout_max_x is not None:
         chains = bubbleidx.get_top_level_bubbles_by_layout(
@@ -259,6 +262,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             chain_results.extend(r["chains"])
             bubble_results.extend(r["bubbles"])
             bypass_links.extend(r.get("bypass_links", []))
+            bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
+            bypass_gfa_links.extend(r.get("bypass_gfa_links", []))
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
@@ -275,6 +280,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             chain_results.extend(r["chains"])
             bubble_results.extend(r["bubbles"])
             bypass_links.extend(r.get("bypass_links", []))
+            bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
+            bypass_gfa_links.extend(r.get("bypass_gfa_links", []))
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
@@ -315,6 +322,71 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     junction_nodes, junction_links, junction_adj = \
         find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index)
+
+    # --- Merge bypass segments into junction nodes/links ---
+    if bypass_seg_ids:
+        # Build centroid cache for bypass segments
+        bypass_centroids = {}  # seg_id → [x, y]
+        existing_coords = {tuple(c) for c in junction_nodes}
+        for sid in bypass_seg_ids:
+            pt = _seg_centroid(sid, seg_index)
+            if pt:
+                coord = [round(pt[0], 1), round(pt[1], 1)]
+                bypass_centroids[sid] = coord
+                if tuple(coord) not in existing_coords:
+                    junction_nodes.append(coord)
+                    existing_coords.add(tuple(coord))
+
+        # Build chain endpoint seg → coordinate map for link targets
+        endpoint_coords = {}  # seg_id → [x, y]
+        for cd in result_chains:
+            pl = cd.get("polyline")
+            if not pl or len(pl) < 2:
+                continue
+            start_seg = cd.get("_start_seg")
+            end_seg = cd.get("_end_seg")
+            if start_seg is not None:
+                endpoint_coords[start_seg] = pl[0]
+            if end_seg is not None:
+                endpoint_coords[end_seg] = pl[-1]
+            # Also map all source/sink segs to nearest polyline endpoint
+            for sid in (cd.get("source_segs") or []):
+                if sid not in endpoint_coords:
+                    endpoint_coords[sid] = pl[0]
+            for sid in (cd.get("sink_segs") or []):
+                if sid not in endpoint_coords:
+                    endpoint_coords[sid] = pl[-1]
+
+        link_seen = set()
+        for l in junction_links:
+            link_seen.add((tuple(l[0]), tuple(l[1])))
+            link_seen.add((tuple(l[1]), tuple(l[0])))
+
+        def _add_link(ca, cb):
+            key = (tuple(ca), tuple(cb))
+            if key not in link_seen:
+                link_seen.add(key)
+                link_seen.add((tuple(cb), tuple(ca)))
+                junction_links.append([ca, cb])
+
+        # Add bypass-to-bypass GFA links
+        for from_id, to_id in bypass_gfa_links:
+            ca = bypass_centroids.get(from_id)
+            cb = bypass_centroids.get(to_id)
+            if ca and cb:
+                _add_link(ca, cb)
+
+        # Add bypass-to-chain-endpoint GFA links
+        for sid in bypass_seg_ids:
+            ca = bypass_centroids.get(sid)
+            if not ca:
+                continue
+            for nxt in gfaidx.get_neighbors(sid):
+                if nxt in bypass_seg_ids:
+                    continue  # already handled above
+                cb = endpoint_coords.get(nxt)
+                if cb:
+                    _add_link(ca, cb)
 
     # --- Sibling connector BFS ---
     sibling_connectors, sibling_adj = \

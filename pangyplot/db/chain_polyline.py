@@ -33,11 +33,16 @@ def _bubble_layout_span(bubble):
 
 
 def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
-    """Find a bypass path through a superbubble's naked internal segments.
+    """Find all bypass segments through a superbubble's naked internals.
 
     When a superbubble is decomposed, some haplotypes skip all child bubbles
     via internal segments that connect source directly to sink (deletion allele).
-    Returns a polyline [[x,y], ...] through these segments, or None.
+
+    Returns a dict with:
+      - "polyline": [[x,y], ...] one representative path for rendering
+      - "seg_ids": set of ALL naked internal segment IDs found
+      - "links": [(from_id, to_id)] GFA links between naked internals
+    Or None if no naked internal segments exist.
     """
     # Collect segments owned by children
     child_segs = set()
@@ -56,7 +61,10 @@ def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
 
     sink_set = set(superbubble.sink_segments)
 
-    # BFS from source through naked internal segments to find sink
+    # Flood fill: collect ALL reachable naked internal segments from sources
+    all_visited = set()
+    first_path = None  # first source-to-sink path for the polyline
+
     for src in superbubble.source_segments:
         if src not in naked_internal:
             continue
@@ -64,24 +72,39 @@ def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
         visited = {src}
         while queue:
             cur, path = queue.popleft()
-            if len(path) > 10:
-                continue
             for nxt in gfaidx.get_neighbors(cur):
                 if nxt in visited or nxt not in naked_internal:
                     continue
-                new_path = path + [nxt]
-                if nxt in sink_set:
-                    # Build polyline from segment centroids
-                    pts = []
-                    for sid in new_path:
-                        pt = _seg_centroid(sid, seg_index)
-                        if pt:
-                            pts.append([round(pt[0], 1), round(pt[1], 1)])
-                    return pts if len(pts) >= 2 else None
                 visited.add(nxt)
+                new_path = path + [nxt]
+                if nxt in sink_set and first_path is None:
+                    first_path = new_path
                 queue.append((nxt, new_path))
+        all_visited.update(visited)
 
-    return None
+    if not all_visited:
+        return None
+
+    # Build representative polyline from first path (or all visited if no path)
+    path_for_polyline = first_path or sorted(all_visited)
+    pts = []
+    for sid in path_for_polyline:
+        pt = _seg_centroid(sid, seg_index)
+        if pt:
+            pts.append([round(pt[0], 1), round(pt[1], 1)])
+
+    # Collect GFA links between naked internals
+    bypass_links = []
+    for sid in all_visited:
+        for nxt in gfaidx.get_neighbors(sid):
+            if nxt in all_visited and sid < nxt:
+                bypass_links.append((sid, nxt))
+
+    return {
+        "polyline": pts if len(pts) >= 2 else None,
+        "seg_ids": all_visited,
+        "links": bypass_links,
+    }
 
 
 # ---------------------------------------------------------------
@@ -248,7 +271,9 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     all_chains = []
     all_bubbles = []
     all_adj = {}  # accumulated adjacency from recursive decompositions
-    all_bypasses = []  # [[x1,y1],[x2,y2]] bypass links (deletion alleles)
+    all_bypasses = []  # [[x1,y1],[x2,y2]] bypass polylines (deletion alleles)
+    all_bypass_seg_ids = set()  # segment IDs from bypass flood fills
+    all_bypass_links = []  # (from_id, to_id) GFA links between bypass segs
 
     leaf_run = []
     connector_idx = 0
@@ -295,14 +320,19 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                 group_chains.extend(r["chains"])
                 all_bubbles.extend(r["bubbles"])
                 all_bypasses.extend(r.get("bypass_links", []))
+                all_bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
+                all_bypass_links.extend(r.get("bypass_gfa_links", []))
                 # Merge child adjacency
                 for k, v in r.get("adjacency", {}).items():
                     all_adj.setdefault(k, set()).update(v)
 
             # Check for bypass path (deletion allele) through superbubble
-            bypass_pl = _find_bypass(b, bubbleidx, gfaidx, seg_index)
-            if bypass_pl:
-                all_bypasses.append(bypass_pl)
+            bypass = _find_bypass(b, bubbleidx, gfaidx, seg_index)
+            if bypass:
+                if bypass["polyline"]:
+                    all_bypasses.append(bypass["polyline"])
+                all_bypass_seg_ids.update(bypass["seg_ids"])
+                all_bypass_links.extend(bypass["links"])
 
             all_chains.extend(group_chains)
             groups.append({'chains': group_chains, 'super': b})
@@ -336,7 +366,9 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                     all_adj.setdefault(cb_id, set()).add(ca_id)
 
     return {"chains": all_chains, "bubbles": all_bubbles, "adjacency": all_adj,
-            "bypass_links": all_bypasses}
+            "bypass_links": all_bypasses,
+            "bypass_seg_ids": all_bypass_seg_ids,
+            "bypass_gfa_links": all_bypass_links}
 
 
 def _group_exit_chains(group):
@@ -421,16 +453,18 @@ def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
 # Inter-chain connectivity (junction BFS, sibling BFS)
 # ---------------------------------------------------------------
 
-def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
+def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
+                        max_hops=None):
     """Find naked GFA segments forming junction graphs between chains.
 
     BFS from each chain's endpoint segs through segments not owned by any
     bubble. Collects all visited naked segment centroids as junction nodes
     and GFA links between them (or to chain endpoint segs) as junction links.
 
+    max_hops limits BFS depth (None = unlimited).
+
     Returns (junction_nodes, junction_links, chain_adjacency).
     """
-    MAX_HOPS = 8
 
     # Map: seg_id → chain_id (for ALL endpoint segs: source + sink)
     # Also: seg_id → [x, y] polyline coordinate.
@@ -469,7 +503,7 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index):
 
             while queue:
                 cur, hops = queue.popleft()
-                if hops > MAX_HOPS:
+                if max_hops is not None and hops > max_hops:
                     continue
 
                 for nxt in gfaidx.get_neighbors(cur):
