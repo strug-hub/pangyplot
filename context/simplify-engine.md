@@ -1,47 +1,55 @@
 # Simplify Viewer — Module Architecture
 
-The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. It was extracted from a monolith into 14 ES modules following the same patterns as the main `static/js/graph/` codebase.
+The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. Restructured from 17 flat files into a core-style hierarchy with `render/`, `engines/`, `data/`, `lod/`, `utils/` subdirectories (24 files total).
 
 ## Module Map
 
 ```
 pangyplot/static/js/simplify/
-├── simplify-app.js        Entry point: init(), wire up modules
-├── simplify-state.js      Singleton: shared mutable state + DOM refs + constants
-├── simplify-force.js      D3-force simulation for popped chain subgraphs
-├── simplify-painter.js    Core app drawing primitives + colors for popped nodes
-├── spine.js               Reference spine: coordinate transforms (x↔bp, x→y, bp→step)
-├── lod.js                 Auto-LOD: selectLevel(), updateLodDisplay()
-├── viewport.js            getViewport(), viewportStepCount(), precomputeBboxes(), fitToScreen()
-├── detail.js              Detail fetch, cache, chain popping, phase state machine
-├── genes.js               Gene landmarks, placeGenes()
-├── hash-navigation.js     URL hash: parse, navigate, debounced update
-├── render.js              Main draw(), skeleton pass, detail pass, force graph, gene labels
-├── interaction.js         Mouse/wheel handlers, pan/drag, zoom, dblclick, LOD buttons
-├── hit-test.js            Chain/bubble hover detection, tooltip formatting
-└── format-utils.js        formatBp(), subtypeColor()
+├── simplify-app.js                   Entry point: init(), wire up modules
+├── simplify-state.js                 Singleton: shared mutable state + DOM refs + constants
+├── render/
+│   ├── render-manager.js             Main draw(), RAF scheduling, detail bar DOM update
+│   ├── viewport.js                   getViewport(), precomputeBboxes(), fitToScreen()
+│   ├── painter/
+│   │   ├── skeleton-painter.js       Skeleton LOD layer: polylines, junctions, gene overdraw
+│   │   ├── detail-painter.js         Detail layer: chains, junction nodes/links, selections
+│   │   ├── force-painter.js          Force graph: D3 simulation nodes + links
+│   │   └── simplify-painter.js       Core app drawing primitives + colors for popped nodes
+│   └── annotation/
+│       └── gene-label-renderer.js    Gene landmarks + screen-space label rendering
+├── engines/
+│   ├── engine-manager.js             Orchestrator: sets up all interaction engines
+│   ├── keyboard-engine.js            L-key physics debug toggle
+│   ├── navigation/
+│   │   ├── pan-zoom-engine.js        Pan, drag, zoom (wheel), dblclick reset, resize
+│   │   └── hash-navigation.js        URL hash: parse, navigate, debounced update
+│   ├── selection/
+│   │   ├── hover-engine.js           Cursor readout + hover hit-test
+│   │   └── multi-selection-engine.js Shift+drag rect, X-key pop, Escape clear, C-key toggle
+│   └── bubble-pop/
+│       └── chain-pop-engine.js       Pop/unpop state machine, fade animation, seed force
+├── data/
+│   ├── detail-fetcher.js             Single-viewport fetch, response parsing, debounced trigger
+│   ├── detail-adapter.js             API response → core elements for force simulation
+│   ├── detail-tile-cache.js          TileCache class (bp-space tile caching)
+│   ├── simplify-force.js             D3-force simulation for popped chain subgraphs
+│   └── spine.js                      Reference spine: coordinate transforms (x↔bp, x→y)
+├── lod/
+│   ├── lod.js                        Auto-LOD: selectLevel(), grid meter display
+│   └── physics-zone.js               BFS activation zone debug overlay
+└── utils/
+    ├── hit-test.js                   Chain/bubble/skeleton hover detection, tooltip formatting
+    └── format-utils.js               formatBp(), subtypeColor()
 ```
 
-## Dependency Graph (DAG)
+## Key Dependencies
 
-```
-format-utils ──────────────────────────────────────┐
-simplify-state ────────────────────────────────────┤
-spine ─────────────────────────────────────────────┤
-  ↑                                                │
-viewport ← state, spine                            │
-lod ← state                                        │
-genes ← spine                                      │
-hash-navigation ← state, spine, viewport           │
-hit-test ← state, format-utils                     │
-simplify-force ← state, render
-render ← state, lod, viewport, genes, format-utils, spine, simplify-force
-detail ← state, spine, viewport, format-utils, render, lod, simplify-force
-interaction ← state, render, detail, hash-navigation, viewport, spine, format-utils, hit-test, lod
-simplify-app ← all modules (entry point)
-```
-
-No circular dependencies. `detail → render` is one-way: detail imports `scheduleFrame` and `updateDetailBar` from render; render reads detail state from the shared `state` singleton.
+- `render-manager.js` orchestrates: skeleton-painter, detail-painter, gene-label-renderer, physics-zone
+- `detail-fetcher.js` ↔ `chain-pop-engine.js` have a circular import (safe: no top-level calls)
+- `engine-manager.js` wires: pan-zoom-engine, hover-engine, multi-selection-engine, keyboard-engine
+- All painters import `simplify-state.js` for zoom/pan/opacity
+- Force simulation (`data/simplify-force.js`) imported by force-painter and chain-pop-engine
 
 ## Key Patterns
 
@@ -53,11 +61,12 @@ No circular dependencies. `detail → render` is one-way: detail imports `schedu
 
 ### Module-Local State
 Some state is private to its module rather than shared:
-- `spine.js`: Float64Arrays (spineX, spineBp, spineY, spineStep), chromosome name
-- `genes.js`: genePins array (accessed via `getGenePins()`)
-- `detail.js`: fadeStartTime, fetchController, fetchTimer
-- `render.js`: rafId
-- `hash-navigation.js`: hashTimer
+- `data/spine.js`: Float64Arrays (spineX, spineBp, spineY, spineStep), chromosome name
+- `render/annotation/gene-label-renderer.js`: genePins array (accessed via `getGenePins()`)
+- `data/detail-fetcher.js`: fadeStartTime, fetchController, fetchTimer, fetchedRegion
+- `render/render-manager.js`: rafId
+- `engines/navigation/hash-navigation.js`: hashTimer
+- `lod/physics-zone.js`: activationSet, adjacency, viewport snapshot
 
 ### Side-Effect-Free Viewport Functions
 `resizeCanvas()` and `fitToScreen()` do not call `scheduleFrame()`. Callers are responsible for triggering redraws. This prevents render↔viewport cycles.

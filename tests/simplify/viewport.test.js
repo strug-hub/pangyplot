@@ -13,7 +13,7 @@ const mockState = {
 vi.mock('@simplify/simplify-state.js', () => ({ state: mockState }));
 
 // Mock spine — bpToStep/xToBp are used by viewportStepCount
-vi.mock('@simplify/spine.js', () => ({
+vi.mock('@simplify/data/spine.js', () => ({
     xToBp: (x) => x * 10_000,  // simple linear mapping
     bpToStep: (bp) => bp / 1000,
 }));
@@ -22,7 +22,7 @@ vi.mock('@simplify/spine.js', () => ({
 vi.stubGlobal('window', { devicePixelRatio: 1 });
 
 const { precomputeBboxes, computeBounds, getViewport, viewportStepCount, fitToScreen } =
-    await import('@simplify/viewport.js');
+    await import('@simplify/render/viewport.js');
 
 describe('precomputeBboxes', () => {
     it('computes bounding boxes for polylines', () => {

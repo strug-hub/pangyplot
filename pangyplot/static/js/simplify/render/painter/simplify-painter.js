@@ -1,9 +1,9 @@
-// Painting for popped chain subgraphs — reuses core pangyplot color system
+// Painting for popped chain subgraphs -- reuses core pangyplot color system
 // and drawing primitives, adapted for simplify's canvas transform + zoom.
 
-import { state } from './simplify-state.js';
-import { drawCircle, drawLine } from '../graph/render/painter/painter-utils.js';
-import { getNodeColor, getLinkColor } from '../graph/render/color/color-style.js';
+import { state } from '../../simplify-state.js';
+import { drawCircle, drawLine } from '../../../graph/render/painter/painter-utils.js';
+import { getNodeColor, getLinkColor } from '../../../graph/render/color/color-style.js';
 
 // ---------------------------------------------------------------
 // Public painters
@@ -11,7 +11,6 @@ import { getNodeColor, getLinkColor } from '../graph/render/color/color-style.js
 
 /**
  * Paint a single node (circle) using core app color system.
- * Core elements have: { x, y, width, type, record, isRef }
  */
 export function paintNode(ctx, node) {
     const w = node.width / state.zoom;
@@ -22,8 +21,6 @@ export function paintNode(ctx, node) {
 
 /**
  * Paint a single link using core app color system.
- * Kink links: thick, colored by source node (sausage body).
- * Inter-record links: thin, colored by link type.
  */
 export function paintLink(ctx, link) {
     const src = link.source;

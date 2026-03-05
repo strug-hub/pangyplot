@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatBp, subtypeColor } from '@simplify/format-utils.js';
+import { formatBp, subtypeColor } from '@simplify/utils/format-utils.js';
 
 describe('formatBp', () => {
     it('formats small numbers without separators', () => {

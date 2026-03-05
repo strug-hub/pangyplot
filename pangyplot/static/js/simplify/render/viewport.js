@@ -1,7 +1,7 @@
 // Viewport bounds, bounding-box precomputation, canvas resize, fit-to-screen.
 
-import { state } from './simplify-state.js';
-import { xToBp, bpToStep } from './spine.js';
+import { state } from '../simplify-state.js';
+import { xToBp, bpToStep } from '../data/spine.js';
 
 export function precomputeBboxes() {
     state.levelBboxes = [];

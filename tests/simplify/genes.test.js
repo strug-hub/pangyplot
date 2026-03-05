@@ -1,6 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { initSpine } from '@simplify/spine.js';
-import { placeGenes, getGenePins } from '@simplify/genes.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock simplify-state (gene-label-renderer imports it for drawGeneLabels)
+vi.mock('@simplify/simplify-state.js', () => ({
+    state: { zoom: 1, panX: 0, panY: 0, detailOpacity: 1 },
+}));
+
+import { initSpine } from '@simplify/data/spine.js';
+import { placeGenes, getGenePins } from '@simplify/render/annotation/gene-label-renderer.js';
 
 // Spine covering chrY range (0..30 Mbp) with a curve
 // x = bp / 100_000 (so 30 Mbp → x=300), y arcs up and back

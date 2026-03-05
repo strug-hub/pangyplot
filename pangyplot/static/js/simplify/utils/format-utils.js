@@ -1,4 +1,4 @@
-// Pure utility functions — no dependencies
+// Pure utility functions -- no dependencies
 
 export function formatBp(bp) {
     bp = Math.round(bp);

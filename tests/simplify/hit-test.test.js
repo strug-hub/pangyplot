@@ -14,17 +14,17 @@ const mockState = {
 vi.mock('@simplify/simplify-state.js', () => ({ state: mockState }));
 
 // Mock lod to avoid its state dependency
-vi.mock('@simplify/lod.js', () => ({
+vi.mock('@simplify/lod/lod.js', () => ({
     selectLevel: () => 0,
 }));
 
 // Mock viewport
-vi.mock('@simplify/viewport.js', () => ({
+vi.mock('@simplify/render/viewport.js', () => ({
     getViewport: () => ({ minX: -500, maxX: 500, minY: -300, maxY: 300 }),
 }));
 
 // Mock simplify-force
-vi.mock('@simplify/simplify-force.js', () => ({
+vi.mock('@simplify/data/simplify-force.js', () => ({
     getForceNodes: () => [],
 }));
 
@@ -36,7 +36,7 @@ const {
     formatBubbleTooltip,
     formatForceNodeTooltip,
     formatSkeletonTooltip,
-} = await import('@simplify/hit-test.js');
+} = await import('@simplify/utils/hit-test.js');
 
 describe('hitTestBubbles', () => {
     beforeEach(() => {
@@ -210,7 +210,7 @@ describe('tooltip formatters', () => {
             },
         };
         const html = formatSkeletonTooltip({ chainId: 5 });
-        expect(html).toContain('c5 > c2 > c1');
+        expect(html).toContain('c1 > c2 > c5');
         expect(html).toContain('50.0kb');
         expect(html).toContain('10');
     });

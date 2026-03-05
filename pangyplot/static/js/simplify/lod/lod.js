@@ -1,6 +1,6 @@
 // Auto-LOD: pick grid level based on zoom, with grid meter display.
 
-import { state } from './simplify-state.js';
+import { state } from '../simplify-state.js';
 
 export function selectLevel() {
     const dpr = window.devicePixelRatio || 1;
@@ -37,9 +37,6 @@ export function updateGridMeter(levelIndex) {
     state.currentLevel = levelIndex;
     const bars = state.dom.gridMeter.children;
     const n = bars.length;
-    // Bars laid out L→R: index 0 = coarsest, n-1 = finest.
-    // Active when the bar's level (coarsest-first) is >= current level index.
-    // levelIndex 0 = finest → all bars lit. levelIndex n-1 = coarsest → only first bar lit.
     for (let i = 0; i < n; i++) {
         bars[i].classList.toggle('active', i < n - levelIndex);
     }

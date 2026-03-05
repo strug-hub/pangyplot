@@ -1,25 +1,24 @@
 // Physics zone debug overlay: center-out chain walk with BFS budget.
 // Toggled with L key. Shows which chains would be activated for physics.
 
-import { state } from './simplify-state.js';
-import { getViewport } from './viewport.js';
+import { state } from '../simplify-state.js';
+import { getViewport } from '../render/viewport.js';
 
 let debugActive = false;
 let activationSet = null;
-let adjacency = null;          // Map<chainId, Set<chainId>>
-let adjacencyDataId = null;    // identity ref to track detailData changes
+let adjacency = null;
+let adjacencyDataId = null;
 
-// Viewport snapshot from last recompute — recompute when center shifts enough
 let lastVpCenterX = 0;
 let lastVpCenterY = 0;
 let lastVpWidth = 0;
 let lastZoom = 0;
 
 const DEPTH_COLORS = [
-    '#00ffff',  // depth 0 (seed) — cyan
-    '#4488ff',  // depth 1 — blue
-    '#8844ff',  // depth 2 — purple
-    '#cc44ff',  // depth 3+ — magenta
+    '#00ffff',  // depth 0 (seed) -- cyan
+    '#4488ff',  // depth 1 -- blue
+    '#8844ff',  // depth 2 -- purple
+    '#cc44ff',  // depth 3+ -- magenta
 ];
 
 // ---------------------------------------------------------------
@@ -47,17 +46,13 @@ export function getActivationSet() {
     return activationSet;
 }
 
-/**
- * Return the seed chain ID from the current activation set, or null.
- * Always available (not gated on debug overlay).
- */
 export function getSeedChainId() {
     const set = getActivationSet();
     return set ? set.seed : null;
 }
 
 // ---------------------------------------------------------------
-// Adjacency graph (rebuilt when detailData changes)
+// Adjacency graph
 // ---------------------------------------------------------------
 
 function buildAdjacency(chains, chainAdjacency) {
@@ -66,7 +61,6 @@ function buildAdjacency(chains, chainAdjacency) {
         adj.set(chain.id, new Set());
     }
 
-    // 1. Shared boundary segments (sourceSegs/sinkSegs overlap)
     const segToChains = new Map();
     for (const chain of chains) {
         const id = chain.id;
@@ -93,11 +87,7 @@ function buildAdjacency(chains, chainAdjacency) {
         }
     }
 
-    // 2. Backend-computed junction adjacency (chains connected through naked
-    //    GFA segments that sit between chain endpoints)
     if (chainAdjacency) {
-        // JSON keys are always strings; chain.id may be number or string.
-        // Build string → actual chain.id lookup.
         const strToId = new Map();
         for (const chain of chains) {
             strToId.set(String(chain.id), chain.id);
@@ -140,13 +130,12 @@ function chainCentroid(bbox) {
 }
 
 // ---------------------------------------------------------------
-// Viewport clipping: fraction of polyline within viewport
+// Viewport clipping
 // ---------------------------------------------------------------
 
 function polylineTRange(polyline, vp) {
     if (polyline.length < 2) return null;
 
-    // Compute cumulative arc lengths
     const cumLen = [0];
     for (let i = 1; i < polyline.length; i++) {
         const dx = polyline[i][0] - polyline[i - 1][0];
@@ -156,7 +145,6 @@ function polylineTRange(polyline, vp) {
     const totalLen = cumLen[cumLen.length - 1];
     if (totalLen === 0) return null;
 
-    // Find the first and last point inside the viewport
     let firstInside = -1, lastInside = -1;
     for (let i = 0; i < polyline.length; i++) {
         const [x, y] = polyline[i];
@@ -167,17 +155,13 @@ function polylineTRange(polyline, vp) {
     }
 
     if (firstInside === -1) {
-        // No points inside — check if the polyline crosses the viewport
-        // (simple bbox overlap check; if bbox overlaps vp, treat as partially visible)
         const bbox = chainBbox({ polyline });
         if (!bbox) return null;
         if (bbox.maxX < vp.minX || bbox.minX > vp.maxX ||
             bbox.maxY < vp.minY || bbox.minY > vp.maxY) return null;
-        // Crossing — use full range as approximation
         return { tStart: 0, tEnd: 1 };
     }
 
-    // Extend one point beyond in each direction for smooth clipping
     const iStart = Math.max(0, firstInside - 1);
     const iEnd = Math.min(polyline.length - 1, lastInside + 1);
 
@@ -194,13 +178,11 @@ function polylineTRange(polyline, vp) {
 export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
     if (!chains || chains.length === 0) return null;
 
-    // Rebuild adjacency if detailData changed
     if (adjacencyDataId !== state.detailData) {
         adjacency = buildAdjacency(chains, chainAdjacency);
         adjacencyDataId = state.detailData;
     }
 
-    // Viewport with 10% margin
     const marginX = (viewport.maxX - viewport.minX) * 0.1;
     const marginY = (viewport.maxY - viewport.minY) * 0.1;
     const vp = {
@@ -210,7 +192,6 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         maxY: viewport.maxY + marginY,
     };
 
-    // Precompute bboxes, centroids, visibility
     const chainInfo = new Map();
     const vpCenter = [
         (viewport.minX + viewport.maxX) / 2,
@@ -221,20 +202,17 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         const bbox = chainBbox(chain);
         if (!bbox) continue;
 
-        // Viewport overlap check (with margin)
         const visible = !(bbox.maxX < vp.minX || bbox.minX > vp.maxX ||
                           bbox.maxY < vp.minY || bbox.minY > vp.maxY);
 
         const centroid = chainCentroid(bbox);
         const distToCenter = Math.hypot(centroid[0] - vpCenter[0], centroid[1] - vpCenter[1]);
 
-        // Viewport clipping t-range
         const tRange = visible ? polylineTRange(chain.polyline, viewport) : null;
         const tStart = tRange ? tRange.tStart : 0;
         const tEnd = tRange ? tRange.tEnd : 1;
         const tFraction = tEnd - tStart;
 
-        // Cost estimation
         const popped = !!chain.graph;
         let fullCost;
         if (popped) {
@@ -245,18 +223,11 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         const clippedCost = Math.ceil(fullCost * tFraction);
 
         chainInfo.set(chain.id, {
-            visible,
-            centroid,
-            distToCenter,
-            popped,
-            fullCost,
-            clippedCost,
-            tStart,
-            tEnd,
+            visible, centroid, distToCenter, popped, fullCost,
+            clippedCost, tStart, tEnd,
         });
     }
 
-    // Find seed: visible chain closest to viewport center
     let seedId = null;
     let seedDist = Infinity;
     for (const [id, info] of chainInfo) {
@@ -269,7 +240,6 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
 
     if (seedId === null) return null;
 
-    // BFS walk with budget — prefer closest-to-center chains first
     const activated = new Map();
     const seedInfo = chainInfo.get(seedId);
     const queue = [{ id: seedId, depth: 0, dist: seedInfo.distToCenter }];
@@ -278,7 +248,6 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
     let totalFullCost = 0;
 
     while (queue.length > 0) {
-        // Pick the closest-to-center entry from the queue
         let bestIdx = 0;
         for (let i = 1; i < queue.length; i++) {
             if (queue[i].dist < queue[bestIdx].dist) bestIdx = i;
@@ -290,7 +259,6 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         const info = chainInfo.get(id);
         if (!info || !info.visible) continue;
 
-        // Check budget
         if (totalClippedCost + info.clippedCost > budget && activated.size > 0) {
             continue;
         }
@@ -306,7 +274,6 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         totalClippedCost += info.clippedCost;
         totalFullCost += info.fullCost;
 
-        // Enqueue neighbors
         const neighbors = adjacency.get(id);
         if (!neighbors) continue;
         for (const nid of neighbors) {
@@ -317,17 +284,11 @@ export function computeActivationSet(chains, chainAdjacency, viewport, budget) {
         }
     }
 
-    return {
-        seed: seedId,
-        activated,
-        totalClippedCost,
-        totalFullCost,
-        budget,
-    };
+    return { seed: seedId, activated, totalClippedCost, totalFullCost, budget };
 }
 
 // ---------------------------------------------------------------
-// Internal recompute with viewport-shift threshold
+// Internal recompute
 // ---------------------------------------------------------------
 
 function recompute() {
@@ -356,10 +317,8 @@ function logActivationSet() {
     const { seed, activated, totalClippedCost, totalFullCost, budget } = activationSet;
     const totalChains = state.detailData?.chains.length || 0;
 
-    // Adjacency dump
-    console.groupCollapsed(`[physics-zone] ON — seed: ${seed}, chains: ${activated.size}/${totalChains}, cost: ${totalClippedCost}/${budget}`);
+    console.groupCollapsed(`[physics-zone] ON -- seed: ${seed}, chains: ${activated.size}/${totalChains}, cost: ${totalClippedCost}/${budget}`);
 
-    // Per-chain adjacency
     console.log('--- adjacency ---');
     for (const chain of (state.detailData?.chains || [])) {
         const neighbors = adjacency?.get(chain.id);
@@ -367,10 +326,9 @@ function logActivationSet() {
         const inSet = activated.has(chain.id);
         const info = inSet ? activated.get(chain.id) : null;
         const tag = inSet ? `depth=${info.depth} cost=${info.clippedCost}` : 'NOT activated';
-        console.log(`  ${chain.id}: [${nList}] — ${tag}`);
+        console.log(`  ${chain.id}: [${nList}] -- ${tag}`);
     }
 
-    // Isolated chains (no neighbors at all)
     const isolated = (state.detailData?.chains || []).filter(c => {
         const n = adjacency?.get(c.id);
         return !n || n.size === 0;
@@ -392,8 +350,6 @@ function recomputeIfDirty() {
     const cy = (vp.minY + vp.maxY) / 2;
     const vpW = vp.maxX - vp.minX;
 
-    // Recompute when: detailData changed, or viewport center shifted by >5% of
-    // viewport width in either axis, or zoom changed by >10%
     const threshold = (lastVpWidth || vpW) * 0.05;
     const dirty = !activationSet
         || adjacencyDataId !== state.detailData
@@ -405,7 +361,7 @@ function recomputeIfDirty() {
 }
 
 // ---------------------------------------------------------------
-// Rendering (called from render.js within data-space transform)
+// Rendering
 // ---------------------------------------------------------------
 
 export function drawPhysicsDebugOverlay(ctx, viewport) {
@@ -416,7 +372,6 @@ export function drawPhysicsDebugOverlay(ctx, viewport) {
     const chains = state.detailData.chains;
     const baseWidth = Math.max(1.5, 3 / state.zoom);
 
-    // --- Dim non-activated chains ---
     for (const chain of chains) {
         if (activated.has(chain.id)) continue;
         const pl = chain.polyline;
@@ -433,7 +388,6 @@ export function drawPhysicsDebugOverlay(ctx, viewport) {
         ctx.stroke();
     }
 
-    // --- Highlighted activated chains ---
     for (const chain of chains) {
         const info = activated.get(chain.id);
         if (!info) continue;
@@ -444,7 +398,6 @@ export function drawPhysicsDebugOverlay(ctx, viewport) {
         const color = DEPTH_COLORS[colorIdx];
         const width = info.depth === 0 ? baseWidth * 3 : baseWidth * 2;
 
-        // Dashed for non-popped, solid for popped
         if (info.popped) {
             ctx.setLineDash([]);
         } else {
@@ -462,7 +415,6 @@ export function drawPhysicsDebugOverlay(ctx, viewport) {
         }
         ctx.stroke();
 
-        // Glow effect for seed
         if (chain.id === seed) {
             ctx.strokeStyle = color;
             ctx.lineWidth = width * 2;
@@ -479,7 +431,6 @@ export function drawPhysicsDebugOverlay(ctx, viewport) {
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
 
-    // --- Viewport center crosshair (data space) ---
     const cx = (viewport.minX + viewport.maxX) / 2;
     const cy = (viewport.minY + viewport.maxY) / 2;
     const armLen = Math.max(5, 10 / state.zoom);
@@ -496,12 +447,7 @@ export function drawPhysicsDebugOverlay(ctx, viewport) {
     ctx.globalAlpha = 1;
 }
 
-// ---------------------------------------------------------------
-// HUD (called from render.js in screen space, after ctx.restore)
-// ---------------------------------------------------------------
-
 export function drawPhysicsDebugHUD(ctx, cw) {
-    // activationSet already refreshed by drawPhysicsDebugOverlay in the same frame
     if (!activationSet || !state.detailData) return;
 
     const { seed, activated, totalClippedCost, totalFullCost, budget } = activationSet;
@@ -521,22 +467,19 @@ export function drawPhysicsDebugHUD(ctx, cw) {
     const x = cw - 220;
     const y = 10;
     const boxW = 210;
-    const boxH = padding * 2 + lines.length * lineHeight + 20; // extra for legend
+    const boxH = padding * 2 + lines.length * lineHeight + 20;
 
-    // Background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
     ctx.beginPath();
     ctx.roundRect(x, y, boxW, boxH, 4);
     ctx.fill();
 
-    // Border
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(x, y, boxW, boxH, 4);
     ctx.stroke();
 
-    // Text
     ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -546,7 +489,6 @@ export function drawPhysicsDebugHUD(ctx, cw) {
         ctx.fillText(lines[i], x + padding, y + padding + i * lineHeight);
     }
 
-    // Depth legend
     const legendY = y + padding + lines.length * lineHeight + 4;
     const labels = ['0', '1', '2', '3+'];
     let lx = x + padding;

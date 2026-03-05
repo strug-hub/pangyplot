@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { initSpine, xToBp, bpToX, xToY, bpToStep, isReady, setChromosome, getChromosome } from '@simplify/spine.js';
+import { initSpine, xToBp, bpToX, xToY, bpToStep, isReady, setChromosome, getChromosome } from '@simplify/data/spine.js';
 
 // A simple 5-point reference spine: [layoutX, basepair, layoutY, step]
 // Linear: x 0..400, bp 0..4_000_000, y curves up then down, step 0..4000

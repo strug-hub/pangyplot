@@ -1,14 +1,14 @@
 // Entry point: init(), wire up modules.
 
 import { state } from './simplify-state.js';
-import { initSpine, setChromosome } from './spine.js';
-import { precomputeBboxes, computeBounds, resizeCanvas, fitToScreen } from './viewport.js';
-import { placeGenes } from './genes.js';
-import { navigateToHash, scheduleHashUpdate } from './hash-navigation.js';
-import { scheduleFrame } from './render.js';
-import { scheduleDetailFetch } from './detail.js';
-import { setupInteraction } from './interaction.js';
-import { initGridMeter } from './lod.js';
+import { initSpine, setChromosome } from './data/spine.js';
+import { precomputeBboxes, computeBounds, resizeCanvas, fitToScreen } from './render/viewport.js';
+import { placeGenes } from './render/annotation/gene-label-renderer.js';
+import { navigateToHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
+import { scheduleFrame } from './render/render-manager.js';
+import { scheduleDetailFetch } from './engines/bubble-pop/chain-pop-engine.js';
+import { setupEngines } from './engines/engine-manager.js';
+import { initGridMeter } from './lod/lod.js';
 
 async function init() {
     try {
@@ -27,10 +27,10 @@ async function init() {
         `${state.data.stats.junctionCount.toLocaleString()} junctions | ` +
         `${state.data.levels.length} grid levels`;
 
-    // Build chain family map: chainId → Set of self + all descendants
+    // Build chain family map: chainId -> Set of self + all descendants
     if (state.data.chainMeta) {
         const meta = state.data.chainMeta;
-        const children = {};  // parent → [child, ...]
+        const children = {};  // parent -> [child, ...]
         for (const cid in meta) {
             const p = meta[cid].parent;
             if (p != null) {
@@ -76,5 +76,5 @@ async function init() {
     scheduleHashUpdate();
 }
 
-setupInteraction();
+setupEngines();
 init();

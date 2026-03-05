@@ -10,7 +10,7 @@ vi.mock('@simplify/simplify-state.js', () => ({ state: mockState }));
 
 vi.stubGlobal('window', { devicePixelRatio: 1 });
 
-const { selectLevel } = await import('@simplify/lod.js');
+const { selectLevel } = await import('@simplify/lod/lod.js');
 
 describe('selectLevel', () => {
     beforeEach(() => {

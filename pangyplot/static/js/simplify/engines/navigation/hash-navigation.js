@@ -1,9 +1,9 @@
 // URL hash: sync viewport state for shareable links.
 // Format: #chrY:12345-67890
 
-import { state } from './simplify-state.js';
-import { xToBp, bpToX, xToY, getChromosome, isReady } from './spine.js';
-import { getViewport } from './viewport.js';
+import { state } from '../../simplify-state.js';
+import { xToBp, bpToX, xToY, getChromosome, isReady } from '../../data/spine.js';
+import { getViewport } from '../../render/viewport.js';
 
 let hashTimer = null;
 

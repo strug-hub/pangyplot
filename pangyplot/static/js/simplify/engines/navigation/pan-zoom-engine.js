@@ -1,0 +1,83 @@
+// Pan, drag, zoom (wheel), double-click reset, and window resize.
+
+import { state } from '../../simplify-state.js';
+import { scheduleFrame } from '../../render/render-manager.js';
+import { scheduleDetailFetch, exitDetailMode } from '../../engines/bubble-pop/chain-pop-engine.js';
+import { scheduleHashUpdate } from '../../engines/navigation/hash-navigation.js';
+import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
+
+export function setupPanZoom(canvas) {
+    // --- Pan & drag ---
+    canvas.addEventListener('mousedown', e => {
+        if (e.shiftKey && state.detailData) return; // handled by multi-selection
+        // Clear selection on non-shift click
+        if (state.selectedChains.size > 0 && !state.hoveredChain) {
+            state.selectedChains.clear();
+            scheduleFrame();
+        }
+        state.isDragging = true;
+        state.dragStartX = e.clientX - state.panX;
+        state.dragStartY = e.clientY - state.panY;
+        canvas.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!state.isDragging) return;
+        state.panX = e.clientX - state.dragStartX;
+        state.panY = e.clientY - state.dragStartY;
+        scheduleFrame();
+        scheduleDetailFetch();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!state.isDragging) return;
+        state.isDragging = false;
+        canvas.style.cursor = 'grab';
+        scheduleHashUpdate();
+    });
+
+    // --- Wheel zoom ---
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+        const newZoom = state.zoom * factor;
+
+        state.panX = mx - (mx - state.panX) * (newZoom / state.zoom);
+        state.panY = my - (my - state.panY) * (newZoom / state.zoom);
+        state.zoom = newZoom;
+        scheduleFrame();
+        scheduleDetailFetch();
+        scheduleHashUpdate();
+    }, { passive: false });
+
+    // --- Double-click to reset view ---
+    canvas.addEventListener('dblclick', () => {
+        fitToScreen();
+        scheduleFrame();
+        scheduleDetailFetch();
+        scheduleHashUpdate();
+    });
+
+    // --- Resize ---
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        if (state.data) scheduleFrame();
+    });
+
+    // --- Spacebar: toggle detail <-> skeleton while zoomed in ---
+    window.addEventListener('keydown', e => {
+        if (e.code !== 'Space' || e.repeat) return;
+        if (state.targetCell > state.DETAIL_CELL_THRESHOLD) return;
+        e.preventDefault();
+        state.detailSuppressed = !state.detailSuppressed;
+        if (state.detailSuppressed) {
+            exitDetailMode();
+        } else {
+            scheduleDetailFetch();
+        }
+    });
+}
