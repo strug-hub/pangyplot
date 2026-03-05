@@ -115,14 +115,12 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
         }
     }
 
-    // Anchor pinning: fix head/tail kinks closest to chain polyline endpoints
-    // When partially fetched, clip the polyline to match the fetched range
-    let anchorPolyline = chain.polyline;
-    if (clipRange && chain.polyline.length >= 2) {
-        anchorPolyline = clipPolylineByTRange(chain.polyline, clipRange.tStart, clipRange.tEnd);
-    }
-    if (anchorPolyline.length >= 2 && allNodes.length > 0) {
-        pinAnchors(allNodes, anchorPolyline);
+    // Anchor pinning: fix head/tail kinks to chain polyline endpoints.
+    // When partially clipped, only pin the unclipped end(s).
+    if (chain.polyline.length >= 2 && allNodes.length > 0) {
+        const pinSource = !clipRange || clipRange.tStart === 0;
+        const pinSink = !clipRange || clipRange.tEnd === 1;
+        pinAnchors(allNodes, chain.polyline, pinSource, pinSink);
     }
 
     return { nodes: allNodes, links: allLinks };
@@ -399,7 +397,7 @@ export function createJunctionToAnchorLinks(junctionRecordMap, allForceNodes, ju
     return links;
 }
 
-function pinAnchors(nodes, polyline) {
+function pinAnchors(nodes, polyline, pinSource = true, pinSink = true) {
     const plStart = polyline[0];
     const plEnd = polyline[polyline.length - 1];
 
@@ -417,7 +415,7 @@ function pinAnchors(nodes, polyline) {
     const firstRec = recIds[0];
     const lastRec = recIds[recIds.length - 1];
 
-    if (firstRec) {
+    if (firstRec && pinSource) {
         const head = nodesByRecord.get(firstRec)[0];
         head.fx = plStart[0];
         head.fy = plStart[1];
@@ -425,7 +423,7 @@ function pinAnchors(nodes, polyline) {
         head.anchorRole = 'source';
         head.anchorRecord = head.record;
     }
-    if (lastRec) {
+    if (lastRec && pinSink) {
         const kinks = nodesByRecord.get(lastRec);
         const tail = kinks[kinks.length - 1];
         if (lastRec !== firstRec || kinks.length > 1) {
@@ -434,7 +432,7 @@ function pinAnchors(nodes, polyline) {
             tail.isAnchor = true;
             tail.anchorRole = 'sink';
             tail.anchorRecord = tail.record;
-        } else {
+        } else if (pinSource) {
             // Single-kink single-record chain: same node serves both roles
             tail.anchorRole = 'source+sink';
         }

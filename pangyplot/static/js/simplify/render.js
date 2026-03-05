@@ -300,6 +300,9 @@ export function draw() {
     const bboxes = state.levelBboxes[li];
     const chainIds = level.chainIds;
     let visiblePl = 0;
+    let visibleJ = 0;
+    const genePins = getGenePins();
+    const geneYMargin = (level.cellSize || 50) * 3;
 
   if (!skipSkeleton) {
     ctx.beginPath();
@@ -339,8 +342,6 @@ export function draw() {
     }
 
     // --- Gene-colored polylines (overdraw) ---
-    const genePins = getGenePins();
-    const geneYMargin = (level.cellSize || 50) * 3;
     if (genePins.length > 0) {
         ctx.strokeStyle = `rgba(232, 167, 53, ${skelAlpha})`;
         ctx.lineWidth = lineWidth * 2;
@@ -375,7 +376,7 @@ export function draw() {
     // --- Junctions (culled) ---
     const r = Math.max(1.5, 3.0 / state.zoom);
     ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * skelAlpha})`;
-    let visibleJ = 0;
+
 
     ctx.beginPath();
     for (const [x, y] of level.junctions) {
