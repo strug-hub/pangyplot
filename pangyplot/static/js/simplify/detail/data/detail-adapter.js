@@ -1,10 +1,10 @@
 // Adapter: converts /chain-graph API responses into core PangyPlot elements
 // for use in the simplify detail force simulation.
 
-import { deserializeNodes } from '../../graph/data/records/deserializer/deserialize-nodes.js';
-import { createNodeElements, createLinkElements } from '../../graph/data/records/deserializer/deserializer-element.js';
-import { detectIndelBubbles } from '../../graph/data/records/deserializer/indel-detection.js';
-import { LinkRecord } from '../../graph/data/records/objects/link-record.js';
+import { deserializeNodes } from '../../../graph/data/records/deserializer/deserialize-nodes.js';
+import { createNodeElements, createLinkElements } from '../../../graph/data/records/deserializer/deserializer-element.js';
+import { detectIndelBubbles } from '../../../graph/data/records/deserializer/indel-detection.js';
+import { LinkRecord } from '../../../graph/data/records/objects/link-record.js';
 
 /**
  * Clip a polyline to a fractional [tStart, tEnd] range along its arc length.

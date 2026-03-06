@@ -1,18 +1,18 @@
-// Shift+drag rectangle selection of detail chains, X-key pop/unpop, Ctrl+click bubble pop, Escape clear.
+// Shift+drag rectangle selection of detail chains, Ctrl+click pop/unpop, Escape clear.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render/render-manager.js';
-import { togglePopChain } from '../../engines/bubble-pop/chain-pop-engine.js';
-import { chainsInRect, hitTestForceNodes } from '../../utils/hit-test.js';
-import { popBubbleForceNode } from '../../data/bubble-pop-adapter.js';
+import { scheduleFrame } from '../../render-manager.js';
+import { togglePopChain } from '../../force/engines/chain-pop-engine.js';
+import { chainsInRect, hitTestForceNodes, hitTestChains } from '../../utils/hit-test.js';
+import { popBubbleForceNode } from '../../force/data/bubble-pop-adapter.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
 
-    // --- Ctrl+click: pop a bubble force node ---
+    // --- Ctrl+click: pop/unpop chain or bubble force node ---
     canvas.addEventListener('pointerdown', e => {
         if (e.button !== 0 || !(e.ctrlKey || e.metaKey)) return;
-        if (state.detailOpacity < 0.5) return;
+        if (!state.detailData) return;
 
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
@@ -20,15 +20,38 @@ export function setupMultiSelection(canvas) {
         const layoutX = (screenX - state.panX) / state.zoom;
         const layoutY = (screenY - state.panY) / state.zoom;
 
-        const hitNode = hitTestForceNodes(layoutX, layoutY);
-        if (!hitNode || hitNode.type !== 'bubble') return;
+        // Priority: force node bubble pop > chain toggle pop
+        if (state.detailOpacity >= 0.5) {
+            const hitNode = hitTestForceNodes(layoutX, layoutY);
+            if (hitNode && hitNode.type === 'bubble') {
+                e.preventDefault();
+                e.stopPropagation();
+                popBubbleForceNode(hitNode).then(ok => {
+                    if (ok) scheduleFrame();
+                });
+                return;
+            }
+        }
 
-        e.preventDefault();
-        e.stopPropagation();
+        const hitChain = hitTestChains(layoutX, layoutY);
+        if (hitChain) {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePopChain(hitChain);
+            scheduleFrame();
+            return;
+        }
 
-        popBubbleForceNode(hitNode).then(ok => {
-            if (ok) scheduleFrame();
-        });
+        // If chains are selected, pop/unpop all of them
+        if (state.selectedChains.size > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            for (const chain of state.selectedChains) {
+                togglePopChain(chain);
+            }
+            state.selectedChains.clear();
+            scheduleFrame();
+        }
     });
 
     // --- Shift+drag selection ---
@@ -67,24 +90,6 @@ export function setupMultiSelection(canvas) {
         if (!isSelecting) return;
         isSelecting = false;
         state.selectionBox = null;
-        scheduleFrame();
-    });
-
-    // --- X key: pop/unpop selected chains or hovered chain ---
-    window.addEventListener('keydown', e => {
-        if (e.code !== 'KeyX' || e.repeat) return;
-        if (!state.detailData) return;
-        if (state.selectedChains.size > 0) {
-            for (const chain of state.selectedChains) {
-                togglePopChain(chain);
-            }
-            state.selectedChains.clear();
-            scheduleFrame();
-            return;
-        }
-        const chain = state.hoveredChain;
-        if (!chain) return;
-        togglePopChain(chain);
         scheduleFrame();
     });
 

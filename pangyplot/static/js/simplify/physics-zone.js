@@ -1,8 +1,8 @@
 // Physics zone debug overlay: center-out chain walk with BFS budget.
 // Toggled with L key. Shows which chains would be activated for physics.
 
-import { state } from '../simplify-state.js';
-import { getViewport } from '../render/viewport.js';
+import { state } from './simplify-state.js';
+import { getViewport } from './render/viewport.js';
 
 let debugActive = false;
 let activationSet = null;

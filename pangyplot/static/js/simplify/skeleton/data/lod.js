@@ -1,18 +1,18 @@
 // Auto-LOD: pick grid level based on zoom, with grid meter display.
 
-import { state } from '../simplify-state.js';
+import { state } from '../../simplify-state.js';
 
 export function selectLevel() {
     const dpr = window.devicePixelRatio || 1;
     const cw = state.canvas.width / dpr;
     const viewportWidth = cw / state.zoom;
-    // Target ~2000 grid cells across viewport -- keeps resolution high
-    state.targetCell = viewportWidth / 2000;
+    // Target ~2000 grid units across viewport -- keeps resolution high
+    state.targetGridSize = viewportWidth / 2000;
 
-    // Levels sorted finest -> coarsest. Pick finest whose cellSize <= target.
+    // Levels sorted finest -> coarsest. Pick finest whose gridSize <= target.
     let best = 0;
     for (let i = state.data.levels.length - 1; i >= 0; i--) {
-        if (state.data.levels[i].cellSize <= state.targetCell) {
+        if (state.data.levels[i].gridSize <= state.targetGridSize) {
             best = i;
             break;
         }

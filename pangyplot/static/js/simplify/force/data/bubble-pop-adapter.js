@@ -1,13 +1,13 @@
 // Adapter: fetch /pop for a bubble node in the simplify force simulation,
 // deserialize the response, and splice child nodes/links into the sim.
 
-import { state } from '../simplify-state.js';
-import { getChromosome } from './spine.js';
-import { spliceBubbleNodes, getForceNodes } from './simplify-force.js';
-import { deserializeNodes } from '../../graph/data/records/deserializer/deserialize-nodes.js';
-import { createNodeElements, createLinkElements } from '../../graph/data/records/deserializer/deserializer-element.js';
-import { detectIndelBubbles } from '../../graph/data/records/deserializer/indel-detection.js';
-import { LinkRecord } from '../../graph/data/records/objects/link-record.js';
+import { state } from '../../simplify-state.js';
+import { getChromosome } from '../../data/spine.js';
+import { spliceBubbleNodes, getForceNodes } from './force-sim.js';
+import { deserializeNodes } from '../../../graph/data/records/deserializer/deserialize-nodes.js';
+import { createNodeElements, createLinkElements } from '../../../graph/data/records/deserializer/deserializer-element.js';
+import { detectIndelBubbles } from '../../../graph/data/records/deserializer/indel-detection.js';
+import { LinkRecord } from '../../../graph/data/records/objects/link-record.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,

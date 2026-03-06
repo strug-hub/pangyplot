@@ -1,7 +1,7 @@
 // Global keyboard shortcuts not owned by a specific engine: L-key physics debug toggle.
 
-import { togglePhysicsDebug } from '../lod/physics-zone.js';
-import { scheduleFrame } from '../render/render-manager.js';
+import { togglePhysicsDebug } from '../physics-zone.js';
+import { scheduleFrame } from '../render-manager.js';
 
 export function setupKeyboardShortcuts() {
     window.addEventListener('keydown', e => {

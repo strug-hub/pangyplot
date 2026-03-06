@@ -413,7 +413,7 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
         juncs = [[round(j[0], 1), round(j[1], 1)] for j in grid_juncs]
         total_nodes = len(juncs) + sum(max(0, len(pl) - 2) for pl in grid_pls)
         level_data = {
-            "cellSize": cell,
+            "gridSize": cell,
             "label": f"Grid {cell:,}",
             "polylines": lines,
             "junctions": juncs,

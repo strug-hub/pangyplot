@@ -17,16 +17,6 @@ def index():
 def simplify_viewer():
     return render_template("simplify.html", genome=current_app.genome)
 
-@bp.route('/simplify-data')
-def simplify_data():
-    gz_path = os.path.join(current_app.static_folder, 'data', 'simplify', 'chrY.json.gz')
-    if not os.path.exists(gz_path):
-        return jsonify({"error": "No precomputed data. Run graph_simplify.py --export-json first."}), 404
-    with open(gz_path, 'rb') as f:
-        data = f.read()
-    return Response(data, mimetype='application/json',
-                    headers={'Content-Encoding': 'gzip'})
-
 @bp.context_processor
 def inject_ga_tag_id():
     load_dotenv()
@@ -131,6 +121,16 @@ def search():
         print(results)
 
     return jsonify(results)
+
+@bp.route('/skeleton-data')
+def skeleton_data():
+    gz_path = os.path.join(current_app.static_folder, 'data', 'simplify', 'chrY.json.gz')
+    if not os.path.exists(gz_path):
+        return jsonify({"error": "No precomputed data. Run graph_simplify.py --export-json first."}), 404
+    with open(gz_path, 'rb') as f:
+        data = f.read()
+    return Response(data, mimetype='application/json',
+                    headers={'Content-Encoding': 'gzip'})
 
 @bp.route('/chains', methods=["GET"])
 def chains():

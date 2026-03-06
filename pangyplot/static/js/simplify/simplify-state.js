@@ -53,7 +53,7 @@ export const state = {
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',
 
     // Constants
-    DETAIL_CELL_THRESHOLD: 500,   // activate detail when targetCell <= this
+    DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
     PHYSICS_NODE_BUDGET: 1500,    // max estimated D3 nodes for physics zone
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,

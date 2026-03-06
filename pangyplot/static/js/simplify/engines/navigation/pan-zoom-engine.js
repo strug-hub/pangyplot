@@ -1,8 +1,8 @@
 // Pan, drag, zoom (wheel), double-click reset, and window resize.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render/render-manager.js';
-import { scheduleDetailFetch, exitDetailMode } from '../../engines/bubble-pop/chain-pop-engine.js';
+import { scheduleFrame } from '../../render-manager.js';
+import { scheduleDetailFetch, exitDetailMode } from '../../force/engines/chain-pop-engine.js';
 import { scheduleHashUpdate } from '../../engines/navigation/hash-navigation.js';
 import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
 
@@ -54,14 +54,6 @@ export function setupPanZoom(canvas) {
         scheduleHashUpdate();
     }, { passive: false });
 
-    // --- Double-click to reset view ---
-    canvas.addEventListener('dblclick', () => {
-        fitToScreen();
-        scheduleFrame();
-        scheduleDetailFetch();
-        scheduleHashUpdate();
-    });
-
     // --- Resize ---
     window.addEventListener('resize', () => {
         resizeCanvas();
@@ -71,7 +63,7 @@ export function setupPanZoom(canvas) {
     // --- Spacebar: toggle detail <-> skeleton while zoomed in ---
     window.addEventListener('keydown', e => {
         if (e.code !== 'Space' || e.repeat) return;
-        if (state.targetCell > state.DETAIL_CELL_THRESHOLD) return;
+        if (state.targetGridSize > state.DETAIL_GRID_THRESHOLD) return;
         e.preventDefault();
         state.detailSuppressed = !state.detailSuppressed;
         if (state.detailSuppressed) {

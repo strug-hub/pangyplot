@@ -1,10 +1,11 @@
 // Cursor coordinate readout + hover hit-test for chains, bubbles, force nodes, skeleton.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render/render-manager.js';
+import { scheduleFrame } from '../../render-manager.js';
 import { xToBp, getChromosome, isReady } from '../../data/spine.js';
 import { formatBp } from '../../utils/format-utils.js';
-import { hitTestForceNodes, hitTestBubbles, hitTestChains, hitTestSkeleton, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip, formatSkeletonTooltip } from '../../utils/hit-test.js';
+import { hitTestForceNodes, hitTestBubbles, hitTestChains, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip } from '../../utils/hit-test.js';
+import { hitTestSkeleton, formatSkeletonTooltip } from '../../skeleton/engines/skeleton-hit-test.js';
 
 export function setupHover(canvas) {
     const tooltipEl = state.dom.tooltip;

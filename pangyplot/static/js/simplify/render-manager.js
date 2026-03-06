@@ -1,14 +1,14 @@
 // Main canvas rendering: draw loop, RAF scheduling, detail bar DOM update.
 
-import { state } from '../simplify-state.js';
-import { selectLevel, updateGridMeter } from '../lod/lod.js';
-import { getViewport, viewportStepCount } from '../render/viewport.js';
-import { formatBp } from '../utils/format-utils.js';
-import { xToBp, getChromosome } from '../data/spine.js';
-import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from '../lod/physics-zone.js';
-import { drawSkeleton } from './painter/skeleton-painter.js';
-import { drawDetail } from './painter/detail-painter.js';
-import { drawGeneLabels } from './annotation/gene-label-renderer.js';
+import { state } from './simplify-state.js';
+import { selectLevel, updateGridMeter } from './skeleton/data/lod.js';
+import { getViewport, viewportStepCount } from './render/viewport.js';
+import { formatBp } from './utils/format-utils.js';
+import { xToBp, getChromosome } from './data/spine.js';
+import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
+import { drawSkeleton } from './skeleton/skeleton-render-manager.js';
+import { drawDetail } from './detail/render/detail-painter.js';
+import { drawGeneLabels } from './render/annotation/gene-label-renderer.js';
 
 let rafId = null;
 
@@ -57,7 +57,7 @@ export function draw() {
 
     const vp = getViewport();
     // Margin in data units so lines at the edge aren't clipped
-    const margin = (level.cellSize || 50) * 2;
+    const margin = (level.gridSize || 50) * 2;
     const vpMinX = vp.minX - margin;
     const vpMinY = vp.minY - margin;
     const vpMaxX = vp.maxX + margin;

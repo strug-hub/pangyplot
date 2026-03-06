@@ -1,11 +1,11 @@
 // D3-force simulation for popped chain subgraphs.
 // Manages a single simulation containing all popped nodes+links.
 
-import { state } from '../simplify-state.js';
-import { scheduleFrame } from '../render/render-manager.js';
-import defaults from '../../graph/forces/settings/force-defaults.js';
-import layoutForce from '../../graph/forces/layout-force.js';
-import bubbleCircularForce from '../../graph/forces/bubble-circular-force.js';
+import { state } from '../../simplify-state.js';
+import { scheduleFrame } from '../../render-manager.js';
+import defaults from '../../../graph/forces/settings/force-defaults.js';
+import layoutForce from '../../../graph/forces/layout-force.js';
+import bubbleCircularForce from '../../../graph/forces/bubble-circular-force.js';
 
 let sim = null;
 

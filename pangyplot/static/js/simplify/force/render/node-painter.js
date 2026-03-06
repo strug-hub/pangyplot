@@ -4,6 +4,7 @@
 import { state } from '../../simplify-state.js';
 import { drawCircle, drawLine } from '../../../graph/render/painter/painter-utils.js';
 import { getNodeColor, getLinkColor } from '../../../graph/render/color/color-style.js';
+// Note: paths to core graph/ are unchanged (same depth)
 
 // ---------------------------------------------------------------
 // Public painters

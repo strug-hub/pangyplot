@@ -1,12 +1,12 @@
 // Chain pop/unpop state machine: fade animation, phase transitions, force population.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render/render-manager.js';
-import { updateDetailBar } from '../../render/render-manager.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from '../../data/simplify-force.js';
-import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../data/detail-adapter.js';
-import { getActivationSet } from '../../lod/physics-zone.js';
-import { clearFetchedRegion, getFadeStartTime, setFadeStartTime, doScheduleDetailFetch } from '../../data/detail-fetcher.js';
+import { scheduleFrame } from '../../render-manager.js';
+import { updateDetailBar } from '../../render-manager.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from '../data/force-sim.js';
+import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../detail/data/detail-adapter.js';
+import { getActivationSet } from '../../physics-zone.js';
+import { clearFetchedRegion, getFadeStartTime, setFadeStartTime, doScheduleDetailFetch } from '../../detail/data/detail-fetcher.js';
 
 // ---------------------------------------------------------------
 // Re-export: debounced detail fetch trigger
@@ -197,7 +197,7 @@ function readdActiveJunctions() {
 }
 
 /**
- * Toggle pop/unpop for a chain. Called from X key handler.
+ * Toggle pop/unpop for a chain. Called from Ctrl+click handler.
  */
 export function togglePopChain(chain) {
     if (!chain || !state.detailData) return;

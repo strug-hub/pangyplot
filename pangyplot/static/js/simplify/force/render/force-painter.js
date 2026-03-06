@@ -1,7 +1,7 @@
 // Force graph rendering: nodes and links from the D3 simulation.
 
 import { state } from '../../simplify-state.js';
-import { getForceNodes, getForceLinks } from '../../data/simplify-force.js';
+import { getForceNodes, getForceLinks } from '../data/force-sim.js';
 
 export function drawForceGraph(ctx, baseWidth) {
     const nodes = getForceNodes();

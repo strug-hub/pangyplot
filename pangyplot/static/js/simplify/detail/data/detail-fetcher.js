@@ -1,12 +1,12 @@
 // Progressive detail: single-viewport fetch, response parsing.
 // Pure data-fetching logic — no pop/unpop state machine.
 
-import { state } from '../simplify-state.js';
-import { xToBp, getChromosome, isReady } from './spine.js';
-import { getViewport } from '../render/viewport.js';
-import { scheduleFrame } from '../render/render-manager.js';
-import { selectLevel } from '../lod/lod.js';
-import { setDetailPhase, scheduleFadeFrame } from '../engines/bubble-pop/chain-pop-engine.js';
+import { state } from '../../simplify-state.js';
+import { xToBp, getChromosome, isReady } from '../../data/spine.js';
+import { getViewport } from '../../render/viewport.js';
+import { scheduleFrame } from '../../render-manager.js';
+import { selectLevel } from '../../skeleton/data/lod.js';
+import { setDetailPhase, scheduleFadeFrame } from '../../force/engines/chain-pop-engine.js';
 
 let fetchController = null;
 let fetchTimer = null;
@@ -68,8 +68,8 @@ async function fetchDetailForViewport() {
     if (vpWidth <= 0) return;
 
     const li = selectLevel();
-    const cellSize = state.data.levels[li]?.cellSize || 50;
-    const expandThreshold = Math.round(cellSize * 2);
+    const gridSize = state.data.levels[li]?.gridSize || 50;
+    const expandThreshold = Math.round(gridSize * 2);
 
     // --- Cache check (layout coords, no bp needed) ---
     if (fetchedRegion &&
@@ -151,12 +151,12 @@ export function doScheduleDetailFetch() {
     if (fetchTimer) clearTimeout(fetchTimer);
     fetchTimer = setTimeout(() => {
         selectLevel();
-        if (state.targetCell > state.DETAIL_CELL_THRESHOLD) {
+        if (state.targetGridSize > state.DETAIL_GRID_THRESHOLD) {
             state.detailSuppressed = false;
             // Import dynamically to avoid circular reference at module load time
-            import('../engines/bubble-pop/chain-pop-engine.js').then(m => m.exitDetailMode());
+            import('../../force/engines/chain-pop-engine.js').then(m => m.exitDetailMode());
         } else if (state.detailSuppressed) {
-            import('../engines/bubble-pop/chain-pop-engine.js').then(m => m.exitDetailMode());
+            import('../../force/engines/chain-pop-engine.js').then(m => m.exitDetailMode());
         } else {
             fetchDetailForViewport();
         }

@@ -1,7 +1,7 @@
 // Detail layer rendering: chain polylines, junction nodes/links, selections, hovers.
 
 import { state } from '../../simplify-state.js';
-import { drawForceGraph } from './force-painter.js';
+import { drawForceGraph } from '../../force/render/force-painter.js';
 
 function drawChainPolylines(chains, baseWidth, hovChain) {
     const ctx = state.ctx;
