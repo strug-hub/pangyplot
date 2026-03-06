@@ -125,6 +125,57 @@ export function restoreAnchors() {
     sim.alpha(0.15).restart();
 }
 
+/**
+ * Atomically remove parent bubble nodes and splice in child nodes+links.
+ * Also rewires existing links that pointed to the parent's kink endpoints.
+ * @param {Set<string>} removeIids - iids of the parent bubble kink nodes to remove
+ * @param {Map<string,string>} rewireMap - maps parent kink iid → child kink iid
+ * @param {Array} childNodes - new nodes to add
+ * @param {Array} childLinks - new links to add
+ */
+export function spliceBubbleNodes(removeIids, rewireMap, childNodes, childLinks) {
+    if (!sim) initForce();
+
+    for (const n of childNodes) {
+        n.homeX = n.fx ?? n.x;
+        n.homeY = n.fy ?? n.y;
+    }
+
+    // Remove parent nodes, add children
+    const remaining = sim.nodes().filter(n => !removeIids.has(n.iid));
+    const allNodes = [...remaining, ...childNodes];
+
+    // Rewire existing links that connected to the parent bubble
+    const existingLinks = sim.force('link').links();
+    for (const link of existingLinks) {
+        const sIid = link.source.iid ?? link.source;
+        const tIid = link.target.iid ?? link.target;
+        if (rewireMap.has(sIid)) {
+            link.source = rewireMap.get(sIid);
+            link.sourceIid = rewireMap.get(sIid);
+        }
+        if (rewireMap.has(tIid)) {
+            link.target = rewireMap.get(tIid);
+            link.targetIid = rewireMap.get(tIid);
+        }
+    }
+
+    // Filter out links whose endpoints were removed and not rewired
+    const allNodeIds = new Set(allNodes.map(n => n.iid));
+    const keptLinks = existingLinks.filter(l => {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return allNodeIds.has(sIid) && allNodeIds.has(tIid);
+    });
+
+    const allLinks = [...keptLinks, ...childLinks];
+
+    sim.nodes(allNodes);
+    sim.force('link').links(allLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(0.3).restart();
+}
+
 export function getForceNodes() {
     return sim ? sim.nodes() : [];
 }

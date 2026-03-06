@@ -1,12 +1,35 @@
-// Shift+drag rectangle selection of detail chains, X-key pop/unpop, Escape clear.
+// Shift+drag rectangle selection of detail chains, X-key pop/unpop, Ctrl+click bubble pop, Escape clear.
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../render/render-manager.js';
 import { togglePopChain } from '../../engines/bubble-pop/chain-pop-engine.js';
-import { chainsInRect } from '../../utils/hit-test.js';
+import { chainsInRect, hitTestForceNodes } from '../../utils/hit-test.js';
+import { popBubbleForceNode } from '../../data/bubble-pop-adapter.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
+
+    // --- Ctrl+click: pop a bubble force node ---
+    canvas.addEventListener('pointerdown', e => {
+        if (e.button !== 0 || !(e.ctrlKey || e.metaKey)) return;
+        if (state.detailOpacity < 0.5) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const layoutX = (screenX - state.panX) / state.zoom;
+        const layoutY = (screenY - state.panY) / state.zoom;
+
+        const hitNode = hitTestForceNodes(layoutX, layoutY);
+        if (!hitNode || hitNode.type !== 'bubble') return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        popBubbleForceNode(hitNode).then(ok => {
+            if (ok) scheduleFrame();
+        });
+    });
 
     // --- Shift+drag selection ---
     canvas.addEventListener('mousedown', e => {
