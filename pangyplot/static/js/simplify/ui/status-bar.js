@@ -127,14 +127,14 @@ export function updateDetailOpacityReadout() {
 // Fetch indicator
 // ---------------------------------------------------------------
 
-export function showFetchIndicator() {
-    state.dom.fetchIndicator.classList.add('active');
-    state.dom.detailPhase.className = 'fetching';
-}
-
-export function hideFetchIndicator() {
-    state.dom.fetchIndicator.classList.remove('active');
-    updateDetailPhase();
+export function updateFetchIndicator() {
+    if (state.isFetching) {
+        state.dom.fetchIndicator.classList.add('active');
+        state.dom.detailPhase.className = 'fetching';
+    } else {
+        state.dom.fetchIndicator.classList.remove('active');
+        updateDetailPhase();
+    }
 }
 
 // ---------------------------------------------------------------

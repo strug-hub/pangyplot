@@ -5,7 +5,7 @@ import { fetchSkeletonData } from './skeleton/data/skeleton-fetcher.js';
 import { placeGenes } from './skeleton/data/gene-data.js';
 import { navigateToHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
 import { scheduleFrame } from './render-manager.js';
-import { scheduleDetailFetch } from './force/engines/chain-pop-engine.js';
+import { scheduleDetailFetch } from './engines/detail-transition-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
 import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
 import { isReady } from './skeleton/engines/reference-spine-engine.js';

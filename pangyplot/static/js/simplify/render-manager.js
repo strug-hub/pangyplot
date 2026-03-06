@@ -4,9 +4,9 @@ import { state } from './simplify-state.js';
 import { getViewport } from './render/viewport.js';
 import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
-import { drawDetail } from './detail/render/detail-painter.js';
+import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
 import { drawGeneLabelOverlay } from './skeleton/render/skeleton-gene-overlay.js';
-import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar } from './ui/status-bar.js';
+import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
 import { getLevel } from './skeleton/data/skeleton-data.js';
 
@@ -98,6 +98,7 @@ export function draw() {
     // --- Status bar ---
     updateVisibleCounts(visiblePl, visibleJ);
     updateViewportBp(vp);
+    updateFetchIndicator();
 }
 
 // ---------------------------------------------------------------

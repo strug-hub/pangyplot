@@ -3,16 +3,8 @@
 import { state } from '../../simplify-state.js';
 import { getViewport } from '../../render/viewport.js';
 import { getLevel, getLevelBboxes, getChainMeta } from '../data/skeleton-data.js';
-
+import { pointToSegmentDist } from '../../utils/geometry.js';
 const SKELETON_HIT_RADIUS_PX = 14;
-
-function pointToSegmentDist(px, py, ax, ay, bx, by) {
-    const dx = bx - ax, dy = by - ay;
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq === 0) return Math.hypot(px - ax, py - ay);
-    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
-    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
-}
 
 export function hitTestSkeleton(dataX, dataY) {
     const level = getLevel();
@@ -46,7 +38,7 @@ export function hitTestSkeleton(dataX, dataY) {
     return bestHit;
 }
 
-export function formatSkeletonTooltip(hit) {
+export function getSkeletonTooltip(hit) {
     const meta = getChainMeta();
     const cid = String(hit.chainId);
     const info = meta ? meta[cid] : null;
@@ -62,17 +54,11 @@ export function formatSkeletonTooltip(hit) {
         }
     }
     parts.reverse();
-    const ancestry = parts.join(' > ');
 
-    const lines = [
-        `<span class="tt-label">chain</span> <span class="tt-chain">${ancestry}</span>`,
-    ];
+    const data = { chain: parts.join(' > ') };
     if (info) {
-        const lengthStr = info.total_length >= 1000
-            ? (info.total_length / 1000).toFixed(1) + 'kb'
-            : info.total_length + 'bp';
-        lines.push(`<span class="tt-label">bubbles</span> <span class="tt-val">${info.n_bubbles}</span>`);
-        lines.push(`<span class="tt-label">length</span> <span class="tt-val">${lengthStr}</span>`);
+        data.bubbles = info.n_bubbles;
+        data.length = info.total_length;
     }
-    return lines.join('<br>');
+    return data;
 }

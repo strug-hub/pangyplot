@@ -1,24 +1,15 @@
-// Chain pop/unpop state machine: fade animation, phase transitions, force population.
+// Chain pop/unpop state machine: force population, junction activation.
 
-import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render-manager.js';
-import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../../ui/status-bar.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from '../data/force-sim.js';
-import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../detail/data/detail-adapter.js';
-import { getActivationSet } from '../../physics-zone.js';
-import { clearFetchedRegion, getFadeStartTime, setFadeStartTime, doScheduleDetailFetch } from '../../detail/data/detail-fetcher.js';
+import { state } from '../../../simplify-state.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from '../force-engine.js';
+import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../data/polychain/polychain-adapter.js';
+import { getActivationSet } from '../../../physics-zone.js';
+import { clearFetchedRegion } from '../../data/polychain/polychain-fetcher.js';
 
 // ---------------------------------------------------------------
-// Re-export: debounced detail fetch trigger
+// Clear detail state (called by detail-transition-engine on fade-out complete)
 // ---------------------------------------------------------------
-export function scheduleDetailFetch() {
-    doScheduleDetailFetch();
-}
-
-// ---------------------------------------------------------------
-// Clear detail state
-// ---------------------------------------------------------------
-function clearDetailState() {
+export function clearDetailState() {
     clearFetchedRegion();
     state.detailData = null;
     clearForce();
@@ -216,65 +207,3 @@ export function togglePopChain(chain) {
     }
 }
 
-// ---------------------------------------------------------------
-// Detail phase state machine
-// ---------------------------------------------------------------
-export function setDetailPhase(phase) {
-    state.detailPhase = phase;
-    updateDetailPhase();
-    if (phase !== 'none') updateDetailBar();
-}
-
-function finishExit() {
-    clearDetailState();
-    state.detailOpacity = 0;
-    state.skeletonOpacity = 1;
-    setDetailPhase('none');
-    scheduleFrame();
-}
-
-export function exitDetailMode() {
-    if (state.detailPhase === 'none' || state.detailPhase === 'fading-out') return;
-    setFadeStartTime(performance.now());
-    setDetailPhase('fading-out');
-    scheduleFadeFrame();
-}
-
-export function updateDetailOpacity() {
-    const now = performance.now();
-    const elapsed = now - getFadeStartTime();
-    const t = Math.min(1, elapsed / state.FADE_DURATION);
-
-    if (state.detailPhase === 'fading-in') {
-        state.detailOpacity = t;
-        state.skeletonOpacity = Math.max(0.06, 1 - t);
-
-        if (t < 1) {
-            scheduleFadeFrame();
-        } else {
-            state.detailOpacity = 1;
-            state.skeletonOpacity = 0.06;
-            setDetailPhase('static');
-        }
-    } else if (state.detailPhase === 'fading-out') {
-        state.detailOpacity = 1 - t;
-        state.skeletonOpacity = Math.max(0.06, t);
-
-        if (t < 1) {
-            scheduleFadeFrame();
-        } else {
-            finishExit();
-            return;
-        }
-    }
-    updateDetailOpacityReadout();
-}
-
-export function scheduleFadeFrame() {
-    requestAnimationFrame(() => {
-        if (state.detailPhase === 'fading-in' || state.detailPhase === 'fading-out') {
-            updateDetailOpacity();
-            scheduleFrame();
-        }
-    });
-}

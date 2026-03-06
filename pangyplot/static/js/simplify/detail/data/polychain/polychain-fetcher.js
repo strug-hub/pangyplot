@@ -1,18 +1,9 @@
 // Progressive detail: single-viewport fetch, response parsing.
-// Pure data-fetching logic — no pop/unpop state machine.
+// Pure data-fetching — no skeleton imports, no UI imports, no fade or LOD decisions.
 
-import { state } from '../../simplify-state.js';
-import { xToBp, isReady } from '../../skeleton/engines/reference-spine-engine.js';
-import { getViewport } from '../../render/viewport.js';
-import { scheduleFrame } from '../../render-manager.js';
-import { updateLOD } from '../../engines/lod-engine.js';
-import { getLevel } from '../../skeleton/data/skeleton-data.js';
-import { setDetailPhase, scheduleFadeFrame } from '../../force/engines/chain-pop-engine.js';
-import { showFetchIndicator, hideFetchIndicator } from '../../ui/status-bar.js';
+import { state } from '../../../simplify-state.js';
 
 let fetchController = null;
-let fetchTimer = null;
-let fadeStartTime = 0;
 
 // Viewport layout bounds of the last successful fetch (with margin applied).
 let fetchedRegion = null;
@@ -57,20 +48,15 @@ function processResponse(apiResponse) {
 }
 
 // ---------------------------------------------------------------
-// Single-viewport fetch for current visible region
+// Single-viewport fetch for current visible region.
+// Caller provides pre-computed viewport and coordinate info.
+// Returns true if new data was fetched, false otherwise.
 // ---------------------------------------------------------------
-async function fetchDetailForViewport() {
-    const chr = state.chromosome;
-    if (!isReady() || !chr) return;
+export async function fetchDetailForViewport({ chr, vp, canvasWidth, expandThreshold, xToBp }) {
+    if (!chr) return false;
 
-    const vp = getViewport();
-    const dpr = window.devicePixelRatio || 1;
-    const cw = state.canvas.width / dpr;
     const vpWidth = vp.maxX - vp.minX;
-    if (vpWidth <= 0) return;
-
-    const gridSize = getLevel()?.gridSize || 50;
-    const expandThreshold = Math.round(gridSize * 2);
+    if (vpWidth <= 0) return false;
 
     // --- Cache check (layout coords, no bp needed) ---
     if (fetchedRegion &&
@@ -78,7 +64,7 @@ async function fetchDetailForViewport() {
         fetchedRegion.expandThreshold === expandThreshold &&
         vp.minX >= fetchedRegion.minX &&
         vp.maxX <= fetchedRegion.maxX) {
-        return;
+        return false;
     }
 
     // Margin: 30% of viewport width in layout units
@@ -89,8 +75,8 @@ async function fetchDetailForViewport() {
     // Convert layout bounds -> bp only for the API call
     const bpLeft = xToBp(fetchMinX);
     const bpRight = xToBp(fetchMaxX);
-    if (bpLeft === null || bpRight === null) return;
-    const ppbp = cw / (xToBp(vp.maxX) - xToBp(vp.minX));
+    if (bpLeft === null || bpRight === null) return false;
+    const ppbp = canvasWidth / (xToBp(vp.maxX) - xToBp(vp.minX));
 
     // Cancel any in-flight request
     if (fetchController) fetchController.abort();
@@ -103,32 +89,21 @@ async function fetchDetailForViewport() {
         + `&ppbp=${ppbp}&expand=${expandThreshold}`
         + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
 
-    showFetchIndicator();
+    state.isFetching = true;
     try {
         const resp = await fetch(url, { signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const apiData = await resp.json();
-        if (signal.aborted) return;
+        if (signal.aborted) return false;
 
         fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr, expandThreshold };
         state.detailData = processResponse(apiData);
-
-        if (state.detailPhase === 'none') {
-            fadeStartTime = performance.now();
-            setDetailPhase('fading-in');
-            scheduleFadeFrame();
-        } else if (state.detailPhase === 'fading-out') {
-            const remaining = state.detailOpacity;
-            fadeStartTime = performance.now() - remaining * state.FADE_DURATION;
-            setDetailPhase('fading-in');
-            scheduleFadeFrame();
-        }
-
-        scheduleFrame();
+        return true;
     } catch (e) {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);
+        return false;
     } finally {
-        hideFetchIndicator();
+        state.isFetching = false;
     }
 }
 
@@ -137,26 +112,4 @@ async function fetchDetailForViewport() {
 // ---------------------------------------------------------------
 export function clearFetchedRegion() {
     fetchedRegion = null;
-}
-
-export function getFadeStartTime() { return fadeStartTime; }
-export function setFadeStartTime(t) { fadeStartTime = t; }
-
-// ---------------------------------------------------------------
-// Public: debounced detail fetch trigger (re-exported from chain-pop-engine)
-// ---------------------------------------------------------------
-export function doScheduleDetailFetch() {
-    if (fetchTimer) clearTimeout(fetchTimer);
-    fetchTimer = setTimeout(() => {
-        updateLOD();
-        if (state.targetGridSize > state.DETAIL_GRID_THRESHOLD) {
-            state.detailSuppressed = false;
-            // Import dynamically to avoid circular reference at module load time
-            import('../../force/engines/chain-pop-engine.js').then(m => m.exitDetailMode());
-        } else if (state.detailSuppressed) {
-            import('../../force/engines/chain-pop-engine.js').then(m => m.exitDetailMode());
-        } else {
-            fetchDetailForViewport();
-        }
-    }, 200);
 }

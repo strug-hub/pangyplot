@@ -2,9 +2,10 @@
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../render-manager.js';
-import { togglePopChain } from '../../force/engines/chain-pop-engine.js';
-import { chainsInRect, hitTestForceNodes, hitTestChains } from '../../utils/hit-test.js';
-import { popBubbleForceNode } from '../../force/data/bubble-pop-adapter.js';
+import { togglePopChain } from '../../detail/engines/polychain/polychain-pop-engine.js';
+import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/polychain-hover-engine.js';
+import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';
+import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;

@@ -4,8 +4,10 @@ import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../render-manager.js';
 import { xToBp, isReady } from '../../skeleton/engines/reference-spine-engine.js';
 import { formatBp } from '../../utils/format-utils.js';
-import { hitTestForceNodes, hitTestBubbles, hitTestChains, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip } from '../../utils/hit-test.js';
-import { hitTestSkeleton, formatSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
+import { hitTestChains, getChainTooltip } from '../../detail/engines/polychain/polychain-hover-engine.js';
+import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleTooltip } from '../../detail/engines/node-hover-engine.js';
+import { hitTestSkeleton, getSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
+import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
 import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
 
 export function setupHover(canvas) {
@@ -35,13 +37,13 @@ export function setupHover(canvas) {
             state.hoveredChain = hitChain;
             state.hoveredSkeletonPl = hitSkel;
 
-            let html;
-            if (hitForceNode) html = formatForceNodeTooltip(hitForceNode);
-            else if (hitBubble) html = formatBubbleTooltip(hitBubble);
-            else if (hitChain) html = formatTooltip(hitChain);
-            else html = formatSkeletonTooltip(hitSkel);
+            let data;
+            if (hitForceNode) data = getForceNodeTooltip(hitForceNode);
+            else if (hitBubble) data = getBubbleTooltip(hitBubble);
+            else if (hitChain) data = getChainTooltip(hitChain);
+            else data = getSkeletonTooltip(hitSkel);
 
-            showTooltip(html, e.clientX, e.clientY);
+            showTooltip(formatTooltipHtml(data), e.clientX, e.clientY);
             canvas.style.cursor = 'crosshair';
             scheduleFrame();
         } else if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {

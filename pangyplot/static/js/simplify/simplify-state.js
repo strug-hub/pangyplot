@@ -28,6 +28,7 @@ export const state = {
     detailData: null,          // { chains, bubbles, poppedChains, totalBubbles, bpStart, bpEnd }
     detailOpacity: 0,
     skeletonOpacity: 1,
+    isFetching: false,         // true while a detail fetch is in-flight
     detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
     physicsDebug: false,        // L-key toggle: show physics activation zone overlay
 
