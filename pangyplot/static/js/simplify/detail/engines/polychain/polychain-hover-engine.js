@@ -2,7 +2,7 @@
 
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
-import { getChainMeta } from '../../../skeleton/data/skeleton-data.js';
+import { getChainMeta } from '../../../data/chromosome-data.js';
 
 const HIT_RADIUS_PX = 12;
 

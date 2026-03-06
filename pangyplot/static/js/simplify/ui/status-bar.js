@@ -4,9 +4,9 @@
 
 import { state } from '../simplify-state.js';
 import { formatBp } from '../utils/format-utils.js';
-import { xToBp } from '../skeleton/engines/reference-spine-engine.js';
+import { xToBp } from '../engines/reference-spine-engine.js';
 import { viewportStepCount } from '../render/viewport.js';
-import { getLevels } from '../skeleton/data/skeleton-data.js';
+import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
 
 // ---------------------------------------------------------------
 // One-time init
@@ -23,14 +23,15 @@ export function showStats() {
     state.dom.stats.textContent =
         `${state.stats.totalSegments.toLocaleString()} segs | ` +
         `${state.stats.junctionCount.toLocaleString()} junctions | ` +
-        `${getLevels().length} grid levels`;
+        `${getLevelCount()} grid levels`;
 }
 
 /** Build grid meter bars (call once after data load). */
 export function initGridMeter() {
     const meter = state.dom.gridMeter;
     meter.innerHTML = '';
-    for (let i = 0; i < getLevels().length; i++) {
+    const count = getLevelCount();
+    for (let i = 0; i < count; i++) {
         const bar = document.createElement('div');
         bar.className = 'bar';
         meter.appendChild(bar);
@@ -50,7 +51,7 @@ export function updateZoom() {
 let prevLevel = -1;
 
 /** Light up grid meter bars and update skeleton level readout. */
-export function updateSkeletonLevel(level, levelIndex) {
+export function updateSkeletonLevel(levelIndex) {
     if (levelIndex === prevLevel) return false;
     prevLevel = levelIndex;
 
@@ -62,10 +63,11 @@ export function updateSkeletonLevel(level, levelIndex) {
     }
 
     // Level info
-    state.dom.levelLabel.textContent = level.label;
-    state.dom.nodeCount.textContent = level.nodeCount.toLocaleString();
-    state.dom.polylineCount.textContent = level.polylineCount.toLocaleString();
-    const pct = ((1 - level.nodeCount / state.stats.totalSegments) * 100).toFixed(1);
+    const meta = getLevelMeta();
+    state.dom.levelLabel.textContent = meta.label;
+    state.dom.nodeCount.textContent = meta.nodeCount.toLocaleString();
+    state.dom.polylineCount.textContent = meta.polylineCount.toLocaleString();
+    const pct = ((1 - meta.nodeCount / state.stats.totalSegments) * 100).toFixed(1);
     state.dom.reduction.textContent = `${pct}%`;
     return true;
 }

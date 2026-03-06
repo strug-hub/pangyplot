@@ -2,12 +2,12 @@
 // The skeleton layer owns the decision of when detail is appropriate.
 
 import { state } from '../simplify-state.js';
-import { scheduleFrame } from '../render-manager.js';
+import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { updateLOD } from './lod-engine.js';
 import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../ui/status-bar.js';
-import { xToBp, isReady } from '../skeleton/engines/reference-spine-engine.js';
+import { xToBp, isReady } from './reference-spine-engine.js';
 import { getViewport } from '../render/viewport.js';
-import { getLevel } from '../skeleton/data/skeleton-data.js';
+import { getLevelMeta } from '../data/chromosome-data.js';
 
 let fadeStartTime = 0;
 let fetchTimer = null;
@@ -103,7 +103,7 @@ export function scheduleDetailFetch() {
             if (!isReady()) return;
             const vp = getViewport();
             const dpr = window.devicePixelRatio || 1;
-            const gridSize = getLevel()?.gridSize || 50;
+            const gridSize = getLevelMeta()?.gridSize || 50;
             const { fetchDetailForViewport } = await import(
                 '../detail/data/polychain/polychain-fetcher.js');
             const ok = await fetchDetailForViewport({

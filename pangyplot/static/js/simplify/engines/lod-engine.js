@@ -2,7 +2,7 @@
 // Called from the render manager's draw loop before rendering.
 
 import { state } from '../simplify-state.js';
-import { getLevels } from '../skeleton/data/skeleton-data.js';
+import { getAllLevelMeta } from '../data/chromosome-data.js';
 
 export function updateLOD() {
     const dpr = window.devicePixelRatio || 1;
@@ -11,10 +11,10 @@ export function updateLOD() {
     // Target ~2000 grid units across viewport
     state.targetGridSize = viewportWidth / 2000;
 
-    const levels = getLevels();
+    const meta = getAllLevelMeta();
     let best = 0;
-    for (let i = levels.length - 1; i >= 0; i--) {
-        if (levels[i].gridSize <= state.targetGridSize) {
+    for (let i = meta.length - 1; i >= 0; i--) {
+        if (meta[i].gridSize <= state.targetGridSize) {
             best = i;
             break;
         }

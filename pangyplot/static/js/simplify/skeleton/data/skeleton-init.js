@@ -1,32 +1,15 @@
-// Fetch skeleton LOD data and initialize skeleton state.
+// Initialize skeleton rendering state from raw chromosome data.
+// Called by simplify-app.js after fetch; no longer fetches itself.
 
-import { state } from '../../simplify-state.js';
-import { getLevels, setLevels, setChainMeta, setChainFamily, setLevelBboxes, setDataBounds } from './skeleton-data.js';
+import { getLevels, setLevels, setChainFamily, setLevelBboxes } from './skeleton-data.js';
+import { setDataBounds } from '../../data/chromosome-data.js';
+import { polylineBbox } from '../../utils/geometry.js';
 
-/**
- * Fetch /skeleton, populate skeleton data store and app state.
- * Throws on network/parse error.
- */
-export async function fetchSkeletonData(chromosome) {
-    const resp = await fetch(`/skeleton?chromosome=${encodeURIComponent(chromosome)}`);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const raw = await resp.json();
-
-    // Skeleton-specific data → skeleton data store
-    setLevels(raw.levels);
-    setChainMeta(raw.chainMeta || null);
-    buildChainFamilyMap(raw.chainMeta);
+export function initSkeleton(levels, chainMeta) {
+    setLevels(levels);
+    buildChainFamilyMap(chainMeta);
     precomputeBboxes();
     computeBounds();
-
-    // App-level stats → shared state
-    state.stats = raw.stats;
-
-    // Spine init (coordinate mapping)
-    if (raw.refSpine) {
-        const { initSpine } = await import('../engines/reference-spine-engine.js');
-        initSpine(raw.refSpine);
-    }
 }
 
 function buildChainFamilyMap(chainMeta) {
@@ -62,16 +45,13 @@ function precomputeBboxes() {
         const n = level.polylines.length;
         const arr = new Float64Array(n * 4);
         for (let i = 0; i < n; i++) {
-            const pl = level.polylines[i];
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const [x, y] of pl) {
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-            }
+            const bb = polylineBbox(level.polylines[i]);
             const o = i * 4;
-            arr[o] = minX; arr[o+1] = minY; arr[o+2] = maxX; arr[o+3] = maxY;
+            if (bb) {
+                arr[o] = bb.minX; arr[o+1] = bb.minY; arr[o+2] = bb.maxX; arr[o+3] = bb.maxY;
+            } else {
+                arr[o] = 0; arr[o+1] = 0; arr[o+2] = 0; arr[o+3] = 0;
+            }
         }
         bboxes.push(arr);
     }

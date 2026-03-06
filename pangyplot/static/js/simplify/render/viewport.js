@@ -1,8 +1,8 @@
 // Viewport bounds, canvas resize, fit-to-screen.
 
 import { state } from '../simplify-state.js';
-import { xToBp, bpToStep } from '../skeleton/engines/reference-spine-engine.js';
-import { getDataBounds } from '../skeleton/data/skeleton-data.js';
+import { xToBp, bpToStep } from '../engines/reference-spine-engine.js';
+import { getDataBounds } from '../data/chromosome-data.js';
 
 export function getViewport() {
     const dpr = window.devicePixelRatio || 1;

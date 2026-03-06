@@ -1,21 +1,22 @@
-// Main canvas rendering: draw loop, RAF scheduling.
+// Main canvas rendering: draw loop.
 
 import { state } from './simplify-state.js';
+import { setDrawCallback } from './utils/frame-scheduler.js';
 import { getViewport } from './render/viewport.js';
-import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
+import { isPhysicsDebugActive } from './engines/physics-activation-engine.js';
+import { drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './detail/render/physics-debug-painter.js';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
+import { drawForceGraph } from './detail/render/force-render-manager.js';
 import { drawGeneLabelOverlay } from './skeleton/render/skeleton-gene-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
-import { getLevel } from './skeleton/data/skeleton-data.js';
-
-let rafId = null;
+import { getLevelMeta } from './data/chromosome-data.js';
 
 // ---------------------------------------------------------------
 // Main draw
 // ---------------------------------------------------------------
-export function draw() {
+function draw() {
     const ctx = state.ctx;
     const dpr = window.devicePixelRatio || 1;
     const cw = state.canvas.width / dpr;
@@ -26,10 +27,10 @@ export function draw() {
     ctx.fillRect(0, 0, cw, ch);
 
     updateLOD();
-    const level = getLevel();
-    if (!level) return;
+    const meta = getLevelMeta();
+    if (!meta) return;
 
-    updateSkeletonLevel(level, state.currentLOD);
+    updateSkeletonLevel(state.currentLOD);
     updateZoom();
 
     // Update detail bar readouts (steps change with pan/zoom)
@@ -37,7 +38,7 @@ export function draw() {
 
     const vp = getViewport();
     // Margin in data units so lines at the edge aren't clipped
-    const margin = (level.gridSize || 50) * 2;
+    const margin = (meta.gridSize || 50) * 2;
     const vpMinX = vp.minX - margin;
     const vpMinY = vp.minY - margin;
     const vpMaxX = vp.maxX + margin;
@@ -54,7 +55,7 @@ export function draw() {
     let visibleJ = 0;
 
     if (!skipSkeleton) {
-        const counts = drawSkeleton(ctx, level, vpMinX, vpMinY, vpMaxX, vpMaxY);
+        const counts = drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY);
         visiblePl = counts.visiblePl;
         visibleJ = counts.visibleJ;
     }
@@ -62,6 +63,7 @@ export function draw() {
     // ===== DETAIL LAYER (drawn in same data-space transform) =====
     if (state.detailData && state.detailOpacity > 0) {
         drawDetail();
+        drawForceGraph(state.ctx, Math.max(1.5, 3 / state.zoom));
     }
 
     // ===== PHYSICS DEBUG OVERLAY (data-space) =====
@@ -101,13 +103,4 @@ export function draw() {
     updateFetchIndicator();
 }
 
-// ---------------------------------------------------------------
-// RAF-throttled frame scheduling
-// ---------------------------------------------------------------
-export function scheduleFrame() {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-        rafId = null;
-        draw();
-    });
-}
+setDrawCallback(draw);

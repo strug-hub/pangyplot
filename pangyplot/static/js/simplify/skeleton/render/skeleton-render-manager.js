@@ -1,7 +1,7 @@
 // Skeleton render pipeline: culling, orchestration.
 
 import { state } from '../../simplify-state.js';
-import { getLevelBboxes } from '../data/skeleton-data.js';
+import { getLevel, getLevelBboxes } from '../data/skeleton-data.js';
 import { drawBasePolylines, drawBaseJunctions } from './skeleton-base-overlay.js';
 import { drawHoverOverlay } from './skeleton-hover-overlay.js';
 import { drawGenePolylines, drawGeneJunctions } from './skeleton-gene-overlay.js';
@@ -19,7 +19,10 @@ import { drawGenePolylines, drawGeneJunctions } from './skeleton-gene-overlay.js
  *
  * @returns {{ visiblePl: number, visibleJ: number }}
  */
-export function drawSkeleton(ctx, level, vpMinX, vpMinY, vpMaxX, vpMaxY) {
+export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY) {
+    const level = getLevel();
+    if (!level) return { visiblePl: 0, visibleJ: 0 };
+
     const lineWidth = Math.max(0.5, 1.2 / state.zoom);
     const skelAlpha = state.detailData ? state.skeletonOpacity : 1;
 
