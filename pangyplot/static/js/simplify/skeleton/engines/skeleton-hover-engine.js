@@ -1,10 +1,8 @@
 // Skeleton polyline hover detection and tooltip formatting.
 
 import { state } from '../../simplify-state.js';
-import { selectLevel } from '../../render-manager.js';
 import { getViewport } from '../../render/viewport.js';
-import { getLevelBboxes } from '../data/skeleton-data.js';
-import { getChainMeta } from '../data/skeleton-data.js';
+import { getLevel, getLevelBboxes, getChainMeta } from '../data/skeleton-data.js';
 
 const SKELETON_HIT_RADIUS_PX = 14;
 
@@ -17,13 +15,11 @@ function pointToSegmentDist(px, py, ax, ay, bx, by) {
 }
 
 export function hitTestSkeleton(dataX, dataY) {
-    if (!state.data) return null;
-    const li = selectLevel();
-    const level = state.data.levels[li];
+    const level = getLevel();
     if (!level || !level.chainIds) return null;
 
     const hitR = SKELETON_HIT_RADIUS_PX / state.zoom;
-    const bboxes = getLevelBboxes(li);
+    const bboxes = getLevelBboxes();
     const vp = getViewport();
     const margin = (level.gridSize || 50) * 2;
 
@@ -43,7 +39,7 @@ export function hitTestSkeleton(dataX, dataY) {
             const d = pointToSegmentDist(dataX, dataY, pl[j][0], pl[j][1], pl[j+1][0], pl[j+1][1]);
             if (d < bestDist) {
                 bestDist = d;
-                bestHit = { levelIdx: li, plIdx: i, chainId: cid };
+                bestHit = { plIdx: i, chainId: cid };
             }
         }
     }

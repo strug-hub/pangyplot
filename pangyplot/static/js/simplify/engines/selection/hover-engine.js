@@ -2,10 +2,10 @@
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../render-manager.js';
-import { xToBp, getChromosome, isReady } from '../../data/spine.js';
+import { xToBp, isReady } from '../../skeleton/engines/reference-spine-engine.js';
 import { formatBp } from '../../utils/format-utils.js';
 import { hitTestForceNodes, hitTestBubbles, hitTestChains, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip } from '../../utils/hit-test.js';
-import { hitTestSkeleton, formatSkeletonTooltip } from '../../skeleton/engines/skeleton-hit-test.js';
+import { hitTestSkeleton, formatSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
 import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
 
 export function setupHover(canvas) {
@@ -17,7 +17,7 @@ export function setupHover(canvas) {
         const layoutX = (screenX - state.panX) / state.zoom;
         const layoutY = (screenY - state.panY) / state.zoom;
         const bp = xToBp(layoutX);
-        const chr = getChromosome();
+        const chr = state.chromosome;
         if (bp !== null && chr) {
             updateCursorBp(`${chr}:${formatBp(bp)}`);
         }

@@ -57,7 +57,7 @@ export function setupPanZoom(canvas) {
     // --- Resize ---
     window.addEventListener('resize', () => {
         resizeCanvas();
-        if (state.data) scheduleFrame();
+        if (state.stats) scheduleFrame();
     });
 
     // --- Spacebar: toggle detail <-> skeleton while zoomed in ---

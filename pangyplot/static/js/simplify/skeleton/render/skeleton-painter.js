@@ -1,84 +1,69 @@
-// Skeleton LOD layer: polylines, junctions, hover highlight.
-// Pure painting — no gene overlay logic.
+// Pure canvas painting primitives for the skeleton layer.
+// No state reads, no culling — just ctx path building and draw calls.
 
-import { state } from '../../simplify-state.js';
-import { getLevelBboxes } from '../data/skeleton-data.js';
-import { getChainFamily } from '../data/skeleton-data.js';
-
-/**
- * Draw skeleton polylines and hover highlight.
- * @returns {{ visiblePl: number }}
- */
-export function drawSkeletonPolylines(ctx, level, li, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY) {
-    const hovSkel = state.hoveredSkeletonPl;
-    const hasSkeletonHover = hovSkel && hovSkel.levelIdx === li;
-    const hovChainId = hasSkeletonHover ? hovSkel.chainId : null;
-    const hovFamily = hovChainId !== null ? getChainFamily(hovChainId) : null;
-
-    ctx.strokeStyle = `rgba(255, 255, 255, ${(hasSkeletonHover ? 0.3 : 0.75) * skelAlpha})`;
+export function strokePolylines(ctx, polylines, indices, color, lineWidth) {
+    ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-
-    const bboxes = getLevelBboxes(li);
-    const chainIds = level.chainIds;
-    let visiblePl = 0;
-
     ctx.beginPath();
-    for (let i = 0; i < level.polylines.length; i++) {
-        const o = i * 4;
-        if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
-            bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
-
-        visiblePl++;
-        if (hovFamily && hovFamily.has(chainIds[i])) continue;
-        const pl = level.polylines[i];
+    for (const i of indices) {
+        const pl = polylines[i];
         ctx.moveTo(pl[0][0], pl[0][1]);
         for (let j = 1; j < pl.length; j++) {
             ctx.lineTo(pl[j][0], pl[j][1]);
         }
     }
     ctx.stroke();
-
-    // --- Hovered chain + descendants highlight ---
-    if (hovFamily) {
-        ctx.strokeStyle = `rgba(91, 184, 240, ${skelAlpha})`;
-        ctx.lineWidth = Math.max(2, 3 / state.zoom);
-        ctx.beginPath();
-        for (let i = 0; i < level.polylines.length; i++) {
-            if (!hovFamily.has(chainIds[i])) continue;
-            const o = i * 4;
-            if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
-                bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
-            const pl = level.polylines[i];
-            ctx.moveTo(pl[0][0], pl[0][1]);
-            for (let j = 1; j < pl.length; j++) {
-                ctx.lineTo(pl[j][0], pl[j][1]);
-            }
-        }
-        ctx.stroke();
-    }
-
-    return { visiblePl };
 }
 
-/**
- * Draw skeleton junctions (culled white dots).
- * @returns {{ visibleJ: number }}
- */
-export function drawSkeletonJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY) {
-    const r = Math.max(1.5, 3.0 / state.zoom);
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * skelAlpha})`;
-
-    let visibleJ = 0;
+export function fillJunctions(ctx, points, r, color) {
+    ctx.fillStyle = color;
     ctx.beginPath();
-    for (const [x, y] of level.junctions) {
-        if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
-        visibleJ++;
+    for (const [x, y] of points) {
         ctx.moveTo(x + r, y);
         ctx.arc(x, y, r, 0, Math.PI * 2);
     }
     ctx.fill();
+}
 
-    return { visibleJ };
+/**
+ * Draw a single gene label bracket and text badge at a screen position.
+ */
+export function drawGeneLabel(ctx, name, sxStart, sxEnd, sxMid, syRef) {
+    const fontSize = 11;
+    const geneW = sxEnd - sxStart;
+    const bracketY = syRef - 16;
+
+    ctx.strokeStyle = '#e8a735';
+    ctx.lineWidth = 1.5;
+    if (geneW > 6) {
+        ctx.beginPath();
+        ctx.moveTo(sxStart, syRef + 4);
+        ctx.lineTo(sxStart, bracketY);
+        ctx.lineTo(sxEnd, bracketY);
+        ctx.lineTo(sxEnd, syRef + 4);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(sxMid, syRef + 4);
+        ctx.lineTo(sxMid, bracketY);
+        ctx.stroke();
+    }
+
+    ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    const tw = ctx.measureText(name).width;
+    const px = 5, py = 2;
+    const ly = bracketY - 4;
+
+    ctx.fillStyle = 'rgba(40, 32, 10, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(sxMid - tw / 2 - px, ly - fontSize - py, tw + px * 2, fontSize + py * 2, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#e8a735';
+    ctx.fillText(name, sxMid, ly);
 }

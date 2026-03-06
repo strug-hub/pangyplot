@@ -2,10 +2,11 @@
 // Pure data-fetching logic — no pop/unpop state machine.
 
 import { state } from '../../simplify-state.js';
-import { xToBp, getChromosome, isReady } from '../../data/spine.js';
+import { xToBp, isReady } from '../../skeleton/engines/reference-spine-engine.js';
 import { getViewport } from '../../render/viewport.js';
 import { scheduleFrame } from '../../render-manager.js';
-import { selectLevel } from '../../render-manager.js';
+import { updateLOD } from '../../engines/lod-engine.js';
+import { getLevel } from '../../skeleton/data/skeleton-data.js';
 import { setDetailPhase, scheduleFadeFrame } from '../../force/engines/chain-pop-engine.js';
 import { showFetchIndicator, hideFetchIndicator } from '../../ui/status-bar.js';
 
@@ -59,7 +60,7 @@ function processResponse(apiResponse) {
 // Single-viewport fetch for current visible region
 // ---------------------------------------------------------------
 async function fetchDetailForViewport() {
-    const chr = getChromosome();
+    const chr = state.chromosome;
     if (!isReady() || !chr) return;
 
     const vp = getViewport();
@@ -68,8 +69,7 @@ async function fetchDetailForViewport() {
     const vpWidth = vp.maxX - vp.minX;
     if (vpWidth <= 0) return;
 
-    const li = selectLevel();
-    const gridSize = state.data.levels[li]?.gridSize || 50;
+    const gridSize = getLevel()?.gridSize || 50;
     const expandThreshold = Math.round(gridSize * 2);
 
     // --- Cache check (layout coords, no bp needed) ---
@@ -148,7 +148,7 @@ export function setFadeStartTime(t) { fadeStartTime = t; }
 export function doScheduleDetailFetch() {
     if (fetchTimer) clearTimeout(fetchTimer);
     fetchTimer = setTimeout(() => {
-        selectLevel();
+        updateLOD();
         if (state.targetGridSize > state.DETAIL_GRID_THRESHOLD) {
             state.detailSuppressed = false;
             // Import dynamically to avoid circular reference at module load time

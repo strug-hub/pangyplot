@@ -2,13 +2,13 @@
 // Format: #chrY:12345-67890
 
 import { state } from '../../simplify-state.js';
-import { xToBp, bpToX, xToY, getChromosome, isReady } from '../../data/spine.js';
+import { xToBp, bpToX, xToY, isReady } from '../../skeleton/engines/reference-spine-engine.js';
 import { getViewport } from '../../render/viewport.js';
 
 let hashTimer = null;
 
 export function updateUrlHash() {
-    const chr = getChromosome();
+    const chr = state.chromosome;
     if (!isReady() || !chr) return;
     const vp = getViewport();
     const bpLeft = xToBp(vp.minX);

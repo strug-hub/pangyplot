@@ -1,11 +1,10 @@
 // Reference spine: layout_x <-> basepair coordinate translation.
-// Self-contained — owns its own Float64Arrays and chromosome name.
+// Owns Float64Arrays for coordinate interpolation.
 
 let spineX = null;      // Float64Array
 let spineBp = null;     // Float64Array
 let spineY = null;      // Float64Array
 let spineStep = null;   // Float64Array
-let chromosome = '';
 
 export function initSpine(refSpine) {
     const n = refSpine.length;
@@ -21,8 +20,6 @@ export function initSpine(refSpine) {
     }
 }
 
-export function getChromosome() { return chromosome; }
-export function setChromosome(chr) { chromosome = chr; }
 export function isReady() { return spineX !== null && spineX.length > 0; }
 
 export function xToBp(layoutX) {

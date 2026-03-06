@@ -4,8 +4,9 @@
 
 import { state } from '../simplify-state.js';
 import { formatBp } from '../utils/format-utils.js';
-import { xToBp, getChromosome } from '../data/spine.js';
+import { xToBp } from '../skeleton/engines/reference-spine-engine.js';
 import { viewportStepCount } from '../render/viewport.js';
+import { getLevels } from '../skeleton/data/skeleton-data.js';
 
 // ---------------------------------------------------------------
 // One-time init
@@ -20,16 +21,16 @@ export function showLoadingError(msg) {
 export function showStats() {
     state.dom.loading.style.display = 'none';
     state.dom.stats.textContent =
-        `${state.data.stats.totalSegments.toLocaleString()} segs | ` +
-        `${state.data.stats.junctionCount.toLocaleString()} junctions | ` +
-        `${state.data.levels.length} grid levels`;
+        `${state.stats.totalSegments.toLocaleString()} segs | ` +
+        `${state.stats.junctionCount.toLocaleString()} junctions | ` +
+        `${getLevels().length} grid levels`;
 }
 
 /** Build grid meter bars (call once after data load). */
 export function initGridMeter() {
     const meter = state.dom.gridMeter;
     meter.innerHTML = '';
-    for (let i = 0; i < state.data.levels.length; i++) {
+    for (let i = 0; i < getLevels().length; i++) {
         const bar = document.createElement('div');
         bar.className = 'bar';
         meter.appendChild(bar);
@@ -46,10 +47,12 @@ export function updateZoom() {
         ? state.zoom.toFixed(4) : state.zoom.toFixed(1);
 }
 
+let prevLevel = -1;
+
 /** Light up grid meter bars and update skeleton level readout. */
 export function updateSkeletonLevel(level, levelIndex) {
-    if (levelIndex === state.currentLevel) return false;
-    state.currentLevel = levelIndex;
+    if (levelIndex === prevLevel) return false;
+    prevLevel = levelIndex;
 
     // Grid meter bars
     const bars = state.dom.gridMeter.children;
@@ -62,7 +65,7 @@ export function updateSkeletonLevel(level, levelIndex) {
     state.dom.levelLabel.textContent = level.label;
     state.dom.nodeCount.textContent = level.nodeCount.toLocaleString();
     state.dom.polylineCount.textContent = level.polylineCount.toLocaleString();
-    const pct = ((1 - level.nodeCount / state.data.stats.totalSegments) * 100).toFixed(1);
+    const pct = ((1 - level.nodeCount / state.stats.totalSegments) * 100).toFixed(1);
     state.dom.reduction.textContent = `${pct}%`;
     return true;
 }
@@ -74,7 +77,7 @@ export function updateVisibleCounts(visiblePl, visibleJ) {
 
 /** Update viewport coordinate readout. */
 export function updateViewportBp(vp) {
-    const chr = getChromosome();
+    const chr = state.chromosome;
     if (chr) {
         const bpLeft = xToBp(vp.minX);
         const bpRight = xToBp(vp.maxX);

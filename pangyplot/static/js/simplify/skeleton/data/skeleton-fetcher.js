@@ -1,36 +1,46 @@
 // Fetch skeleton LOD data and initialize skeleton state.
 
 import { state } from '../../simplify-state.js';
-import { setChainMeta, setChainFamily, setLevelBboxes, setDataBounds } from './skeleton-data.js';
+import { getLevels, setLevels, setChainMeta, setChainFamily, setLevelBboxes, setDataBounds } from './skeleton-data.js';
 
 /**
- * Fetch /skeleton-data, build chain family map and bboxes.
+ * Fetch /skeleton, populate skeleton data store and app state.
  * Throws on network/parse error.
  */
-export async function fetchSkeletonData() {
-    const resp = await fetch('/skeleton-data');
+export async function fetchSkeletonData(chromosome) {
+    const resp = await fetch(`/skeleton?chromosome=${encodeURIComponent(chromosome)}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    state.data = await resp.json();
+    const raw = await resp.json();
 
-    setChainMeta(state.data.chainMeta || null);
-    buildChainFamilyMap();
+    // Skeleton-specific data → skeleton data store
+    setLevels(raw.levels);
+    setChainMeta(raw.chainMeta || null);
+    buildChainFamilyMap(raw.chainMeta);
     precomputeBboxes();
     computeBounds();
+
+    // App-level stats → shared state
+    state.stats = raw.stats;
+
+    // Spine init (coordinate mapping)
+    if (raw.refSpine) {
+        const { initSpine } = await import('../engines/reference-spine-engine.js');
+        initSpine(raw.refSpine);
+    }
 }
 
-function buildChainFamilyMap() {
-    if (!state.data.chainMeta) return;
+function buildChainFamilyMap(chainMeta) {
+    if (!chainMeta) return;
 
-    const meta = state.data.chainMeta;
     const children = {};
-    for (const cid in meta) {
-        const p = meta[cid].parent;
+    for (const cid in chainMeta) {
+        const p = chainMeta[cid].parent;
         if (p != null) {
             (children[p] || (children[p] = [])).push(Number(cid));
         }
     }
     const family = {};
-    for (const cid in meta) {
+    for (const cid in chainMeta) {
         const id = Number(cid);
         const set = new Set([id]);
         const stack = [id];
@@ -48,7 +58,7 @@ function buildChainFamilyMap() {
 
 function precomputeBboxes() {
     const bboxes = [];
-    for (const level of state.data.levels) {
+    for (const level of getLevels()) {
         const n = level.polylines.length;
         const arr = new Float64Array(n * 4);
         for (let i = 0; i < n; i++) {
@@ -69,7 +79,7 @@ function precomputeBboxes() {
 }
 
 function computeBounds() {
-    const level = state.data.levels[0];
+    const level = getLevels()[0];
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const pl of level.polylines) {
         for (const [x, y] of pl) {

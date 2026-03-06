@@ -8,8 +8,9 @@ export const state = {
     canvas,
     ctx: canvas.getContext('2d'),
 
-    // Data (set by init)
-    data: null,
+    // Stats (set by skeleton fetcher)
+    stats: null,
+    chromosome: '',
 
     // Transform
     panX: 0,
@@ -20,7 +21,7 @@ export const state = {
     dragStartY: 0,
 
     // LOD
-    currentLevel: -1,
+    currentLOD: -1,
 
     // Progressive detail
     detailPhase: 'none',       // 'none' | 'fading-in' | 'static' | 'fading-out'
@@ -44,7 +45,7 @@ export const state = {
     hoveredChain: null,
     hoveredBubble: null,
     hoveredForceNode: null,   // popped node from force simulation
-    hoveredSkeletonPl: null,  // {levelIdx, plIdx, chainId}
+    hoveredSkeletonPl: null,  // {plIdx, chainId}
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',

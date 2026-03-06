@@ -3,32 +3,14 @@
 import { state } from './simplify-state.js';
 import { getViewport } from './render/viewport.js';
 import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
-import { drawSkeleton } from './skeleton/skeleton-render-manager.js';
+import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/detail-painter.js';
-import { drawGeneLabels } from './render/annotation/gene-label-renderer.js';
+import { drawGeneLabelOverlay } from './skeleton/render/skeleton-gene-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar } from './ui/status-bar.js';
+import { updateLOD } from './engines/lod-engine.js';
+import { getLevel } from './skeleton/data/skeleton-data.js';
 
 let rafId = null;
-
-// ---------------------------------------------------------------
-// Auto-LOD: pick grid level based on zoom
-// ---------------------------------------------------------------
-export function selectLevel() {
-    const dpr = window.devicePixelRatio || 1;
-    const cw = state.canvas.width / dpr;
-    const viewportWidth = cw / state.zoom;
-    // Target ~2000 grid units across viewport
-    state.targetGridSize = viewportWidth / 2000;
-
-    let best = 0;
-    for (let i = state.data.levels.length - 1; i >= 0; i--) {
-        if (state.data.levels[i].gridSize <= state.targetGridSize) {
-            best = i;
-            break;
-        }
-    }
-    return best;
-}
 
 // ---------------------------------------------------------------
 // Main draw
@@ -43,11 +25,11 @@ export function draw() {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, cw, ch);
 
-    const li = selectLevel();
-    const level = state.data.levels[li];
+    updateLOD();
+    const level = getLevel();
     if (!level) return;
 
-    updateSkeletonLevel(level, li);
+    updateSkeletonLevel(level, state.currentLOD);
     updateZoom();
 
     // Update detail bar readouts (steps change with pan/zoom)
@@ -72,7 +54,7 @@ export function draw() {
     let visibleJ = 0;
 
     if (!skipSkeleton) {
-        const counts = drawSkeleton(ctx, level, li, vpMinX, vpMinY, vpMaxX, vpMaxY);
+        const counts = drawSkeleton(ctx, level, vpMinX, vpMinY, vpMaxX, vpMaxY);
         visiblePl = counts.visiblePl;
         visibleJ = counts.visibleJ;
     }
@@ -111,7 +93,7 @@ export function draw() {
     }
 
     // --- Gene labels (screen coords) ---
-    drawGeneLabels(ctx, cw);
+    drawGeneLabelOverlay(ctx, cw);
 
     // --- Status bar ---
     updateVisibleCounts(visiblePl, visibleJ);

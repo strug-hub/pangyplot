@@ -1,19 +1,20 @@
 // Entry point: init(), wire up modules.
 
-import { state } from './simplify-state.js';
-import { initSpine, setChromosome } from './data/spine.js';
 import { resizeCanvas, fitToScreen } from './render/viewport.js';
 import { fetchSkeletonData } from './skeleton/data/skeleton-fetcher.js';
-import { placeGenes } from './render/annotation/gene-label-renderer.js';
+import { placeGenes } from './skeleton/data/gene-data.js';
 import { navigateToHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
 import { scheduleFrame } from './render-manager.js';
 import { scheduleDetailFetch } from './force/engines/chain-pop-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
 import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
+import { isReady } from './skeleton/engines/reference-spine-engine.js';
+import { state } from './simplify-state.js';
 
 async function init() {
+    state.chromosome = 'chrY';
     try {
-        await fetchSkeletonData();
+        await fetchSkeletonData(state.chromosome);
     } catch (err) {
         showLoadingError(err.message);
         return;
@@ -21,13 +22,7 @@ async function init() {
 
     showStats();
     initGridMeter();
-
-    // Initialize reference spine if available
-    if (state.data.refSpine) {
-        initSpine(state.data.refSpine);
-        setChromosome(state.data.chromosome || '');
-        placeGenes();
-    }
+    if (isReady()) placeGenes();
 
     resizeCanvas();
 

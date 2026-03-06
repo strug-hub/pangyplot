@@ -122,9 +122,12 @@ def search():
 
     return jsonify(results)
 
-@bp.route('/skeleton-data')
-def skeleton_data():
-    gz_path = os.path.join(current_app.static_folder, 'data', 'simplify', 'chrY.json.gz')
+@bp.route('/skeleton')
+def skeleton():
+    chrom = request.args.get('chromosome')
+    if not chrom:
+        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    gz_path = os.path.join(current_app.static_folder, 'data', 'simplify', f'{chrom}.json.gz')
     if not os.path.exists(gz_path):
         return jsonify({"error": "No precomputed data. Run graph_simplify.py --export-json first."}), 404
     with open(gz_path, 'rb') as f:

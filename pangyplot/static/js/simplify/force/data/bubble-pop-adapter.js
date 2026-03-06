@@ -2,7 +2,6 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { getChromosome } from '../../data/spine.js';
 import { spliceBubbleNodes, getForceNodes } from './force-sim.js';
 import { deserializeNodes } from '../../../graph/data/records/deserializer/deserialize-nodes.js';
 import { createNodeElements, createLinkElements } from '../../../graph/data/records/deserializer/deserializer-element.js';
@@ -19,7 +18,7 @@ export async function popBubbleForceNode(bubbleNode) {
 
     const bubbleId = bubbleNode.id;       // e.g. "b123"
     const chainId = bubbleNode.chainId;
-    const chr = getChromosome();
+    const chr = state.chromosome;
     if (!chr) return false;
 
     const url = `/pop?id=${encodeURIComponent(bubbleId)}`

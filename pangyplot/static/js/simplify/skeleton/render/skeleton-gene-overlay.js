@@ -1,47 +1,37 @@
-// Gene-colored overdraw on skeleton polylines and junctions.
+// Gene-colored overdraw on skeleton polylines and junctions, plus label positioning.
 
 import { state } from '../../simplify-state.js';
 import { getLevelBboxes } from '../data/skeleton-data.js';
-import { getGenePins } from '../../render/annotation/gene-label-renderer.js';
+import { getGenePins } from '../data/gene-data.js';
+import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painter.js';
 
 /**
  * Draw gene-colored polyline overdraw on visible skeleton polylines.
  */
-export function drawGenePolylines(ctx, level, li, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY) {
+export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY) {
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
-    const bboxes = getLevelBboxes(li);
+    const bboxes = getLevelBboxes();
     const geneYMargin = (level.gridSize || 50) * 3;
 
-    ctx.strokeStyle = `rgba(232, 167, 53, ${skelAlpha})`;
-    ctx.lineWidth = lineWidth * 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-
-    ctx.beginPath();
+    const geneIndices = [];
     for (let i = 0; i < level.polylines.length; i++) {
         const o = i * 4;
         if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
             bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
 
-        let inGene = false;
         for (const gene of genePins) {
             if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX &&
                 bboxes[o+3] >= gene.minY - geneYMargin && bboxes[o+1] <= gene.maxY + geneYMargin) {
-                inGene = true;
+                geneIndices.push(i);
                 break;
             }
         }
-        if (!inGene) continue;
-
-        const pl = level.polylines[i];
-        ctx.moveTo(pl[0][0], pl[0][1]);
-        for (let j = 1; j < pl.length; j++) {
-            ctx.lineTo(pl[j][0], pl[j][1]);
-        }
     }
-    ctx.stroke();
+
+    if (geneIndices.length === 0) return;
+    strokePolylines(ctx, level.polylines, geneIndices, `rgba(232, 167, 53, ${skelAlpha})`, lineWidth * 2);
 }
 
 /**
@@ -52,23 +42,37 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
     if (genePins.length === 0) return;
 
     const geneYMargin = (level.gridSize || 50) * 3;
-    const gr = Math.max(2, 4.0 / state.zoom);
 
-    ctx.fillStyle = `rgba(232, 167, 53, ${skelAlpha})`;
-    ctx.beginPath();
+    const geneJunctions = [];
     for (const [x, y] of level.junctions) {
         if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
-        let inGene = false;
         for (const gene of genePins) {
             if (x >= gene.startX && x <= gene.endX &&
                 y >= gene.minY - geneYMargin && y <= gene.maxY + geneYMargin) {
-                inGene = true;
+                geneJunctions.push([x, y]);
                 break;
             }
         }
-        if (!inGene) continue;
-        ctx.moveTo(x + gr, y);
-        ctx.arc(x, y, gr, 0, Math.PI * 2);
     }
-    ctx.fill();
+
+    if (geneJunctions.length === 0) return;
+    const gr = Math.max(2, 4.0 / state.zoom);
+    fillJunctions(ctx, geneJunctions, gr, `rgba(232, 167, 53, ${skelAlpha})`);
+}
+
+/**
+ * Compute screen-space label positions and draw gene labels.
+ */
+export function drawGeneLabelOverlay(ctx, cw) {
+    const genePins = getGenePins();
+    if (genePins.length === 0) return;
+
+    for (const gene of genePins) {
+        const sxStart = gene.startX * state.zoom + state.panX;
+        const sxEnd = gene.endX * state.zoom + state.panX;
+        if (sxEnd < -60 || sxStart > cw + 60) continue;
+        const sxMid = (sxStart + sxEnd) / 2;
+        const syRef = gene.refY * state.zoom + state.panY;
+        drawGeneLabel(ctx, gene.name, sxStart, sxEnd, sxMid, syRef);
+    }
 }
