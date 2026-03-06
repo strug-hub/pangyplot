@@ -1,7 +1,7 @@
 // Force graph render manager: categorizes nodes/links, delegates to detail-painter.
 
 import { state } from '../../simplify-state.js';
-import { getForceNodes, getForceLinks } from '../engines/force-engine.js';
+import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeRing, strokeSegments } from './detail-painter.js';
 
 export function drawForceGraph(ctx, baseWidth) {

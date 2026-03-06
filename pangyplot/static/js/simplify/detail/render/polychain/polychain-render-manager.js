@@ -2,7 +2,6 @@
 
 import { state } from '../../../simplify-state.js';
 import { strokeLines, fillDots, strokePolyline, strokePolylines, strokeDashedPolylines } from '../detail-painter.js';
-import { drawForceGraph } from '../force-render-manager.js';
 
 /**
  * Build a set of coordinate keys for junction segments that are
@@ -36,24 +35,14 @@ function filterJunctionNodes(nodes, activatedCoords) {
     return nodes.filter(([x, y]) => !activatedCoords.has(`${x},${y}`));
 }
 
-function getVisibleChainPolylines(chains, hovChain) {
+function getVisibleChainPolylines(chains) {
     const base = [];
-    const dimmed = [];
-    let hovered = null;
-
     for (const chain of chains) {
         if (state.poppedChainIds.size > 0 && state.poppedChainIds.has(chain.id)) continue;
         if (chain.polyline.length < 2) continue;
-
-        if (hovChain && chain === hovChain) {
-            hovered = chain.polyline;
-        } else if (hovChain) {
-            dimmed.push(chain.polyline);
-        } else {
-            base.push(chain.polyline);
-        }
+        base.push(chain.polyline);
     }
-    return { base, dimmed, hovered };
+    return base;
 }
 
 function getSelectedPolylines() {
@@ -93,30 +82,21 @@ export function drawDetail() {
 
     // 3. Chain polylines
     if (!state.hideChainOverlay) {
-        const { base, dimmed, hovered } = getVisibleChainPolylines(state.detailData.chains, state.hoveredChain);
+        const visible = getVisibleChainPolylines(state.detailData.chains);
 
-        if (base.length > 0) {
-            strokePolylines(ctx, base, '#FF6700', baseWidth, 0.75 * opacity);
-        }
-        if (dimmed.length > 0) {
-            strokePolylines(ctx, dimmed, '#FF6700', baseWidth, 0.25 * opacity);
-        }
-        if (hovered) {
-            strokePolyline(ctx, hovered, '#FAB3AE', baseWidth * 1.5, opacity);
+        if (visible.length > 0) {
+            strokePolylines(ctx, visible, '#FF6700', baseWidth, 0.75 * opacity);
         }
     }
 
-    // 4. Force graph
-    drawForceGraph(ctx, baseWidth);
-
-    // 5. Sibling connectors
+    // 4. Sibling connectors
     if (!state.hideChainOverlay && state.detailData.siblingConnectors?.length > 0) {
         const dash = Math.max(2, 4 / state.zoom);
         strokeDashedPolylines(ctx, state.detailData.siblingConnectors, '#aaa',
             Math.max(0.8, 1.8 / state.zoom), 0.5 * opacity, dash);
     }
 
-    // 6. Selection highlight
+    // 5. Selection highlight
     if (state.selectedChains.size > 0) {
         const selected = getSelectedPolylines();
         if (selected.length > 0) {
@@ -124,7 +104,7 @@ export function drawDetail() {
         }
     }
 
-    // 7. Hover highlight
+    // 6. Hover highlight
     if (state.hoveredChain) {
         const pl = state.hoveredChain.polyline;
         if (pl.length >= 2) {

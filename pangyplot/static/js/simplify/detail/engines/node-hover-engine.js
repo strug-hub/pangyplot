@@ -1,7 +1,7 @@
 // Bubble and force-node hover detection and tooltip formatting.
 
 import { state } from '../../simplify-state.js';
-import { getForceNodes } from './force-engine.js';
+import { getForceNodes } from '../data/force-data.js';
 
 const HIT_RADIUS_PX = 12;
 

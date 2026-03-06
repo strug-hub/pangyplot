@@ -2,7 +2,8 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, getForceNodes } from '../engines/force-engine.js';
+import { spliceBubbleNodes } from '../engines/force-engine.js';
+import { getForceNodes } from './force-data.js';
 import { deserializeNodes } from '../../../graph/data/records/deserializer/deserialize-nodes.js';
 import { createNodeElements, createLinkElements } from '../../../graph/data/records/deserializer/deserializer-element.js';
 import { detectIndelBubbles } from '../../../graph/data/records/deserializer/indel-detection.js';

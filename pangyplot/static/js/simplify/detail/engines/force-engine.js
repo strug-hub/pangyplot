@@ -2,12 +2,26 @@
 // Manages a single simulation containing all popped nodes+links.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render-manager.js';
+import { scheduleFrame } from '../../utils/frame-scheduler.js';
+import { setForceNodes, setForceLinks } from '../data/force-data.js';
 import defaults from '../../../graph/forces/settings/force-defaults.js';
 import layoutForce from '../../../graph/forces/layout-force.js';
 import bubbleCircularForce from '../../../graph/forces/bubble-circular-force.js';
 
 let sim = null;
+
+function syncNodes(arr) {
+    sim.nodes(arr);
+    setForceNodes(arr);
+}
+
+function syncLinks(arr) {
+    sim.force('link').links(arr);
+    setForceLinks(arr);
+}
+
+function getNodes() { return sim.nodes(); }
+function getLinks() { return sim.force('link').links(); }
 
 // ---------------------------------------------------------------
 // Simulation lifecycle
@@ -47,11 +61,11 @@ export function addPoppedNodes(nodes, links) {
         n.homeY = n.fy ?? n.y;
     }
 
-    const allNodes = [...sim.nodes(), ...nodes];
-    const allLinks = [...sim.force('link').links(), ...links];
+    const allNodes = [...getNodes(), ...nodes];
+    const allLinks = [...getLinks(), ...links];
 
-    sim.nodes(allNodes);
-    sim.force('link').links(allLinks);
+    syncNodes(allNodes);
+    syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
 
     sim.alpha(0.3).restart();
@@ -60,14 +74,14 @@ export function addPoppedNodes(nodes, links) {
 export function removePoppedNodes(chainId) {
     if (!sim) return;
 
-    const remaining = sim.nodes().filter(n => n.chainId !== chainId);
+    const remaining = getNodes().filter(n => n.chainId !== chainId);
     const remainingIds = new Set(remaining.map(n => n.iid));
-    const remainingLinks = sim.force('link').links().filter(
+    const remainingLinks = getLinks().filter(
         l => remainingIds.has(l.source.iid || l.source) && remainingIds.has(l.target.iid || l.target)
     );
 
-    sim.nodes(remaining);
-    sim.force('link').links(remainingLinks);
+    syncNodes(remaining);
+    syncLinks(remainingLinks);
 
     if (remaining.length > 0) {
         sim.alpha(0.1).restart();
@@ -79,28 +93,28 @@ export function removePoppedNodes(chainId) {
 export function addInterChainLinks(links) {
     if (!sim) return;
 
-    const allLinks = [...sim.force('link').links(), ...links];
-    sim.force('link').links(allLinks);
+    const allLinks = [...getLinks(), ...links];
+    syncLinks(allLinks);
     sim.alpha(0.1).restart();
 }
 
 export function removeInterChainLinks() {
     if (!sim) return;
 
-    const remaining = sim.force('link').links().filter(l => !l.isInterChain);
-    sim.force('link').links(remaining);
+    const remaining = getLinks().filter(l => !l.isInterChain);
+    syncLinks(remaining);
 }
 
 export function clearForce() {
     if (!sim) return;
     sim.stop();
-    sim.nodes([]);
-    sim.force('link').links([]);
+    syncNodes([]);
+    syncLinks([]);
 }
 
 export function collapseToAnchors() {
-    if (!sim || sim.nodes().length === 0) return;
-    for (const n of sim.nodes()) {
+    if (!sim || getNodes().length === 0) return;
+    for (const n of getNodes()) {
         if (n.fx != null) {
             n.x = n.fx;
             n.y = n.fy;
@@ -113,8 +127,8 @@ export function collapseToAnchors() {
 }
 
 export function restoreAnchors() {
-    if (!sim || sim.nodes().length === 0) return;
-    for (const n of sim.nodes()) {
+    if (!sim || getNodes().length === 0) return;
+    for (const n of getNodes()) {
         if (!n.isAnchor) continue;
         if (n.homeX != null) {
             n.fx = n.homeX;
@@ -142,11 +156,11 @@ export function spliceBubbleNodes(removeIids, rewireMap, childNodes, childLinks)
     }
 
     // Remove parent nodes, add children
-    const remaining = sim.nodes().filter(n => !removeIids.has(n.iid));
+    const remaining = getNodes().filter(n => !removeIids.has(n.iid));
     const allNodes = [...remaining, ...childNodes];
 
     // Rewire existing links that connected to the parent bubble
-    const existingLinks = sim.force('link').links();
+    const existingLinks = getLinks();
     for (const link of existingLinks) {
         const sIid = link.source.iid ?? link.source;
         const tIid = link.target.iid ?? link.target;
@@ -170,18 +184,10 @@ export function spliceBubbleNodes(removeIids, rewireMap, childNodes, childLinks)
 
     const allLinks = [...keptLinks, ...childLinks];
 
-    sim.nodes(allNodes);
-    sim.force('link').links(allLinks);
+    syncNodes(allNodes);
+    syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
     sim.alpha(0.3).restart();
-}
-
-export function getForceNodes() {
-    return sim ? sim.nodes() : [];
-}
-
-export function getForceLinks() {
-    return sim ? sim.force('link').links() : [];
 }
 
 export function isSimulating() {

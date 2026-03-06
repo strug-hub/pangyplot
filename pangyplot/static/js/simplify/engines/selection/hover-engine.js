@@ -1,8 +1,8 @@
 // Cursor coordinate readout + hover hit-test for chains, bubbles, force nodes, skeleton.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render-manager.js';
-import { xToBp, isReady } from '../../skeleton/engines/reference-spine-engine.js';
+import { scheduleFrame } from '../../utils/frame-scheduler.js';
+import { xToBp, isReady } from '../reference-spine-engine.js';
 import { formatBp } from '../../utils/format-utils.js';
 import { hitTestChains, getChainTooltip } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleTooltip } from '../../detail/engines/node-hover-engine.js';

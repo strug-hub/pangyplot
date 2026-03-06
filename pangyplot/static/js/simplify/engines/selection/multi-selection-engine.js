@@ -1,7 +1,7 @@
 // Shift+drag rectangle selection of detail chains, Ctrl+click pop/unpop, Escape clear.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render-manager.js';
+import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { togglePopChain } from '../../detail/engines/polychain/polychain-pop-engine.js';
 import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';

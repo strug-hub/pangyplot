@@ -1,6 +1,6 @@
 // Gene landmark data and layout placement.
 
-import { bpToX, xToY } from '../engines/reference-spine-engine.js';
+import { bpToX, xToY } from '../../engines/reference-spine-engine.js';
 
 const GENES = [
     { name: 'SRY',     startBp: 2786855,  endBp: 2787682 },

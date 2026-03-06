@@ -1,9 +1,10 @@
 // Chain pop/unpop state machine: force population, junction activation.
 
 import { state } from '../../../simplify-state.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from '../force-engine.js';
+import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks } from '../force-engine.js';
+import { getForceNodes } from '../../data/force-data.js';
 import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../data/polychain/polychain-adapter.js';
-import { getActivationSet } from '../../../physics-zone.js';
+import { getActivationSet } from '../../../engines/physics-activation-engine.js';
 import { clearFetchedRegion } from '../../data/polychain/polychain-fetcher.js';
 
 // ---------------------------------------------------------------

@@ -2,7 +2,7 @@
 // Format: #chrY:12345-67890
 
 import { state } from '../../simplify-state.js';
-import { xToBp, bpToX, xToY, isReady } from '../../skeleton/engines/reference-spine-engine.js';
+import { xToBp, bpToX, xToY, isReady } from '../reference-spine-engine.js';
 import { getViewport } from '../../render/viewport.js';
 
 let hashTimer = null;

@@ -1,7 +1,7 @@
 // Pan, drag, zoom (wheel), double-click reset, and window resize.
 
 import { state } from '../../simplify-state.js';
-import { scheduleFrame } from '../../render-manager.js';
+import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { scheduleDetailFetch, exitDetailMode } from '../detail-transition-engine.js';
 import { scheduleHashUpdate } from '../../engines/navigation/hash-navigation.js';
 import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
