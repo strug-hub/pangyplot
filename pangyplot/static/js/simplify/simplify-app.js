@@ -9,21 +9,18 @@ import { navigateToHash, scheduleHashUpdate } from './engines/navigation/hash-na
 import { scheduleFrame } from './render-manager.js';
 import { scheduleDetailFetch } from './force/engines/chain-pop-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
+import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
 
 async function init() {
     try {
         await fetchSkeletonData();
     } catch (err) {
-        state.dom.loading.textContent = `Error loading data: ${err.message}`;
+        showLoadingError(err.message);
         return;
     }
 
-    state.dom.loading.style.display = 'none';
-
-    state.dom.stats.textContent =
-        `${state.data.stats.totalSegments.toLocaleString()} segs | ` +
-        `${state.data.stats.junctionCount.toLocaleString()} junctions | ` +
-        `${state.data.levels.length} grid levels`;
+    showStats();
+    initGridMeter();
 
     // Initialize reference spine if available
     if (state.data.refSpine) {

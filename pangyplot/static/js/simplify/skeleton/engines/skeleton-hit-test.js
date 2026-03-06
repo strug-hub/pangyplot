@@ -1,8 +1,10 @@
 // Skeleton polyline hover detection and tooltip formatting.
 
 import { state } from '../../simplify-state.js';
-import { selectLevel } from '../data/lod.js';
+import { selectLevel } from '../../render-manager.js';
 import { getViewport } from '../../render/viewport.js';
+import { getLevelBboxes } from '../data/skeleton-data.js';
+import { getChainMeta } from '../data/skeleton-data.js';
 
 const SKELETON_HIT_RADIUS_PX = 14;
 
@@ -21,7 +23,7 @@ export function hitTestSkeleton(dataX, dataY) {
     if (!level || !level.chainIds) return null;
 
     const hitR = SKELETON_HIT_RADIUS_PX / state.zoom;
-    const bboxes = state.levelBboxes[li];
+    const bboxes = getLevelBboxes(li);
     const vp = getViewport();
     const margin = (level.gridSize || 50) * 2;
 
@@ -49,7 +51,7 @@ export function hitTestSkeleton(dataX, dataY) {
 }
 
 export function formatSkeletonTooltip(hit) {
-    const meta = state.data.chainMeta;
+    const meta = getChainMeta();
     const cid = String(hit.chainId);
     const info = meta ? meta[cid] : null;
 

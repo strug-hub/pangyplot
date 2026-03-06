@@ -3,6 +3,7 @@
 import { state } from '../simplify-state.js';
 import { subtypeColor, formatBp } from './format-utils.js';
 import { getForceNodes } from '../force/data/force-sim.js';
+import { getChainMeta } from '../skeleton/data/skeleton-data.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -158,7 +159,7 @@ export function formatTooltip(chain) {
     while (cur) {
         parts.push(cur);
         const numId = cur.startsWith('c') ? cur.slice(1) : cur;
-        const meta = state.data.chainMeta?.[numId];
+        const meta = getChainMeta()?.[numId];
         cur = meta?.parent != null ? `c${meta.parent}` : null;
     }
     parts.reverse();

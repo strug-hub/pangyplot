@@ -19,10 +19,7 @@ export const state = {
     dragStartX: 0,
     dragStartY: 0,
 
-    // Bounds & LOD
-    dataBounds: { minX: 0, maxX: 1, minY: 0, maxY: 1 },
-    levelBboxes: [],
-    currentLevel: -1,
+    // LOD
     currentLevel: -1,
 
     // Progressive detail

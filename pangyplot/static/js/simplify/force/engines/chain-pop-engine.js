@@ -2,7 +2,7 @@
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../render-manager.js';
-import { updateDetailBar } from '../../render-manager.js';
+import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../../ui/status-bar.js';
 import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks, getForceNodes } from '../data/force-sim.js';
 import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../detail/data/detail-adapter.js';
 import { getActivationSet } from '../../physics-zone.js';
@@ -221,14 +221,8 @@ export function togglePopChain(chain) {
 // ---------------------------------------------------------------
 export function setDetailPhase(phase) {
     state.detailPhase = phase;
-    const cls = (phase === 'fading-in' || phase === 'fading-out') ? 'fading' : phase;
-    state.dom.detailPhase.className = cls;
-    if (phase === 'none') {
-        state.dom.detailPhase.textContent = 'DETAILS';
-    } else {
-        state.dom.detailPhase.textContent = `DETAILS ${state.detailOpacity.toFixed(2)}`;
-        updateDetailBar();
-    }
+    updateDetailPhase();
+    if (phase !== 'none') updateDetailBar();
 }
 
 function finishExit() {
@@ -273,8 +267,7 @@ export function updateDetailOpacity() {
             return;
         }
     }
-    state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
-    state.dom.detailPhase.textContent = `DETAILS ${state.detailOpacity.toFixed(2)}`;
+    updateDetailOpacityReadout();
 }
 
 export function scheduleFadeFrame() {

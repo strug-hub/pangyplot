@@ -1,6 +1,7 @@
 // Gene-colored overdraw on skeleton polylines and junctions.
 
 import { state } from '../../simplify-state.js';
+import { getLevelBboxes } from '../data/skeleton-data.js';
 import { getGenePins } from '../../render/annotation/gene-label-renderer.js';
 
 /**
@@ -10,7 +11,7 @@ export function drawGenePolylines(ctx, level, li, lineWidth, skelAlpha, vpMinX, 
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
-    const bboxes = state.levelBboxes[li];
+    const bboxes = getLevelBboxes(li);
     const geneYMargin = (level.gridSize || 50) * 3;
 
     ctx.strokeStyle = `rgba(232, 167, 53, ${skelAlpha})`;

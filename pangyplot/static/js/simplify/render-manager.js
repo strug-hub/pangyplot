@@ -1,31 +1,33 @@
-// Main canvas rendering: draw loop, RAF scheduling, detail bar DOM update.
+// Main canvas rendering: draw loop, RAF scheduling.
 
 import { state } from './simplify-state.js';
-import { selectLevel, updateGridMeter } from './skeleton/data/lod.js';
-import { getViewport, viewportStepCount } from './render/viewport.js';
-import { formatBp } from './utils/format-utils.js';
-import { xToBp, getChromosome } from './data/spine.js';
+import { getViewport } from './render/viewport.js';
 import { isPhysicsDebugActive, drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './physics-zone.js';
 import { drawSkeleton } from './skeleton/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/detail-painter.js';
 import { drawGeneLabels } from './render/annotation/gene-label-renderer.js';
+import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar } from './ui/status-bar.js';
 
 let rafId = null;
 
 // ---------------------------------------------------------------
-// Detail bar DOM update (lives here to avoid render<->detail cycle)
+// Auto-LOD: pick grid level based on zoom
 // ---------------------------------------------------------------
-export function updateDetailBar() {
-    if (!state.detailData) return;
-    state.dom.detailChains.textContent = state.detailData.chains.length.toLocaleString();
-    state.dom.detailExposed.textContent = '0';
-    state.dom.detailNodes.textContent = (state.detailData.totalBubbles || 0).toLocaleString();
-    if (state.detailData.bpStart != null) {
-        state.dom.detailRange.textContent = `${formatBp(state.detailData.bpStart)}-${formatBp(state.detailData.bpEnd)}`;
+export function selectLevel() {
+    const dpr = window.devicePixelRatio || 1;
+    const cw = state.canvas.width / dpr;
+    const viewportWidth = cw / state.zoom;
+    // Target ~2000 grid units across viewport
+    state.targetGridSize = viewportWidth / 2000;
+
+    let best = 0;
+    for (let i = state.data.levels.length - 1; i >= 0; i--) {
+        if (state.data.levels[i].gridSize <= state.targetGridSize) {
+            best = i;
+            break;
+        }
     }
-    state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
-    const steps = viewportStepCount();
-    state.dom.detailSteps.textContent = isFinite(steps) ? Math.round(steps).toLocaleString() : '--';
+    return best;
 }
 
 // ---------------------------------------------------------------
@@ -45,12 +47,8 @@ export function draw() {
     const level = state.data.levels[li];
     if (!level) return;
 
-    const levelChanged = li !== state.currentLevel;
-    updateGridMeter(li);
-
-    // Update zoom readout
-    state.dom.zoomVal.textContent = state.zoom < 1
-        ? state.zoom.toFixed(4) : state.zoom.toFixed(1);
+    updateSkeletonLevel(level, li);
+    updateZoom();
 
     // Update detail bar readouts (steps change with pan/zoom)
     if (state.detailPhase !== 'none') updateDetailBar();
@@ -115,25 +113,9 @@ export function draw() {
     // --- Gene labels (screen coords) ---
     drawGeneLabels(ctx, cw);
 
-    // --- Update info ---
-    if (levelChanged) {
-        state.dom.levelLabel.textContent = level.label;
-        state.dom.nodeCount.textContent = level.nodeCount.toLocaleString();
-        state.dom.polylineCount.textContent = level.polylineCount.toLocaleString();
-        const pct = ((1 - level.nodeCount / state.data.stats.totalSegments) * 100).toFixed(1);
-        state.dom.reduction.textContent = `${pct}%`;
-    }
-    state.dom.visibleCount.textContent = `${visiblePl.toLocaleString()} / ${visibleJ.toLocaleString()}`;
-
-    // --- Viewport coordinate readout ---
-    const chr = getChromosome();
-    if (chr) {
-        const bpLeft = xToBp(vp.minX);
-        const bpRight = xToBp(vp.maxX);
-        if (bpLeft !== null && bpRight !== null) {
-            state.dom.viewportBp.textContent = `${chr}:${formatBp(bpLeft)}-${formatBp(bpRight)}`;
-        }
-    }
+    // --- Status bar ---
+    updateVisibleCounts(visiblePl, visibleJ);
+    updateViewportBp(vp);
 }
 
 // ---------------------------------------------------------------

@@ -5,8 +5,9 @@ import { state } from '../../simplify-state.js';
 import { xToBp, getChromosome, isReady } from '../../data/spine.js';
 import { getViewport } from '../../render/viewport.js';
 import { scheduleFrame } from '../../render-manager.js';
-import { selectLevel } from '../../skeleton/data/lod.js';
+import { selectLevel } from '../../render-manager.js';
 import { setDetailPhase, scheduleFadeFrame } from '../../force/engines/chain-pop-engine.js';
+import { showFetchIndicator, hideFetchIndicator } from '../../ui/status-bar.js';
 
 let fetchController = null;
 let fetchTimer = null;
@@ -102,8 +103,7 @@ async function fetchDetailForViewport() {
         + `&ppbp=${ppbp}&expand=${expandThreshold}`
         + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
 
-    state.dom.fetchIndicator.classList.add('active');
-    state.dom.detailPhase.className = 'fetching';
+    showFetchIndicator();
     try {
         const resp = await fetch(url, { signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -128,9 +128,7 @@ async function fetchDetailForViewport() {
     } catch (e) {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);
     } finally {
-        state.dom.fetchIndicator.classList.remove('active');
-        const cls = (state.detailPhase === 'fading-in' || state.detailPhase === 'fading-out') ? 'fading' : state.detailPhase;
-        state.dom.detailPhase.className = cls;
+        hideFetchIndicator();
     }
 }
 

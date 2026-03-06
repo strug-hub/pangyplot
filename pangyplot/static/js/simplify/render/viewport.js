@@ -2,6 +2,7 @@
 
 import { state } from '../simplify-state.js';
 import { xToBp, bpToStep } from '../data/spine.js';
+import { getDataBounds } from '../skeleton/data/skeleton-data.js';
 
 export function getViewport() {
     const dpr = window.devicePixelRatio || 1;
@@ -35,11 +36,12 @@ export function fitToScreen() {
     const dpr = window.devicePixelRatio || 1;
     const cw = state.canvas.width / dpr;
     const ch = state.canvas.height / dpr;
-    const dw = state.dataBounds.maxX - state.dataBounds.minX;
-    const dh = state.dataBounds.maxY - state.dataBounds.minY;
+    const bounds = getDataBounds();
+    const dw = bounds.maxX - bounds.minX;
+    const dh = bounds.maxY - bounds.minY;
     if (dw === 0 || dh === 0) return;
     const pad = 40;
     state.zoom = Math.min((cw - pad * 2) / dw, (ch - pad * 2) / dh);
-    state.panX = (cw / 2) - ((state.dataBounds.minX + dw / 2) * state.zoom);
-    state.panY = (ch / 2) - ((state.dataBounds.minY + dh / 2) * state.zoom);
+    state.panX = (cw / 2) - ((bounds.minX + dw / 2) * state.zoom);
+    state.panY = (ch / 2) - ((bounds.minY + dh / 2) * state.zoom);
 }

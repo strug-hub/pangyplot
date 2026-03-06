@@ -2,6 +2,8 @@
 // Pure painting — no gene overlay logic.
 
 import { state } from '../../simplify-state.js';
+import { getLevelBboxes } from '../data/skeleton-data.js';
+import { getChainFamily } from '../data/skeleton-data.js';
 
 /**
  * Draw skeleton polylines and hover highlight.
@@ -11,15 +13,14 @@ export function drawSkeletonPolylines(ctx, level, li, lineWidth, skelAlpha, vpMi
     const hovSkel = state.hoveredSkeletonPl;
     const hasSkeletonHover = hovSkel && hovSkel.levelIdx === li;
     const hovChainId = hasSkeletonHover ? hovSkel.chainId : null;
-    const hovFamily = hovChainId !== null && state.data.chainFamily
-        ? state.data.chainFamily[hovChainId] : null;
+    const hovFamily = hovChainId !== null ? getChainFamily(hovChainId) : null;
 
     ctx.strokeStyle = `rgba(255, 255, 255, ${(hasSkeletonHover ? 0.3 : 0.75) * skelAlpha})`;
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    const bboxes = state.levelBboxes[li];
+    const bboxes = getLevelBboxes(li);
     const chainIds = level.chainIds;
     let visiblePl = 0;
 

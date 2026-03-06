@@ -6,11 +6,9 @@ import { xToBp, getChromosome, isReady } from '../../data/spine.js';
 import { formatBp } from '../../utils/format-utils.js';
 import { hitTestForceNodes, hitTestBubbles, hitTestChains, formatForceNodeTooltip, formatTooltip, formatBubbleTooltip } from '../../utils/hit-test.js';
 import { hitTestSkeleton, formatSkeletonTooltip } from '../../skeleton/engines/skeleton-hit-test.js';
+import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
 
 export function setupHover(canvas) {
-    const tooltipEl = state.dom.tooltip;
-    const cursorBpEl = state.dom.cursorBp;
-
     canvas.addEventListener('mousemove', e => {
         if (state.isDragging || state.selectionBox || !isReady()) return;
         const rect = canvas.getBoundingClientRect();
@@ -21,7 +19,7 @@ export function setupHover(canvas) {
         const bp = xToBp(layoutX);
         const chr = getChromosome();
         if (bp !== null && chr) {
-            cursorBpEl.textContent = `${chr}:${formatBp(bp)}`;
+            updateCursorBp(`${chr}:${formatBp(bp)}`);
         }
 
         // Hit-test priority: force nodes > bubbles > chains > skeleton polylines
@@ -36,25 +34,14 @@ export function setupHover(canvas) {
             state.hoveredBubble = hitBubble;
             state.hoveredChain = hitChain;
             state.hoveredSkeletonPl = hitSkel;
-            if (hitForceNode) {
-                tooltipEl.innerHTML = formatForceNodeTooltip(hitForceNode);
-            } else if (hitBubble) {
-                tooltipEl.innerHTML = formatBubbleTooltip(hitBubble);
-            } else if (hitChain) {
-                tooltipEl.innerHTML = formatTooltip(hitChain);
-            } else {
-                tooltipEl.innerHTML = formatSkeletonTooltip(hitSkel);
-            }
-            tooltipEl.style.display = 'block';
-            // Position tooltip near cursor, offset right and up
-            const ttRect = tooltipEl.getBoundingClientRect();
-            let tx = e.clientX + 14;
-            let ty = e.clientY - ttRect.height - 8;
-            // Keep on screen
-            if (tx + ttRect.width > window.innerWidth - 8) tx = e.clientX - ttRect.width - 14;
-            if (ty < 4) ty = e.clientY + 18;
-            tooltipEl.style.left = tx + 'px';
-            tooltipEl.style.top = ty + 'px';
+
+            let html;
+            if (hitForceNode) html = formatForceNodeTooltip(hitForceNode);
+            else if (hitBubble) html = formatBubbleTooltip(hitBubble);
+            else if (hitChain) html = formatTooltip(hitChain);
+            else html = formatSkeletonTooltip(hitSkel);
+
+            showTooltip(html, e.clientX, e.clientY);
             canvas.style.cursor = 'crosshair';
             scheduleFrame();
         } else if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
@@ -62,20 +49,20 @@ export function setupHover(canvas) {
             state.hoveredBubble = null;
             state.hoveredForceNode = null;
             state.hoveredSkeletonPl = null;
-            tooltipEl.style.display = 'none';
+            hideTooltip();
             canvas.style.cursor = 'grab';
             scheduleFrame();
         }
     });
 
     canvas.addEventListener('mouseleave', () => {
-        cursorBpEl.textContent = '';
+        updateCursorBp('');
         if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
             state.hoveredChain = null;
             state.hoveredBubble = null;
             state.hoveredForceNode = null;
             state.hoveredSkeletonPl = null;
-            tooltipEl.style.display = 'none';
+            hideTooltip();
             canvas.style.cursor = 'grab';
             scheduleFrame();
         }
