@@ -2,8 +2,9 @@
 
 import { state } from '../../simplify-state.js';
 import { getForceNodes, getForceLinks } from '../data/force-data.js';
-import { fillCircles, strokeRing, strokeSegments } from './detail-painter.js';
+import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
+import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 
 export function drawForceGraph(ctx, baseWidth) {
     const nodes = getForceNodes();
@@ -85,25 +86,15 @@ export function drawForceGraph(ctx, baseWidth) {
         }
     }
 
-    // 4. Nodes
+    // 4. Selection highlight underlay (red halo + connected link halos) — before nodes
+    drawSelectionHighlight(ctx, scaleFactor, opacity);
+
+    // 5. Nodes
     if (bubbleCircles.length > 0) fillCircles(ctx, bubbleCircles, '#F2DC0F', opacity);
     if (segCircles.length > 0) fillCircles(ctx, segCircles, '#0762E5', opacity);
 
-    // 5. Selection highlight ring (green, thicker)
-    const selNode = state.selectedNode;
-    if (selNode && selNode.x != null) {
-        const selR = (selNode.width || 5) * scaleFactor * 0.5;
-        strokeRing(ctx, selNode.x, selNode.y, selR * 2.0,
-            '#2ecc71', Math.max(1.5, 3 / state.zoom), opacity);
-    }
-
-    // 6. Hover highlight ring
-    const hovNode = state.hoveredForceNode || state.hoveredBubble;
-    if (hovNode && hovNode.x != null) {
-        const hovR = (hovNode.width || 5) * scaleFactor * 0.5;
-        strokeRing(ctx, hovNode.x, hovNode.y, hovR * 1.8,
-            '#FAB3AE', Math.max(1, 2 / state.zoom), opacity);
-    }
+    // 6. Hover highlight overlay (gray outline ring) — after nodes
+    drawHoverHighlight(ctx, scaleFactor, opacity);
 
     // 7. Force vector debug overlay (Y key)
     if (state.forceVectors) {

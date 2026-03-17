@@ -7,6 +7,7 @@ import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/poly
 import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';
 import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
 import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
+import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
@@ -83,6 +84,7 @@ export function setupMultiSelection(canvas) {
         const dMinY = (sMinY - state.panY) / state.zoom;
         const dMaxY = (sMaxY - state.panY) / state.zoom;
         const hits = chainsInRect(dMinX, dMinY, dMaxX, dMaxY);
+        console.log('multi-select', { hits: hits.length, selectedChains: state.selectedChains.size, dMinX, dMinY, dMaxX, dMaxY });
         state.selectedChains.clear();
         for (const c of hits) state.selectedChains.add(c);
         scheduleFrame();
@@ -107,6 +109,7 @@ export function setupMultiSelection(canvas) {
         }
         if (state.selectedNode) {
             state.selectedNode = null;
+            clearSelectionCache();
             updateSelectionInfo(null);
             changed = true;
         }

@@ -28,6 +28,17 @@ export function hitTestChains(dataX, dataY) {
 
 export function chainsInRect(minX, minY, maxX, maxY) {
     if (!state.detailData) return [];
+    const chains = state.detailData.chains;
+    if (chains.length > 0) {
+        const c0 = chains[0];
+        const pl0 = c0.polyline;
+        console.log('chainsInRect', {
+            rect: { minX, minY, maxX, maxY },
+            chainCount: chains.length,
+            poppedCount: state.poppedChainIds?.size ?? 0,
+            chain0: { id: c0.id, plLen: pl0?.length, first: pl0?.[0], last: pl0?.[pl0?.length - 1] },
+        });
+    }
     const result = [];
     for (const chain of state.detailData.chains) {
         if (state.poppedChainIds && state.poppedChainIds.has(chain.id)) continue;
@@ -43,7 +54,9 @@ export function chainsInRect(minX, minY, maxX, maxY) {
             if (y < plMinY) plMinY = y;
             if (y > plMaxY) plMaxY = y;
         }
-        if (plMaxX < minX || plMinX > maxX || plMaxY < minY || plMinY > maxY) continue;
+        if (plMaxX < minX || plMinX > maxX || plMaxY < minY || plMinY > maxY) {
+            continue;
+        }
 
         let hit = false;
         for (let i = 0; i < pl.length; i++) {
@@ -63,6 +76,7 @@ export function chainsInRect(minX, minY, maxX, maxY) {
         }
         if (hit) result.push(chain);
     }
+    console.log('chainsInRect result', { hits: result.length });
     return result;
 }
 
