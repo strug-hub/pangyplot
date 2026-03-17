@@ -10,6 +10,54 @@ import bubbleCircularForce from '../../../graph/forces/bubble-circular-force.js'
 
 let sim = null;
 
+/**
+ * Custom D3 force that pushes inside-bubble nodes perpendicularly away
+ * from deletion links (source→sink bypasses).
+ */
+function delLinkForce() {
+    let nodes = [];
+    let strength = 2;
+
+    function force(alpha) {
+        const delLinks = sim.force('link').links().filter(l => l.isDel);
+        for (const link of delLinks) {
+            if (!link.bubbleId) continue;
+            const s = link.source, t = link.target;
+            // Self-link (b→b on same bubble): inside = intermediate kinks only
+            // Cross-node link (parent deletion): inside = all chain siblings
+            const isSelfLink = s.id === t.id;
+            const inside = nodes.filter(n =>
+                (isSelfLink ? n.id === s.id : n.chainId === s.chainId) &&
+                n.iid !== s.iid && n.iid !== t.iid &&
+                n !== s && n !== t
+            );
+            if (!inside.length) continue;
+
+            // Perpendicular unit normal
+            const dx = t.x - s.x, dy = t.y - s.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const nx = dy / len, ny = -dx / len;
+
+            // Centroid of inside nodes → pick consistent side
+            let cx = 0, cy = 0;
+            for (const n of inside) { cx += n.x; cy += n.y; }
+            cx /= inside.length; cy /= inside.length;
+
+            const A = t.y - s.y, B = -(t.x - s.x), C = t.x * s.y - t.y * s.x;
+            const sign = (A * cx + B * cy + C) >= 0 ? 1 : -1;
+
+            for (const n of inside) {
+                n.vx += nx * strength * sign * alpha;
+                n.vy += ny * strength * sign * alpha;
+            }
+        }
+    }
+
+    force.initialize = function(simNodes) { nodes = simNodes; };
+    force.strength = function(_) { return arguments.length ? (strength = +_, force) : strength; };
+    return force;
+}
+
 function syncNodes(arr) {
     sim.nodes(arr);
     setForceNodes(arr);
@@ -39,6 +87,7 @@ export function initForce() {
         .force('collide', d3.forceCollide().radius(defaults.COLLISION_RADIUS).strength(defaults.COLLISION_STRENGTH))
         .force('layout', layoutForce().strengthLevel(defaults.LAYOUT_LEVEL))
         .force('bubbleRoundness', bubbleCircularForce())
+        .force('delLink', delLinkForce())
         .on('tick', onTick);
     sim.stop();
 }
@@ -90,19 +139,53 @@ export function removePoppedNodes(chainId) {
     }
 }
 
-export function addInterChainLinks(links) {
-    if (!sim) return;
+/**
+ * Rewire all links from a phantom node to a replacement node, then remove the phantom.
+ * Returns the phantom node (for later restoration) or null.
+ */
+export function absorbPhantom(phantomIid, replacementNode) {
+    if (!sim) return null;
+    const nodes = getNodes();
+    const phantom = nodes.find(n => n.iid === phantomIid);
+    if (!phantom) return null;
 
-    const allLinks = [...getLinks(), ...links];
-    syncLinks(allLinks);
-    sim.alpha(0.1).restart();
+    // Rewire links: replace phantom refs with replacement node
+    for (const link of getLinks()) {
+        if (link.source === phantom || link.source.iid === phantomIid) link.source = replacementNode;
+        if (link.target === phantom || link.target.iid === phantomIid) link.target = replacementNode;
+    }
+
+    // Remove phantom node and the now-redundant anchor↔phantom link
+    const remaining = nodes.filter(n => n !== phantom);
+    const remainingLinks = getLinks().filter(l => l.source !== l.target);
+    syncNodes(remaining);
+    syncLinks(remainingLinks);
+    return phantom;
 }
 
-export function removeInterChainLinks() {
-    if (!sim) return;
+/**
+ * Restore a previously absorbed phantom: re-add it and rewire links back.
+ */
+export function restorePhantom(phantom, anchorNode) {
+    if (!sim || !phantom) return;
 
-    const remaining = getLinks().filter(l => !l.isInterChain);
-    syncLinks(remaining);
+    // Re-add phantom
+    const allNodes = [...getNodes(), phantom];
+    syncNodes(allNodes);
+
+    // Rewire inter-chain links from anchor back to phantom
+    for (const link of getLinks()) {
+        if (link.isInterChain && link.source === anchorNode) link.source = phantom;
+        if (link.isInterChain && link.target === anchorNode) link.target = phantom;
+    }
+
+    // Re-add the anchor↔phantom link
+    const allLinks = [...getLinks(), {
+        source: anchorNode, target: phantom,
+        isInterChain: true, isKinkLink: false, chainId: null, length: 10,
+    }];
+    syncLinks(allLinks);
+    sim.alpha(0.1).restart();
 }
 
 export function clearForce() {

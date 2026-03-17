@@ -5,6 +5,7 @@ import { state } from '../../../simplify-state.js';
 import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 import { clearForce } from '../../engines/force-engine.js';
 import { resetSimplifyViewState } from '../simplify-view-state.js';
+import { initJunctionLayer } from './polychain-adapter.js';
 
 let fetchController = null;
 
@@ -121,6 +122,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, expandThres
             start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
         });
         state.detailData = processResponse(apiData);
+        initJunctionLayer();
         return true;
     } catch (e) {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);

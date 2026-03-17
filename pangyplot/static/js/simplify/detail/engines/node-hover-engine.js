@@ -26,6 +26,7 @@ export function hitTestForceNodes(dataX, dataY) {
     let bestNode = null;
 
     for (const node of nodes) {
+        if (node.isPhantom) continue;
         const dx = dataX - node.x;
         const dy = dataY - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -40,6 +41,15 @@ export function hitTestForceNodes(dataX, dataY) {
 }
 
 export function getForceNodeTooltip(node) {
+    if (node.chainId === '__junction__') {
+        const segChains = state.detailData?.junctionSegChains || {};
+        const chains = segChains[node.id] || [];
+        return {
+            segment: node.recordId || node.id,
+            length: node.seqLength,
+            chains: chains.length > 0 ? chains.join(', ') : null,
+        };
+    }
     return {
         [node.type]: node.recordId || node.id,
         length: node.seqLength,

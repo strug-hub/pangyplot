@@ -4,7 +4,280 @@
 import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from '../simplify-view-state.js';
 import { getForceNodes } from '../force-data.js';
-import { getJunctionNodeById, adjustedJLCoords } from '../../engines/polychain/polychain-hover-engine.js';
+import { addPoppedNodes, absorbPhantom, restorePhantom } from '../../engines/force-engine.js';
+import { state } from '../../../simplify-state.js';
+
+// Module-level phantom lookup: chainId → { head: phantomNode, tail: phantomNode }
+const chainPhantoms = new Map();
+
+// Module-level seg→phantom lookup: 's' + segId → phantomNode
+const segToPhantom = new Map();
+
+/**
+ * Get a chain's phantom node by role ('head' or 'tail').
+ */
+export function getChainPhantom(chainId, role) {
+    const entry = chainPhantoms.get(chainId);
+    return entry ? entry[role] : null;
+}
+
+/**
+ * Initialize the always-on junction layer: phantoms at chain endpoints,
+ * junction segments as force nodes, and links connecting them.
+ * Called once after detailData is set.
+ */
+export function initJunctionLayer() {
+    const dd = state.detailData;
+    if (!dd) return;
+
+    chainPhantoms.clear();
+    segToPhantom.clear();
+
+    const allNodes = [];
+    const allLinks = [];
+
+    // 1. Create phantom nodes for every chain at polyline head/tail
+    for (const chain of dd.chains) {
+        const pl = chain.polyline;
+        if (!pl || pl.length < 2) continue;
+
+        const head = {
+            id: `phantom_${chain.id}_head`,
+            iid: `phantom_${chain.id}_head`,
+            x: pl[0][0], y: pl[0][1],
+            fx: pl[0][0], fy: pl[0][1],
+            chainId: '__phantom__',
+            isPhantom: true,
+            phantomRole: 'head',
+            phantomChainId: chain.id,
+            radius: 0, width: 0,
+        };
+        const tail = {
+            id: `phantom_${chain.id}_tail`,
+            iid: `phantom_${chain.id}_tail`,
+            x: pl[pl.length - 1][0], y: pl[pl.length - 1][1],
+            fx: pl[pl.length - 1][0], fy: pl[pl.length - 1][1],
+            chainId: '__phantom__',
+            isPhantom: true,
+            phantomRole: 'tail',
+            phantomChainId: chain.id,
+            radius: 0, width: 0,
+        };
+
+        chainPhantoms.set(chain.id, { head, tail });
+        allNodes.push(head, tail);
+
+        // Map source segs → head phantom, sink segs → tail phantom
+        for (const sid of (chain.sourceSegs || [])) {
+            segToPhantom.set(`s${sid}`, head);
+        }
+        for (const sid of (chain.sinkSegs || [])) {
+            segToPhantom.set(`s${sid}`, tail);
+        }
+    }
+
+    // 2. Deserialize ALL junction graph nodes as force nodes
+    const jg = dd.junctionGraph;
+    const jls = dd.junctionLinks;
+    const junctionNodeIdSet = new Set();
+    if (jg && jg.nodes.length > 0) {
+        for (const n of jg.nodes) junctionNodeIdSet.add(n.id);
+
+        // Only intra-junction links for the subgraph deserializer
+        const intraLinks = (jg.links || []).filter(
+            l => junctionNodeIdSet.has(l.source) && junctionNodeIdSet.has(l.target)
+        );
+
+        const { nodes: jNodes, links: jLinks } = deserializeSubgraph(
+            { nodes: jg.nodes, links: intraLinks },
+            { tag: { chainId: '__junction__' }, detectIndels: false }
+        );
+
+        // Set initial positions from ODGI layout — interpolate kinks along segment geometry
+        const rawNodeMap = new Map(jg.nodes.map(n => [n.id, n]));
+        // Group kink nodes by record ID to interpolate head→tail
+        const kinksByRecord = new Map();
+        for (const node of jNodes) {
+            if (!kinksByRecord.has(node.id)) kinksByRecord.set(node.id, []);
+            kinksByRecord.get(node.id).push(node);
+        }
+        for (const [recId, kinks] of kinksByRecord) {
+            const raw = rawNodeMap.get(recId);
+            if (!raw) continue;
+            // Sort by kink index (iid = "s123#0", "s123#1", ...)
+            kinks.sort((a, b) => {
+                const ai = parseInt(a.iid.split('#')[1]) || 0;
+                const bi = parseInt(b.iid.split('#')[1]) || 0;
+                return ai - bi;
+            });
+            const n = kinks.length;
+            for (let i = 0; i < n; i++) {
+                const t = n === 1 ? 0.5 : i / (n - 1);
+                kinks[i].x = raw.x1 + t * (raw.x2 - raw.x1);
+                kinks[i].y = raw.y1 + t * (raw.y2 - raw.y1);
+                delete kinks[i].fx;
+                delete kinks[i].fy;
+            }
+        }
+
+        allNodes.push(...jNodes);
+        allLinks.push(...jLinks);
+
+        // 3. Cross-boundary links from GFA edges (jg.links has strand info)
+        const crossBoundaryLinks = (jg.links || []).filter(
+            l => !junctionNodeIdSet.has(l.source) || !junctionNodeIdSet.has(l.target)
+        );
+        const linkedKinks = new Set();
+
+        for (const gfaLink of crossBoundaryLinks) {
+            const inGraphSrc = junctionNodeIdSet.has(gfaLink.source);
+            const inGraphTgt = junctionNodeIdSet.has(gfaLink.target);
+            const phantomSrc = segToPhantom.get(gfaLink.source);
+            const phantomTgt = segToPhantom.get(gfaLink.target);
+
+            if (inGraphSrc && !inGraphTgt && phantomTgt) {
+                // Junction seg → chain phantom
+                const kink = pickStrandKink(kinksByRecord.get(gfaLink.source), gfaLink.from_strand);
+                if (kink) {
+                    const key = `${kink.iid}→${phantomTgt.iid}`;
+                    if (!linkedKinks.has(key)) {
+                        linkedKinks.add(key);
+                        allLinks.push(makeJunctionLink(kink, phantomTgt));
+                    }
+                }
+            } else if (!inGraphSrc && inGraphTgt && phantomSrc) {
+                // Chain phantom → junction seg
+                const kink = pickStrandKink(kinksByRecord.get(gfaLink.target), gfaLink.to_strand === '+' ? '-' : '+');
+                if (kink) {
+                    const key = `${phantomSrc.iid}→${kink.iid}`;
+                    if (!linkedKinks.has(key)) {
+                        linkedKinks.add(key);
+                        allLinks.push(makeJunctionLink(phantomSrc, kink));
+                    }
+                }
+            } else if (!inGraphSrc && !inGraphTgt && phantomSrc && phantomTgt && phantomSrc !== phantomTgt) {
+                allLinks.push(makeJunctionLink(phantomSrc, phantomTgt));
+            }
+        }
+
+        // 4. Endpoint-to-endpoint junction links (neither seg in junction graph)
+        if (jls && jls.length > 0) {
+            for (const jl of jls) {
+                const segA = `s${jl.segs[0]}`;
+                const segB = `s${jl.segs[1]}`;
+                if (junctionNodeIdSet.has(segA) || junctionNodeIdSet.has(segB)) continue;
+                const phantomA = segToPhantom.get(segA);
+                const phantomB = segToPhantom.get(segB);
+                if (phantomA && phantomB && phantomA !== phantomB) {
+                    allLinks.push(makeJunctionLink(phantomA, phantomB));
+                }
+            }
+        }
+    } else if (jls && jls.length > 0) {
+        // No junction graph nodes — endpoint-to-endpoint only
+        for (const jl of jls) {
+            const phantomA = segToPhantom.get(`s${jl.segs[0]}`);
+            const phantomB = segToPhantom.get(`s${jl.segs[1]}`);
+            if (phantomA && phantomB && phantomA !== phantomB) {
+                allLinks.push(makeJunctionLink(phantomA, phantomB));
+            }
+        }
+    }
+
+    if (allNodes.length > 0) {
+        addPoppedNodes(allNodes, allLinks);
+    }
+}
+
+/**
+ * Pick the kink node at the strand-appropriate end of a segment.
+ * '+' strand → tail (last kink, at x2/y2), '-' strand → head (first kink, at x1/y1).
+ * Kinks must already be sorted by index (from initJunctionLayer's kinksByRecord).
+ */
+function pickStrandKink(kinks, strand) {
+    if (!kinks || kinks.length === 0) return null;
+    return strand === '+' ? kinks[kinks.length - 1] : kinks[0];
+}
+
+function makeJunctionLink(source, target) {
+    return {
+        source, target,
+        isInterChain: true,
+        isKinkLink: false,
+        chainId: null,
+        length: 10,
+    };
+}
+
+// Saved phantoms for restoration on unpop: chainId → { head: phantomNode, tail: phantomNode, headAnchor, tailAnchor }
+const absorbedPhantoms = new Map();
+
+/**
+ * After popping a chain, absorb its phantoms: rewire all junction links
+ * from the phantom to the co-located anchor node, then remove the phantom.
+ */
+export function absorbChainsPhantoms(chainId, forceNodes) {
+    const phantoms = chainPhantoms.get(chainId);
+    if (!phantoms) return;
+
+    // Find anchor nodes for this chain (source → head phantom, sink → tail phantom)
+    let headAnchor = null, tailAnchor = null;
+    for (const n of forceNodes) {
+        if (n.chainId !== chainId || !n.isAnchor) continue;
+        if (n.anchorRole === 'source') headAnchor = n;
+        else if (n.anchorRole === 'sink') tailAnchor = n;
+        else if (n.anchorRole === 'source+sink') { headAnchor = n; tailAnchor = n; }
+    }
+
+    const saved = { head: null, tail: null, headAnchor, tailAnchor };
+    if (headAnchor) {
+        saved.head = absorbPhantom(phantoms.head.iid, headAnchor);
+    }
+    if (tailAnchor && tailAnchor !== headAnchor) {
+        saved.tail = absorbPhantom(phantoms.tail.iid, tailAnchor);
+    }
+    absorbedPhantoms.set(chainId, saved);
+}
+
+/**
+ * After unpopping a chain, restore its phantoms and rewire links back.
+ */
+export function restoreChainsPhantoms(chainId) {
+    const saved = absorbedPhantoms.get(chainId);
+    if (!saved) return;
+    absorbedPhantoms.delete(chainId);
+
+    if (saved.tail && saved.tailAnchor) {
+        restorePhantom(saved.tail, saved.tailAnchor);
+    }
+    if (saved.head && saved.headAnchor) {
+        restorePhantom(saved.head, saved.headAnchor);
+    }
+}
+
+/**
+ * Build a lookup from segment ID → chain IDs, combining junctionSegChains
+ * (naked segments) with chain source/sink seg ownership (endpoint segments).
+ */
+export function buildSegToChains(junctionSegChains, chains) {
+    const map = {};
+    for (const [key, val] of Object.entries(junctionSegChains)) {
+        map[key] = val;
+    }
+    for (const chain of chains) {
+        for (const sid of (chain.sourceSegs || [])) {
+            const key = `s${sid}`;
+            if (!map[key]) map[key] = [];
+            if (!map[key].includes(chain.id)) map[key].push(chain.id);
+        }
+        for (const sid of (chain.sinkSegs || [])) {
+            const key = `s${sid}`;
+            if (!map[key]) map[key] = [];
+            if (!map[key].includes(chain.id)) map[key].push(chain.id);
+        }
+    }
+    return map;
+}
 
 /**
  * Convert a /chain-graph API response into augmented core elements
@@ -32,274 +305,34 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
 
     if (chain.polyline.length >= 2 && allNodes.length > 0) {
         pinAnchors(allNodes, chain.polyline);
+
+        // Create links from anchor kink nodes to chain phantoms
+        const phantoms = chainPhantoms.get(chain.id);
+        if (phantoms) {
+            const nodesByRecord = new Map();
+            for (const node of allNodes) {
+                if (!nodesByRecord.has(node.id)) nodesByRecord.set(node.id, []);
+                nodesByRecord.get(node.id).push(node);
+            }
+            const recIds = [...nodesByRecord.keys()];
+            const firstRec = recIds[0];
+            const lastRec = recIds[recIds.length - 1];
+
+            if (firstRec) {
+                const head = nodesByRecord.get(firstRec)[0];
+                allLinks.push(makeJunctionLink(head, phantoms.head));
+            }
+            if (lastRec) {
+                const kinks = nodesByRecord.get(lastRec);
+                const tail = kinks[kinks.length - 1];
+                if (lastRec !== firstRec || kinks.length > 1) {
+                    allLinks.push(makeJunctionLink(tail, phantoms.tail));
+                }
+            }
+        }
     }
 
     return { nodes: allNodes, links: allLinks };
-}
-
-/**
- * Create inter-chain links from junction link coordinates.
- */
-export function createInterChainLinks(junctionLinks, poppedChainIds, chains, forceNodes, junctionSegChains) {
-    if (!junctionLinks || junctionLinks.length === 0) return { nodes: [], links: [] };
-
-    const coordToAnchor = new Map();
-    for (const node of forceNodes) {
-        if (!node.isAnchor || !node.anchorRecord) continue;
-        // Include unanchored-for-junction nodes by checking saved position
-        const posX = node.fx ?? node._savedFx;
-        const posY = node.fy ?? node._savedFy;
-        if (posX == null) continue;
-        if (!poppedChainIds.has(node.chainId)) continue;
-        const key = `${Math.round(posX)},${Math.round(posY)}`;
-        coordToAnchor.set(key, { node, record: node.anchorRecord });
-    }
-
-    if (coordToAnchor.size === 0) return { nodes: [], links: [] };
-
-    // Build set of fully-popped junction links to skip (handled by junction nodes)
-    const segChains = junctionSegChains || {};
-    const skipJunctions = new Set();
-    for (let i = 0; i < junctionLinks.length; i++) {
-        const jl = junctionLinks[i];
-        const chainsA = segChains[`s${jl.segs[0]}`] || [];
-        const chainsB = segChains[`s${jl.segs[1]}`] || [];
-        if (chainsA.length > 0 && chainsB.length > 0 &&
-            chainsA.every(c => poppedChainIds.has(c)) &&
-            chainsB.every(c => poppedChainIds.has(c))) {
-            skipJunctions.add(i);
-        }
-    }
-
-    const nodes = [];
-    const links = [];
-    const seen = new Set();
-    const phantomCache = new Map();
-
-    function getOrCreatePhantom(coord) {
-        const key = `${Math.round(coord[0])},${Math.round(coord[1])}`;
-        if (phantomCache.has(key)) return phantomCache.get(key);
-        const phantom = {
-            id: `phantom_${key}`,
-            iid: `phantom_${key}`,
-            x: coord[0], y: coord[1],
-            fx: coord[0], fy: coord[1],
-            chainId: '__interchain__',
-            isPhantom: true,
-            radius: 0,
-            width: 0,
-        };
-        phantomCache.set(key, phantom);
-        nodes.push(phantom);
-        return phantom;
-    }
-
-    // Use junction segment endpoints for phantom placement instead of centroids
-    const junctionNodeById = getJunctionNodeById() || new Map();
-
-    for (let i = 0; i < junctionLinks.length; i++) {
-        if (skipJunctions.has(i)) continue; // handled by junction nodes
-        const jl = junctionLinks[i];
-        const [coordA, coordB] = jl.coords;
-        const keyA = `${Math.round(coordA[0])},${Math.round(coordA[1])}`;
-        const keyB = `${Math.round(coordB[0])},${Math.round(coordB[1])}`;
-
-        const anchorA = coordToAnchor.get(keyA);
-        const anchorB = coordToAnchor.get(keyB);
-
-        if (!anchorA && !anchorB) continue;
-
-        // For the unpopped side (phantom), use adjusted coords from junction segment
-        // endpoints rather than raw centroid coords
-        const adjusted = adjustedJLCoords(jl, junctionNodeById);
-        const nodeA = anchorA ? anchorA.node : getOrCreatePhantom(adjusted[0]);
-        const nodeB = anchorB ? anchorB.node : getOrCreatePhantom(adjusted[1]);
-        if (nodeA === nodeB) continue;
-
-        const pairKey = `${nodeA.id}↔${nodeB.id}`;
-        if (seen.has(pairKey)) continue;
-        seen.add(pairKey);
-        seen.add(`${nodeB.id}↔${nodeA.id}`);
-
-        links.push({
-            source: nodeA,
-            target: nodeB,
-            isInterChain: true,
-            isKinkLink: false,
-            chainId: null,
-        });
-    }
-
-    return { nodes, links };
-}
-
-/**
- * Create cross-chain b→b (or b→s, s→s) links for fully-popped junction links.
- * Resolves endpoint segment IDs via simplifyViewState and existing force records
- * to find the bubble/segment nodes, then creates D3 links between their kink endpoints.
- */
-export function createCrossChainLinks(fullyPoppedJunctions) {
-    if (fullyPoppedJunctions.length === 0) return [];
-
-    // Build existing record lookup from force nodes
-    const existingRecords = new Map();
-    for (const n of getForceNodes()) {
-        if (n.record && !existingRecords.has(n.id)) {
-            existingRecords.set(n.id, n.record);
-        }
-    }
-
-    function resolveSegToRecord(segId) {
-        const plainId = String(segId);
-        const sId = `s${plainId}`;
-        return simplifyViewState.resolve(plainId) || existingRecords.get(sId) || null;
-    }
-
-    const links = [];
-    const seen = new Set();
-
-    for (const jl of fullyPoppedJunctions) {
-        const recA = resolveSegToRecord(jl.segs[0]);
-        const recB = resolveSegToRecord(jl.segs[1]);
-        if (!recA || !recB || recA === recB) continue;
-
-        const pairKey = `${recA.id}↔${recB.id}`;
-        if (seen.has(pairKey)) continue;
-        seen.add(pairKey);
-        seen.add(`${recB.id}↔${recA.id}`);
-
-        // Connect tail of recA to head of recB (+ strand default)
-        if (!recA.elements?.nodes?.[0] || !recB.elements?.nodes?.[0]) continue;
-        const sourceIid = recA.elements.nodes[0].tail();
-        const targetIid = recB.elements.nodes[0].head();
-
-        links.push({
-            isNode: false,
-            isLink: true,
-            class: 'link',
-            iid: `xchain_${sourceIid}+${targetIid}+`,
-            type: 'link',
-            source: sourceIid,
-            target: targetIid,
-            sourceIid: sourceIid,
-            targetIid: targetIid,
-            sourceId: recA.id,
-            targetId: recB.id,
-            isInterChain: true,
-            isKinkLink: false,
-            isDrawn: true,
-            length: 10,
-            width: 3,
-            chainId: null,
-        });
-    }
-    return links;
-}
-
-/**
- * Build a lookup from segment ID → chain IDs, combining junctionSegChains
- * (naked segments) with chain source/sink seg ownership (endpoint segments).
- */
-export function buildSegToChains(junctionSegChains, chains) {
-    const map = {};
-    // Copy naked seg → chain mappings
-    for (const [key, val] of Object.entries(junctionSegChains)) {
-        map[key] = val;
-    }
-    // Add chain endpoint segs (source/sink) — these aren't in junctionSegChains
-    for (const chain of chains) {
-        for (const sid of (chain.sourceSegs || [])) {
-            const key = `s${sid}`;
-            if (!map[key]) map[key] = [];
-            if (!map[key].includes(chain.id)) map[key].push(chain.id);
-        }
-        for (const sid of (chain.sinkSegs || [])) {
-            const key = `s${sid}`;
-            if (!map[key]) map[key] = [];
-            if (!map[key].includes(chain.id)) map[key].push(chain.id);
-        }
-    }
-    return map;
-}
-
-/**
- * Identify junction links where both endpoint segments' chains are all popped.
- */
-export function getFullyPoppedJunctionLinks(junctionLinks, segToChains, poppedChainIds) {
-    if (!junctionLinks || poppedChainIds.size === 0) return [];
-    const result = [];
-    for (const jl of junctionLinks) {
-        const chainsA = segToChains[`s${jl.segs[0]}`] || [];
-        const chainsB = segToChains[`s${jl.segs[1]}`] || [];
-        if (chainsA.length > 0 && chainsB.length > 0 &&
-            chainsA.every(c => poppedChainIds.has(c)) &&
-            chainsB.every(c => poppedChainIds.has(c))) {
-            result.push(jl);
-        }
-    }
-    return result;
-}
-
-/**
- * Create force nodes/links for naked junction segments that sit between
- * two fully-popped chains, replacing the static junction lines.
- * Uses linkResolver to connect junction segments to adjacent bubble nodes
- * in popped chains via GFA links (same pattern as bubble-pop-adapter).
- */
-export function createJunctionNodes(junctionGraph, fullyPoppedJunctions, forceNodes) {
-    if (fullyPoppedJunctions.length === 0 || !junctionGraph) return { nodes: [], links: [] };
-
-    // Collect segment IDs involved in fully-popped junction links
-    const neededSegIds = new Set();
-    for (const jl of fullyPoppedJunctions) {
-        neededSegIds.add(`s${jl.segs[0]}`);
-        neededSegIds.add(`s${jl.segs[1]}`);
-    }
-
-    // Filter junction graph to only needed segments
-    const filteredNodes = junctionGraph.nodes.filter(n => neededSegIds.has(n.id));
-    if (filteredNodes.length === 0) return { nodes: [], links: [] };
-
-    const nodeIdSet = new Set(filteredNodes.map(n => n.id));
-    // Keep all links where at least one end is a junction node —
-    // cross-boundary links to chain segments will be resolved via linkResolver
-    const filteredLinks = junctionGraph.links.filter(
-        l => nodeIdSet.has(l.source) || nodeIdSet.has(l.target)
-    );
-
-    // Build existing record lookup from force nodes (for cross-boundary resolution)
-    const existingRecords = new Map();
-    for (const n of forceNodes) {
-        if (n.record && !existingRecords.has(n.id)) {
-            existingRecords.set(n.id, n.record);
-        }
-    }
-
-    const apiData = { nodes: filteredNodes, links: filteredLinks };
-    const { nodes, links } = deserializeSubgraph(apiData, {
-        tag: { chainId: '__junction__' },
-        detectIndels: false,
-        linkResolver: (segId) => {
-            const plainId = segId.startsWith('s') ? segId.slice(1) : segId;
-            return simplifyViewState.resolve(plainId) || existingRecords.get(segId) || null;
-        },
-    });
-
-    // Set initial positions from ODGI layout — no fx/fy (force-driven)
-    const rawNodeMap = new Map(filteredNodes.map(n => [n.id, n]));
-    for (const node of nodes) {
-        const raw = rawNodeMap.get(node.id);
-        if (raw) {
-            const cx = (raw.x1 + raw.x2) / 2;
-            const cy = (raw.y1 + raw.y2) / 2;
-            node.x = cx;
-            node.y = cy;
-            delete node.fx;
-            delete node.fy;
-        }
-    }
-
-    return { nodes, links };
 }
 
 function pinAnchors(nodes, polyline) {

@@ -35,6 +35,19 @@ export async function popBubbleForceNode(bubbleNode) {
         return false;
     }
 
+    // Mark deletion links: source→sink bypasses
+    const sourceSet = new Set((apiData.source_segs || []).map(String));
+    const sinkSet = new Set((apiData.sink_segs || []).map(String));
+    for (const rawLink of (apiData.links || [])) {
+        const src = rawLink.source.slice(1);   // strip "s" prefix
+        const tgt = rawLink.target.slice(1);
+        if ((sourceSet.has(src) && sinkSet.has(tgt)) ||
+            (sinkSet.has(src) && sourceSet.has(tgt))) {
+            rawLink.is_deletion = true;
+            rawLink.bubble_id = bubbleId;
+        }
+    }
+
     // Build a lookup of existing force node records for fallback resolution
     // (handles segments already visible from prior pops, not tracked by viewState)
     const existingRecords = new Map();

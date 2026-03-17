@@ -46,8 +46,6 @@ export const state = {
     hoveredChain: null,
     hoveredBubble: null,
     hoveredForceNode: null,   // popped node from force simulation
-    hoveredJunctionLink: null, // junction link object
-    hoveredJunctionSeg: null,  // junction graph node (segment)
     hoveredSkeletonPl: null,  // {plIdx, chainId}
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)

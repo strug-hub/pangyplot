@@ -1,9 +1,9 @@
 // Chain pop/unpop state machine: force population, junction activation.
 
 import { state } from '../../../simplify-state.js';
-import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks } from '../force-engine.js';
+import { clearForce, addPoppedNodes, removePoppedNodes } from '../force-engine.js';
 import { getForceNodes } from '../../data/force-data.js';
-import { deserializeChainGraph, createInterChainLinks, getFullyPoppedJunctionLinks, createJunctionNodes, createCrossChainLinks, buildSegToChains } from '../../data/polychain/polychain-adapter.js';
+import { deserializeChainGraph, absorbChainsPhantoms, restoreChainsPhantoms } from '../../data/polychain/polychain-adapter.js';
 import { getActivationSet } from '../../../engines/physics-activation-engine.js';
 import { clearFetchedRegion } from '../../data/polychain/polychain-fetcher.js';
 import { resetSimplifyViewState } from '../../data/simplify-view-state.js';
@@ -23,23 +23,6 @@ export function clearDetailState() {
     state.poppedChainIds.clear();
     resetSimplifyViewState();
     state._bubblePopStack = [];
-}
-
-// ---------------------------------------------------------------
-// Populate force simulation with the seed chain's graph data
-// ---------------------------------------------------------------
-export function populateSeedForce() {
-    clearForce();
-    state.activeSeedChainId = null;
-    state.poppedChainIds.clear();
-    const activation = getActivationSet();
-    if (!activation) return;
-
-    const seedId = activation.seed;
-    popChainById(seedId, activation);
-    if (state.poppedChainIds.has(seedId)) {
-        state.activeSeedChainId = seedId;
-    }
 }
 
 /**
@@ -63,106 +46,15 @@ function popChainById(chainId, activation) {
 
     addPoppedNodes(nodes, links);
     state.poppedChainIds.add(chainId);
+
+    // Absorb phantoms: rewire junction links to anchors, remove phantom nodes
+    absorbChainsPhantoms(chainId, getForceNodes());
+
     const stepInfo = chain.minStep != null && chain.maxStep != null
         ? `${chain.minStep}-${chain.maxStep}` : '';
     recordPop('chain-pop', { id: chainId, ...(stepInfo && { steps: stepInfo }) });
 
-    createInterChainLinksForPopped();
-
     return true;
-}
-
-/**
- * Create inter-chain links between popped chains and their neighbors,
- * and reveal naked junction nodes where both adjacent chains are popped.
- */
-function createInterChainLinksForPopped() {
-    const dd = state.detailData;
-    if (!dd || state.poppedChainIds.size === 0) return;
-
-    // Remove previous inter-chain and junction elements
-    removePoppedNodes('__interchain__');
-    removePoppedNodes('__junction__');
-    removeInterChainLinks();
-    restoreUnanchoredEndpoints();
-
-    // Build combined seg→chains lookup (naked segs + chain endpoint segs)
-    const segToChains = buildSegToChains(dd.junctionSegChains || {}, dd.chains);
-
-    // Find junction links where both ends' chains are fully popped
-    const fullyPopped = getFullyPoppedJunctionLinks(
-        dd.junctionLinks, segToChains, state.poppedChainIds);
-
-    // Add naked junction segment nodes for fully-popped junctions
-    if (fullyPopped.length > 0) {
-        const jResult = createJunctionNodes(dd.junctionGraph, fullyPopped, getForceNodes());
-        if (jResult.nodes.length > 0) {
-            addPoppedNodes(jResult.nodes, jResult.links);
-        }
-        // Create cross-chain b→b links for endpoint-to-endpoint junctions
-        const crossLinks = createCrossChainLinks(fullyPopped);
-        if (crossLinks.length > 0) addInterChainLinks(crossLinks);
-        // Unanchor chain endpoints adjacent to revealed junctions
-        // TODO: re-enable after debugging
-        // unanchorAdjacentEndpoints(fullyPopped, dd.junctionSegChains || {});
-    }
-
-    // Create inter-chain links (phantom nodes for partially-popped junctions)
-    const { nodes, links } = createInterChainLinks(
-        dd.junctionLinks, state.poppedChainIds, dd.chains, getForceNodes(),
-        segToChains);
-    if (links.length > 0) {
-        if (nodes.length > 0) {
-            const phantomLinks = links.filter(l => l.source?.isPhantom || l.target?.isPhantom);
-            addPoppedNodes(nodes, phantomLinks);
-        }
-        const anchorLinks = links.filter(l => !l.source?.isPhantom && !l.target?.isPhantom);
-        if (anchorLinks.length > 0) addInterChainLinks(anchorLinks);
-    }
-}
-
-/**
- * Unanchor chain endpoint nodes that face a revealed junction region.
- * Only unanchors endpoints whose coordinate matches a fully-popped junction link endpoint.
- */
-function unanchorAdjacentEndpoints(fullyPoppedJunctions, junctionSegChains) {
-    // Collect the coordinates of fully-popped junction link endpoints
-    const junctionCoordKeys = new Set();
-    for (const jl of fullyPoppedJunctions) {
-        for (const coord of jl.coords) {
-            junctionCoordKeys.add(`${Math.round(coord[0])},${Math.round(coord[1])}`);
-        }
-    }
-
-    for (const node of getForceNodes()) {
-        if (!node.isAnchor || node.fx == null || node.chainId === '__junction__' || node.chainId === '__interchain__') continue;
-        if (!state.poppedChainIds.has(node.chainId)) continue;
-        const key = `${Math.round(node.fx)},${Math.round(node.fy)}`;
-        if (junctionCoordKeys.has(key)) {
-            // Save original pinned position for restoration
-            node._savedFx = node.fx;
-            node._savedFy = node.fy;
-            node.x = node.fx;
-            node.y = node.fy;
-            delete node.fx;
-            delete node.fy;
-            node._unanchoredForJunction = true;
-        }
-    }
-}
-
-/**
- * Restore fx/fy on any chain endpoints that were unanchored for junctions.
- */
-function restoreUnanchoredEndpoints() {
-    for (const node of getForceNodes()) {
-        if (!node._unanchoredForJunction) continue;
-        node.fx = node._savedFx;
-        node.fy = node._savedFy;
-        delete node._savedFx;
-        delete node._savedFy;
-        delete node._unanchoredForJunction;
-    }
 }
 
 /**
@@ -172,12 +64,12 @@ export function togglePopChain(chain) {
     if (!chain || !state.detailData) return;
 
     if (state.poppedChainIds.has(chain.id)) {
+        restoreChainsPhantoms(chain.id);
         removePoppedNodes(chain.id);
         state.poppedChainIds.delete(chain.id);
         if (state.activeSeedChainId === chain.id) {
             state.activeSeedChainId = null;
         }
-        createInterChainLinksForPopped();
     } else {
         const activation = getActivationSet();
         popChainById(chain.id, activation);
@@ -335,4 +227,3 @@ export async function replayHistory() {
 
     console.log(`Replayed ${chainCount} chain-pops, ${bubbleCount} bubble-pops`);
 }
-

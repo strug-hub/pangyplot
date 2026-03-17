@@ -599,6 +599,15 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                     naked_seg_chains.setdefault(nxt, set()).add(chain_id)
                     queue.append((nxt, hops + 1))
 
+    # Prune dead-end stubs: naked segments reachable from only one chain
+    # are not true junctions (e.g. indels at a chain boundary).  Remove
+    # them from naked_visited so they don't appear as junction nodes.
+    _stubs = {sid for sid, chains in naked_seg_chains.items()
+              if len(chains) < 2}
+    naked_visited -= _stubs
+    for sid in _stubs:
+        naked_seg_chains.pop(sid, None)
+
     # Build junction nodes: centroid of each naked segment.
     # Chain endpoint segments are excluded — their geometry overlaps
     # the chain polyline and creates stray lines when popped.

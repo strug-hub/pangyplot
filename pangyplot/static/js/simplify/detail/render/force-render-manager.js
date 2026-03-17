@@ -3,6 +3,7 @@
 import { state } from '../../simplify-state.js';
 import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeRing, strokeSegments } from './detail-painter.js';
+import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 
 export function drawForceGraph(ctx, baseWidth) {
     const nodes = getForceNodes();
@@ -19,13 +20,16 @@ export function drawForceGraph(ctx, baseWidth) {
     const kinkByColor = new Map();
     const chainSegs = [];
     const junctionSegs = [];
+    const delSegs = [];
 
     for (const link of links) {
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
         const seg = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
 
-        if (link.isKinkLink) {
+        if (link.isDel) {
+            delSegs.push(seg);
+        } else if (link.isKinkLink) {
             const color = s.type === 'bubble' ? '#F2DC0F' : '#0762E5';
             if (!kinkByColor.has(color)) kinkByColor.set(color, []);
             kinkByColor.get(color).push(seg);
@@ -49,6 +53,20 @@ export function drawForceGraph(ctx, baseWidth) {
     // 3. Junction + inter-chain links
     if (junctionSegs.length > 0) {
         strokeSegments(ctx, junctionSegs, '#969696', Math.max(0.5, 1 / state.zoom), 0.6 * opacity);
+    }
+
+    // 3b. Deletion links with -x- cross at midpoint
+    if (delSegs.length > 0) {
+        const delWidth = Math.max(0.5, 1 / state.zoom);
+        strokeSegments(ctx, delSegs, '#969696', delWidth, 0.6 * opacity);
+        ctx.globalAlpha = 0.6 * opacity;
+        const crossSize = Math.max(2, 4 / state.zoom);
+        for (const { x1, y1, x2, y2 } of delSegs) {
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            drawRotatedCross(ctx, midX, midY, crossSize, delWidth, '#969696', angle);
+        }
     }
 
     // --- Categorize nodes ---
