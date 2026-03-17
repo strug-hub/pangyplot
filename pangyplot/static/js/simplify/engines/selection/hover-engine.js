@@ -12,7 +12,7 @@ import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js
 
 export function setupHover(canvas) {
     canvas.addEventListener('mousemove', e => {
-        if (state.isDragging || state.selectionBox || !isReady()) return;
+        if (state.isDragging || state.draggedForceNode || state.selectionBox || !isReady()) return;
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;

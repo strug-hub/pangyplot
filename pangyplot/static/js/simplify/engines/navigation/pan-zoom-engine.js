@@ -9,6 +9,7 @@ import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
     canvas.addEventListener('mousedown', e => {
+        if (state.draggedForceNode || state.hoveredForceNode) return; // handled by node-drag-engine
         if (e.shiftKey && state.detailData) return; // handled by multi-selection
         // Clear selection on non-shift click
         if (state.selectedChains.size > 0 && !state.hoveredChain) {
@@ -22,7 +23,7 @@ export function setupPanZoom(canvas) {
     });
 
     window.addEventListener('mousemove', e => {
-        if (!state.isDragging) return;
+        if (!state.isDragging || state.draggedForceNode) return;
         state.panX = e.clientX - state.dragStartX;
         state.panY = e.clientY - state.dragStartY;
         scheduleFrame();

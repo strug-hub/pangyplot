@@ -208,6 +208,11 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
     sim.alpha(0.3).restart();
 }
 
+export function reheatSimulation() {
+    if (!sim) return;
+    sim.alpha(0.1).restart();
+}
+
 export function isSimulating() {
     return sim && sim.alpha() > sim.alphaMin();
 }

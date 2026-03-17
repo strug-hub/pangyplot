@@ -36,6 +36,7 @@ export const state = {
     activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)
     poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
     hideChainOverlay: false,  // C-key toggle: hide chain polylines/junction dots, show only physics
+    draggedForceNode: null,    // force node currently being dragged
 
     // Selection (Shift+drag rectangle)
     selectedChains: new Set(),   // Set of chain objects currently selected
