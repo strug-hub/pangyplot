@@ -74,7 +74,12 @@ export function deserializeSubgraph(apiData, options = {}) {
 
         if (!sourceRecord || !targetRecord) continue;
 
-        const linkRecord = new LinkRecord(rawLink, sourceRecord, targetRecord);
+        // Promote b→b links to chain type (matching core's deserializeChainLinks)
+        const isBubblePair = sourceRecord.type === 'bubble' && targetRecord.type === 'bubble';
+        const resolved = isBubblePair
+            ? { ...rawLink, type: 'chain', source: sourceRecord.id, target: targetRecord.id }
+            : rawLink;
+        const linkRecord = new LinkRecord(resolved, sourceRecord, targetRecord);
         const els = createLinkElements(linkRecord);
         for (const link of els.links) {
             link.isKinkLink = false;

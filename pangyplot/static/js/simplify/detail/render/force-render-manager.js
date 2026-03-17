@@ -28,10 +28,10 @@ export function drawForceGraph(ctx, baseWidth) {
             const color = s.type === 'bubble' ? '#F2DC0F' : '#0762E5';
             if (!kinkByColor.has(color)) kinkByColor.set(color, []);
             kinkByColor.get(color).push(seg);
-        } else if (link.isJunctionLink || link.isInterChain) {
-            junctionSegs.push(seg);
-        } else {
+        } else if (link.type === 'chain') {
             chainSegs.push(seg);
+        } else {
+            junctionSegs.push(seg);
         }
     }
 
