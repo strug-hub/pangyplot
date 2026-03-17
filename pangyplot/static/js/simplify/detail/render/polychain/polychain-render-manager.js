@@ -2,6 +2,7 @@
 
 import { state } from '../../../simplify-state.js';
 import { strokeLines, strokePolyline, strokePolylines } from '../detail-painter.js';
+import { buildSegToChains } from '../../data/polychain/polychain-adapter.js';
 
 function getVisibleChainPolylines(chains) {
     const base = [];
@@ -32,10 +33,30 @@ export function drawDetail() {
     const baseWidth = Math.max(1.5, 3 / state.zoom);
     const lineWidth = Math.max(0.8, 1.8 / state.zoom);
 
-    // 1. Junction links
+    // 1. Junction links — skip any where both endpoint segments' chains are all popped
     if (!state.hideChainOverlay && state.detailData.junctionLinks?.length > 0) {
-        const jlCoords = state.detailData.junctionLinks.map(jl => jl.coords);
-        strokeLines(ctx, jlCoords, '#999', lineWidth, 0.7 * opacity);
+        const dd = state.detailData;
+        if (!dd._segToChains) {
+            dd._segToChains = buildSegToChains(dd.junctionSegChains || {}, dd.chains);
+        }
+        const segToChains = dd._segToChains;
+        const popped = state.poppedChainIds;
+        const jlCoords = [];
+        for (const jl of state.detailData.junctionLinks) {
+            if (popped.size > 0) {
+                const chainsA = segToChains[`s${jl.segs[0]}`] || [];
+                const chainsB = segToChains[`s${jl.segs[1]}`] || [];
+                if (chainsA.length > 0 && chainsB.length > 0 &&
+                    chainsA.every(c => popped.has(c)) &&
+                    chainsB.every(c => popped.has(c))) {
+                    continue; // both ends fully popped — junction nodes replace this line
+                }
+            }
+            jlCoords.push(jl.coords);
+        }
+        if (jlCoords.length > 0) {
+            strokeLines(ctx, jlCoords, '#999', lineWidth, 0.7 * opacity);
+        }
     }
 
     // 2. Junction segments — disabled (junction links show the topology;
