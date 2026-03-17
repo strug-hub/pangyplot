@@ -190,6 +190,58 @@ export function spliceBubbleNodes(removeIids, rewireMap, childNodes, childLinks)
     sim.alpha(0.3).restart();
 }
 
+/**
+ * Reverse of spliceBubbleNodes: remove child nodes, rewire links back
+ * to parent endpoints, and add parent nodes + links.
+ * @param {Set<string>} removeIids - iids of child nodes to remove
+ * @param {Map<string,string>} rewireMap - maps child kink iid → parent kink iid
+ * @param {Array} parentNodes - parent bubble kink nodes to re-add
+ * @param {Array} parentLinks - parent's intra-kink links to re-add
+ */
+export function unspliceBubbleNodes(removeIids, rewireMap, parentNodes, parentLinks) {
+    if (!sim) return;
+
+    for (const n of parentNodes) {
+        n.homeX = n.fx ?? n.x;
+        n.homeY = n.fy ?? n.y;
+    }
+
+    // Remove child nodes
+    const remaining = getNodes().filter(n => !removeIids.has(n.iid));
+    const allNodes = [...remaining, ...parentNodes];
+
+    // Rewire existing links: child endpoints → parent endpoints
+    const existingLinks = getLinks();
+    for (const link of existingLinks) {
+        const sIid = link.source.iid ?? link.source;
+        const tIid = link.target.iid ?? link.target;
+        if (rewireMap.has(sIid)) {
+            link.source = rewireMap.get(sIid);
+            link.sourceIid = rewireMap.get(sIid);
+        }
+        if (rewireMap.has(tIid)) {
+            link.target = rewireMap.get(tIid);
+            link.targetIid = rewireMap.get(tIid);
+        }
+    }
+
+    // Remove links whose endpoints were removed and not rewired,
+    // plus remove all child intra-node links
+    const allNodeIds = new Set(allNodes.map(n => n.iid));
+    const keptLinks = existingLinks.filter(l => {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return allNodeIds.has(sIid) && allNodeIds.has(tIid);
+    });
+
+    const allLinks = [...keptLinks, ...parentLinks];
+
+    syncNodes(allNodes);
+    syncLinks(allLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(0.3).restart();
+}
+
 export function isSimulating() {
     return sim && sim.alpha() > sim.alphaMin();
 }

@@ -4,10 +4,8 @@
 import { state } from '../../simplify-state.js';
 import { spliceBubbleNodes } from '../engines/force-engine.js';
 import { getForceNodes } from './force-data.js';
-import { deserializeNodes } from '../../../graph/data/records/deserializer/deserialize-nodes.js';
-import { createNodeElements, createLinkElements } from '../../../graph/data/records/deserializer/deserializer-element.js';
-import { detectIndelBubbles } from '../../../graph/data/records/deserializer/indel-detection.js';
-import { LinkRecord } from '../../../graph/data/records/objects/link-record.js';
+import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
+import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 
 /**
@@ -37,50 +35,40 @@ export async function popBubbleForceNode(bubbleNode) {
         return false;
     }
 
-    // Deserialize nodes
-    const records = deserializeNodes(apiData.nodes);
-    const bubbleRecords = records.filter(r => r.type === 'bubble');
-    detectIndelBubbles(apiData.links, bubbleRecords);
+    // Deserialize subgraph with viewState-aware link resolution
+    const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(apiData, {
+        tag: { chainId },
+        linkResolver: (segId) => {
+            // Strip "s" prefix for viewState lookup
+            const plainId = segId.startsWith('s') ? segId.slice(1) : segId;
+            return simplifyViewState.resolve(plainId);
+        },
+    });
 
-    const childNodes = [];
-    const childLinks = [];
-    const recordMap = new Map();
-
-    for (const record of records) {
-        const els = createNodeElements(record);
-        record.elements = els;
-        recordMap.set(record.id, record);
-
-        for (const node of els.nodes) {
-            node.chainId = chainId;
-            node.radius = node.width / 2;
-            node.recordId = node.id;
-            node.seqLength = record.seqLength;
-            // Position children near the parent bubble
-            node.x = bubbleNode.x + (Math.random() - 0.5) * 20;
-            node.y = bubbleNode.y + (Math.random() - 0.5) * 20;
-            childNodes.push(node);
-        }
-
-        for (const link of els.links) {
-            link.chainId = chainId;
-            link.isKinkLink = link.class === 'node';
-            childLinks.push(link);
+    // Capture inside segs before expand destroys the mapping
+    const parentRecord = bubbleNode.record;
+    const insideSegs = [];
+    if (parentRecord) {
+        for (const [segId, record] of simplifyViewState.segmentToNode) {
+            if (record === parentRecord) insideSegs.push(segId);
         }
     }
 
-    // Deserialize inter-node links
-    for (const rawLink of apiData.links) {
-        const sourceRecord = recordMap.get(rawLink.source);
-        const targetRecord = recordMap.get(rawLink.target);
-        if (!sourceRecord || !targetRecord) continue;
-        const linkRecord = new LinkRecord(rawLink, sourceRecord, targetRecord);
-        const els = createLinkElements(linkRecord);
-        for (const link of els.links) {
-            link.chainId = chainId;
-            link.isKinkLink = false;
-            childLinks.push(link);
-        }
+    // Expand simplify viewState: unmap parent bubble, register child bubbles
+    if (parentRecord && apiData.child_bubbles) {
+        simplifyViewState.expand(
+            parentRecord,
+            apiData.source_segs || [],
+            apiData.sink_segs || [],
+            apiData.child_bubbles,
+            (id) => recordMap.get(id) || null,
+        );
+    }
+
+    // Position children near the parent bubble
+    for (const node of childNodes) {
+        node.x = bubbleNode.x + (Math.random() - 0.5) * 20;
+        node.y = bubbleNode.y + (Math.random() - 0.5) * 20;
     }
 
     if (childNodes.length === 0) return false;
@@ -114,13 +102,21 @@ export async function popBubbleForceNode(bubbleNode) {
     spliceBubbleNodes(parentIids, rewireMap, childNodes, childLinks);
     recordPop('bubble-pop', { id: bubbleId, chain: chainId });
 
-    // Track for undo
+    // Track for undo — capture enough state to reverse the pop
     if (!state._bubblePopStack) state._bubblePopStack = [];
     state._bubblePopStack.push({
         bubbleId,
         chainId,
+        parentRecord: parentRecord,
+        parentKinks: bubbleNode.kinks || 1,
         parentNode: bubbleNode,
         childIids: childNodes.map(n => n.iid),
+        childLinks: childLinks,
+        rewireMap,
+        sourceSegs: apiData.source_segs || [],
+        sinkSegs: apiData.sink_segs || [],
+        childBubbles: apiData.child_bubbles || [],
+        insideSegs,
     });
 
     return true;

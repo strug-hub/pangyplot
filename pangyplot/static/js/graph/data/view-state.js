@@ -75,3 +75,4 @@ class ViewState {
 
 const viewState = new ViewState();
 export default viewState;
+export { ViewState };

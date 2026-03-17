@@ -6,6 +6,7 @@ import { getForceNodes } from '../../data/force-data.js';
 import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../data/polychain/polychain-adapter.js';
 import { getActivationSet } from '../../../engines/physics-activation-engine.js';
 import { clearFetchedRegion } from '../../data/polychain/polychain-fetcher.js';
+import { resetSimplifyViewState } from '../../data/simplify-view-state.js';
 import { recordPop, loadHistory } from '../../../../utils/pop-history.js';
 import { navigateToHash } from '../../../engines/navigation/hash-navigation.js';
 import { scheduleFrame } from '../../../utils/frame-scheduler.js';
@@ -21,6 +22,8 @@ export function clearDetailState() {
     state.activeSeedChainId = null;
     state.poppedChainIds.clear();
     state.activatedJunctionSegs.clear();
+    resetSimplifyViewState();
+    state._bubblePopStack = [];
 }
 
 // ---------------------------------------------------------------

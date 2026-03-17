@@ -1,10 +1,10 @@
 // Adapter: converts /chain-graph API responses into core PangyPlot elements
 // for use in the simplify detail force simulation.
 
-import { deserializeNodes } from '../../../../graph/data/records/deserializer/deserialize-nodes.js';
-import { createNodeElements, createLinkElements } from '../../../../graph/data/records/deserializer/deserializer-element.js';
-import { detectIndelBubbles } from '../../../../graph/data/records/deserializer/indel-detection.js';
+import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
+import { createLinkElements } from '../../../../graph/data/records/deserializer/deserializer-element.js';
 import { LinkRecord } from '../../../../graph/data/records/objects/link-record.js';
+import simplifyViewState from '../simplify-view-state.js';
 
 /**
  * Clip a polyline to a fractional [tStart, tEnd] range along its arc length.
@@ -53,45 +53,22 @@ function clipPolylineByTRange(polyline, tStart, tEnd) {
  * suitable for the simplify force simulation.
  */
 export function deserializeChainGraph(apiData, chain, clipRange) {
-    const records = deserializeNodes(apiData.nodes);
+    const { nodes: allNodes, links: allLinks, recordMap } = deserializeSubgraph(apiData, {
+        tag: { chainId: chain.id },
+    });
 
-    const bubbleRecords = records.filter(r => r.type === 'bubble');
-    detectIndelBubbles(apiData.links, bubbleRecords);
-
-    const allNodes = [];
-    const allLinks = [];
-    const recordMap = new Map();
-
-    for (const record of records) {
-        const els = createNodeElements(record);
-        record.elements = els;
-        recordMap.set(record.id, record);
-
-        for (const node of els.nodes) {
-            node.chainId = chain.id;
-            node.radius = node.width / 2;
-            node.recordId = node.id;
-            node.seqLength = record.seqLength;
-            allNodes.push(node);
-        }
-
-        for (const link of els.links) {
-            link.chainId = chain.id;
-            link.isKinkLink = link.class === 'node';
-            allLinks.push(link);
-        }
-    }
-
-    for (const rawLink of apiData.links) {
-        const sourceRecord = recordMap.get(rawLink.source);
-        const targetRecord = recordMap.get(rawLink.target);
-        const linkRecord = new LinkRecord(rawLink, sourceRecord, targetRecord);
-
-        const els = createLinkElements(linkRecord);
-        for (const link of els.links) {
-            link.chainId = chain.id;
-            link.isKinkLink = false;
-            allLinks.push(link);
+    // Register bubble segments in simplify viewState
+    const rawNodeMap = new Map(apiData.nodes.map(n => [n.id, n]));
+    for (const [id, record] of recordMap) {
+        if (record.type !== 'bubble') continue;
+        const rawNode = rawNodeMap.get(id);
+        if (rawNode) {
+            simplifyViewState.registerBubble(
+                record,
+                rawNode.source_segs || [],
+                rawNode.sink_segs || [],
+                rawNode.inside_segs || [],
+            );
         }
     }
 
@@ -184,62 +161,12 @@ export function deserializeJunctionSegments(junctionGraph, segIds, existingRecor
 
     if (filteredNodes.length === 0) return { nodes: [], links: [] };
 
-    const records = deserializeNodes(filteredNodes);
-    const allNodes = [];
-    const allLinks = [];
-    const recordMap = new Map();
+    const apiData = { nodes: filteredNodes, links: junctionGraph.links };
 
-    for (const record of records) {
-        const els = createNodeElements(record);
-        record.elements = els;
-        recordMap.set(record.id, record);
-
-        for (const node of els.nodes) {
-            node.chainId = 'junction';
-            node.radius = node.width / 2;
-            node.recordId = node.id;
-            node.seqLength = record.seqLength;
-            allNodes.push(node);
-        }
-        for (const link of els.links) {
-            link.chainId = 'junction';
-            link.isKinkLink = link.class === 'node';
-            allLinks.push(link);
-        }
-    }
-
-    // For link filtering, also consider already-active junction records
-    // so cross-batch links (new seg ↔ existing seg) are created.
-    const linkLookup = new Map(recordMap);
-    if (existingRecords) {
-        for (const [id, record] of existingRecords) {
-            if (!linkLookup.has(id)) linkLookup.set(id, record);
-        }
-    }
-
-    const filteredLinks = junctionGraph.links.filter(l => {
-        const sId = typeof l.source === 'string' ? l.source : `s${l.source}`;
-        const tId = typeof l.target === 'string' ? l.target : `s${l.target}`;
-        return linkLookup.has(sId) && linkLookup.has(tId);
+    return deserializeSubgraph(apiData, {
+        tag: { chainId: 'junction' },
+        extraRecords: existingRecords || null,
     });
-
-    for (const rawLink of filteredLinks) {
-        const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
-        const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
-        const sourceRecord = linkLookup.get(sId);
-        const targetRecord = linkLookup.get(tId);
-        if (!sourceRecord || !targetRecord) continue;
-
-        const linkRecord = new LinkRecord(rawLink, sourceRecord, targetRecord);
-        const els = createLinkElements(linkRecord);
-        for (const link of els.links) {
-            link.chainId = 'junction';
-            link.isKinkLink = false;
-            allLinks.push(link);
-        }
-    }
-
-    return { nodes: allNodes, links: allLinks, recordMap };
 }
 
 /**
