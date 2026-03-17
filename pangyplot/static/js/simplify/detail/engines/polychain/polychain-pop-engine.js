@@ -3,7 +3,7 @@
 import { state } from '../../../simplify-state.js';
 import { clearForce, addPoppedNodes, removePoppedNodes, addInterChainLinks, removeInterChainLinks } from '../force-engine.js';
 import { getForceNodes } from '../../data/force-data.js';
-import { deserializeChainGraph, deserializeJunctionSegments, createJunctionToAnchorLinks, createInterChainLinks } from '../../data/polychain/polychain-adapter.js';
+import { deserializeChainGraph, createInterChainLinks } from '../../data/polychain/polychain-adapter.js';
 import { getActivationSet } from '../../../engines/physics-activation-engine.js';
 import { clearFetchedRegion } from '../../data/polychain/polychain-fetcher.js';
 import { resetSimplifyViewState } from '../../data/simplify-view-state.js';
@@ -21,7 +21,6 @@ export function clearDetailState() {
     clearForce();
     state.activeSeedChainId = null;
     state.poppedChainIds.clear();
-    state.activatedJunctionSegs.clear();
     resetSimplifyViewState();
     state._bubblePopStack = [];
 }
@@ -33,8 +32,6 @@ export function populateSeedForce() {
     clearForce();
     state.activeSeedChainId = null;
     state.poppedChainIds.clear();
-    state.activatedJunctionSegs.clear();
-
     const activation = getActivationSet();
     if (!activation) return;
 
@@ -70,7 +67,6 @@ function popChainById(chainId, activation) {
         ? `${chain.minStep}-${chain.maxStep}` : '';
     recordPop('chain-pop', { id: chainId, ...(stepInfo && { steps: stepInfo }) });
 
-    activateJunctionSegs(chainId, nodes);
     createInterChainLinksForPopped();
 
     return true;
@@ -99,126 +95,12 @@ function createInterChainLinksForPopped() {
 }
 
 /**
- * Activate junction segments adjacent to a popped chain.
- */
-function activateJunctionSegs(chainId, chainForceNodes) {
-    const dd = state.detailData;
-    if (!dd || !dd.junctionGraph || !dd.junctionSegChains) return;
-
-    const segsToActivate = [];
-    const segsAlreadyActive = [];
-    for (const [segId, chainIds] of Object.entries(dd.junctionSegChains)) {
-        if (chainIds.includes(chainId)) {
-            if (!state.activatedJunctionSegs.has(segId)) {
-                segsToActivate.push(segId);
-            } else {
-                state.activatedJunctionSegs.get(segId).add(chainId);
-                segsAlreadyActive.push(segId);
-            }
-        }
-    }
-
-    if (segsAlreadyActive.length > 0) {
-        const activeSegSet = new Set(segsAlreadyActive);
-        const existingMap = new Map();
-        for (const node of getForceNodes()) {
-            if (node.chainId !== 'junction') continue;
-            const rid = node.recordId || node.id;
-            if (!activeSegSet.has(rid) || existingMap.has(rid)) continue;
-            if (node.record) existingMap.set(rid, node.record);
-        }
-        if (existingMap.size > 0) {
-            const poppedChains = dd.chains.filter(c => state.poppedChainIds.has(c.id));
-            const newAnchorLinks = createJunctionToAnchorLinks(
-                existingMap, getForceNodes(), dd.junctionGraph, poppedChains);
-            if (newAnchorLinks.length > 0) {
-                addInterChainLinks(newAnchorLinks);
-            }
-        }
-    }
-
-    if (segsToActivate.length === 0) return;
-
-    // Collect records of already-active junction segments so
-    // deserializeJunctionSegments can create cross-batch links.
-    const existingJunctionRecords = new Map();
-    if (state.activatedJunctionSegs.size > 0) {
-        for (const node of getForceNodes()) {
-            if (node.chainId !== 'junction') continue;
-            const rid = node.recordId || node.id;
-            if (!existingJunctionRecords.has(rid) && node.record) {
-                existingJunctionRecords.set(rid, node.record);
-            }
-        }
-    }
-
-    const { nodes, links, recordMap } = deserializeJunctionSegments(
-        dd.junctionGraph, segsToActivate, existingJunctionRecords);
-    if (nodes.length === 0) return;
-
-    const poppedChains = dd.chains.filter(c => state.poppedChainIds.has(c.id));
-    const anchorLinks = createJunctionToAnchorLinks(
-        recordMap, getForceNodes(), dd.junctionGraph, poppedChains);
-
-    addPoppedNodes(nodes, [...links, ...anchorLinks]);
-
-    for (const segId of segsToActivate) {
-        const refSet = new Set([chainId]);
-        state.activatedJunctionSegs.set(segId, refSet);
-    }
-}
-
-/**
- * Deactivate junction segments when a chain is unpopped.
- */
-function deactivateJunctionSegs(chainId) {
-    const dd = state.detailData;
-    if (!dd || !dd.junctionSegChains) return;
-
-    const segsToRemove = [];
-    for (const [segId, chainIds] of Object.entries(dd.junctionSegChains)) {
-        if (!chainIds.includes(chainId)) continue;
-        const refSet = state.activatedJunctionSegs.get(segId);
-        if (!refSet) continue;
-
-        refSet.delete(chainId);
-        if (refSet.size === 0) {
-            segsToRemove.push(segId);
-            state.activatedJunctionSegs.delete(segId);
-        }
-    }
-
-    if (segsToRemove.length > 0) {
-        removePoppedNodes('junction');
-        readdActiveJunctions();
-    }
-}
-
-function readdActiveJunctions() {
-    if (state.activatedJunctionSegs.size === 0) return;
-    const dd = state.detailData;
-    if (!dd) return;
-
-    const activeSegIds = [...state.activatedJunctionSegs.keys()];
-    const { nodes, links, recordMap } = deserializeJunctionSegments(
-        dd.junctionGraph, activeSegIds);
-    if (nodes.length === 0) return;
-
-    const poppedChains = dd.chains.filter(c => state.poppedChainIds.has(c.id));
-    const anchorLinks = createJunctionToAnchorLinks(
-        recordMap, getForceNodes(), dd.junctionGraph, poppedChains);
-
-    addPoppedNodes(nodes, [...links, ...anchorLinks]);
-}
-
-/**
  * Toggle pop/unpop for a chain. Called from Ctrl+click handler.
  */
 export function togglePopChain(chain) {
     if (!chain || !state.detailData) return;
 
     if (state.poppedChainIds.has(chain.id)) {
-        deactivateJunctionSegs(chain.id);
         removePoppedNodes(chain.id);
         state.poppedChainIds.delete(chain.id);
         if (state.activeSeedChainId === chain.id) {

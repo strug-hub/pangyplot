@@ -2,51 +2,7 @@
 // for use in the simplify detail force simulation.
 
 import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
-import { createLinkElements } from '../../../../graph/data/records/deserializer/deserializer-element.js';
-import { LinkRecord } from '../../../../graph/data/records/objects/link-record.js';
 import simplifyViewState from '../simplify-view-state.js';
-
-/**
- * Clip a polyline to a fractional [tStart, tEnd] range along its arc length.
- */
-function clipPolylineByTRange(polyline, tStart, tEnd) {
-    if (polyline.length < 2) return polyline;
-
-    const cumLen = [0];
-    for (let i = 1; i < polyline.length; i++) {
-        const dx = polyline[i][0] - polyline[i - 1][0];
-        const dy = polyline[i][1] - polyline[i - 1][1];
-        cumLen.push(cumLen[i - 1] + Math.hypot(dx, dy));
-    }
-    const totalLen = cumLen[cumLen.length - 1];
-    if (totalLen === 0) return polyline;
-
-    const sStart = Math.max(0, tStart) * totalLen;
-    const sEnd = Math.min(1, tEnd) * totalLen;
-
-    function interpAt(s) {
-        for (let i = 1; i < cumLen.length; i++) {
-            if (s <= cumLen[i]) {
-                const segLen = cumLen[i] - cumLen[i - 1];
-                const f = segLen > 0 ? (s - cumLen[i - 1]) / segLen : 0;
-                return [
-                    polyline[i - 1][0] + f * (polyline[i][0] - polyline[i - 1][0]),
-                    polyline[i - 1][1] + f * (polyline[i][1] - polyline[i - 1][1]),
-                ];
-            }
-        }
-        return polyline[polyline.length - 1];
-    }
-
-    const result = [interpAt(sStart)];
-    for (let i = 1; i < polyline.length - 1; i++) {
-        if (cumLen[i] > sStart && cumLen[i] < sEnd) {
-            result.push(polyline[i]);
-        }
-    }
-    result.push(interpAt(sEnd));
-    return result;
-}
 
 /**
  * Convert a /chain-graph API response into augmented core elements
@@ -73,9 +29,7 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
     }
 
     if (chain.polyline.length >= 2 && allNodes.length > 0) {
-        const pinSource = !clipRange || clipRange.tStart === 0;
-        const pinSink = !clipRange || clipRange.tEnd === 1;
-        pinAnchors(allNodes, chain.polyline, pinSource, pinSink);
+        pinAnchors(allNodes, chain.polyline);
     }
 
     return { nodes: allNodes, links: allLinks };
@@ -150,153 +104,7 @@ export function createInterChainLinks(siblingConnectors, poppedChainIds, chains,
     return { nodes, links };
 }
 
-/**
- * Deserialize junction segments into force-ready nodes and links.
- */
-export function deserializeJunctionSegments(junctionGraph, segIds, existingRecords) {
-    const segIdSet = new Set(segIds);
-
-    const filteredNodes = junctionGraph.nodes.filter(
-        n => segIdSet.has(n.id || `s${n.segment_id}`));
-
-    if (filteredNodes.length === 0) return { nodes: [], links: [] };
-
-    const apiData = { nodes: filteredNodes, links: junctionGraph.links };
-
-    return deserializeSubgraph(apiData, {
-        tag: { chainId: 'junction' },
-        extraRecords: existingRecords || null,
-    });
-}
-
-/**
- * Create force links connecting junction nodes to chain anchor nodes.
- */
-export function createJunctionToAnchorLinks(junctionRecordMap, allForceNodes, junctionGraph, poppedChains) {
-    if (junctionRecordMap.size === 0) return [];
-
-    const segToRecord = new Map();
-    for (const node of allForceNodes) {
-        if (!node.isAnchor || !node.anchorRecord) continue;
-        const chainMeta = poppedChains.find(c => c.id === node.chainId);
-        if (!chainMeta) continue;
-
-        if (node.anchorRole === 'source' || node.anchorRole === 'source+sink') {
-            if (chainMeta.sourceSegs) {
-                for (const seg of chainMeta.sourceSegs) {
-                    segToRecord.set(String(seg), node.anchorRecord);
-                }
-            }
-        }
-        if (node.anchorRole === 'sink' || node.anchorRole === 'source+sink') {
-            if (chainMeta.sinkSegs) {
-                for (const seg of chainMeta.sinkSegs) {
-                    segToRecord.set(String(seg), node.anchorRecord);
-                }
-            }
-        }
-    }
-
-    if (segToRecord.size === 0) return [];
-
-    const links = [];
-    const seen = new Set();
-
-    function pushLink(sourceRecord, targetRecord, rawLink) {
-        if (!sourceRecord || !targetRecord) return;
-        if (sourceRecord === targetRecord) return;
-        const pairKey = `${sourceRecord.id}→${targetRecord.id}`;
-        if (seen.has(pairKey)) return;
-        seen.add(pairKey);
-
-        const resolvedLink = {
-            ...rawLink,
-            id: `junc_${sourceRecord.id}_${targetRecord.id}`,
-            source: sourceRecord.id,
-            target: targetRecord.id,
-        };
-        const linkRecord = new LinkRecord(resolvedLink, sourceRecord, targetRecord);
-        const els = createLinkElements(linkRecord);
-        for (const link of els.links) {
-            link.chainId = 'junction';
-            link.isKinkLink = false;
-            link.isJunctionLink = true;
-            links.push(link);
-        }
-    }
-
-    for (const rawLink of junctionGraph.links) {
-        const srcSegId = typeof rawLink.source === 'string'
-            ? rawLink.source.replace(/^s/, '') : String(rawLink.source);
-        const tgtSegId = typeof rawLink.target === 'string'
-            ? rawLink.target.replace(/^s/, '') : String(rawLink.target);
-
-        const srcIsJunction = junctionRecordMap.has('s' + srcSegId);
-        const tgtIsJunction = junctionRecordMap.has('s' + tgtSegId);
-
-        if (!srcIsJunction && !tgtIsJunction) continue;
-
-        const sourceRecord = junctionRecordMap.get('s' + srcSegId) || segToRecord.get(srcSegId);
-        const targetRecord = junctionRecordMap.get('s' + tgtSegId) || segToRecord.get(tgtSegId);
-
-        pushLink(sourceRecord, targetRecord, rawLink);
-    }
-
-    // Tether junction nodes to their matching chain anchor when they
-    // represent the same physical segment.  Create direct kink-to-kink
-    // links (head→head, tail→tail) instead of strand-resolved links.
-    for (const [juncId, juncRecord] of junctionRecordMap) {
-        const segId = juncId.replace(/^s/, '');
-        const anchorRecord = segToRecord.get(segId);
-        if (!anchorRecord) continue;
-        if (!juncRecord.elements || !anchorRecord.elements) continue;
-        const juncNodes = juncRecord.elements.nodes;
-        const anchorNodes = anchorRecord.elements.nodes;
-        if (!juncNodes.length || !anchorNodes.length) continue;
-
-        // Head-to-head tether
-        const jHead = juncNodes[0];
-        const aHead = anchorNodes[0];
-        const headKey = `${jHead.iid}→${aHead.iid}`;
-        if (!seen.has(headKey)) {
-            seen.add(headKey);
-            links.push({
-                source: jHead.iid,
-                target: aHead.iid,
-                sourceIid: jHead.iid,
-                targetIid: aHead.iid,
-                chainId: 'junction',
-                isKinkLink: false,
-                isJunctionLink: true,
-                length: 1,
-            });
-        }
-
-        // Tail-to-tail tether (if multi-kink)
-        if (juncNodes.length > 1 && anchorNodes.length > 1) {
-            const jTail = juncNodes[juncNodes.length - 1];
-            const aTail = anchorNodes[anchorNodes.length - 1];
-            const tailKey = `${jTail.iid}→${aTail.iid}`;
-            if (!seen.has(tailKey)) {
-                seen.add(tailKey);
-                links.push({
-                    source: jTail.iid,
-                    target: aTail.iid,
-                    sourceIid: jTail.iid,
-                    targetIid: aTail.iid,
-                    chainId: 'junction',
-                    isKinkLink: false,
-                    isJunctionLink: true,
-                    length: 1,
-                });
-            }
-        }
-    }
-
-    return links;
-}
-
-function pinAnchors(nodes, polyline, pinSource = true, pinSink = true) {
+function pinAnchors(nodes, polyline) {
     const plStart = polyline[0];
     const plEnd = polyline[polyline.length - 1];
 
@@ -310,7 +118,7 @@ function pinAnchors(nodes, polyline, pinSource = true, pinSink = true) {
     const firstRec = recIds[0];
     const lastRec = recIds[recIds.length - 1];
 
-    if (firstRec && pinSource) {
+    if (firstRec) {
         const head = nodesByRecord.get(firstRec)[0];
         head.fx = plStart[0];
         head.fy = plStart[1];
@@ -318,7 +126,7 @@ function pinAnchors(nodes, polyline, pinSource = true, pinSink = true) {
         head.anchorRole = 'source';
         head.anchorRecord = head.record;
     }
-    if (lastRec && pinSink) {
+    if (lastRec) {
         const kinks = nodesByRecord.get(lastRec);
         const tail = kinks[kinks.length - 1];
         if (lastRec !== firstRec || kinks.length > 1) {
@@ -327,7 +135,7 @@ function pinAnchors(nodes, polyline, pinSource = true, pinSink = true) {
             tail.isAnchor = true;
             tail.anchorRole = 'sink';
             tail.anchorRecord = tail.record;
-        } else if (pinSource) {
+        } else {
             tail.anchorRole = 'source+sink';
         }
     }
