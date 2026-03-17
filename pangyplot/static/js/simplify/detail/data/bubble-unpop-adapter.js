@@ -1,6 +1,6 @@
 // Adapter: undo a bubble pop in the simplify force simulation.
 // Reads popData from the _bubblePopStack, removes child nodes,
-// re-adds the parent bubble node, rewires links back, and
+// re-adds the parent bubble node with saved external links, and
 // collapses simplifyViewState.
 
 import { state } from '../../simplify-state.js';
@@ -20,18 +20,12 @@ export function unpopLastBubble() {
         parentRecord,
         parentNode,
         childIids,
-        rewireMap,
+        externalLinks,
         sourceSegs,
         sinkSegs,
         childBubbles,
         insideSegs,
     } = popEntry;
-
-    // Build reverse rewire map: child kink iid → parent kink iid
-    const reverseRewireMap = new Map();
-    for (const [parentIid, childIid] of rewireMap) {
-        reverseRewireMap.set(childIid, parentIid);
-    }
 
     // Reconstruct the parent bubble's kink nodes from its record
     const parentKinks = popEntry.parentKinks;
@@ -76,9 +70,9 @@ export function unpopLastBubble() {
         });
     }
 
-    // Atomic unsplice: remove children, rewire links back, add parent
+    // Atomic unsplice: remove children + their links, add parent + restored links
     const childIidSet = new Set(childIids);
-    unspliceBubbleNodes(childIidSet, reverseRewireMap, parentNodes, parentLinks);
+    unspliceBubbleNodes(childIidSet, parentNodes, [...parentLinks, ...externalLinks]);
 
     // Collapse simplify viewState: re-register parent bubble, unmap children
     if (parentRecord) {
