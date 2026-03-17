@@ -367,19 +367,19 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             link_seen.add((tuple(l[0]), tuple(l[1])))
             link_seen.add((tuple(l[1]), tuple(l[0])))
 
-        def _add_link(ca, cb):
+        def _add_link(ca, cb, sid_a, sid_b):
             key = (tuple(ca), tuple(cb))
             if key not in link_seen:
                 link_seen.add(key)
                 link_seen.add((tuple(cb), tuple(ca)))
-                junction_links.append([ca, cb])
+                junction_links.append([ca, cb, sid_a, sid_b])
 
         # Add bypass-to-bypass GFA links
         for from_id, to_id in bypass_gfa_links:
             ca = bypass_centroids.get(from_id)
             cb = bypass_centroids.get(to_id)
             if ca and cb:
-                _add_link(ca, cb)
+                _add_link(ca, cb, from_id, to_id)
 
         # Add bypass-to-chain-endpoint GFA links
         for sid in bypass_seg_ids:
@@ -391,10 +391,16 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     continue  # already handled above
                 cb = endpoint_coords.get(nxt)
                 if cb:
-                    _add_link(ca, cb)
+                    _add_link(ca, cb, sid, nxt)
 
     # --- Serialize junction graph (full Segment/Link objects for physics) ---
-    all_junction_seg_ids = naked_visited | bypass_seg_ids
+    # Exclude chain endpoint segments — their geometry overlaps chain polylines
+    # and creates stray lines when chains are popped.
+    chain_endpoint_segs = set()
+    for cd in result_chains:
+        chain_endpoint_segs.update(cd.get("source_segs") or [])
+        chain_endpoint_segs.update(cd.get("sink_segs") or [])
+    all_junction_seg_ids = (naked_visited | bypass_seg_ids) - chain_endpoint_segs
     if all_junction_seg_ids:
         jg_segments, jg_links = gfaidx.get_subgraph(
             all_junction_seg_ids, stepidx, fast=True)
@@ -425,7 +431,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
     # --- Sibling connector BFS ---
     sibling_connectors, sibling_adj = \
-        find_sibling_connectors(result_chains, gfaidx, bubbleidx)
+        find_sibling_connectors(result_chains, gfaidx, bubbleidx, seg_index,
+                               decomposed_bubbles=decomposed_bubbles)
 
     # --- Merge adjacency ---
     chain_adjacency = {}

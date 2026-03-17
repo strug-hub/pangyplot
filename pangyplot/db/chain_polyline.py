@@ -504,6 +504,28 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
             if end_seg is not None:
                 endpoint_polyline_coord[end_seg] = pl[-1]
 
+    # Build suppression set: (endpoint_seg, inside_seg) pairs from the same
+    # bubble.  These are internal bubble edges (head→first-inside,
+    # tail→last-inside) that shouldn't appear as junction links.
+    # Head↔tail (deletion allele) links are NOT suppressed.
+    _suppress_links = set()
+    for cd in chains_data:
+        bubble_ids = cd.get("_bubble_ids") or []
+        if not bubble_ids:
+            continue
+        # First bubble: source segs ↔ its inside
+        first_b = bubbleidx[bubble_ids[0]]
+        if first_b:
+            for sid in (cd.get("source_segs") or []):
+                for ins in first_b.inside:
+                    _suppress_links.add(frozenset((sid, ins)))
+        # Last bubble: sink segs ↔ its inside
+        last_b = bubbleidx[bubble_ids[-1]]
+        if last_b:
+            for sid in (cd.get("sink_segs") or []):
+                for ins in last_b.inside:
+                    _suppress_links.add(frozenset((sid, ins)))
+
     # Segments owned by decomposed bubbles are effectively naked
     _decomposed = decomposed_bubbles or set()
 
@@ -577,7 +599,10 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                     naked_seg_chains.setdefault(nxt, set()).add(chain_id)
                     queue.append((nxt, hops + 1))
 
-    # Build junction nodes: centroid of each naked segment
+    # Build junction nodes: centroid of each naked segment.
+    # Chain endpoint segments are excluded — their geometry overlaps
+    # the chain polyline and creates stray lines when popped.
+    _all_endpoint_segs = set(endpoint_seg_to_chain.keys())
     junction_nodes = []
     naked_centroids = {}  # seg_id → [x, y]
     for sid in naked_visited:
@@ -585,47 +610,49 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
         if pt:
             coord = [round(pt[0], 1), round(pt[1], 1)]
             naked_centroids[sid] = coord
-            junction_nodes.append(coord)
+            if sid not in _all_endpoint_segs:
+                junction_nodes.append(coord)
 
     # Cache coordinates for endpoint segs (for links to/from them).
     # Prefer the chain polyline endpoint coordinate over the segment centroid,
     # because child chains (depth > 0) have polyline endpoints that diverge
     # significantly from segment centroids.
     endpoint_centroids = {}
-    for sid in endpoint_reached | set(endpoint_seg_to_chain.keys()):
-        if sid not in naked_centroids:
-            if sid in endpoint_polyline_coord:
-                plpt = endpoint_polyline_coord[sid]
-                coord = [round(plpt[0], 1), round(plpt[1], 1)]
-            else:
-                pt = _seg_centroid(sid, seg_index)
-                if not pt:
-                    continue
-                coord = [round(pt[0], 1), round(pt[1], 1)]
-            endpoint_centroids[sid] = coord
-            if _is_naked(sid):
-                junction_nodes.append(coord)
+    for sid in endpoint_reached | _all_endpoint_segs:
+        if sid in endpoint_polyline_coord:
+            plpt = endpoint_polyline_coord[sid]
+            coord = [round(plpt[0], 1), round(plpt[1], 1)]
+        else:
+            pt = _seg_centroid(sid, seg_index)
+            if not pt:
+                continue
+            coord = [round(pt[0], 1), round(pt[1], 1)]
+        endpoint_centroids[sid] = coord
 
     # Build junction links from GFA edges
     junction_links = []
     link_seen = set()
 
     def _centroid(sid):
-        return naked_centroids.get(sid) or endpoint_centroids.get(sid)
+        """Link coordinate: chain endpoints use polyline positions,
+        naked segments use segment centroids."""
+        return endpoint_centroids.get(sid) or naked_centroids.get(sid)
 
     # Links from naked segments
+    # Each link: [[x1,y1], [x2,y2], seg_id_a, seg_id_b]
     for sid in naked_visited:
-        if sid not in naked_centroids:
+        sid_pt = _centroid(sid)
+        if not sid_pt:
             continue
         for nxt in gfaidx.get_neighbors(sid):
             nxt_pt = _centroid(nxt)
             if not nxt_pt:
                 continue
-            key = frozenset([sid, nxt])
-            if key in link_seen:
+            key = frozenset((sid, nxt))
+            if key in link_seen or key in _suppress_links:
                 continue
             link_seen.add(key)
-            junction_links.append([naked_centroids[sid], nxt_pt])
+            junction_links.append([sid_pt, nxt_pt, sid, nxt])
 
     # Links between endpoint segs (direct GFA neighbors, no naked seg between)
     for sid in endpoint_reached:
@@ -636,26 +663,27 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                 continue
             if endpoint_seg_to_chain.get(sid) == endpoint_seg_to_chain.get(nxt):
                 continue  # same chain
-            key = frozenset([sid, nxt])
-            if key in link_seen:
+            key = frozenset((sid, nxt))
+            if key in link_seen or key in _suppress_links:
                 continue
             link_seen.add(key)
-            junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt]])
+            junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt],
+                                   sid, nxt])
 
     chain_adjacency = {k: sorted(v) for k, v in chain_adj.items()}
     return (junction_nodes, junction_links, chain_adjacency,
             naked_visited, naked_seg_chains)
 
 
-def find_sibling_connectors(chains_data, gfaidx, bubbleidx):
+def find_sibling_connectors(chains_data, gfaidx, bubbleidx, seg_index,
+                            decomposed_bubbles=None):
     """Find gap-filler lines between sibling chains connected through the parent bubble.
 
-    For each sibling endpoint, BFS through segments owned by any bubble
-    (up to a few hops) to find other sibling endpoints.  Returns a list
-    of [[x1,y1],[x2,y2]] pairs using polyline endpoint coordinates.
+    BFS from each sibling endpoint through bubble-owned and naked segments
+    (up to a few hops) to find other sibling endpoints.
 
-    Adjacency between siblings is now primarily computed during
-    decomposition; this function focuses on the visual connector lines.
+    Connectors route through naked regions: A → na → nb → B where na/nb
+    are the entry/exit centroids of the naked segment region along the path.
     """
     MAX_HOPS = 6
 
@@ -693,42 +721,85 @@ def find_sibling_connectors(chains_data, gfaidx, bubbleidx):
             for sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
                 ep_seg_to_chain[sid] = cd["id"]
 
-        # BFS from each endpoint through bubble-owned segments
+        # BFS from each endpoint through bubble-owned AND naked segments.
+        # Track path to identify naked entry/exit points.
         for cd in siblings:
             for start_sid in (cd.get("source_segs") or []) + (cd.get("sink_segs") or []):
                 if start_sid not in seg_to_coord:
                     continue
 
-                queue = deque([(start_sid, 0)])
+                # BFS with path tracking: (seg_id, hops, path)
+                queue = deque([(start_sid, 0, [start_sid])])
                 visited = {start_sid}
 
                 while queue:
-                    cur, hops = queue.popleft()
+                    cur, hops, path = queue.popleft()
                     if hops > MAX_HOPS:
                         continue
                     for nxt in gfaidx.get_neighbors(cur):
                         if nxt in visited:
                             continue
-                        # Reached a sibling's endpoint (or self for deletion alleles)?
+                        # Reached a sibling's endpoint?
                         if nxt in ep_seg_to_chain:
                             other_chain = ep_seg_to_chain[nxt]
                             sibling_adj.setdefault(cd["id"], set()).add(other_chain)
                             if other_chain != cd["id"]:
                                 sibling_adj.setdefault(other_chain, set()).add(cd["id"])
-                            if nxt in seg_to_coord:
+                            if other_chain != cd["id"] and nxt in seg_to_coord:
                                 key = frozenset([start_sid, nxt])
                                 if key not in seen:
                                     seen.add(key)
-                                    connectors.append([seg_to_coord[start_sid],
-                                                       seg_to_coord[nxt]])
+                                    connectors.append(
+                                        _build_routed_connector(
+                                            start_sid, nxt, path,
+                                            seg_to_coord, seg_index,
+                                            bubbleidx, decomposed_bubbles))
                             continue
-                        # Allow traversal through any bubble-owned segment
-                        if bubbleidx.segment_in_bubble(nxt) is None:
-                            continue
+                        # Allow traversal through bubble-owned OR naked segments
                         visited.add(nxt)
-                        queue.append((nxt, hops + 1))
+                        queue.append((nxt, hops + 1, path + [nxt]))
 
     return connectors, sibling_adj
+
+
+def _build_routed_connector(start_sid, end_sid, path, seg_to_coord,
+                            seg_index, bubbleidx, decomposed_bubbles=None):
+    """Build a polyline A → na → nb → B routing through naked regions.
+
+    path is the BFS path from start_sid (exclusive of end_sid).
+    Naked entry/exit points are the first/last naked segment centroids
+    along the path.
+    """
+    start_coord = seg_to_coord[start_sid]
+    end_coord = seg_to_coord[end_sid]
+    _decomposed = decomposed_bubbles or set()
+
+    def _is_naked(sid):
+        owner = bubbleidx.segment_in_bubble(sid)
+        return owner is None or owner in _decomposed
+
+    # Find naked segments along the path (excluding start/end which are endpoints)
+    naked_in_path = []
+    for sid in path[1:]:  # skip start_sid (chain endpoint)
+        if _is_naked(sid):
+            pt = _seg_centroid(sid, seg_index)
+            if pt:
+                naked_in_path.append([round(pt[0], 1), round(pt[1], 1)])
+
+    if not naked_in_path:
+        # No naked region — direct connector
+        return [start_coord, end_coord]
+
+    # Route through naked entry and exit points
+    na = naked_in_path[0]
+    nb = naked_in_path[-1]
+    polyline = [start_coord]
+    if na != start_coord:
+        polyline.append(na)
+    if nb != na and nb != end_coord:
+        polyline.append(nb)
+    polyline.append(end_coord)
+    return polyline
 
 
 # ---------------------------------------------------------------

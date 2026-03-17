@@ -34,14 +34,12 @@ export function drawDetail() {
 
     // 1. Junction links
     if (!state.hideChainOverlay && state.detailData.junctionLinks?.length > 0) {
-        strokeLines(ctx, state.detailData.junctionLinks, '#999', lineWidth, 0.7 * opacity);
+        const jlCoords = state.detailData.junctionLinks.map(jl => jl.coords);
+        strokeLines(ctx, jlCoords, '#999', lineWidth, 0.7 * opacity);
     }
 
-    // 2. Junction segments (rendered as segment lines)
-    const jgNodes = state.detailData.junctionGraph?.nodes;
-    if (!state.hideChainOverlay && jgNodes?.length > 0) {
-        strokeSegments(ctx, jgNodes, '#999', lineWidth, 0.6 * opacity);
-    }
+    // 2. Junction segments — disabled (junction links show the topology;
+    //    segment geometries are visual clutter from ODGI layout coords)
 
     // 3. Chain polylines
     if (!state.hideChainOverlay) {
@@ -52,12 +50,7 @@ export function drawDetail() {
         }
     }
 
-    // 4. Sibling connectors
-    if (!state.hideChainOverlay && state.detailData.siblingConnectors?.length > 0) {
-        const dash = Math.max(2, 4 / state.zoom);
-        strokeDashedPolylines(ctx, state.detailData.siblingConnectors, '#aaa',
-            Math.max(0.8, 1.8 / state.zoom), 0.5 * opacity, dash);
-    }
+    // 4. Sibling connectors — disabled (junction links show the topology)
 
     // 5. Selection highlight
     if (state.selectedChains.size > 0) {

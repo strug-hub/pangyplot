@@ -49,7 +49,7 @@ function processResponse(apiResponse) {
         junctionNodes: apiResponse.junction_nodes || [],
         junctionLinks: (apiResponse.junction_links || []).map(l => ({
             coords: [l[0], l[1]],
-            chains: l[2] || [],
+            segs: [l[2], l[3]],
         })),
         junctionGraph: apiResponse.junction_graph || { nodes: [], links: [] },
         junctionSegChains: apiResponse.junction_seg_chains || {},

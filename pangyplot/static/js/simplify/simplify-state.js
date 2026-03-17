@@ -45,6 +45,7 @@ export const state = {
     hoveredChain: null,
     hoveredBubble: null,
     hoveredForceNode: null,   // popped node from force simulation
+    hoveredJunctionLink: null, // junction link object
     hoveredSkeletonPl: null,  // {plIdx, chainId}
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)
@@ -81,3 +82,5 @@ export const state = {
         fetchIndicator: document.getElementById('fetch-indicator'),
     },
 };
+
+window.__ss = state;  // debug access

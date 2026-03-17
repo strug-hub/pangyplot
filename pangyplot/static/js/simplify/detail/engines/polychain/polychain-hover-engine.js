@@ -90,6 +90,90 @@ function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
     return true;
 }
 
+// ---------------------------------------------------------------
+// Junction link hit testing + tooltip
+// ---------------------------------------------------------------
+
+export function hitTestJunctionLinks(dataX, dataY) {
+    if (!state.detailData?.junctionLinks || state.detailOpacity < 0.5) return null;
+    const hitR = HIT_RADIUS_PX / state.zoom;
+    let bestDist = hitR;
+    let bestLink = null;
+
+    for (const jl of state.detailData.junctionLinks) {
+        const [[ax, ay], [bx, by]] = jl.coords;
+        const d = pointToSegmentDist(dataX, dataY, ax, ay, bx, by);
+        if (d < bestDist) {
+            bestDist = d;
+            bestLink = jl;
+        }
+    }
+    return bestLink;
+}
+
+export function getJunctionLinkTooltip(jl) {
+    const [sidA, sidB] = jl.segs;
+    const segChains = state.detailData?.junctionSegChains || {};
+    const chainsA = segChains[`s${sidA}`] || [];
+    const chainsB = segChains[`s${sidB}`] || [];
+    const allChains = [...new Set([...chainsA, ...chainsB])];
+
+    return {
+        link: `s${sidA} — s${sidB}`,
+        chains: allChains.length > 0 ? allChains.join(', ') : null,
+    };
+}
+
+// ---------------------------------------------------------------
+// Sibling connector hit testing + tooltip
+// ---------------------------------------------------------------
+
+export function hitTestSiblingConnectors(dataX, dataY) {
+    if (!state.detailData?.siblingConnectors?.length || state.detailOpacity < 0.5) return null;
+    const hitR = HIT_RADIUS_PX / state.zoom;
+    let bestDist = hitR;
+    let bestIdx = -1;
+
+    for (let i = 0; i < state.detailData.siblingConnectors.length; i++) {
+        const pl = state.detailData.siblingConnectors[i];
+        for (let j = 0; j < pl.length - 1; j++) {
+            const d = pointToSegmentDist(dataX, dataY, pl[j][0], pl[j][1], pl[j+1][0], pl[j+1][1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestIdx = i;
+            }
+        }
+    }
+    return bestIdx >= 0 ? bestIdx : null;
+}
+
+export function getSiblingConnectorTooltip(idx) {
+    const sc = state.detailData.siblingConnectors[idx];
+    const start = sc[0];
+    const end = sc[sc.length - 1];
+
+    // Match endpoints to chains
+    const chains = state.detailData.chains;
+    let fromChain = null;
+    let toChain = null;
+    for (const c of chains) {
+        const pl = c.polyline;
+        if (pl.length < 2) continue;
+        const head = pl[0], tail = pl[pl.length - 1];
+        if (head[0] === start[0] && head[1] === start[1]) fromChain = c.id;
+        if (tail[0] === start[0] && tail[1] === start[1]) fromChain = c.id;
+        if (head[0] === end[0] && head[1] === end[1]) toChain = c.id;
+        if (tail[0] === end[0] && tail[1] === end[1]) toChain = c.id;
+    }
+
+    const routed = sc.length > 2;
+    return {
+        type: 'sibling connector',
+        link: (fromChain || '?') + ' — ' + (toChain || '?'),
+        ...(routed ? { waypoints: sc.length - 2 } : {}),
+    };
+}
+
 export function getChainTooltip(chain) {
     // Show ancestry for full chains, but not partial connector segments (c122:xxx-yyy)
     let label = chain.id;

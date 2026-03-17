@@ -21,7 +21,9 @@ function row(label, value, color) {
 export function formatTooltipHtml(data) {
     const lines = [];
 
+    if (data.link != null)     lines.push(row('link', data.link, '#999'));
     if (data.chain != null)    lines.push(row('chain', data.chain));
+    if (data.chains != null)   lines.push(row('chains', data.chains));
     if (data.segment != null)  lines.push(row('segment', data.segment));
     if (data.bubble != null)   lines.push(row('bubble', data.bubble));
     if (data.type != null)     lines.push(row('type', data.type, TYPE_COLORS[data.type]));
@@ -29,6 +31,7 @@ export function formatTooltipHtml(data) {
     if (data.bubbles != null)  lines.push(row('bubbles', data.bubbles));
     if (data.polyline != null) lines.push(row('polyline', data.polyline + ' pts'));
     if (data.depth != null)    lines.push(row('depth', data.depth));
+    if (data.waypoints != null) lines.push(row('waypoints', data.waypoints));
 
     return lines.join('<br>');
 }
