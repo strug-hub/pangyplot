@@ -36,12 +36,11 @@ export function parseUrlHash() {
     return { chrom: m[1], start: parseInt(m[2], 10), end: parseInt(m[3], 10) };
 }
 
-export function navigateToHash() {
-    const params = parseUrlHash();
-    if (!params || !isReady()) return false;
+export function navigateToRegion(startBp, endBp) {
+    if (!isReady()) return false;
 
-    const layoutLeft = bpToX(params.start);
-    const layoutRight = bpToX(params.end);
+    const layoutLeft = bpToX(startBp);
+    const layoutRight = bpToX(endBp);
     if (layoutLeft === null || layoutRight === null) return false;
 
     const dpr = window.devicePixelRatio || 1;
@@ -63,4 +62,10 @@ export function navigateToHash() {
     state.panX = (cw / 2) - (midX * state.zoom);
     state.panY = (ch / 2) - (midY * state.zoom);
     return true;
+}
+
+export function navigateToHash() {
+    const params = parseUrlHash();
+    if (!params || !isReady()) return false;
+    return navigateToRegion(params.start, params.end);
 }

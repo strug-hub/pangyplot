@@ -2,7 +2,6 @@ import eventBus from "../utils/event-bus.js";
 
 const EMPTY = "⬜";
 const EMPTY_FLANKING = "flankingregion";
-const MAX_QUERY_SIZE = 2_000_000; // 2 MB (in base pairs)
 
 document.getElementById("go-button").addEventListener("click", function () {
   const goBox = document.getElementById("go-chrom-start-end");
@@ -28,21 +27,6 @@ document.getElementById("go-button").addEventListener("click", function () {
     } if(plusFlanking.classList.contains("button-selected")){
       const endInt = parseInt(end);
       end = String(endInt+flanking);
-    }
-
-
-    // Calculate query span
-    const startInt = parseInt(start);
-    const endInt = parseInt(end);
-    const querySize = endInt - startInt;
-
-    if (querySize > MAX_QUERY_SIZE) {
-      alert(
-        `Query region size (${querySize.toLocaleString()} bp) exceeds the current limit of ${MAX_QUERY_SIZE.toLocaleString()} bp.\n\n` +
-        `To prevent excessive resource usage, visualization is temporarily limited to ~2 MB windows.\n` +
-        `Future versions of PangyPlot will support arbitrary-scale visualization.`
-      );
-      return; // stop here
     }
 
 

@@ -3,7 +3,7 @@
 import { resizeCanvas, fitToScreen } from './render/viewport.js';
 import { loadChromosome } from './data/chromosome-loader.js';
 import { placeGenes } from './skeleton/data/gene-data.js';
-import { navigateToHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
+import { navigateToHash, parseUrlHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
 import { scheduleFrame } from './utils/frame-scheduler.js';
 import './render-manager.js';
 import { scheduleDetailFetch } from './engines/detail-transition-engine.js';
@@ -11,9 +11,14 @@ import { setupEngines } from './engines/engine-manager.js';
 import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
 import { isReady } from './engines/reference-spine-engine.js';
 import { state } from './simplify-state.js';
+import { setupUiBridge } from './ui/ui-bridge.js';
+import { publishViewportCoordinates } from './ui/viewport-sync.js';
 
 async function init() {
-    state.chromosome = 'chrY';
+    // Determine initial chromosome from URL hash, fall back to chrY
+    const hashParams = parseUrlHash();
+    state.chromosome = (hashParams && hashParams.chrom) ? hashParams.chrom : 'chrY';
+
     try {
         await loadChromosome(state.chromosome);
     } catch (err) {
@@ -34,7 +39,11 @@ async function init() {
     scheduleFrame();
     scheduleDetailFetch();
     scheduleHashUpdate();
+
+    // Seed the shared UI (coordinate display + cytoband) with initial viewport
+    publishViewportCoordinates();
 }
 
+setupUiBridge();
 setupEngines();
 init();

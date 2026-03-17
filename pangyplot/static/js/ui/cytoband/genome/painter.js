@@ -47,6 +47,7 @@ function drawGenomeChromosomeBorder(svg, index, chromosome) {
         .attr("height", dim.chrFullHeight)
         .attr("class", "cytoband-genome-chromosome")
         .on('click', function() {
+            console.log('[cytoband-genome] clicked chromosome:', chromosome);
             const data = {chromosome, start: null, end: null, source: "cytoband-genome"};
             eventBus.publish("ui:coordinates-changed", data);
         });
@@ -85,6 +86,7 @@ function drawGenomeChromosomeBands(svg, index, chromosome, genomeData) {
         .attr("height", d => dim.chrHeight * (d.end - d.start) / longestChromSize)
         .attr("fill", d => d.color)
         .attr("class", d => bandClasses(d))
+        .style("pointer-events", "none")
 }
 
 function createAnnotation(chromosome, index) {

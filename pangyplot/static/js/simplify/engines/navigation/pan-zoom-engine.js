@@ -5,6 +5,7 @@ import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { scheduleDetailFetch, exitDetailMode } from '../detail-transition-engine.js';
 import { scheduleHashUpdate } from '../../engines/navigation/hash-navigation.js';
 import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
+import { scheduleViewportPublish } from '../../ui/viewport-sync.js';
 
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
@@ -35,6 +36,7 @@ export function setupPanZoom(canvas) {
         state.isDragging = false;
         canvas.style.cursor = 'grab';
         scheduleHashUpdate();
+        scheduleViewportPublish();
     });
 
     // --- Wheel zoom ---
@@ -44,7 +46,7 @@ export function setupPanZoom(canvas) {
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
 
-        const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+        const factor = e.deltaY < 0 ? 1.05 : 1 / 1.05;
         const newZoom = state.zoom * factor;
 
         state.panX = mx - (mx - state.panX) * (newZoom / state.zoom);
@@ -53,6 +55,7 @@ export function setupPanZoom(canvas) {
         scheduleFrame();
         scheduleDetailFetch();
         scheduleHashUpdate();
+        scheduleViewportPublish();
     }, { passive: false });
 
     // --- Resize ---
