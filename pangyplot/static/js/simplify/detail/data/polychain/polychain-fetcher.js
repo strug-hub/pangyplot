@@ -3,6 +3,8 @@
 
 import { state } from '../../../simplify-state.js';
 import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
+import { clearForce } from '../../engines/force-engine.js';
+import { resetSimplifyViewState } from '../simplify-view-state.js';
 
 let fetchController = null;
 
@@ -45,7 +47,10 @@ function processResponse(apiResponse) {
         bpStart: apiResponse.tile_start,
         bpEnd: apiResponse.tile_end,
         junctionNodes: apiResponse.junction_nodes || [],
-        junctionLinks: apiResponse.junction_links || [],
+        junctionLinks: (apiResponse.junction_links || []).map(l => ({
+            coords: [l[0], l[1]],
+            chains: l[2] || [],
+        })),
         junctionGraph: apiResponse.junction_graph || { nodes: [], links: [] },
         junctionSegChains: apiResponse.junction_seg_chains || {},
         chainAdjacency: apiResponse.chain_adjacency || {},
@@ -67,14 +72,13 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, expandThres
     // --- Cache check (layout coords, no bp needed) ---
     if (fetchedRegion &&
         fetchedRegion.chr === chr &&
-        fetchedRegion.expandThreshold === expandThreshold &&
         vp.minX >= fetchedRegion.minX &&
         vp.maxX <= fetchedRegion.maxX) {
         return false;
     }
 
-    // Margin: 30% of viewport width in layout units
-    const margin = vpWidth * 0.3;
+    // Margin: 100% of viewport width in layout units (covers ~3x zoom-out)
+    const margin = vpWidth * 1.0;
     const fetchMinX = vp.minX - margin;
     const fetchMaxX = vp.maxX + margin;
 
@@ -102,7 +106,16 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, expandThres
         const apiData = await resp.json();
         if (signal.aborted) return false;
 
-        fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr, expandThreshold };
+        fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
+
+        // Clear stale force state before replacing detail data —
+        // old chain IDs won't match the new decomposition.
+        clearForce();
+        state.poppedChainIds.clear();
+        state.activeSeedChainId = null;
+        resetSimplifyViewState();
+        state._bubblePopStack = [];
+
         clearHistory();
         recordPop('detail-tiles', {
             genome: state.GENOME, chromosome: chr,
