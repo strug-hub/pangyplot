@@ -1,7 +1,7 @@
 // Detail render pipeline: culling, orchestration.
 
 import { state } from '../../../simplify-state.js';
-import { strokeLines, strokeSegments, strokePolyline, strokePolylines, strokeDashedPolylines } from '../detail-painter.js';
+import { strokeLines, strokePolyline, strokePolylines } from '../detail-painter.js';
 
 function getVisibleChainPolylines(chains) {
     const base = [];
@@ -50,9 +50,7 @@ export function drawDetail() {
         }
     }
 
-    // 4. Sibling connectors — disabled (junction links show the topology)
-
-    // 5. Selection highlight
+    // 4. Selection highlight
     if (state.selectedChains.size > 0) {
         const selected = getSelectedPolylines();
         if (selected.length > 0) {

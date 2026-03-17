@@ -54,7 +54,6 @@ function processResponse(apiResponse) {
         junctionGraph: apiResponse.junction_graph || { nodes: [], links: [] },
         junctionSegChains: apiResponse.junction_seg_chains || {},
         chainAdjacency: apiResponse.chain_adjacency || {},
-        siblingConnectors: apiResponse.sibling_connectors || [],
     };
 }
 

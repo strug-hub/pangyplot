@@ -36,10 +36,10 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
 }
 
 /**
- * Create inter-chain links from sibling connectors.
+ * Create inter-chain links from junction link coordinates.
  */
-export function createInterChainLinks(siblingConnectors, poppedChainIds, chains, forceNodes) {
-    if (!siblingConnectors || siblingConnectors.length === 0) return { nodes: [], links: [] };
+export function createInterChainLinks(junctionLinks, poppedChainIds, chains, forceNodes) {
+    if (!junctionLinks || junctionLinks.length === 0) return { nodes: [], links: [] };
 
     const coordToAnchor = new Map();
     for (const node of forceNodes) {
@@ -74,7 +74,8 @@ export function createInterChainLinks(siblingConnectors, poppedChainIds, chains,
         return phantom;
     }
 
-    for (const [coordA, coordB] of siblingConnectors) {
+    for (const jl of junctionLinks) {
+        const [coordA, coordB] = jl.coords;
         const keyA = `${Math.round(coordA[0])},${Math.round(coordA[1])}`;
         const keyB = `${Math.round(coordB[0])},${Math.round(coordB[1])}`;
 

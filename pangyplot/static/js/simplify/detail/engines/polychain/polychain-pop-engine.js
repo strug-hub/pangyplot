@@ -83,7 +83,7 @@ function createInterChainLinksForPopped() {
     removeInterChainLinks();
 
     const { nodes, links } = createInterChainLinks(
-        dd.siblingConnectors, state.poppedChainIds, dd.chains, getForceNodes());
+        dd.junctionLinks, state.poppedChainIds, dd.chains, getForceNodes());
     if (links.length > 0) {
         if (nodes.length > 0) {
             const phantomLinks = links.filter(l => l.source?.isPhantom || l.target?.isPhantom);

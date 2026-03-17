@@ -1,5 +1,5 @@
 from pangyplot.db.chain_polyline import (
-    decompose_chain, find_junction_graph, find_sibling_connectors,
+    decompose_chain, find_junction_graph,
     _seg_centroid,
 )
 
@@ -429,14 +429,9 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         junction_graph = {"nodes": [], "links": []}
         junction_seg_chains = {}
 
-    # --- Sibling connector BFS ---
-    sibling_connectors, sibling_adj = \
-        find_sibling_connectors(result_chains, gfaidx, bubbleidx, seg_index,
-                               decomposed_bubbles=decomposed_bubbles)
-
     # --- Merge adjacency ---
     chain_adjacency = {}
-    for src in (decomp_adj, junction_adj, sibling_adj):
+    for src in (decomp_adj, junction_adj):
         for k, v in src.items():
             chain_adjacency.setdefault(k, set()).update(v)
     chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
@@ -451,5 +446,4 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "junction_graph": junction_graph,
         "junction_seg_chains": junction_seg_chains,
         "chain_adjacency": chain_adjacency,
-        "sibling_connectors": sibling_connectors + bypass_links,
     }

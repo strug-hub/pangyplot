@@ -31,7 +31,6 @@ export function formatTooltipHtml(data) {
     if (data.bubbles != null)  lines.push(row('bubbles', data.bubbles));
     if (data.polyline != null) lines.push(row('polyline', data.polyline + ' pts'));
     if (data.depth != null)    lines.push(row('depth', data.depth));
-    if (data.waypoints != null) lines.push(row('waypoints', data.waypoints));
 
     return lines.join('<br>');
 }
