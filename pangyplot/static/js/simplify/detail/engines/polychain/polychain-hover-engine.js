@@ -91,17 +91,83 @@ function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 
 // ---------------------------------------------------------------
+// Junction segment hit testing + tooltip
+// ---------------------------------------------------------------
+
+export function hitTestJunctionSegments(dataX, dataY) {
+    const jg = state.detailData?.junctionGraph;
+    if (!jg || jg.nodes.length === 0 || state.detailOpacity < 0.5) return null;
+    const hitR = HIT_RADIUS_PX / state.zoom;
+    let bestDist = hitR;
+    let bestNode = null;
+
+    for (const n of jg.nodes) {
+        const d = pointToSegmentDist(dataX, dataY, n.x1, n.y1, n.x2, n.y2);
+        if (d < bestDist) {
+            bestDist = d;
+            bestNode = n;
+        }
+    }
+    return bestNode;
+}
+
+export function getJunctionSegTooltip(node) {
+    const segChains = state.detailData?.junctionSegChains || {};
+    const chains = segChains[`s${node.id}`] || [];
+    return {
+        segment: node.id,
+        length: node.length,
+        chains: chains.length > 0 ? chains.join(', ') : null,
+    };
+}
+
+// ---------------------------------------------------------------
 // Junction link hit testing + tooltip
 // ---------------------------------------------------------------
+
+/**
+ * Build a Map<segId, node> from junctionGraph.nodes, cached on detailData.
+ */
+export function getJunctionNodeById() {
+    const dd = state.detailData;
+    if (!dd) return null;
+    if (dd._junctionNodeById) return dd._junctionNodeById;
+    const jg = dd.junctionGraph;
+    if (!jg || jg.nodes.length === 0) return null;
+    const map = new Map();
+    for (const n of jg.nodes) map.set(n.id, n);
+    dd._junctionNodeById = map;
+    return map;
+}
+
+/**
+ * Compute the adjusted coords for a junction link, using the proximity
+ * heuristic: for each end that is a junction graph node, pick the segment
+ * endpoint (x1,y1 or x2,y2) closest to the other end's coord.
+ */
+export function adjustedJLCoords(jl, nodeById) {
+    const coords = [jl.coords[0], jl.coords[1]];
+    if (!nodeById) return coords;
+    for (let e = 0; e < 2; e++) {
+        const node = nodeById.get(`s${jl.segs[e]}`);
+        if (!node) continue;
+        const other = coords[1 - e];
+        const d1 = (node.x1 - other[0]) ** 2 + (node.y1 - other[1]) ** 2;
+        const d2 = (node.x2 - other[0]) ** 2 + (node.y2 - other[1]) ** 2;
+        coords[e] = d1 <= d2 ? [node.x1, node.y1] : [node.x2, node.y2];
+    }
+    return coords;
+}
 
 export function hitTestJunctionLinks(dataX, dataY) {
     if (!state.detailData?.junctionLinks || state.detailOpacity < 0.5) return null;
     const hitR = HIT_RADIUS_PX / state.zoom;
     let bestDist = hitR;
     let bestLink = null;
+    const nodeById = getJunctionNodeById();
 
     for (const jl of state.detailData.junctionLinks) {
-        const [[ax, ay], [bx, by]] = jl.coords;
+        const [[ax, ay], [bx, by]] = adjustedJLCoords(jl, nodeById);
         const d = pointToSegmentDist(dataX, dataY, ax, ay, bx, by);
         if (d < bestDist) {
             bestDist = d;
