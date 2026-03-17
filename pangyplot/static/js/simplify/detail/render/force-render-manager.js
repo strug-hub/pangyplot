@@ -9,7 +9,8 @@ export function drawForceGraph(ctx, baseWidth) {
     const links = getForceLinks();
     if (nodes.length === 0) return;
 
-    const nodeR = Math.max(1.5, 3 / state.zoom);
+    // Scale factor matching core: node.width * scaleFactor gives visual size
+    const scaleFactor = Math.max(0.3, 2 / state.zoom);
     const opacity = state.detailOpacity;
 
     ctx.lineCap = 'round';
@@ -35,14 +36,14 @@ export function drawForceGraph(ctx, baseWidth) {
         }
     }
 
-    // 1. Kink links (segment body)
+    // 1. Kink links (segment body) — width matches source node
     for (const [color, segs] of kinkByColor) {
-        strokeSegments(ctx, segs, color, nodeR * 2, opacity);
+        strokeSegments(ctx, segs, color, 5 * scaleFactor, opacity);
     }
 
     // 2. Chain links (bubble-to-bubble)
     if (chainSegs.length > 0) {
-        strokeSegments(ctx, chainSegs, '#FF6700', nodeR * 2, 0.8 * opacity);
+        strokeSegments(ctx, chainSegs, '#FF6700', 5 * scaleFactor, 0.8 * opacity);
     }
 
     // 3. Junction + inter-chain links
@@ -56,7 +57,8 @@ export function drawForceGraph(ctx, baseWidth) {
 
     for (const node of nodes) {
         if (node.x == null || node.isPhantom) continue;
-        const circle = { x: node.x, y: node.y, r: nodeR };
+        const r = (node.width || 5) * scaleFactor * 0.5;
+        const circle = { x: node.x, y: node.y, r };
         if (node.type === 'bubble') {
             bubbleCircles.push(circle);
         } else {
@@ -71,7 +73,8 @@ export function drawForceGraph(ctx, baseWidth) {
     // 5. Hover highlight ring
     const hovNode = state.hoveredForceNode || state.hoveredBubble;
     if (hovNode && hovNode.x != null) {
-        strokeRing(ctx, hovNode.x, hovNode.y, nodeR * 1.8,
+        const hovR = (hovNode.width || 5) * scaleFactor * 0.5;
+        strokeRing(ctx, hovNode.x, hovNode.y, hovR * 1.8,
             '#FAB3AE', Math.max(1, 2 / state.zoom), opacity);
     }
 }
