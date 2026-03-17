@@ -4,6 +4,7 @@
 import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from '../simplify-view-state.js';
 import { getForceNodes } from '../force-data.js';
+import { getJunctionNodeById, adjustedJLCoords } from '../../engines/polychain/polychain-hover-engine.js';
 
 /**
  * Convert a /chain-graph API response into augmented core elements
@@ -93,6 +94,9 @@ export function createInterChainLinks(junctionLinks, poppedChainIds, chains, for
         return phantom;
     }
 
+    // Use junction segment endpoints for phantom placement instead of centroids
+    const junctionNodeById = getJunctionNodeById() || new Map();
+
     for (let i = 0; i < junctionLinks.length; i++) {
         if (skipJunctions.has(i)) continue; // handled by junction nodes
         const jl = junctionLinks[i];
@@ -105,8 +109,11 @@ export function createInterChainLinks(junctionLinks, poppedChainIds, chains, for
 
         if (!anchorA && !anchorB) continue;
 
-        const nodeA = anchorA ? anchorA.node : getOrCreatePhantom(coordA);
-        const nodeB = anchorB ? anchorB.node : getOrCreatePhantom(coordB);
+        // For the unpopped side (phantom), use adjusted coords from junction segment
+        // endpoints rather than raw centroid coords
+        const adjusted = adjustedJLCoords(jl, junctionNodeById);
+        const nodeA = anchorA ? anchorA.node : getOrCreatePhantom(adjusted[0]);
+        const nodeB = anchorB ? anchorB.node : getOrCreatePhantom(adjusted[1]);
         if (nodeA === nodeB) continue;
 
         const pairKey = `${nodeA.id}↔${nodeB.id}`;

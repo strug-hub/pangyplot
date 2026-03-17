@@ -105,22 +105,37 @@ export function drawDetail() {
 
             // C. Junction links to chain endpoints (proximity-based strand selection)
             // Skip links where both ends are junction graph nodes (handled by step B)
+            // Also skip links where one end terminates at a popped chain's endpoint
+            // (force graph phantom link replaces this connection).
+            // Use coordinate matching rather than segToChains because a segment can
+            // be shared between popped and unpopped chains.
             if (hasLinks) {
+                // Build set of popped chain polyline endpoint coordinates
+                let poppedEndpointKeys = null;
+                if (popped.size > 0) {
+                    poppedEndpointKeys = new Set();
+                    for (const chain of dd.chains) {
+                        if (!popped.has(chain.id)) continue;
+                        const pl = chain.polyline;
+                        if (pl.length >= 2) {
+                            poppedEndpointKeys.add(`${Math.round(pl[0][0])},${Math.round(pl[0][1])}`);
+                            poppedEndpointKeys.add(`${Math.round(pl[pl.length-1][0])},${Math.round(pl[pl.length-1][1])}`);
+                        }
+                    }
+                }
+
                 const jlCoords = [];
                 for (const jl of jls) {
                     const inGraphA = nodeById.has(`s${jl.segs[0]}`);
                     const inGraphB = nodeById.has(`s${jl.segs[1]}`);
                     if (inGraphA && inGraphB) continue; // drawn by GFA links (step B)
-                    if (popped.size > 0) {
-                        const chainsA = segToChains[`s${jl.segs[0]}`] || [];
-                        const chainsB = segToChains[`s${jl.segs[1]}`] || [];
-                        if (chainsA.length > 0 && chainsB.length > 0 &&
-                            chainsA.every(c => popped.has(c)) &&
-                            chainsB.every(c => popped.has(c))) {
-                            continue;
-                        }
+                    const adjusted = adjustedJLCoords(jl, nodeById);
+                    if (poppedEndpointKeys) {
+                        const kA = `${Math.round(adjusted[0][0])},${Math.round(adjusted[0][1])}`;
+                        const kB = `${Math.round(adjusted[1][0])},${Math.round(adjusted[1][1])}`;
+                        if (poppedEndpointKeys.has(kA) || poppedEndpointKeys.has(kB)) continue;
                     }
-                    jlCoords.push(adjustedJLCoords(jl, nodeById));
+                    jlCoords.push(adjusted);
                 }
                 if (jlCoords.length > 0) {
                     strokeLines(ctx, jlCoords, '#969696', lineWidth, 0.7 * opacity);
