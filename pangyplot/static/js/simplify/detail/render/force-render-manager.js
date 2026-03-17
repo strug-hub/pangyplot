@@ -73,14 +73,9 @@ export function drawForceGraph(ctx, baseWidth) {
     // --- Categorize nodes ---
     const bubbleCircles = [];
     const segCircles = [];
-    const phantomStars = [];
 
     for (const node of nodes) {
-        if (node.x == null) continue;
-        if (node.isPhantom) {
-            phantomStars.push({ x: node.x, y: node.y });
-            continue;
-        }
+        if (node.x == null || node.isPhantom) continue;
         const r = (node.width || 5) * scaleFactor * 0.5;
         const circle = { x: node.x, y: node.y, r };
         if (node.type === 'bubble') {
@@ -94,16 +89,6 @@ export function drawForceGraph(ctx, baseWidth) {
     if (bubbleCircles.length > 0) fillCircles(ctx, bubbleCircles, '#F2DC0F', opacity);
     if (segCircles.length > 0) fillCircles(ctx, segCircles, '#0762E5', opacity);
 
-    // 4b. Phantom debug stars
-    if (phantomStars.length > 0) {
-        const starR = Math.max(4, 8 / state.zoom);
-        ctx.fillStyle = '#FF00FF';
-        ctx.globalAlpha = opacity;
-        for (const s of phantomStars) {
-            drawStar(ctx, s.x, s.y, 5, starR, starR * 0.4);
-        }
-    }
-
     // 5. Hover highlight ring
     const hovNode = state.hoveredForceNode || state.hoveredBubble;
     if (hovNode && hovNode.x != null) {
@@ -111,18 +96,4 @@ export function drawForceGraph(ctx, baseWidth) {
         strokeRing(ctx, hovNode.x, hovNode.y, hovR * 1.8,
             '#FAB3AE', Math.max(1, 2 / state.zoom), opacity);
     }
-}
-
-function drawStar(ctx, cx, cy, points, outerR, innerR) {
-    ctx.beginPath();
-    for (let i = 0; i < points * 2; i++) {
-        const r = i % 2 === 0 ? outerR : innerR;
-        const angle = (Math.PI / points) * i - Math.PI / 2;
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
 }

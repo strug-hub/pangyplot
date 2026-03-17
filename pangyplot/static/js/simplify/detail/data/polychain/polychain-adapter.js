@@ -3,7 +3,7 @@
 
 import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from '../simplify-view-state.js';
-import { getForceNodes } from '../force-data.js';
+import { getForceNodes, getForceLinks } from '../force-data.js';
 import { addPoppedNodes, absorbPhantom, restorePhantom } from '../../engines/force-engine.js';
 import { state } from '../../../simplify-state.js';
 
@@ -115,8 +115,8 @@ export function initJunctionLayer() {
                 const t = n === 1 ? 0.5 : i / (n - 1);
                 kinks[i].x = raw.x1 + t * (raw.x2 - raw.x1);
                 kinks[i].y = raw.y1 + t * (raw.y2 - raw.y1);
-                delete kinks[i].fx;
-                delete kinks[i].fy;
+                kinks[i].fx = kinks[i].x;
+                kinks[i].fy = kinks[i].y;
             }
         }
 
@@ -225,12 +225,27 @@ function makeJunctionLink(source, target, sourceStrand, targetStrand, sourceSegI
     };
 }
 
-// Saved phantoms for restoration on unpop: chainId → { head: phantomNode, tail: phantomNode, headAnchor, tailAnchor }
+// Saved phantoms for restoration on unpop
 const absorbedPhantoms = new Map();
+
+/**
+ * Find junction nodes directly linked to a phantom node.
+ */
+function junctionNeighborsOf(phantom) {
+    const result = [];
+    for (const link of getForceLinks()) {
+        const other = link.source === phantom ? link.target
+                    : link.target === phantom ? link.source
+                    : null;
+        if (other && other.chainId === '__junction__') result.push(other);
+    }
+    return result;
+}
 
 /**
  * After popping a chain, absorb its phantoms: rewire all junction links
  * from the phantom to the co-located anchor node, then remove the phantom.
+ * Also unpin adjacent junction nodes so they join the force layout.
  */
 export function absorbChainsPhantoms(chainId, forceNodes) {
     const phantoms = chainPhantoms.get(chainId);
@@ -245,18 +260,51 @@ export function absorbChainsPhantoms(chainId, forceNodes) {
         else if (n.anchorRole === 'source+sink') { headAnchor = n; tailAnchor = n; }
     }
 
-    const saved = { head: null, tail: null, headAnchor, tailAnchor };
+    // Unpin junction segments adjacent to the phantoms being absorbed.
+    // A junction segment has multiple kinks (same node.id) — unpin all of them.
+    const unpinnedJunctions = [];
+    const unlockIds = new Set();
+    for (const p of [phantoms.head, phantoms.tail]) {
+        for (const jn of junctionNeighborsOf(p)) {
+            unlockIds.add(jn.id);
+        }
+    }
+    for (const n of forceNodes) {
+        if (n.chainId === '__junction__' && unlockIds.has(n.id) && n.fx != null) {
+            unpinnedJunctions.push({ node: n, fx: n.fx, fy: n.fy });
+            delete n.fx;
+            delete n.fy;
+        }
+    }
+
+    const saved = { head: null, tail: null, headAnchor, tailAnchor, unpinnedJunctions };
     if (headAnchor) {
         saved.head = absorbPhantom(phantoms.head.iid, headAnchor);
     }
     if (tailAnchor && tailAnchor !== headAnchor) {
         saved.tail = absorbPhantom(phantoms.tail.iid, tailAnchor);
     }
+
+    // Unpin chain anchors so they join the force layout
+    if (headAnchor && headAnchor.fx != null) {
+        saved.headAnchorFx = headAnchor.fx;
+        saved.headAnchorFy = headAnchor.fy;
+        delete headAnchor.fx;
+        delete headAnchor.fy;
+    }
+    if (tailAnchor && tailAnchor !== headAnchor && tailAnchor.fx != null) {
+        saved.tailAnchorFx = tailAnchor.fx;
+        saved.tailAnchorFy = tailAnchor.fy;
+        delete tailAnchor.fx;
+        delete tailAnchor.fy;
+    }
+
     absorbedPhantoms.set(chainId, saved);
 }
 
 /**
  * After unpopping a chain, restore its phantoms and rewire links back.
+ * Re-pin any junction nodes that were unpinned during absorption.
  */
 export function restoreChainsPhantoms(chainId) {
     const saved = absorbedPhantoms.get(chainId);
@@ -268,6 +316,22 @@ export function restoreChainsPhantoms(chainId) {
     }
     if (saved.head && saved.headAnchor) {
         restorePhantom(saved.head, saved.headAnchor);
+    }
+
+    // Re-pin chain anchors
+    if (saved.headAnchor && saved.headAnchorFx != null) {
+        saved.headAnchor.fx = saved.headAnchorFx;
+        saved.headAnchor.fy = saved.headAnchorFy;
+    }
+    if (saved.tailAnchor && saved.tailAnchor !== saved.headAnchor && saved.tailAnchorFx != null) {
+        saved.tailAnchor.fx = saved.tailAnchorFx;
+        saved.tailAnchor.fy = saved.tailAnchorFy;
+    }
+
+    // Re-pin junction nodes that were unpinned
+    for (const { node, fx, fy } of saved.unpinnedJunctions) {
+        node.fx = fx;
+        node.fy = fy;
     }
 }
 
