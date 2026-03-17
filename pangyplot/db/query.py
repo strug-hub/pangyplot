@@ -290,6 +290,12 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
     # --- Inline pop (subgraph expansion for all chains with bubbles) ---
+    # Save bubble→chain mapping before pop removes _bubble_ids
+    _bid_to_chain = {}
+    for cd in chain_result["chains"]:
+        for bid in (cd.get("_bubble_ids") or cd.get("bubble_ids") or []):
+            _bid_to_chain[bid] = cd["id"]
+
     n_popped = 0
     result_chains = []
     for chain_data in chain_result["chains"]:
@@ -422,6 +428,27 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 cid = ep_to_chain.get(nxt)
                 if cid:
                     naked_seg_chains.setdefault(sid, set()).add(cid)
+
+        # Map internal bubble segs that appear in junction graph links
+        # to their owning chain.  These segs are inside chain bubbles
+        # (not naked, not chain endpoints) but have GFA edges to junction
+        # nodes.  Without this mapping the frontend linkResolver can't
+        # resolve them to the correct chain phantom.
+        for link in jg_links:
+            for seg_id in (link.from_id, link.to_id):
+                if seg_id in all_junction_seg_ids:
+                    continue
+                if seg_id in chain_endpoint_segs:
+                    continue
+                if seg_id in naked_seg_chains:
+                    continue
+                bub_id = bubbleidx.segment_in_bubble(seg_id)
+                if bub_id is None:
+                    continue
+                cid = _bid_to_chain.get(bub_id)
+                if cid:
+                    naked_seg_chains.setdefault(seg_id, set()).add(cid)
+
         junction_seg_chains = {
             f"s{k}": sorted(v) for k, v in naked_seg_chains.items()
         }

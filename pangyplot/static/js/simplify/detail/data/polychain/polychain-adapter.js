@@ -76,26 +76,69 @@ export function initJunctionLayer() {
         }
     }
 
-    // 2. Deserialize ALL junction graph nodes as force nodes
+    // 2. Deserialize junction graph nodes + ALL links (with phantom linkResolver)
     const jg = dd.junctionGraph;
     const jls = dd.junctionLinks;
     const junctionNodeIdSet = new Set();
     if (jg && jg.nodes.length > 0) {
         for (const n of jg.nodes) junctionNodeIdSet.add(n.id);
 
-        // Only intra-junction links for the subgraph deserializer
-        const intraLinks = (jg.links || []).filter(
-            l => junctionNodeIdSet.has(l.source) && junctionNodeIdSet.has(l.target)
-        );
+        // Build phantom record wrappers for link resolution
+        const phantomRecords = new Map();
+        for (const [, phantoms] of chainPhantoms) {
+            phantomRecords.set(phantoms.head.iid, makePhantomRecord(phantoms.head));
+            phantomRecords.set(phantoms.tail.iid, makePhantomRecord(phantoms.tail));
+        }
 
+        // Build segToChainPhantom for non-endpoint segs (from junctionSegChains).
+        // Uses geometric proximity to the linked junction node to pick head vs tail.
+        const segToChainPhantom = new Map();
+        const jscMap = dd.junctionSegChains || {};
+        const junctionNodePosMap = new Map(jg.nodes.map(n => [n.id, n]));
+        for (const rawLink of (jg.links || [])) {
+            const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
+            const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
+            for (const [segId, otherSegId] of [[sId, tId], [tId, sId]]) {
+                if (segToPhantom.has(segId) || segToChainPhantom.has(segId)) continue;
+                if (junctionNodeIdSet.has(segId)) continue;
+                const chainIds = jscMap[segId];
+                if (!chainIds || chainIds.length === 0) continue;
+                const otherNode = junctionNodePosMap.get(otherSegId);
+                for (const cid of chainIds) {
+                    const phantoms = chainPhantoms.get(cid);
+                    if (!phantoms) continue;
+                    let phantom;
+                    if (otherNode) {
+                        const refX = (otherNode.x1 + otherNode.x2) / 2;
+                        const refY = (otherNode.y1 + otherNode.y2) / 2;
+                        const dH = Math.hypot(refX - phantoms.head.x, refY - phantoms.head.y);
+                        const dT = Math.hypot(refX - phantoms.tail.x, refY - phantoms.tail.y);
+                        phantom = dH <= dT ? phantoms.head : phantoms.tail;
+                    } else {
+                        phantom = phantoms.head;
+                    }
+                    segToChainPhantom.set(segId, phantomRecords.get(phantom.iid));
+                    break;
+                }
+            }
+        }
+
+        // Deserialize junction nodes + ALL links with phantom linkResolver
         const { nodes: jNodes, links: jLinks } = deserializeSubgraph(
-            { nodes: jg.nodes, links: intraLinks },
-            { tag: { chainId: '__junction__' }, detectIndels: false }
+            { nodes: jg.nodes, links: jg.links || [] },
+            {
+                tag: { chainId: '__junction__' },
+                detectIndels: false,
+                linkResolver: (segId) => {
+                    const phantom = segToPhantom.get(segId);
+                    if (phantom) return phantomRecords.get(phantom.iid);
+                    return segToChainPhantom.get(segId) || null;
+                },
+            }
         );
 
         // Set initial positions from ODGI layout — interpolate kinks along segment geometry
         const rawNodeMap = new Map(jg.nodes.map(n => [n.id, n]));
-        // Group kink nodes by record ID to interpolate head→tail
         const kinksByRecord = new Map();
         for (const node of jNodes) {
             if (!kinksByRecord.has(node.id)) kinksByRecord.set(node.id, []);
@@ -104,7 +147,6 @@ export function initJunctionLayer() {
         for (const [recId, kinks] of kinksByRecord) {
             const raw = rawNodeMap.get(recId);
             if (!raw) continue;
-            // Sort by kink index (iid = "s123#0", "s123#1", ...)
             kinks.sort((a, b) => {
                 const ai = parseInt(a.iid.split('#')[1]) || 0;
                 const bi = parseInt(b.iid.split('#')[1]) || 0;
@@ -121,52 +163,45 @@ export function initJunctionLayer() {
         }
 
         allNodes.push(...jNodes);
-        allLinks.push(...jLinks);
 
-        // 3. Cross-boundary links from GFA edges (jg.links has strand info)
-        const crossBoundaryLinks = (jg.links || []).filter(
-            l => !junctionNodeIdSet.has(l.source) || !junctionNodeIdSet.has(l.target)
-        );
-        const linkedKinks = new Set();
+        // Post-process: tag cross-boundary links with isInterChain + seg IDs.
+        // Match created inter-node links to raw links by processing in same order
+        // (deserializeSubgraph creates links in raw-link order, skipping unresolvable).
+        const interNodeLinks = jLinks.filter(l => !l.isKinkLink);
+        let createdIdx = 0;
+        for (const rawLink of (jg.links || [])) {
+            const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
+            const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
 
-        for (const gfaLink of crossBoundaryLinks) {
-            const inGraphSrc = junctionNodeIdSet.has(gfaLink.source);
-            const inGraphTgt = junctionNodeIdSet.has(gfaLink.target);
-            const phantomSrc = segToPhantom.get(gfaLink.source);
-            const phantomTgt = segToPhantom.get(gfaLink.target);
+            // Replicate resolution check: local record OR phantom resolver
+            const sLocal = junctionNodeIdSet.has(sId);
+            const tLocal = junctionNodeIdSet.has(tId);
+            const sPhantom = !sLocal && (segToPhantom.has(sId) || segToChainPhantom.has(sId));
+            const tPhantom = !tLocal && (segToPhantom.has(tId) || segToChainPhantom.has(tId));
+            if (!(sLocal || sPhantom) || !(tLocal || tPhantom)) continue;
 
-            if (inGraphSrc && !inGraphTgt && phantomTgt) {
-                // Junction seg → chain phantom
-                const kink = pickStrandKink(kinksByRecord.get(gfaLink.source), gfaLink.from_strand);
-                if (kink) {
-                    const key = `${kink.iid}→${phantomTgt.iid}`;
-                    if (!linkedKinks.has(key)) {
-                        linkedKinks.add(key);
-                        // target is phantom side: store to_strand + endpoint seg ID
-                        const tgtSegId = gfaLink.target.replace(/^s/, '');
-                        allLinks.push(makeJunctionLink(kink, phantomTgt, null, gfaLink.to_strand, null, tgtSegId));
-                    }
+            const link = interNodeLinks[createdIdx++];
+            if (!link) break;
+
+            if (sPhantom || tPhantom) {
+                link.isInterChain = true;
+                link.chainId = null;
+                if (sPhantom) {
+                    link.sourceSegId = sId.replace(/^s/, '');
+                    link.sourceStrand = rawLink.from_strand || null;
                 }
-            } else if (!inGraphSrc && inGraphTgt && phantomSrc) {
-                // Chain phantom → junction seg
-                const kink = pickStrandKink(kinksByRecord.get(gfaLink.target), gfaLink.to_strand === '+' ? '-' : '+');
-                if (kink) {
-                    const key = `${phantomSrc.iid}→${kink.iid}`;
-                    if (!linkedKinks.has(key)) {
-                        linkedKinks.add(key);
-                        // source is phantom side: store from_strand + endpoint seg ID
-                        const srcSegId = gfaLink.source.replace(/^s/, '');
-                        allLinks.push(makeJunctionLink(phantomSrc, kink, gfaLink.from_strand, null, srcSegId, null));
-                    }
+                if (tPhantom) {
+                    link.targetSegId = tId.replace(/^s/, '');
+                    link.targetStrand = rawLink.to_strand || null;
                 }
-            } else if (!inGraphSrc && !inGraphTgt && phantomSrc && phantomTgt && phantomSrc !== phantomTgt) {
-                const srcSegId = gfaLink.source.replace(/^s/, '');
-                const tgtSegId = gfaLink.target.replace(/^s/, '');
-                allLinks.push(makeJunctionLink(phantomSrc, phantomTgt, gfaLink.from_strand, gfaLink.to_strand, srcSegId, tgtSegId));
             }
         }
 
-        // 4. Endpoint-to-endpoint junction links (neither seg in junction graph)
+        allLinks.push(...jLinks);
+
+        // 3. Endpoint-to-endpoint junction links (neither seg in junction graph).
+        //    These are in junctionLinks but NOT in jg.links, so the linkResolver
+        //    above never sees them.  Create phantom-to-phantom links directly.
         if (jls && jls.length > 0) {
             for (const jl of jls) {
                 const segA = `s${jl.segs[0]}`;
@@ -179,6 +214,7 @@ export function initJunctionLayer() {
                 }
             }
         }
+
     } else if (jls && jls.length > 0) {
         // No junction graph nodes — endpoint-to-endpoint only
         for (const jl of jls) {
@@ -220,13 +256,19 @@ export function initJunctionLayer() {
 }
 
 /**
- * Pick the kink node at the strand-appropriate end of a segment.
- * '+' strand → tail (last kink, at x2/y2), '-' strand → head (first kink, at x1/y1).
- * Kinks must already be sorted by index (from initJunctionLayer's kinksByRecord).
+ * Create a lightweight record wrapper for a phantom node, satisfying the
+ * NodeRecord interface expected by deserializeSubgraph's linkResolver.
+ * Both head() and tail() return the phantom's iid since it's a single point.
  */
-function pickStrandKink(kinks, strand) {
-    if (!kinks || kinks.length === 0) return null;
-    return strand === '+' ? kinks[kinks.length - 1] : kinks[0];
+function makePhantomRecord(phantom) {
+    return {
+        id: phantom.id,
+        type: 'phantom',
+        ranges: [],
+        elements: {
+            nodes: [{ head: () => phantom.iid, tail: () => phantom.iid }],
+        },
+    };
 }
 
 /**
