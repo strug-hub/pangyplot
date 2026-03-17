@@ -176,7 +176,7 @@ export function createInterChainLinks(siblingConnectors, poppedChainIds, chains,
 /**
  * Deserialize junction segments into force-ready nodes and links.
  */
-export function deserializeJunctionSegments(junctionGraph, segIds) {
+export function deserializeJunctionSegments(junctionGraph, segIds, existingRecords) {
     const segIdSet = new Set(segIds);
 
     const filteredNodes = junctionGraph.nodes.filter(
@@ -208,17 +208,26 @@ export function deserializeJunctionSegments(junctionGraph, segIds) {
         }
     }
 
+    // For link filtering, also consider already-active junction records
+    // so cross-batch links (new seg ↔ existing seg) are created.
+    const linkLookup = new Map(recordMap);
+    if (existingRecords) {
+        for (const [id, record] of existingRecords) {
+            if (!linkLookup.has(id)) linkLookup.set(id, record);
+        }
+    }
+
     const filteredLinks = junctionGraph.links.filter(l => {
         const sId = typeof l.source === 'string' ? l.source : `s${l.source}`;
         const tId = typeof l.target === 'string' ? l.target : `s${l.target}`;
-        return recordMap.has(sId) && recordMap.has(tId);
+        return linkLookup.has(sId) && linkLookup.has(tId);
     });
 
     for (const rawLink of filteredLinks) {
         const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
         const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
-        const sourceRecord = recordMap.get(sId);
-        const targetRecord = recordMap.get(tId);
+        const sourceRecord = linkLookup.get(sId);
+        const targetRecord = linkLookup.get(tId);
         if (!sourceRecord || !targetRecord) continue;
 
         const linkRecord = new LinkRecord(rawLink, sourceRecord, targetRecord);

@@ -2,6 +2,7 @@
 // Pure data-fetching — no skeleton imports, no UI imports, no fade or LOD decisions.
 
 import { state } from '../../../simplify-state.js';
+import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 
 let fetchController = null;
 
@@ -28,7 +29,12 @@ function processResponse(apiResponse) {
             sourceSegs: chain.source_segs,
             sinkSegs: chain.sink_segs,
             bubblePositions: chain.bubble_positions || null,
+            stepCount: chain.step_count || 0,
             parentChain: chain.parent_chain || null,
+            parentBubble: chain.parent_bubble || null,
+            parentSubtype: chain.parent_subtype || null,
+            minStep: chain._min_step ?? null,
+            maxStep: chain._max_step ?? null,
             popped: !!chain.graph,
             graph: chain.graph || null,
         });
@@ -97,6 +103,11 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, expandThres
         if (signal.aborted) return false;
 
         fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr, expandThreshold };
+        clearHistory();
+        recordPop('detail-tiles', {
+            genome: state.GENOME, chromosome: chr,
+            start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
+        });
         state.detailData = processResponse(apiData);
         return true;
     } catch (e) {

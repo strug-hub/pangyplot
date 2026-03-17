@@ -50,6 +50,9 @@ export function getSkeletonTooltip(hit) {
         for (let depth = 0; depth < 10; depth++) {
             const m = meta[cur];
             if (!m || m.parent == null) break;
+            if (m.parent_bubble != null) {
+                parts.push(`b${m.parent_bubble}`);
+            }
             parts.push(`c${m.parent}`);
             cur = String(m.parent);
         }

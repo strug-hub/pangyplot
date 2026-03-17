@@ -189,7 +189,7 @@ def get_chain_stats(dir):
 
     # Find parent chain for each chain
     cur.execute("""
-        SELECT b.chain, p.chain as parent_chain
+        SELECT b.chain, p.chain as parent_chain, p.id as parent_bubble_id, p.subtype as parent_subtype
         FROM bubbles b
         JOIN bubbles p ON b.parent = p.id
         WHERE b.parent IS NOT NULL
@@ -199,6 +199,8 @@ def get_chain_stats(dir):
         chain_id = row["chain"]
         if chain_id in stats:
             stats[chain_id]["parent"] = row["parent_chain"]
+            stats[chain_id]["parent_bubble"] = row["parent_bubble_id"]
+            stats[chain_id]["parent_subtype"] = row["parent_subtype"]
 
     return stats
 

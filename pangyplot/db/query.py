@@ -249,6 +249,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     bypass_links = []
     bypass_seg_ids = set()
     bypass_gfa_links = []
+    decomposed_bubbles = set()
 
     if layout_min_x is not None and layout_max_x is not None:
         chains = bubbleidx.get_top_level_bubbles_by_layout(
@@ -264,6 +265,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             bypass_links.extend(r.get("bypass_links", []))
             bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
             bypass_gfa_links.extend(r.get("bypass_gfa_links", []))
+            decomposed_bubbles.update(r.get("decomposed_bubbles", set()))
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
@@ -282,6 +284,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             bypass_links.extend(r.get("bypass_links", []))
             bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
             bypass_gfa_links.extend(r.get("bypass_gfa_links", []))
+            decomposed_bubbles.update(r.get("decomposed_bubbles", set()))
             for k, v in r.get("adjacency", {}).items():
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
@@ -322,7 +325,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     junction_nodes, junction_links, junction_adj, \
         naked_visited, naked_seg_chains = \
         find_junction_graph(
-            result_chains, gfaidx, bubbleidx, seg_index)
+            result_chains, gfaidx, bubbleidx, seg_index,
+            decomposed_bubbles=decomposed_bubbles)
 
     # --- Merge bypass segments into junction nodes/links ---
     if bypass_seg_ids:

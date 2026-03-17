@@ -211,23 +211,27 @@ def build_chain_polyline(chain, stepidx, seg_index):
         "_layout_span": span,
         "_start_seg": polyline_start_seg,
         "_end_seg": polyline_end_seg,
+        "step_count": (max_step - min_step) if min_step is not None and max_step is not None else 0,
+        "_min_step": min_step if min_step is not None else 0,
+        "_max_step": max_step if max_step is not None else 0,
     }
 
 
-def build_connector(parent_chain, leaf_bubbles, stepidx, seg_index,
-                    connector_idx, depth):
+def build_connector(parent_chain, leaf_bubbles, stepidx, seg_index, depth):
     """Build a connector polyline from a run of leaf bubbles.
 
-    Connectors are the .N sub-runs between expanded superbubbles
-    within a decomposed parent chain.
+    Connectors are the sub-runs between expanded superbubbles
+    within a decomposed parent chain.  IDs use step ranges: c{id}:{min}-{max}.
     """
     sub_chain = Chain(
-        chain_id=f"{parent_chain.id}.{connector_idx}",
+        chain_id=f"{parent_chain.id}_conn",
         bubbles=leaf_bubbles)
     entry = build_chain_polyline(sub_chain, stepidx, seg_index)
     if entry is None:
         return None
-    entry["id"] = f"c{parent_chain.id}.{connector_idx}"
+    min_step = entry["_min_step"]
+    max_step = entry["_max_step"]
+    entry["id"] = f"c{parent_chain.id}:{min_step}-{max_step}"
     entry["depth"] = depth
     entry["connector"] = True
     entry["bubble_ids"] = [b.id for b in leaf_bubbles]
@@ -274,24 +278,22 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     all_bypasses = []  # [[x1,y1],[x2,y2]] bypass polylines (deletion alleles)
     all_bypass_seg_ids = set()  # segment IDs from bypass flood fills
     all_bypass_links = []  # (from_id, to_id) GFA links between bypass segs
+    all_decomposed_bubbles = set()  # bubble IDs that were decomposed into child chains
 
     leaf_run = []
-    connector_idx = 0
 
     def _flush_leaf_run(run):
         """Flush a leaf run as one or more connectors, splitting if too large."""
-        nonlocal connector_idx
         if not run:
             return
         chunks = _split_balanced(run, MAX_BUBBLES_PER_CHAIN)
         group_conns = []
         for chunk in chunks:
             conn = build_connector(
-                chain, chunk, stepidx, seg_index, connector_idx, depth)
+                chain, chunk, stepidx, seg_index, depth)
             if conn:
                 all_chains.append(conn)
                 group_conns.append(conn)
-                connector_idx += 1
         # Wire consecutive chunks as adjacent
         for i in range(len(group_conns) - 1):
             a_id = group_conns[i]["id"]
@@ -308,6 +310,7 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
             leaf_run = []
 
             # Recurse into superbubble's children
+            all_decomposed_bubbles.add(b.id)
             child_bubbles = [bubbleidx[cid] for cid in b.children]
             child_chains_obj = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
             group_chains = []
@@ -317,14 +320,17 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                                     depth + 1, max_depth)
                 for c in r["chains"]:
                     c["parent_chain"] = f"c{chain.id}"
+                    c["parent_bubble"] = f"b{b.id}"
+                    c["parent_subtype"] = b.subtype
                 group_chains.extend(r["chains"])
                 all_bubbles.extend(r["bubbles"])
                 all_bypasses.extend(r.get("bypass_links", []))
                 all_bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
                 all_bypass_links.extend(r.get("bypass_gfa_links", []))
-                # Merge child adjacency
+                # Merge child adjacency and decomposed bubbles
                 for k, v in r.get("adjacency", {}).items():
                     all_adj.setdefault(k, set()).update(v)
+                all_decomposed_bubbles.update(r.get("decomposed_bubbles", set()))
 
             # Check for bypass path (deletion allele) through superbubble
             bypass = _find_bypass(b, bubbleidx, gfaidx, seg_index)
@@ -368,7 +374,8 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     return {"chains": all_chains, "bubbles": all_bubbles, "adjacency": all_adj,
             "bypass_links": all_bypasses,
             "bypass_seg_ids": all_bypass_seg_ids,
-            "bypass_gfa_links": all_bypass_links}
+            "bypass_gfa_links": all_bypass_links,
+            "decomposed_bubbles": all_decomposed_bubbles}
 
 
 def _group_exit_chains(group):
@@ -428,8 +435,8 @@ def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
 
         chains = []
         adj = {}
-        for i, chunk in enumerate(chunks):
-            conn = build_connector(chain, chunk, stepidx, seg_index, i, depth)
+        for chunk in chunks:
+            conn = build_connector(chain, chunk, stepidx, seg_index, depth)
             if conn:
                 chains.append(conn)
 
@@ -454,7 +461,7 @@ def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
 # ---------------------------------------------------------------
 
 def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
-                        max_hops=None):
+                        max_hops=None, decomposed_bubbles=None):
     """Find naked GFA segments forming junction graphs between chains.
 
     BFS from each chain's endpoint segs through segments not owned by any
@@ -462,6 +469,9 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
     and GFA links between them (or to chain endpoint segs) as junction links.
 
     max_hops limits BFS depth (None = unlimited).
+    decomposed_bubbles: set of bubble IDs that were decomposed into child
+        chains.  Segments owned by these bubbles are treated as naked
+        (traversable) since the bubble no longer exists as a visible node.
 
     Returns (junction_nodes, junction_links, chain_adjacency,
              naked_visited, naked_seg_chains).
@@ -488,6 +498,13 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
             if end_seg is not None:
                 endpoint_polyline_coord[end_seg] = pl[-1]
 
+    # Segments owned by decomposed bubbles are effectively naked
+    _decomposed = decomposed_bubbles or set()
+
+    def _is_naked(seg_id):
+        owner = bubbleidx.segment_in_bubble(seg_id)
+        return owner is None or owner in _decomposed
+
     # Collect naked segment IDs visited during BFS
     naked_visited = set()
     naked_seg_chains = {}  # naked seg_id → set of adjacent chain IDs
@@ -504,7 +521,7 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
         for start_seg in all_endpoints:
             # If the chain's own boundary seg is naked, record it as a
             # junction node adjacent to this chain.
-            if bubbleidx.segment_in_bubble(start_seg) is None:
+            if _is_naked(start_seg):
                 naked_visited.add(start_seg)
                 naked_seg_chains.setdefault(start_seg, set()).add(chain_id)
 
@@ -534,10 +551,18 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                         if cur in naked_visited:
                             naked_seg_chains.setdefault(cur, set()).add(chain_id)
                             naked_seg_chains.setdefault(cur, set()).add(other_chain)
+                        # If the endpoint itself is naked, also register it as
+                        # a junction node so it gets activated alongside the
+                        # junction segs that link to it.
+                        if _is_naked(nxt):
+                            naked_visited.add(nxt)
+                            naked_seg_chains.setdefault(nxt, set()).add(chain_id)
+                            naked_seg_chains.setdefault(nxt, set()).add(other_chain)
                         continue
 
-                    # Only traverse naked segments (not owned by any bubble)
-                    if bubbleidx.segment_in_bubble(nxt) is not None:
+                    # Only traverse naked segments (not owned by any bubble,
+                    # or owned by a decomposed bubble)
+                    if not _is_naked(nxt):
                         continue
 
                     visited.add(nxt)
@@ -572,7 +597,7 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                     continue
                 coord = [round(pt[0], 1), round(pt[1], 1)]
             endpoint_centroids[sid] = coord
-            if bubbleidx.segment_in_bubble(sid) is None:
+            if _is_naked(sid):
                 junction_nodes.append(coord)
 
     # Build junction links from GFA edges

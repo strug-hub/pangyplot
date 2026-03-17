@@ -4,6 +4,7 @@ import appState from '../app-state.js';
 import recordsManager  from './records/records-manager.js';
 import viewState from './view-state.js';
 import { createLinkElements } from './records/deserializer/deserializer-element.js';
+import { recordPop, clearHistory } from '../../utils/pop-history.js';
 
 function collectAllDescendantIds(record) {
   const ids = [];
@@ -100,6 +101,8 @@ export function setUpDataManager(forceGraph) {
   eventBus.subscribe("ui:construct-graph", async function (data) {
     const { genome, chromosome, start, end } = data;
     const coordinates = { genome, chromosome, start, end };
+    clearHistory();
+    recordPop('select', { genome, chromosome, start, end });
 
     const graphRecords = await recordsManager.getByCoordinate(coordinates);
     console.log("Fetched records:", graphRecords);

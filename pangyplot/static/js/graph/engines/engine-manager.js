@@ -11,6 +11,7 @@ import setUpAnchorEndsEngine from './anchor-ends/anchor-ends-engine.js';
 import setUpInformationEngine from './information/information-engine.js';
 import setUpFlashlightEngine from './flashlight/flashlight-engine.js';
 import setUpReheatEngine from './reheat/reheat-engine.js';
+import setUpExportHierarchyEngine from './export/export-hierarchy-engine.js';
 import { debugStatusUpdate } from './information/debug/debug-information-engine.js';
 import { pathHighlightTick } from './path-highlight/animation/animation-tick.js';
 import { updateNodeHighlight } from './path-highlight/animation/animation-tick.js';
@@ -35,6 +36,7 @@ export default function setUpEngineManager(forceGraph) {
     setUpInformationEngine(forceGraph);
     setUpFlashlightEngine(forceGraph);
     setUpReheatEngine(forceGraph);
+    setUpExportHierarchyEngine(forceGraph);
 
     forceGraph.onEngineTick(() => {
         //todo: create abstract system for adding ticks, sent to each engine above.

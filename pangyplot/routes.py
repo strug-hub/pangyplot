@@ -47,6 +47,32 @@ def inject_organism():
     print("GENOME", genome)
     return { "organism": organism, "organism_emoji": emoji, "organism_genome": genome }
 
+@bp.route('/debug/export', methods=["POST"])
+def debug_export():
+    data = request.get_json()
+    filename = data.get('filename', 'hierarchy_export.txt')
+    content = data.get('content', '')
+    # Ensure parent directory exists
+    parent = os.path.dirname(filename)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    # Write to project root (cwd)
+    with open(filename, 'w') as f:
+        f.write(content)
+    return jsonify({"ok": True, "filename": filename})
+
+@bp.route('/debug/read', methods=["GET"])
+def debug_read():
+    filename = request.args.get('file', '')
+    if not filename:
+        return jsonify({"error": "Missing file parameter"}), 400
+    if '..' in filename or filename.startswith('/'):
+        return jsonify({"error": "Invalid path"}), 400
+    if not os.path.exists(filename):
+        return jsonify({"error": "File not found"}), 404
+    with open(filename, 'r') as f:
+        return Response(f.read(), mimetype='text/plain')
+
 @bp.route('/chromosomes', methods=["GET"])
 def chromosomes():
     show_noncanonical = request.args.get('noncanonical', 'false').lower() == 'true'

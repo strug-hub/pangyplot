@@ -8,6 +8,7 @@ import { deserializeNodes } from '../../../graph/data/records/deserializer/deser
 import { createNodeElements, createLinkElements } from '../../../graph/data/records/deserializer/deserializer-element.js';
 import { detectIndelBubbles } from '../../../graph/data/records/deserializer/indel-detection.js';
 import { LinkRecord } from '../../../graph/data/records/objects/link-record.js';
+import { recordPop } from '../../../utils/pop-history.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -101,7 +102,7 @@ export async function popBubbleForceNode(bubbleNode) {
                 const parentHead = `${bubbleId}#0`;
                 if (!rewireMap.has(parentHead)) rewireMap.set(parentHead, node.iid);
             }
-            if (sinkSegIds.has(node.id)) {
+            if (sinkSegIds.has(node.id) && node.idx === (node.kinks || 1) - 1) {
                 const parentKinks = bubbleNode.kinks || 1;
                 const parentTail = `${bubbleId}#${parentKinks - 1}`;
                 if (!rewireMap.has(parentTail)) rewireMap.set(parentTail, node.iid);
@@ -111,6 +112,7 @@ export async function popBubbleForceNode(bubbleNode) {
 
     // Atomic splice: remove parent, rewire links, add children
     spliceBubbleNodes(parentIids, rewireMap, childNodes, childLinks);
+    recordPop('bubble-pop', { id: bubbleId, chain: chainId });
 
     // Track for undo
     if (!state._bubblePopStack) state._bubblePopStack = [];

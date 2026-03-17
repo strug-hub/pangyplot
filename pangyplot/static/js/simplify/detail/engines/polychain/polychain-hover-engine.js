@@ -91,20 +91,35 @@ function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 
 export function getChainTooltip(chain) {
-    const parts = [chain.id];
-    let cur = chain.parentChain;
-    while (cur) {
-        parts.push(cur);
-        const numId = cur.startsWith('c') ? cur.slice(1) : cur;
-        const meta = getChainMeta()?.[numId];
-        cur = meta?.parent != null ? `c${meta.parent}` : null;
+    // Show ancestry for full chains, but not partial connector segments (c122:xxx-yyy)
+    let label = chain.id;
+    if (!chain.id.includes(':') && chain.parentChain) {
+        const parts = [chain.id];
+        const chainMeta = getChainMeta();
+        // First level: use the chain's own parentBubble from the API response
+        if (chain.parentBubble) {
+            parts.push(chain.parentBubble);
+        }
+        let cur = chain.parentChain;
+        while (cur) {
+            parts.push(cur);
+            const numId = cur.startsWith('c') ? cur.slice(1) : cur;
+            const meta = chainMeta?.[numId];
+            // Deeper levels: use chainMeta for parent bubble info
+            if (meta?.parent_bubble != null) {
+                parts.push(`b${meta.parent_bubble}`);
+            }
+            cur = meta?.parent != null ? `c${meta.parent}` : null;
+        }
+        parts.reverse();
+        label = parts.join(' > ');
     }
-    parts.reverse();
 
     return {
-        chain: parts.join(' > '),
+        chain: label,
         type: chain.subtype,
         length: chain.length,
+        steps: chain.stepCount,
         bubbles: chain.nBubbles,
         polyline: chain.polyline.length,
         depth: chain.depth,
