@@ -9,6 +9,10 @@ import defaults from '../../../graph/forces/settings/force-defaults.js';
 import layoutForce from '../../../graph/forces/layout-force.js';
 import bubbleCircularForce from '../../../graph/forces/bubble-circular-force.js';
 
+// Simplify-specific overrides for bigger bubble loops
+const SIMPLIFY_LINK_SCALE = 3;   // rest distance = link.length * this (vs 1 in core)
+const SIMPLIFY_CHARGE = -400;    // stronger repulsion (vs -200 in core)
+
 let sim = null;
 
 /**
@@ -83,8 +87,10 @@ export function initForce() {
         .alpha(0)
         .alphaDecay(defaults.HEAT_DECAY)
         .velocityDecay(defaults.FRICTION)
-        .force('link', d3.forceLink([]).id(d => d.iid).distance(d => d.length * defaults.LINK_STRENGTH))
-        .force('charge', d3.forceManyBody().strength(defaults.CHARGE_STRENGTH).distanceMax(defaults.CHARGE_DISTANCE))
+        .force('link', d3.forceLink([]).id(d => d.iid)
+            .distance(d => d.length * SIMPLIFY_LINK_SCALE)
+            .strength(d => d.isInterChain ? 0.3 : 1))
+        .force('charge', d3.forceManyBody().strength(SIMPLIFY_CHARGE).distanceMax(defaults.CHARGE_DISTANCE))
         .force('collide', d3.forceCollide().radius(defaults.COLLISION_RADIUS).strength(defaults.COLLISION_STRENGTH))
         .force('layout', layoutForce().strengthLevel(defaults.LAYOUT_LEVEL))
         .force('bubbleRoundness', bubbleCircularForce())
@@ -156,9 +162,9 @@ export function absorbPhantom(phantomIid, replacementNode) {
         if (link.target === phantom || link.target.iid === phantomIid) link.target = replacementNode;
     }
 
-    // Remove phantom node and the now-redundant anchor↔phantom link
+    // Remove phantom node, self-links, and any links marked for removal
     const remaining = nodes.filter(n => n !== phantom);
-    const remainingLinks = getLinks().filter(l => l.source !== l.target);
+    const remainingLinks = getLinks().filter(l => l.source !== l.target && !l._remove);
     syncNodes(remaining);
     syncLinks(remainingLinks);
     return phantom;
@@ -180,13 +186,19 @@ export function restorePhantom(phantom, anchorNode) {
         if (link.isInterChain && link.target === anchorNode) link.target = phantom;
     }
 
-    // Re-add the anchor↔phantom link
-    const allLinks = [...getLinks(), {
+    // Re-add the anchor↔phantom link, filtering out any links marked for removal
+    const allLinks = [...getLinks().filter(l => !l._remove), {
         source: anchorNode, target: phantom,
         isInterChain: true, isKinkLink: false, chainId: null, length: 10,
     }];
     syncLinks(allLinks);
     sim.alpha(0.1).restart();
+}
+
+export function removeLinksByFlag(flag) {
+    if (!sim) return;
+    const remaining = getLinks().filter(l => !l[flag]);
+    syncLinks(remaining);
 }
 
 export function clearForce() {

@@ -1,4 +1,5 @@
 // Cursor coordinate readout + hover hit-test for chains, bubbles, force nodes, skeleton.
+// Also handles click-to-select for individual nodes.
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
@@ -9,6 +10,8 @@ import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleToolti
 import { hitTestSkeleton, getSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
 import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
 import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
+import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
+import { faLabel } from '../../../utils/node-label.js';
 
 export function setupHover(canvas) {
     canvas.addEventListener('mousemove', e => {
@@ -57,6 +60,43 @@ export function setupHover(canvas) {
         }
     });
 
+    // --- Click-to-select: pick the currently hovered node ---
+    // Track drag state across mousedown→mouseup→click to suppress click-after-pan
+    let mouseDownPos = null;
+    const DRAG_THRESHOLD = 4; // pixels — below this counts as a click, not a drag
+
+    canvas.addEventListener('mousedown', e => {
+        if (e.button === 0) mouseDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('click', e => {
+        // Don't intercept ctrl/meta (pop/unpop) or shift (rectangle select)
+        if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if (state.draggedForceNode) return;
+
+        // Suppress click if mouse moved significantly (was a pan/drag)
+        if (mouseDownPos) {
+            const dx = e.clientX - mouseDownPos.x;
+            const dy = e.clientY - mouseDownPos.y;
+            if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) {
+                mouseDownPos = null;
+                return;
+            }
+        }
+        mouseDownPos = null;
+
+        const hit = state.hoveredForceNode || state.hoveredBubble;
+        if (hit) {
+            state.selectedNode = hit;
+            showNodeInfo(hit);
+            scheduleFrame();
+        } else if (state.selectedNode) {
+            state.selectedNode = null;
+            updateSelectionInfo(null);
+            scheduleFrame();
+        }
+    });
+
     canvas.addEventListener('mouseleave', () => {
         updateCursorBp('');
         if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
@@ -69,4 +109,57 @@ export function setupHover(canvas) {
             scheduleFrame();
         }
     });
+}
+
+function formatCoordinates(ranges) {
+    if (!ranges || ranges.length === 0) return null;
+    const allStarts = ranges.map(r => r[0]);
+    const allEnds = ranges.map(r => r[1]);
+    const start = Math.min(...allStarts);
+    const end = Math.max(...allEnds);
+    const genome = state.GENOME || '';
+    const chr = state.chromosome || '';
+    return `${genome}#${chr}:${start.toLocaleString()}-${end.toLocaleString()}`;
+}
+
+function formatGC(gcCount, seqLength) {
+    if (gcCount == null || seqLength == null || seqLength === 0) return null;
+    return ((gcCount / seqLength) * 100).toFixed(1) + '%';
+}
+
+function showNodeInfo(node) {
+    const record = node.record;
+    if (!record) { updateSelectionInfo(null); return; }
+
+    const rawId = node.id.slice(1).split(':')[0];
+
+    const base = {
+        id: faLabel(node.id) || '',
+        rawId,
+        type: record.type,
+        coordinates: formatCoordinates(record.ranges),
+        length: record.seqLength,
+        gcPercent: formatGC(record.gcCount, record.seqLength),
+        nCount: record.nCount,
+    };
+
+    if (record.type === 'segment') {
+        updateSelectionInfo({ ...base, seq: record.seq || '' });
+    } else if (record.type === 'bubble') {
+        updateSelectionInfo({
+            ...base,
+            subtype: record.subtype,
+            chain: record.chain,
+            chainStep: record.chainStep,
+            size: record.size,
+            parent: record.parent,
+            siblings: record.siblings,
+        });
+    } else {
+        updateSelectionInfo(base);
+    }
+
+    // Switch to Graph Information tab
+    const btn = document.getElementById('graph-info-button');
+    if (btn) btn.click();
 }

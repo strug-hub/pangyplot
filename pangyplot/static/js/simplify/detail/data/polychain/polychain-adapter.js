@@ -190,6 +190,30 @@ export function initJunctionLayer() {
         }
     }
 
+    // 5. Shared-segment links: adjacent chains sharing an endpoint seg
+    //    have no GFA edge between them (same seg), so create direct
+    //    phantom-to-phantom links based on chain endpoint overlap.
+    const seenSharedPairs = new Set();
+    for (const chain of dd.chains) {
+        for (const sid of (chain.sinkSegs || [])) {
+            const key = `s${sid}`;
+            // This chain's sink phantom for this seg
+            const sinkPhantom = chainPhantoms.get(chain.id)?.tail;
+            if (!sinkPhantom) continue;
+            // Find other chains that have this seg as a source seg
+            for (const other of dd.chains) {
+                if (other.id === chain.id) continue;
+                if (!(other.sourceSegs || []).includes(sid)) continue;
+                const srcPhantom = chainPhantoms.get(other.id)?.head;
+                if (!srcPhantom || srcPhantom === sinkPhantom) continue;
+                const pairKey = `${sinkPhantom.iid}↔${srcPhantom.iid}`;
+                if (seenSharedPairs.has(pairKey)) continue;
+                seenSharedPairs.add(pairKey);
+                allLinks.push(makeJunctionLink(sinkPhantom, srcPhantom, null, null, String(sid), String(sid)));
+            }
+        }
+    }
+
     if (allNodes.length > 0) {
         addPoppedNodes(allNodes, allLinks);
     }
@@ -225,8 +249,16 @@ function makeJunctionLink(source, target, sourceStrand, targetStrand, sourceSegI
     };
 }
 
-// Saved phantoms for restoration on unpop
-const absorbedPhantoms = new Map();
+/**
+ * Check if any chain adjacent to this phantom's endpoint has already been
+ * popped (its phantoms absorbed). If so, the anchor can be unpinned.
+ */
+function isAdjacentPopped(phantom) {
+    const thisChainId = phantom.phantomChainId;
+    const adj = state.detailData?.chainAdjacency?.[thisChainId];
+    if (!adj) return false;
+    return adj.some(cid => state.poppedChainIds.has(cid));
+}
 
 /**
  * Find junction nodes directly linked to a phantom node.
@@ -241,6 +273,9 @@ function junctionNeighborsOf(phantom) {
     }
     return result;
 }
+
+// Saved phantoms for restoration on unpop
+const absorbedPhantoms = new Map();
 
 /**
  * After popping a chain, absorb its phantoms: rewire all junction links
@@ -285,14 +320,16 @@ export function absorbChainsPhantoms(chainId, forceNodes) {
         saved.tail = absorbPhantom(phantoms.tail.iid, tailAnchor);
     }
 
-    // Unpin chain anchors so they join the force layout
-    if (headAnchor && headAnchor.fx != null) {
+    // Only unpin an anchor if the chain on the other side of the phantom
+    // is also popped (so both sides participate in the force layout).
+    // Otherwise keep pinned at the polyline endpoint for visual stability.
+    if (headAnchor && headAnchor.fx != null && isAdjacentPopped(phantoms.head)) {
         saved.headAnchorFx = headAnchor.fx;
         saved.headAnchorFy = headAnchor.fy;
         delete headAnchor.fx;
         delete headAnchor.fy;
     }
-    if (tailAnchor && tailAnchor !== headAnchor && tailAnchor.fx != null) {
+    if (tailAnchor && tailAnchor !== headAnchor && tailAnchor.fx != null && isAdjacentPopped(phantoms.tail)) {
         saved.tailAnchorFx = tailAnchor.fx;
         saved.tailAnchorFy = tailAnchor.fy;
         delete tailAnchor.fx;
@@ -364,11 +401,90 @@ export function buildSegToChains(junctionSegChains, chains) {
  * suitable for the simplify force simulation.
  */
 export function deserializeChainGraph(apiData, chain, clipRange) {
+    // Build existing record lookup for cross-chain boundary resolution.
+    const existingRecords = new Map();
+    for (const n of getForceNodes()) {
+        if (n.record && !existingRecords.has(n.id) && n.chainId !== '__junction__') {
+            existingRecords.set(n.id, n.record);
+        }
+    }
+
     const { nodes: allNodes, links: allLinks, recordMap } = deserializeSubgraph(apiData, {
         tag: { chainId: chain.id },
+        linkResolver: (segId) => {
+            const plainId = segId.startsWith('s') ? segId.slice(1) : segId;
+            return simplifyViewState.resolve(plainId) || existingRecords.get(segId) || null;
+        },
     });
 
-    // Register bubble segments in simplify viewState
+    // --- Cross-boundary links (BEFORE viewState registration) ---
+    // If endpoint segs are shared with an already-popped chain, connect
+    // boundary bubbles directly. Must run before registerBubble overwrites
+    // the viewState mapping for the shared seg.
+    if (chain.polyline.length >= 2 && allNodes.length > 0) {
+        const nodesByRecord = new Map();
+        for (const node of allNodes) {
+            if (!nodesByRecord.has(node.id)) nodesByRecord.set(node.id, []);
+            nodesByRecord.get(node.id).push(node);
+        }
+        const recIds = [...nodesByRecord.keys()];
+        const firstRec = recIds[0];
+        const lastRec = recIds[recIds.length - 1];
+
+        // Build lookup of existing force nodes (excluding own chain + phantom/junction)
+        const existingNodeById = new Map();
+        for (const n of getForceNodes()) {
+            if (n.chainId === '__phantom__' || n.chainId === '__junction__') continue;
+            if (n.chainId === chain.id) continue;
+            if (!existingNodeById.has(n.id)) existingNodeById.set(n.id, []);
+            existingNodeById.get(n.id).push(n);
+        }
+
+        // Source segs: connect existing record's tail → this chain's first record's head
+        for (const seg of (chain.sourceSegs || [])) {
+            const record = simplifyViewState.resolve(String(seg));
+            if (!record) continue;
+            const existing = existingNodeById.get(record.id);
+            if (!existing || existing.length === 0) continue;
+            const headKink = nodesByRecord.get(firstRec)?.[0];
+            const extTail = existing.reduce((a, b) => {
+                const ai = parseInt(a.iid.split('#')[1]) || 0;
+                const bi = parseInt(b.iid.split('#')[1]) || 0;
+                return bi > ai ? b : a;
+            });
+            if (headKink && extTail && headKink !== extTail) {
+                allLinks.push({
+                    source: extTail, target: headKink,
+                    isKinkLink: false, isInterChain: false,
+                    type: 'chain', chainId: null, length: 10, width: 3,
+                });
+            }
+        }
+
+        // Sink segs: connect this chain's last record's tail → existing record's head
+        for (const seg of (chain.sinkSegs || [])) {
+            const record = simplifyViewState.resolve(String(seg));
+            if (!record) continue;
+            const existing = existingNodeById.get(record.id);
+            if (!existing || existing.length === 0) continue;
+            const lastKinks = nodesByRecord.get(lastRec);
+            const tailKink = lastKinks?.[lastKinks.length - 1];
+            const extHead = existing.reduce((a, b) => {
+                const ai = parseInt(a.iid.split('#')[1]) || 0;
+                const bi = parseInt(b.iid.split('#')[1]) || 0;
+                return ai < bi ? a : b;
+            });
+            if (tailKink && extHead && tailKink !== extHead) {
+                allLinks.push({
+                    source: tailKink, target: extHead,
+                    isKinkLink: false, isInterChain: false,
+                    type: 'chain', chainId: null, length: 10, width: 3,
+                });
+            }
+        }
+    }
+
+    // Register bubble segments in simplify viewState (AFTER cross-boundary checks)
     const rawNodeMap = new Map(apiData.nodes.map(n => [n.id, n]));
     for (const [id, record] of recordMap) {
         if (record.type !== 'bubble') continue;
@@ -386,18 +502,18 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
     if (chain.polyline.length >= 2 && allNodes.length > 0) {
         pinAnchors(allNodes, chain.polyline);
 
+        const nodesByRecord = new Map();
+        for (const node of allNodes) {
+            if (!nodesByRecord.has(node.id)) nodesByRecord.set(node.id, []);
+            nodesByRecord.get(node.id).push(node);
+        }
+        const recIds = [...nodesByRecord.keys()];
+        const firstRec = recIds[0];
+        const lastRec = recIds[recIds.length - 1];
+
         // Create links from anchor kink nodes to chain phantoms
         const phantoms = chainPhantoms.get(chain.id);
         if (phantoms) {
-            const nodesByRecord = new Map();
-            for (const node of allNodes) {
-                if (!nodesByRecord.has(node.id)) nodesByRecord.set(node.id, []);
-                nodesByRecord.get(node.id).push(node);
-            }
-            const recIds = [...nodesByRecord.keys()];
-            const firstRec = recIds[0];
-            const lastRec = recIds[recIds.length - 1];
-
             if (firstRec) {
                 const head = nodesByRecord.get(firstRec)[0];
                 allLinks.push(makeJunctionLink(head, phantoms.head));

@@ -31,6 +31,7 @@ export const state = {
     isFetching: false,         // true while a detail fetch is in-flight
     detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
     physicsDebug: false,        // L-key toggle: show physics activation zone overlay
+    forceVectors: false,        // Y-key toggle: show per-node force vectors
 
     // Force simulation
     activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)
@@ -47,6 +48,9 @@ export const state = {
     hoveredBubble: null,
     hoveredForceNode: null,   // popped node from force simulation
     hoveredSkeletonPl: null,  // {plIdx, chainId}
+
+    // Node selection (click-to-select)
+    selectedNode: null,       // force node or bubble currently selected
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',

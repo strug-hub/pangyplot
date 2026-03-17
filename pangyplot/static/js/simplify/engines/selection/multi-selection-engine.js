@@ -6,6 +6,7 @@ import { togglePopChain } from '../../detail/engines/polychain/polychain-pop-eng
 import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';
 import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
+import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
@@ -97,12 +98,19 @@ export function setupMultiSelection(canvas) {
     // --- Escape key: clear selection ---
     window.addEventListener('keydown', e => {
         if (e.code !== 'Escape') return;
+        let changed = false;
         if (state.selectedChains.size > 0 || state.selectionBox) {
             state.selectedChains.clear();
             state.selectionBox = null;
             isSelecting = false;
-            scheduleFrame();
+            changed = true;
         }
+        if (state.selectedNode) {
+            state.selectedNode = null;
+            updateSelectionInfo(null);
+            changed = true;
+        }
+        if (changed) scheduleFrame();
     });
 
     // --- C key: toggle chain overlay ---
