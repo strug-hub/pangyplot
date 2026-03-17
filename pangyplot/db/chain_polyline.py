@@ -175,19 +175,25 @@ def build_chain_polyline(chain, stepidx, seg_index):
             "pos": b.chain_step,
         })
 
+    # Chain position from bubble ordinals (reference-independent)
+    ordinals = [b.chain_step for b in chain.bubbles
+                if b.chain_step is not None]
+    min_step = min(ordinals) if ordinals else None
+    max_step = max(ordinals) if ordinals else None
+
     # BP span from reference path (for LOD decisions)
-    min_step = None
-    max_step = None
+    ref_min = None
+    ref_max = None
     for b in chain.bubbles:
         for rs, re in b.range_inclusive:
-            if min_step is None or rs < min_step:
-                min_step = rs
-            if max_step is None or re > max_step:
-                max_step = re
+            if ref_min is None or rs < ref_min:
+                ref_min = rs
+            if ref_max is None or re > ref_max:
+                ref_max = re
 
-    if min_step is not None and max_step is not None \
-       and min_step < len(stepidx.starts) and max_step < len(stepidx.ends):
-        bp_span = stepidx.ends[max_step] - stepidx.starts[min_step]
+    if ref_min is not None and ref_max is not None \
+       and ref_min < len(stepidx.starts) and ref_max < len(stepidx.ends):
+        bp_span = stepidx.ends[ref_max] - stepidx.starts[ref_min]
     else:
         bp_span = total_length
 
