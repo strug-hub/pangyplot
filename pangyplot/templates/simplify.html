@@ -1,24 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>PangyPlot</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
-    <title>Graph Simplification Viewer</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/option-button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/right-click.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/utils/slider-set.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/utils/selectable-table.css') }}">
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #000;
-            color: #ccc;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            overflow: hidden;
-            height: 100vh;
+        /* Match core viewer sizing: explicit 80vh height on graph area */
+        #graph-container {
+            height: 80vh;
+        }
+        #graph-container > .flex-row {
+            height: 100%;
+        }
+        #graph {
             display: flex;
             flex-direction: column;
         }
 
-        #controls {
+        #simplify-controls {
             padding: 10px 20px;
             background: #111;
             border-bottom: 1px solid #333;
@@ -31,7 +45,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        #controls span.val {
+        #simplify-controls span.val {
             color: #fff;
             font-weight: 600;
         }
@@ -61,6 +75,7 @@
         #canvas-container {
             flex: 1;
             position: relative;
+            min-height: 0;
         }
 
         canvas {
@@ -144,40 +159,130 @@
         #tooltip .tt-chain { color: #5bb8f0; }
         #tooltip .tt-subtype { font-weight: 600; }
     </style>
+
+    {% include 'google-analytics.html' %}
+
 </head>
-<body>
-    <div id="controls">
-        <span id="level-label" class="val">--</span>
-        <span><span id="node-count" class="val">--</span> nodes</span>
-        <span><span id="polyline-count" class="val">--</span> lines</span>
-        <span><span id="visible-count" class="val">--</span> visible</span>
-        <span><span id="reduction" class="val">--</span> reduction</span>
-        <div id="grid-meter"></div>
-        <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
-        <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
-        <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
-        <span id="stats"></span>
-    </div>
-    <div id="detail-bar">
-        <span id="detail-phase" class="none">DETAILS</span>
-        <span><span id="detail-chains" class="val">--</span> details</span>
-        <span><span id="detail-exposed" class="val">--</span> exposed</span>
-        <span><span id="detail-nodes" class="val">--</span> bubbles</span>
-        <span><span id="detail-range" class="val">--</span></span>
-        <span>opacity <span id="detail-opacity" class="val">0</span></span>
-        <span>steps <span id="detail-steps" class="val">--</span></span>
-    </div>
-    <div id="canvas-container">
-        <canvas id="canvas"></canvas>
-        <div id="loading">Loading graph data...</div>
-        <div id="fetch-indicator"></div>
-        <div id="tooltip"></div>
+
+<body class="flex-col">
+
+    <div id="info-corner" class="flex-col">
+        <div id="version-overlay" class="flex-row">
+            {{ _('PangyPlot') }} {{ version }} ({{ version_name }})
+        </div>
+        <div  class="flex-row">
+
+            <div id="language-button" class="flex-col button-style flex-1">
+                <i class="fa-solid fa-globe"></i>
+                <div class="language-label">{{ _('Locale') }}</div>
+
+            </div>
+            <div id="language-dropdown" class="lang-dropdown hidden"></div>
+
+            {% if organism %}
+            <div id="organism-indicator" class="flex-1 flex-column">
+                <div id="organism-emoji" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
+                <div id="organism-genome"> {{ organism_genome }} </div>
+
+            </div>
+            {% endif %}
+
+        </div>
     </div>
 
-    <script src="/static/js/d3/d3.js"></script>
+    {% include 'navbar-template.html' %}
+
+    <!--<select id="db-selection"> </select>-->
+
+    {% include 'cytoband-template.html' %}
+
+    <div class="flex-row fixed-height-1">
+
+        {% include 'gene-search-template.html' %}
+        {% include 'coordinate-template.html' %}
+
+    </div>
+
+    <div id="graph-container">
+
+        <div id="graph-container-empty-inside" class="hidden">
+            <div class="graph-container-empty-content">
+                <img src="{{ url_for('static', filename='images/pangyplot_pangy.svg') }}">
+            </div>
+            <div class="graph-container-empty-content">
+                {{ _('Waiting for query...') }}
+            </div>
+        </div>
+
+        <div class="loader-filter hidden"></div>
+        <div class="loader hidden"></div>
+
+        <div class="flex-row">
+
+            <div id="graph" class="flex-1" tabindex="0">
+                <div id="simplify-controls">
+                    <span id="level-label" class="val">--</span>
+                    <span><span id="node-count" class="val">--</span> nodes</span>
+                    <span><span id="polyline-count" class="val">--</span> lines</span>
+                    <span><span id="visible-count" class="val">--</span> visible</span>
+                    <span><span id="reduction" class="val">--</span> reduction</span>
+                    <div id="grid-meter"></div>
+                    <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
+                    <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
+                    <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
+                    <span id="stats"></span>
+                </div>
+                <div id="detail-bar">
+                    <span id="detail-phase" class="none">DETAILS</span>
+                    <span><span id="detail-chains" class="val">--</span> details</span>
+                    <span><span id="detail-exposed" class="val">--</span> exposed</span>
+                    <span><span id="detail-nodes" class="val">--</span> bubbles</span>
+                    <span><span id="detail-range" class="val">--</span></span>
+                    <span>opacity <span id="detail-opacity" class="val">0</span></span>
+                    <span>steps <span id="detail-steps" class="val">--</span></span>
+                </div>
+                <div id="canvas-container">
+                    <canvas id="canvas"></canvas>
+                    <div id="loading">Loading graph data...</div>
+                    <div id="fetch-indicator"></div>
+                    <div id="tooltip"></div>
+                </div>
+            </div>
+
+            <div id="graph-legend" class="hidden">
+                <!--built by javascript-->
+            </div>
+
+            {% include 'tabs/tab-container.html' %}
+
+        </div>
+    </div>
+
+    <!-- Simplify viewer loads immediately — reveal UI that core shows on first query -->
+    <script>
+        document.getElementById('tabs-container').classList.remove('hidden');
+        document.getElementById('graph-legend').classList.remove('hidden');
+    </script>
+
+    <div id="color-picker-container" class="flex-row fixed-height-1">
+
+        {% include 'color-picker.html' %}
+
+    </div>
+
+    <script src="{{url_for('static', filename='js/d3/d3.js')}}"></script>
     <script>
         window.__SIMPLIFY_CONFIG = { genome: '{{ genome }}' };
+
+        // Dismiss the info modal that navbar opens by default
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('info-modal').style.display = 'none';
+        });
     </script>
     <script type="module" src="{{ url_for('static', filename='js/simplify/simplify-app.js') }}"></script>
+
+    <script src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
+
 </body>
+
 </html>
