@@ -4,6 +4,7 @@
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { setForceNodes, setForceLinks } from '../data/force-data.js';
+import simplifyViewState from '../data/simplify-view-state.js';
 import defaults from '../../../graph/forces/settings/force-defaults.js';
 import layoutForce from '../../../graph/forces/layout-force.js';
 import bubbleCircularForce from '../../../graph/forces/bubble-circular-force.js';
@@ -224,8 +225,8 @@ export function restoreAnchors() {
 
 /**
  * Atomically remove parent bubble nodes and splice in child nodes+links.
- * Removes ALL links touching the parent; the pop response's GFA links
- * provide all new connectivity (no rewiring).
+ * Removes all intra-chain links touching the parent; inter-chain links
+ * (junction connectivity) are preserved by resolving endpoint seg IDs via viewState.
  * @param {Set<string>} removeIids - iids of the parent bubble kink nodes to remove
  * @param {Array} childNodes - new nodes to add
  * @param {Array} childLinks - new links to add
@@ -242,14 +243,43 @@ export function spliceBubbleNodes(removeIids, childNodes, childLinks) {
     const remaining = getNodes().filter(n => !removeIids.has(n.iid));
     const allNodes = [...remaining, ...childNodes];
 
-    // Remove all links touching parent nodes
-    const existingLinks = getLinks().filter(l => {
+    // Separate inter-chain links touching the parent from intra-chain links
+    const keptLinks = [];
+    const interChainToRewire = [];
+    for (const l of getLinks()) {
         const sIid = l.source.iid ?? l.source;
         const tIid = l.target.iid ?? l.target;
-        return !removeIids.has(sIid) && !removeIids.has(tIid);
-    });
+        const touchesParent = removeIids.has(sIid) || removeIids.has(tIid);
+        if (!touchesParent) {
+            keptLinks.push(l);
+        } else if (l.isInterChain) {
+            interChainToRewire.push(l);
+        }
+        // else: intra-chain link touching parent → dropped
+    }
 
-    const allLinks = [...existingLinks, ...childLinks];
+    // Rewire inter-chain links by resolving endpoint seg IDs through viewState.
+    // This finds the current visual owner of the chain endpoint segment at any
+    // bubble nesting depth, matching core's linkResolver pattern.
+    for (const link of interChainToRewire) {
+        const sIid = link.source.iid ?? link.source;
+        const tIid = link.target.iid ?? link.target;
+        if (removeIids.has(sIid) && link.sourceSegId) {
+            const node = resolveSegToKink(link.sourceSegId, link.sourceStrand, allNodes);
+            if (node) link.source = node;
+            else continue;
+        }
+        if (removeIids.has(tIid) && link.targetSegId) {
+            const node = resolveSegToKink(link.targetSegId, link.targetStrand, allNodes);
+            if (node) link.target = node;
+            else continue;
+        }
+        if (link.source !== link.target) {
+            keptLinks.push(link);
+        }
+    }
+
+    const allLinks = [...keptLinks, ...childLinks];
 
     syncNodes(allNodes);
     syncLinks(allLinks);
@@ -260,9 +290,6 @@ export function spliceBubbleNodes(removeIids, childNodes, childLinks) {
 /**
  * Reverse of spliceBubbleNodes: remove child nodes and their links,
  * then add parent nodes + restored links (intra-kink + external).
- * @param {Set<string>} removeIids - iids of child nodes to remove
- * @param {Array} parentNodes - parent bubble kink nodes to re-add
- * @param {Array} parentLinks - parent's intra-kink links + saved external links
  */
 export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
     if (!sim) return;
@@ -276,19 +303,64 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
     const remaining = getNodes().filter(n => !removeIids.has(n.iid));
     const allNodes = [...remaining, ...parentNodes];
 
-    // Remove all links touching child nodes
-    const existingLinks = getLinks().filter(l => {
+    // Separate inter-chain links touching children from intra-chain links
+    const keptLinks = [];
+    const interChainToRewire = [];
+    for (const l of getLinks()) {
         const sIid = l.source.iid ?? l.source;
         const tIid = l.target.iid ?? l.target;
-        return !removeIids.has(sIid) && !removeIids.has(tIid);
-    });
+        const touchesChild = removeIids.has(sIid) || removeIids.has(tIid);
+        if (!touchesChild) {
+            keptLinks.push(l);
+        } else if (l.isInterChain) {
+            interChainToRewire.push(l);
+        }
+    }
 
-    const allLinks = [...existingLinks, ...parentLinks];
+    for (const link of interChainToRewire) {
+        const sIid = link.source.iid ?? link.source;
+        const tIid = link.target.iid ?? link.target;
+        if (removeIids.has(sIid) && link.sourceSegId) {
+            const node = resolveSegToKink(link.sourceSegId, link.sourceStrand, allNodes);
+            if (node) link.source = node;
+            else continue;
+        }
+        if (removeIids.has(tIid) && link.targetSegId) {
+            const node = resolveSegToKink(link.targetSegId, link.targetStrand, allNodes);
+            if (node) link.target = node;
+            else continue;
+        }
+        if (link.source !== link.target) {
+            keptLinks.push(link);
+        }
+    }
+
+    const allLinks = [...keptLinks, ...parentLinks];
 
     syncNodes(allNodes);
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
     sim.alpha(0.3).restart();
+}
+
+/**
+ * Resolve a chain endpoint seg ID to the correct kink node in the force sim.
+ * Uses viewState to find the current visual owner (bubble record or null if
+ * the segment is directly visible), then finds the matching kink among allNodes.
+ * Strand selects head (first kink) vs tail (last kink).
+ */
+function resolveSegToKink(segId, strand, allNodes) {
+    const record = simplifyViewState.resolve(segId);
+    // If viewState maps to a record, the seg is inside a collapsed bubble
+    const targetId = record ? record.id : `s${segId}`;
+
+    // Find all kinks of this record in the node array, sorted by index
+    const kinks = allNodes
+        .filter(n => n.id === targetId)
+        .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
+
+    if (kinks.length === 0) return null;
+    return strand === '+' ? kinks[kinks.length - 1] : kinks[0];
 }
 
 export function reheatSimulation() {

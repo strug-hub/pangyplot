@@ -50,9 +50,10 @@ export async function popBubbleForceNode(bubbleNode) {
 
     // Build a lookup of existing force node records for fallback resolution
     // (handles segments already visible from prior pops, not tracked by viewState)
+    // Skip junction nodes — their connectivity is handled by the junction layer.
     const existingRecords = new Map();
     for (const n of getForceNodes()) {
-        if (n.record && !existingRecords.has(n.id)) {
+        if (n.record && !existingRecords.has(n.id) && n.chainId !== '__junction__') {
             existingRecords.set(n.id, n.record);
         }
     }
@@ -120,7 +121,8 @@ export async function popBubbleForceNode(bubbleNode) {
         return parentIids.has(sIid) || parentIids.has(tIid);
     }).map(l => ({ ...l }));  // shallow-copy before splice removes them
 
-    // Atomic splice: remove parent + its links, add children + GFA links
+    // Atomic splice: remove parent + its links, add children + GFA links.
+    // Inter-chain links are re-resolved via viewState (endpointSegId + strand).
     spliceBubbleNodes(parentIids, newChildNodes, newChildLinks);
     recordPop('bubble-pop', { id: bubbleId, chain: chainId });
 

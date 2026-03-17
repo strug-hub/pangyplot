@@ -60,12 +60,13 @@ export function drawForceGraph(ctx, baseWidth) {
         const delWidth = Math.max(0.5, 1 / state.zoom);
         strokeSegments(ctx, delSegs, '#969696', delWidth, 0.6 * opacity);
         ctx.globalAlpha = 0.6 * opacity;
-        const crossSize = Math.max(2, 4 / state.zoom);
+        const crossSize = Math.max(3, 6 / state.zoom);
+        const crossWidth = Math.max(0.5, 1 / state.zoom);
         for (const { x1, y1, x2, y2 } of delSegs) {
             const midX = (x1 + x2) / 2;
             const midY = (y1 + y2) / 2;
             const angle = Math.atan2(y2 - y1, x2 - x1);
-            drawRotatedCross(ctx, midX, midY, crossSize, delWidth, '#969696', angle);
+            drawRotatedCross(ctx, midX, midY, crossSize, crossWidth, '#969696', angle);
         }
     }
 

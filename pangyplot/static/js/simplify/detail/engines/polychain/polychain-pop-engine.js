@@ -46,8 +46,6 @@ function popChainById(chainId, activation) {
 
     addPoppedNodes(nodes, links);
     state.poppedChainIds.add(chainId);
-
-    // Absorb phantoms: rewire junction links to anchors, remove phantom nodes
     absorbChainsPhantoms(chainId, getForceNodes());
 
     const stepInfo = chain.minStep != null && chain.maxStep != null

@@ -70,7 +70,8 @@ export function unpopLastBubble() {
         });
     }
 
-    // Atomic unsplice: remove children + their links, add parent + restored links
+    // Atomic unsplice: remove children + their links, add parent + restored links.
+    // Inter-chain links are re-resolved via viewState (endpointSegId + strand).
     const childIidSet = new Set(childIids);
     unspliceBubbleNodes(childIidSet, parentNodes, [...parentLinks, ...externalLinks]);
 

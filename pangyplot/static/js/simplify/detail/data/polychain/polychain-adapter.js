@@ -142,7 +142,9 @@ export function initJunctionLayer() {
                     const key = `${kink.iid}→${phantomTgt.iid}`;
                     if (!linkedKinks.has(key)) {
                         linkedKinks.add(key);
-                        allLinks.push(makeJunctionLink(kink, phantomTgt));
+                        // target is phantom side: store to_strand + endpoint seg ID
+                        const tgtSegId = gfaLink.target.replace(/^s/, '');
+                        allLinks.push(makeJunctionLink(kink, phantomTgt, null, gfaLink.to_strand, null, tgtSegId));
                     }
                 }
             } else if (!inGraphSrc && inGraphTgt && phantomSrc) {
@@ -152,11 +154,15 @@ export function initJunctionLayer() {
                     const key = `${phantomSrc.iid}→${kink.iid}`;
                     if (!linkedKinks.has(key)) {
                         linkedKinks.add(key);
-                        allLinks.push(makeJunctionLink(phantomSrc, kink));
+                        // source is phantom side: store from_strand + endpoint seg ID
+                        const srcSegId = gfaLink.source.replace(/^s/, '');
+                        allLinks.push(makeJunctionLink(phantomSrc, kink, gfaLink.from_strand, null, srcSegId, null));
                     }
                 }
             } else if (!inGraphSrc && !inGraphTgt && phantomSrc && phantomTgt && phantomSrc !== phantomTgt) {
-                allLinks.push(makeJunctionLink(phantomSrc, phantomTgt));
+                const srcSegId = gfaLink.source.replace(/^s/, '');
+                const tgtSegId = gfaLink.target.replace(/^s/, '');
+                allLinks.push(makeJunctionLink(phantomSrc, phantomTgt, gfaLink.from_strand, gfaLink.to_strand, srcSegId, tgtSegId));
             }
         }
 
@@ -169,7 +175,7 @@ export function initJunctionLayer() {
                 const phantomA = segToPhantom.get(segA);
                 const phantomB = segToPhantom.get(segB);
                 if (phantomA && phantomB && phantomA !== phantomB) {
-                    allLinks.push(makeJunctionLink(phantomA, phantomB));
+                    allLinks.push(makeJunctionLink(phantomA, phantomB, null, null, String(jl.segs[0]), String(jl.segs[1])));
                 }
             }
         }
@@ -179,7 +185,7 @@ export function initJunctionLayer() {
             const phantomA = segToPhantom.get(`s${jl.segs[0]}`);
             const phantomB = segToPhantom.get(`s${jl.segs[1]}`);
             if (phantomA && phantomB && phantomA !== phantomB) {
-                allLinks.push(makeJunctionLink(phantomA, phantomB));
+                allLinks.push(makeJunctionLink(phantomA, phantomB, null, null, String(jl.segs[0]), String(jl.segs[1])));
             }
         }
     }
@@ -199,13 +205,23 @@ function pickStrandKink(kinks, strand) {
     return strand === '+' ? kinks[kinks.length - 1] : kinks[0];
 }
 
-function makeJunctionLink(source, target) {
+/**
+ * @param {string} [sourceStrand] - GFA strand for the source side ('+' = tail, '-' = head)
+ * @param {string} [targetStrand] - GFA strand for the target side
+ * @param {string} [sourceSegId] - chain endpoint seg ID for source side (for viewState resolution)
+ * @param {string} [targetSegId] - chain endpoint seg ID for target side
+ */
+function makeJunctionLink(source, target, sourceStrand, targetStrand, sourceSegId, targetSegId) {
     return {
         source, target,
         isInterChain: true,
         isKinkLink: false,
         chainId: null,
         length: 10,
+        sourceStrand: sourceStrand || null,
+        targetStrand: targetStrand || null,
+        sourceSegId: sourceSegId || null,
+        targetSegId: targetSegId || null,
     };
 }
 
