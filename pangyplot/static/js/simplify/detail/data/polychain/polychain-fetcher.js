@@ -1,16 +1,15 @@
 // Progressive detail: single-viewport fetch, response parsing.
 // Pure data-fetching — no skeleton imports, no UI imports, no fade or LOD decisions.
-// Uses incremental merge: new chains are added, stale chains removed surgically.
 
 import { state } from '../../../simplify-state.js';
 import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
-import { removeNodesByChainIds } from '../../engines/force-engine.js';
-import { unregisterChains } from '../simplify-view-state.js';
-import { initJunctionLayer, addChainsToJunctionLayer, removeChainsFromJunctionLayer } from './polychain-adapter.js';
+import { clearForce } from '../../engines/force-engine.js';
+import { resetSimplifyViewState } from '../simplify-view-state.js';
+import { initJunctionLayer } from './polychain-adapter.js';
 
 let fetchController = null;
 
-// Layout bounds of the union of all successful fetches.
+// Viewport layout bounds of the last successful fetch (with margin applied).
 let fetchedRegion = null;
 
 // ---------------------------------------------------------------
@@ -64,7 +63,7 @@ function processResponse(apiResponse) {
 // Caller provides pre-computed viewport and coordinate info.
 // Returns true if new data was fetched, false otherwise.
 // ---------------------------------------------------------------
-export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
+export async function fetchDetailForViewport({ chr, vp, canvasWidth, expandThreshold, xToBp }) {
     if (!chr) return false;
 
     const vpWidth = vp.maxX - vp.minX;
@@ -97,7 +96,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
     const url = `/detail-tiles?genome=${encodeURIComponent(state.GENOME)}`
         + `&chromosome=${encodeURIComponent(chr)}`
         + `&start=${Math.max(0, Math.round(bpLeft))}&end=${Math.round(bpRight)}`
-        + `&ppbp=${ppbp}`
+        + `&ppbp=${ppbp}&expand=${expandThreshold}`
         + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
 
     state.isFetching = true;
@@ -107,87 +106,23 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
         const apiData = await resp.json();
         if (signal.aborted) return false;
 
-        const newData = processResponse(apiData);
-        const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
+        fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
 
-        if (isFirstFetch) {
-            // --- First fetch: full initialization ---
-            fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
+        // Clear stale force state before replacing detail data —
+        // old chain IDs won't match the new decomposition.
+        clearForce();
+        state.poppedChainIds.clear();
+        state.activeSeedChainId = null;
+        resetSimplifyViewState();
+        state._bubblePopStack = [];
 
-            state.poppedChainIds.clear();
-            state.activeSeedChainId = null;
-            state._bubblePopStack = [];
-
-            clearHistory();
-            recordPop('detail-tiles', {
-                genome: state.GENOME, chromosome: chr,
-                start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
-            });
-            state.detailData = newData;
-            initJunctionLayer();
-        } else {
-            // --- Incremental merge ---
-            const existingIds = new Set(state.detailData.chains.map(c => c.id));
-            const incomingIds = new Set(newData.chains.map(c => c.id));
-
-            // New chains = in response but not in current state
-            const newChains = newData.chains.filter(c => !existingIds.has(c.id));
-
-            // Removed chains = in current state but not in response AND
-            // outside the new fetched region (keep chains in the overlap zone)
-            const removedIds = new Set();
-            for (const c of state.detailData.chains) {
-                if (incomingIds.has(c.id)) continue;
-                // Only remove if the chain is entirely outside the new fetch region
-                // (use polyline bounds as proxy)
-                if (c.polyline && c.polyline.length >= 2) {
-                    const chainMinX = Math.min(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
-                    const chainMaxX = Math.max(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
-                    if (chainMaxX < fetchMinX || chainMinX > fetchMaxX) {
-                        removedIds.add(c.id);
-                    }
-                    // else: chain overlaps with fetch region but wasn't in response —
-                    // keep it (it's in the overlap zone between old and new)
-                }
-            }
-
-            // Remove stale chains from force sim + phantom maps + viewState
-            if (removedIds.size > 0) {
-                // Don't remove chains that are currently popped by the user
-                for (const cid of state.poppedChainIds) {
-                    removedIds.delete(cid);
-                }
-                if (removedIds.size > 0) {
-                    removeChainsFromJunctionLayer(removedIds);
-                    removeNodesByChainIds(removedIds);
-                    const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
-                    unregisterChains(removedIds, removedChains);
-                }
-            }
-
-            // Merge chains: keep existing (minus removed), add new
-            const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
-            const mergedChains = [...keptChains, ...newChains];
-
-            // Update detailData
-            state.detailData = {
-                ...newData,
-                chains: mergedChains,
-                totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
-            };
-
-            // Add phantoms + junction links for new chains only
-            if (newChains.length > 0) {
-                addChainsToJunctionLayer(newChains, state.detailData);
-            }
-
-            // Expand fetchedRegion to union of old and new
-            fetchedRegion = {
-                minX: Math.min(fetchedRegion.minX, fetchMinX),
-                maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
-                chr,
-            };
-        }
+        clearHistory();
+        recordPop('detail-tiles', {
+            genome: state.GENOME, chromosome: chr,
+            start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
+        });
+        state.detailData = processResponse(apiData);
+        initJunctionLayer();
         return true;
     } catch (e) {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);

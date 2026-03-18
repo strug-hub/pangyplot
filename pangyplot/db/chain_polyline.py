@@ -433,18 +433,8 @@ def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
     If the chain has more than MAX_BUBBLES_PER_CHAIN bubbles, split it into
     balanced sub-runs using the .N connector system.  This avoids extremely
     long polylines that are slow to render and interact with.
-
-    If chain.is_chunk is True, the chain was pre-split by create_chains into
-    a canonical chunk — emit it as a connector directly (no further splitting).
     """
     n = len(chain.bubbles)
-
-    if getattr(chain, 'is_chunk', False):
-        # Pre-split chunk from create_chains — emit as connector
-        conn = build_connector(chain, chain.bubbles, stepidx, seg_index, depth)
-        if conn is None:
-            return {"chains": [], "bubbles": [], "adjacency": {}}
-        return {"chains": [conn], "bubbles": [], "adjacency": {}}
 
     if n > MAX_BUBBLES_PER_CHAIN:
         chunks = _split_balanced(chain.bubbles, MAX_BUBBLES_PER_CHAIN)

@@ -223,12 +223,10 @@ class TestJunctionGraph:
     def test_junction_links_key_present(self, tile):
         assert "junction_links" in tile
 
-    def test_three_base_chains_returned(self, tile):
-        """The junction region should include chains rooted in c625, c82, c371.
-        Long chains may be split into connectors (c371:55-124, etc.)."""
+    def test_three_chains_returned(self, tile):
+        """The junction region should yield exactly c625, c82, c371."""
         chain_ids = {c["id"] for c in tile["chains"]}
-        base_ids = {cid.split(":")[0] for cid in chain_ids}
-        assert {"c625", "c82", "c371"}.issubset(base_ids)
+        assert chain_ids == {"c625", "c82", "c371"}
 
     def test_at_least_one_junction_node(self, tile):
         assert len(tile["junction_nodes"]) >= 1

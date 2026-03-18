@@ -201,38 +201,6 @@ export function removeLinksByFlag(flag) {
     syncLinks(remaining);
 }
 
-/**
- * Surgically remove all force nodes and links belonging to a set of chain IDs.
- * Also removes phantom nodes and junction links associated with those chains.
- */
-export function removeNodesByChainIds(chainIds) {
-    if (!sim) return;
-
-    const remaining = getNodes().filter(n => {
-        // Remove nodes belonging to the chain
-        if (chainIds.has(n.chainId)) return false;
-        // Remove phantom nodes for these chains
-        if (n.isPhantom && chainIds.has(n.phantomChainId)) return false;
-        return true;
-    });
-
-    const remainingIids = new Set(remaining.map(n => n.iid));
-    const remainingLinks = getLinks().filter(l => {
-        const sIid = l.source.iid ?? l.source;
-        const tIid = l.target.iid ?? l.target;
-        return remainingIids.has(sIid) && remainingIids.has(tIid);
-    });
-
-    syncNodes(remaining);
-    syncLinks(remainingLinks);
-
-    if (remaining.length > 0) {
-        sim.alpha(0.1).restart();
-    } else {
-        sim.stop();
-    }
-}
-
 export function clearForce() {
     if (!sim) return;
     sim.stop();
