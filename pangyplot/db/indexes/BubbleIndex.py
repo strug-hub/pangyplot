@@ -169,15 +169,15 @@ class BubbleIndex:
         chain_dict = defaultdict(list)
         for bubble in bubbles:
             chain_dict[bubble.chain].append(bubble)
-            
+
         chains = []
         for chain_id in chain_dict:
-            min_step = min([b.chain_step for b in chain_dict[chain_id]])
-            max_step = max([b.chain_step for b in chain_dict[chain_id]])
-
-            bubble_ids = db.get_bubble_ids_from_chain(self.dir, chain_id, min_step, max_step)
+            # Always load ALL bubbles for the chain so that long-chain
+            # splitting (_split_balanced) produces the same sub-chain IDs
+            # regardless of which viewport subset triggered the query.
+            all_ids = db.get_all_bubble_ids_from_chain(self.dir, chain_id)
             current_bids = {bubble.id for bubble in chain_dict[chain_id]}
-            missing_bubbles = [self[bubble_id] for bubble_id in bubble_ids if bubble_id not in current_bids]
+            missing_bubbles = [self[bubble_id] for bubble_id in all_ids if bubble_id not in current_bids]
             chain_dict[chain_id].extend(missing_bubbles)
 
             chain = Chain(chain_id, chain_dict[chain_id], parent_bubble=parent_bubble, gfaidx=self.gfaidx)

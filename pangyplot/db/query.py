@@ -219,6 +219,8 @@ def get_path_order(indexes, genome, chrom):
     return gfaidx.get_sample_idx()
 
 
+CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level
+
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     expand_threshold=None,
                     layout_min_x=None, layout_max_x=None):
@@ -233,7 +235,12 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     are queried by layout x-coordinate instead of bp→step conversion, which
     catches child chains whose parent superbubble step range is outside the
     viewport.
+
+    ``expand_threshold`` is accepted for API compatibility but ignored;
+    the canonical ``CANONICAL_EXPAND_THRESHOLD`` is always used to ensure
+    stable chain IDs across different viewport sizes.
     """
+    expand_threshold = CANONICAL_EXPAND_THRESHOLD
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
     gfaidx = indexes.gfa_index.get(chrom, None)

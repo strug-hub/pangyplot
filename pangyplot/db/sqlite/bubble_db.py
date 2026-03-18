@@ -145,6 +145,13 @@ def get_bubble_ids_from_chain(dir, chain_id, start_step, end_step):
     rows = cur.fetchall()
     return [row["id"] for row in rows]
 
+def get_all_bubble_ids_from_chain(dir, chain_id):
+    """Return ALL bubble IDs for a chain, ordered by chain_step."""
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT id FROM bubbles WHERE chain = ? ORDER BY chain_step", (chain_id,))
+    rows = cur.fetchall()
+    return [row["id"] for row in rows]
+
 def get_chain_ends(dir, chain_id):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT id, chain_step FROM bubbles WHERE chain = ? ORDER BY chain_step ASC LIMIT 1", (chain_id,))
