@@ -100,6 +100,13 @@ export function initForce() {
 }
 
 function onTick() {
+    // Dampen forces when zoomed in so nodes don't fly off screen.
+    // At high zoom, the same data-space displacement covers more pixels.
+    const zoom = state.zoom || 1;
+    const baseFriction = defaults.FRICTION;  // 0.1
+    const damped = Math.min(0.9, baseFriction + zoom * 0.5);
+    sim.velocityDecay(damped);
+
     if (state.detailPhase !== 'none' && state.detailPhase !== 'fading-out') {
         scheduleFrame();
     }
