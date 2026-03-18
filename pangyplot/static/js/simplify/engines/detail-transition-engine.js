@@ -7,7 +7,7 @@ import { updateLOD } from './lod-engine.js';
 import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../ui/status-bar.js';
 import { xToBp, isReady } from './reference-spine-engine.js';
 import { getViewport } from '../render/viewport.js';
-import { getLevelMeta } from '../data/chromosome-data.js';
+
 
 let fadeStartTime = 0;
 let fetchTimer = null;
@@ -94,7 +94,14 @@ export function scheduleDetailFetch() {
     if (fetchTimer) clearTimeout(fetchTimer);
     fetchTimer = setTimeout(async () => {
         updateLOD();
-        if (state.targetGridSize > state.DETAIL_GRID_THRESHOLD) {
+        // Hysteresis: enter detail at <= DETAIL_GRID_THRESHOLD,
+        // exit at > DETAIL_EXIT_THRESHOLD, maintain in between.
+        const inDetail = state.detailPhase !== 'none';
+        const exitThreshold = state.DETAIL_EXIT_THRESHOLD;
+        if (!inDetail && state.targetGridSize > state.DETAIL_GRID_THRESHOLD) {
+            // Not in detail and not zoomed enough — nothing to do
+            return;
+        } else if (inDetail && state.targetGridSize > exitThreshold) {
             state.detailSuppressed = false;
             exitDetailMode();
         } else if (state.detailSuppressed) {
@@ -103,14 +110,12 @@ export function scheduleDetailFetch() {
             if (!isReady()) return;
             const vp = getViewport();
             const dpr = window.devicePixelRatio || 1;
-            const gridSize = getLevelMeta()?.gridSize || 50;
             const { fetchDetailForViewport } = await import(
                 '../detail/data/polychain/polychain-fetcher.js');
             const ok = await fetchDetailForViewport({
                 chr: state.chromosome,
                 vp,
                 canvasWidth: state.canvas.width / dpr,
-                expandThreshold: Math.round(gridSize * 2),
                 xToBp,
             });
             if (ok) beginFadeIn();

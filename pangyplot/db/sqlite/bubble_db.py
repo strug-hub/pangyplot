@@ -145,6 +145,26 @@ def get_bubble_ids_from_chain(dir, chain_id, start_step, end_step):
     rows = cur.fetchall()
     return [row["id"] for row in rows]
 
+def get_all_bubble_ids_from_chain(dir, chain_id):
+    """Return ALL bubble IDs for a chain, ordered by chain_step."""
+    cur = get_connection(dir).cursor()
+    cur.execute("SELECT id FROM bubbles WHERE chain = ? ORDER BY chain_step", (chain_id,))
+    rows = cur.fetchall()
+    return [row["id"] for row in rows]
+
+def get_bubbles_batch(dir, bubble_ids, gfaidx):
+    """Load multiple Bubble objects in a single SQL query."""
+    if not bubble_ids:
+        return []
+    cur = get_connection(dir).cursor()
+    placeholders = ','.join('?' * len(bubble_ids))
+    cur.execute(f"SELECT * FROM bubbles WHERE id IN ({placeholders})", bubble_ids)
+    row_map = {}
+    for row in cur.fetchall():
+        row_map[row["id"]] = create_bubble(row, gfaidx)
+    # Return in the order requested
+    return [row_map[bid] for bid in bubble_ids if bid in row_map]
+
 def get_chain_ends(dir, chain_id):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT id, chain_step FROM bubbles WHERE chain = ? ORDER BY chain_step ASC LIMIT 1", (chain_id,))

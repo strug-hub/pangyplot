@@ -256,6 +256,123 @@ export function initJunctionLayer() {
 }
 
 /**
+ * Add phantoms + junction nodes for newly added chains only (incremental).
+ * Same logic as initJunctionLayer but operates on a subset of chains and
+ * merges into existing phantom maps without clearing them.
+ * @param {Array} newChains - chain objects to add
+ * @param {Object} dd - the full detailData (for junctionGraph, junctionLinks, etc.)
+ */
+export function addChainsToJunctionLayer(newChains, dd) {
+    if (!dd || newChains.length === 0) return;
+
+    const allNodes = [];
+    const allLinks = [];
+
+    // 1. Create phantom nodes for new chains
+    for (const chain of newChains) {
+        if (chainPhantoms.has(chain.id)) continue; // already exists
+        const pl = chain.polyline;
+        if (!pl || pl.length < 2) continue;
+
+        const head = {
+            id: `phantom_${chain.id}_head`,
+            iid: `phantom_${chain.id}_head`,
+            x: pl[0][0], y: pl[0][1],
+            fx: pl[0][0], fy: pl[0][1],
+            chainId: '__phantom__',
+            isPhantom: true,
+            phantomRole: 'head',
+            phantomChainId: chain.id,
+            radius: 0, width: 0,
+        };
+        const tail = {
+            id: `phantom_${chain.id}_tail`,
+            iid: `phantom_${chain.id}_tail`,
+            x: pl[pl.length - 1][0], y: pl[pl.length - 1][1],
+            fx: pl[pl.length - 1][0], fy: pl[pl.length - 1][1],
+            chainId: '__phantom__',
+            isPhantom: true,
+            phantomRole: 'tail',
+            phantomChainId: chain.id,
+            radius: 0, width: 0,
+        };
+
+        chainPhantoms.set(chain.id, { head, tail });
+        allNodes.push(head, tail);
+
+        for (const sid of (chain.sourceSegs || [])) {
+            segToPhantom.set(`s${sid}`, head);
+        }
+        for (const sid of (chain.sinkSegs || [])) {
+            segToPhantom.set(`s${sid}`, tail);
+        }
+    }
+
+    // 2. Shared-segment links between new and existing chains
+    const newChainIds = new Set(newChains.map(c => c.id));
+    const seenSharedPairs = new Set();
+    for (const chain of dd.chains) {
+        for (const sid of (chain.sinkSegs || [])) {
+            const sinkPhantom = chainPhantoms.get(chain.id)?.tail;
+            if (!sinkPhantom) continue;
+            for (const other of dd.chains) {
+                if (other.id === chain.id) continue;
+                // Only create links involving at least one new chain
+                if (!newChainIds.has(chain.id) && !newChainIds.has(other.id)) continue;
+                if (!(other.sourceSegs || []).includes(sid)) continue;
+                const srcPhantom = chainPhantoms.get(other.id)?.head;
+                if (!srcPhantom || srcPhantom === sinkPhantom) continue;
+                const pairKey = `${sinkPhantom.iid}↔${srcPhantom.iid}`;
+                if (seenSharedPairs.has(pairKey)) continue;
+                seenSharedPairs.add(pairKey);
+                allLinks.push(makeJunctionLink(sinkPhantom, srcPhantom, null, null, String(sid), String(sid)));
+            }
+        }
+    }
+
+    // 3. Junction links (endpoint-to-endpoint) involving new chains
+    const jls = dd.junctionLinks;
+    if (jls && jls.length > 0) {
+        for (const jl of jls) {
+            const segA = `s${jl.segs[0]}`;
+            const segB = `s${jl.segs[1]}`;
+            const phantomA = segToPhantom.get(segA);
+            const phantomB = segToPhantom.get(segB);
+            if (!phantomA || !phantomB || phantomA === phantomB) continue;
+            // Only add if at least one phantom belongs to a new chain
+            const aIsNew = newChainIds.has(phantomA.phantomChainId);
+            const bIsNew = newChainIds.has(phantomB.phantomChainId);
+            if (!aIsNew && !bIsNew) continue;
+            allLinks.push(makeJunctionLink(phantomA, phantomB, null, null, String(jl.segs[0]), String(jl.segs[1])));
+        }
+    }
+
+    if (allNodes.length > 0 || allLinks.length > 0) {
+        addPoppedNodes(allNodes, allLinks);
+    }
+}
+
+/**
+ * Remove phantoms and junction data for specific chains.
+ * @param {Set<string>} chainIds - chain IDs to remove
+ */
+export function removeChainsFromJunctionLayer(chainIds) {
+    for (const cid of chainIds) {
+        const phantoms = chainPhantoms.get(cid);
+        if (phantoms) {
+            // Clean up segToPhantom entries pointing to these phantoms
+            for (const [key, ph] of segToPhantom) {
+                if (ph === phantoms.head || ph === phantoms.tail) {
+                    segToPhantom.delete(key);
+                }
+            }
+            chainPhantoms.delete(cid);
+        }
+        absorbedPhantoms.delete(cid);
+    }
+}
+
+/**
  * Create a lightweight record wrapper for a phantom node, satisfying the
  * NodeRecord interface expected by deserializeSubgraph's linkResolver.
  * Both head() and tail() return the phantom's iid since it's a single point.
