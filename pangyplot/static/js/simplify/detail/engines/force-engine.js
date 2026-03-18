@@ -89,7 +89,7 @@ export function initForce() {
         .velocityDecay(defaults.FRICTION)
         .force('link', d3.forceLink([]).id(d => d.iid)
             .distance(d => d.length * SIMPLIFY_LINK_SCALE)
-            .strength(d => d.isInterChain ? 0.3 : 1))
+            .strength(d => d.isAnchorLink ? 2 : d.isInterChain ? 0.3 : 1))
         .force('charge', d3.forceManyBody().strength(SIMPLIFY_CHARGE).distanceMax(defaults.CHARGE_DISTANCE))
         .force('collide', d3.forceCollide().radius(defaults.COLLISION_RADIUS).strength(defaults.COLLISION_STRENGTH))
         .force('layout', layoutForce().strengthLevel(defaults.LAYOUT_LEVEL))

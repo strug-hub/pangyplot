@@ -292,17 +292,6 @@ function makeJunctionLink(source, target, sourceStrand, targetStrand, sourceSegI
 }
 
 /**
- * Check if any chain adjacent to this phantom's endpoint has already been
- * popped (its phantoms absorbed). If so, the anchor can be unpinned.
- */
-function isAdjacentPopped(phantom) {
-    const thisChainId = phantom.phantomChainId;
-    const adj = state.detailData?.chainAdjacency?.[thisChainId];
-    if (!adj) return false;
-    return adj.some(cid => state.poppedChainIds.has(cid));
-}
-
-/**
  * Find junction nodes directly linked to a phantom node.
  */
 function junctionNeighborsOf(phantom) {
@@ -362,22 +351,6 @@ export function absorbChainsPhantoms(chainId, forceNodes) {
         saved.tail = absorbPhantom(phantoms.tail.iid, tailAnchor);
     }
 
-    // Only unpin an anchor if the chain on the other side of the phantom
-    // is also popped (so both sides participate in the force layout).
-    // Otherwise keep pinned at the polyline endpoint for visual stability.
-    if (headAnchor && headAnchor.fx != null && isAdjacentPopped(phantoms.head)) {
-        saved.headAnchorFx = headAnchor.fx;
-        saved.headAnchorFy = headAnchor.fy;
-        delete headAnchor.fx;
-        delete headAnchor.fy;
-    }
-    if (tailAnchor && tailAnchor !== headAnchor && tailAnchor.fx != null && isAdjacentPopped(phantoms.tail)) {
-        saved.tailAnchorFx = tailAnchor.fx;
-        saved.tailAnchorFy = tailAnchor.fy;
-        delete tailAnchor.fx;
-        delete tailAnchor.fy;
-    }
-
     absorbedPhantoms.set(chainId, saved);
 }
 
@@ -395,16 +368,6 @@ export function restoreChainsPhantoms(chainId) {
     }
     if (saved.head && saved.headAnchor) {
         restorePhantom(saved.head, saved.headAnchor);
-    }
-
-    // Re-pin chain anchors
-    if (saved.headAnchor && saved.headAnchorFx != null) {
-        saved.headAnchor.fx = saved.headAnchorFx;
-        saved.headAnchor.fy = saved.headAnchorFy;
-    }
-    if (saved.tailAnchor && saved.tailAnchor !== saved.headAnchor && saved.tailAnchorFx != null) {
-        saved.tailAnchor.fx = saved.tailAnchorFx;
-        saved.tailAnchor.fy = saved.tailAnchorFy;
     }
 
     // Re-pin junction nodes that were unpinned
@@ -553,18 +516,24 @@ export function deserializeChainGraph(apiData, chain, clipRange) {
         const firstRec = recIds[0];
         const lastRec = recIds[recIds.length - 1];
 
-        // Create links from anchor kink nodes to chain phantoms
+        // Create links from anchor kink nodes to chain phantoms.
+        // Tagged isAnchorLink so the force sim can apply stronger pull,
+        // keeping anchors near the polyline endpoints while phantoms exist.
         const phantoms = chainPhantoms.get(chain.id);
         if (phantoms) {
             if (firstRec) {
                 const head = nodesByRecord.get(firstRec)[0];
-                allLinks.push(makeJunctionLink(head, phantoms.head));
+                const link = makeJunctionLink(head, phantoms.head);
+                link.isAnchorLink = true;
+                allLinks.push(link);
             }
             if (lastRec) {
                 const kinks = nodesByRecord.get(lastRec);
                 const tail = kinks[kinks.length - 1];
                 if (lastRec !== firstRec || kinks.length > 1) {
-                    allLinks.push(makeJunctionLink(tail, phantoms.tail));
+                    const link = makeJunctionLink(tail, phantoms.tail);
+                    link.isAnchorLink = true;
+                    allLinks.push(link);
                 }
             }
         }
@@ -589,8 +558,8 @@ function pinAnchors(nodes, polyline) {
 
     if (firstRec) {
         const head = nodesByRecord.get(firstRec)[0];
-        head.fx = plStart[0];
-        head.fy = plStart[1];
+        head.x = plStart[0];
+        head.y = plStart[1];
         head.isAnchor = true;
         head.anchorRole = 'source';
         head.anchorRecord = head.record;
@@ -599,8 +568,8 @@ function pinAnchors(nodes, polyline) {
         const kinks = nodesByRecord.get(lastRec);
         const tail = kinks[kinks.length - 1];
         if (lastRec !== firstRec || kinks.length > 1) {
-            tail.fx = plEnd[0];
-            tail.fy = plEnd[1];
+            tail.x = plEnd[0];
+            tail.y = plEnd[1];
             tail.isAnchor = true;
             tail.anchorRole = 'sink';
             tail.anchorRecord = tail.record;
