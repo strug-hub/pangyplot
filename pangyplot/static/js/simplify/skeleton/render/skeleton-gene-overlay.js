@@ -21,6 +21,9 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
     const bboxes = getLevelBboxes();
     const geneYMargin = (level.gridSize || 50) * 3;
 
+    const prevComp = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'multiply';
+
     for (const gene of genePins) {
         const indices = [];
         for (let i = 0; i < level.polylines.length; i++) {
@@ -34,9 +37,11 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
             }
         }
         if (indices.length > 0) {
-            strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 2);
+            strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5);
         }
     }
+
+    ctx.globalCompositeOperation = prevComp;
 }
 
 /**
@@ -48,6 +53,9 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
 
     const geneYMargin = (level.gridSize || 50) * 3;
     const gr = Math.max(2, 4.0 / state.zoom);
+
+    const prevComp = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'multiply';
 
     for (const gene of genePins) {
         const junctions = [];
@@ -62,6 +70,8 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
             fillJunctions(ctx, junctions, gr, hexToRgba(gene.color, skelAlpha));
         }
     }
+
+    ctx.globalCompositeOperation = prevComp;
 }
 
 /**
