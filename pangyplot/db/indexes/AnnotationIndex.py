@@ -59,8 +59,8 @@ class AnnotationIndex:
             return None
         return gene_annotations[0]
 
-    def query_gene_range(self, chrom, start, end, type=None):
-        annotations = db.get_by_range(self.dir, chrom, start, end, self.step_index, type=type)
+    def query_gene_range(self, chrom, start, end, type=None, mane_only=False):
+        annotations = db.get_by_range(self.dir, chrom, start, end, self.step_index, type=type, mane_only=mane_only)
         return self.construct_genes(annotations)
 
     def gene_search(self, query, max_results=20):

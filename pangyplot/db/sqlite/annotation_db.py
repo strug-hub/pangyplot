@@ -98,9 +98,25 @@ def get_by_gene_name(dir, gene_name, step_index=None, type=None):
         cur.execute("SELECT * FROM annotations WHERE gene_name = ?", (gene_name,))
     return [annotation_from_row(row, step_index) for row in cur.fetchall()]
 
-def get_by_range(dir, chrom, start, end, step_index=None, type=None):
+def get_by_range(dir, chrom, start, end, step_index=None, type=None, mane_only=False):
     cur = get_connection(dir).cursor()
-    if type:
+    if mane_only:
+        if type:
+            cur.execute("""
+                SELECT DISTINCT a.* FROM annotations a
+                INNER JOIN annotations t ON t.gene_name = a.gene_name AND t.type = 'transcript' AND t.mane_select = 1
+                WHERE a.chrom = ? AND a.start >= ? AND a.end <= ? AND a.type = ?
+            """, (chrom, start, end, type))
+        else:
+            cur.execute("""
+                SELECT a.* FROM annotations a
+                WHERE a.chrom = ? AND a.start >= ? AND a.end <= ?
+                AND a.gene_name IN (
+                    SELECT DISTINCT t.gene_name FROM annotations t
+                    WHERE t.type = 'transcript' AND t.mane_select = 1
+                )
+            """, (chrom, start, end))
+    elif type:
         cur.execute("SELECT * FROM annotations WHERE chrom = ? AND start >= ? AND end <= ? AND type = ?", (chrom, start, end, type))
     else:
         cur.execute("SELECT * FROM annotations WHERE chrom = ? AND start >= ? AND end <= ?", (chrom, start, end))

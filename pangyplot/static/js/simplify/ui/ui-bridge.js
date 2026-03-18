@@ -6,12 +6,13 @@ import eventBus from '../../utils/event-bus.js';
 import { state } from '../simplify-state.js';
 import { loadChromosome } from '../data/chromosome-loader.js';
 import { navigateToRegion } from '../engines/navigation/hash-navigation.js';
-import { resizeCanvas, fitToScreen } from '../render/viewport.js';
+import { resizeCanvas, fitToScreen, getViewport } from '../render/viewport.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { scheduleDetailFetch } from '../engines/detail-transition-engine.js';
 import { scheduleHashUpdate } from '../engines/navigation/hash-navigation.js';
-import { isReady } from '../engines/reference-spine-engine.js';
-import { placeGenes } from '../skeleton/data/gene-data.js';
+import { isReady, xToBp } from '../engines/reference-spine-engine.js';
+import { fetchAndPlaceGenes, clearGeneCache } from '../skeleton/data/gene-data.js';
+import { clearLabelAnimation } from '../skeleton/render/skeleton-gene-overlay.js';
 import { showLoadingError, showStats, initGridMeter } from './status-bar.js';
 import { publishViewportCoordinates } from './viewport-sync.js';
 
@@ -34,6 +35,8 @@ function handleConstructGraph(data) {
 async function switchChromosome(chrom, start, end) {
     const prev = state.chromosome;
     state.chromosome = chrom;
+    clearGeneCache();
+    clearLabelAnimation();
     try {
         await loadChromosome(chrom);
     } catch (err) {
@@ -44,7 +47,6 @@ async function switchChromosome(chrom, start, end) {
 
     showStats();
     initGridMeter();
-    if (isReady()) placeGenes();
     resizeCanvas();
 
     if (start != null && end != null) {
@@ -56,6 +58,18 @@ async function switchChromosome(chrom, start, end) {
     scheduleDetailFetch();
     scheduleHashUpdate();
     publishViewportCoordinates();
+
+    // Fetch genes for the new chromosome
+    if (isReady()) {
+        const vp = getViewport();
+        const bpLeft = xToBp(vp.minX);
+        const bpRight = xToBp(vp.maxX);
+        if (bpLeft !== null && bpRight !== null) {
+            fetchAndPlaceGenes(chrom, state.GENOME,
+                Math.max(0, Math.round(bpLeft)), Math.round(bpRight))
+                .then(() => scheduleFrame());
+        }
+    }
 }
 
 export function setupUiBridge() {

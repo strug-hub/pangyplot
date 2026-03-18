@@ -1,31 +1,95 @@
-// Gene landmark data and layout placement.
+// Gene landmark data: dynamic API fetch with caching and MANE Select filter.
 
 import { bpToX, xToY } from '../../engines/reference-spine-engine.js';
-
-const GENES = [
-    { name: 'SRY',     startBp: 2786855,  endBp: 2787682 },
-    { name: 'ZFY',     startBp: 2935281,  endBp: 2982506 },
-    { name: 'PCDH11Y', startBp: 5000226,  endBp: 5742224 },
-    { name: 'AMELY',   startBp: 6865918,  endBp: 6911752 },
-    { name: 'USP9Y',   startBp: 12537650, endBp: 12860839 },
-    { name: 'UTY',     startBp: 13234577, endBp: 13480673 },
-    { name: 'NLGN4Y',  startBp: 14522573, endBp: 14845654 },
-    { name: 'KDM5D',   startBp: 19703865, endBp: 19744939 },
-    { name: 'EIF1AY',  startBp: 20575776, endBp: 20593154 },
-    { name: 'RBMY1A1', startBp: 21534879, endBp: 21549326 },
-    { name: 'DAZ1',    startBp: 23129355, endBp: 23199010 },
-];
+import { geneColor } from '../../utils/color-hash.js';
+import { state } from '../../simplify-state.js';
 
 let genePins = [];
+let geneCache = [];
+let fetchedRange = null;   // { chr, startBp, endBp }
+let fetchController = null;
 
 export function getGenePins() { return genePins; }
 
-export function placeGenes() {
+export function clearGeneCache() {
     genePins = [];
-    for (const gene of GENES) {
-        const startX = bpToX(gene.startBp);
-        const endX = bpToX(gene.endBp);
+    geneCache = [];
+    fetchedRange = null;
+    if (fetchController) {
+        fetchController.abort();
+        fetchController = null;
+    }
+}
+
+export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
+    if (!chr || !genome) return;
+
+    // If cached range covers the request, just re-place
+    if (fetchedRange && fetchedRange.chr === chr &&
+        fetchedRange.startBp <= startBp && fetchedRange.endBp >= endBp) {
+        placeGenes();
+        return;
+    }
+
+    // Expand range by 100% margin on each side
+    const span = endBp - startBp;
+    const fetchStart = Math.max(0, Math.floor(startBp - span));
+    const fetchEnd = Math.ceil(endBp + span);
+
+    // Abort any in-flight request
+    if (fetchController) fetchController.abort();
+    fetchController = new AbortController();
+    const signal = fetchController.signal;
+
+    try {
+        let genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, true, signal);
+
+        // Fallback: if MANE Select returned nothing, fetch all genes
+        if (genes.length === 0) {
+            genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, false, signal);
+        }
+
+        // Deduplicate by gene id
+        const seen = new Set();
+        geneCache = [];
+        for (const g of genes) {
+            if (!seen.has(g.id)) {
+                seen.add(g.id);
+                geneCache.push(g);
+            }
+        }
+
+        fetchedRange = { chr, startBp: fetchStart, endBp: fetchEnd };
+        placeGenes();
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.warn('[gene-data] fetch failed:', err);
+        }
+    }
+}
+
+async function fetchGenes(genome, chr, start, end, maneOnly, signal) {
+    const params = new URLSearchParams({
+        genome, chromosome: chr,
+        start: String(start), end: String(end),
+    });
+    if (maneOnly) params.set('mane_only', 'true');
+
+    const resp = await fetch(`/genes?${params}`, { signal });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.genes || [];
+}
+
+function placeGenes() {
+    genePins = [];
+    for (const gene of geneCache) {
+        const startBp = gene.start;
+        const endBp = gene.end;
+        const startX = bpToX(startBp);
+        const endX = bpToX(endBp);
         if (startX === null || endX === null) continue;
+
         const midX = (startX + endX) / 2;
         const yStart = xToY(startX);
         const yEnd = xToY(endX);
@@ -33,6 +97,9 @@ export function placeGenes() {
         const refY = yMid;
         const minY = Math.min(yStart, yMid, yEnd);
         const maxY = Math.max(yStart, yMid, yEnd);
-        genePins.push({ name: gene.name, startX, endX, midX, refY, minY, maxY });
+        const name = gene.gene || gene.id;
+        const color = geneColor(name);
+
+        genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
     }
 }

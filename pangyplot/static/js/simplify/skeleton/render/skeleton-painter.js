@@ -30,12 +30,12 @@ export function fillJunctions(ctx, points, r, color) {
 /**
  * Draw a single gene label bracket and text badge at a screen position.
  */
-export function drawGeneLabel(ctx, name, sxStart, sxEnd, sxMid, syRef) {
+export function drawGeneLabel(ctx, name, sxStart, sxEnd, sxMid, syRef, color = '#e8a735') {
     const fontSize = 11;
     const geneW = sxEnd - sxStart;
     const bracketY = syRef - 16;
 
-    ctx.strokeStyle = '#e8a735';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 1.5;
     if (geneW > 6) {
         ctx.beginPath();
@@ -64,6 +64,6 @@ export function drawGeneLabel(ctx, name, sxStart, sxEnd, sxMid, syRef) {
     ctx.roundRect(sxMid - tw / 2 - px, ly - fontSize - py, tw + px * 2, fontSize + py * 2, 3);
     ctx.fill();
 
-    ctx.fillStyle = '#e8a735';
+    ctx.fillStyle = color;
     ctx.fillText(name, sxMid, ly);
 }

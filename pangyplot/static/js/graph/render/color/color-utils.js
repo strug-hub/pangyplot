@@ -67,10 +67,10 @@ export function intToColor(seed, adjust = 0) {
         const c = 1013904223;
         const m = 2 ** 32;
 
-        let r = (seed * a + c) % m;
-        seed = (r * a + c) % m;
+        let r = Math.abs((seed * a + c) % m);
+        seed = Math.abs((r * a + c) % m);
         let g = seed;
-        seed = (g * a + c) % m;
+        seed = Math.abs((g * a + c) % m);
         let b = seed;
 
         r = Math.floor((r / m) * 256);
