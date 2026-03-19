@@ -15,7 +15,7 @@ import { faLabel } from '../../../utils/node-label.js';
 
 export function setupHover(canvas) {
     canvas.addEventListener('mousemove', e => {
-        if (state.isDragging || state.draggedForceNode || state.selectionBox || !isReady()) return;
+        if (state.isDragging || state.selectionBox || !isReady()) return;
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
@@ -47,7 +47,7 @@ export function setupHover(canvas) {
             else data = getSkeletonTooltip(hitSkel);
 
             showTooltip(formatTooltipHtml(data), e.clientX, e.clientY);
-            canvas.style.cursor = 'crosshair';
+            canvas.style.cursor = 'default';
             scheduleFrame();
         } else if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
             state.hoveredChain = null;
@@ -72,7 +72,6 @@ export function setupHover(canvas) {
     canvas.addEventListener('click', e => {
         // Don't intercept ctrl/meta (pop/unpop) or shift (rectangle select)
         if (e.ctrlKey || e.metaKey || e.shiftKey) return;
-        if (state.draggedForceNode) return;
 
         // Suppress click if mouse moved significantly (was a pan/drag)
         if (mouseDownPos) {

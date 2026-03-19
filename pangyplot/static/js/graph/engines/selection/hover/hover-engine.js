@@ -5,6 +5,7 @@ import { makeHoverLabel } from './hover-label.js';
 import { faLabel } from '../../../../utils/node-label.js';
 import DEBUG_MODE from '../../../../debug-mode.js';
 import appState from '../../../app-state.js';
+import { isPanning } from '../../../engines/navigation/pan-zoom/pan-zoom-engine.js';
 
 const MAX_HOVER_DISTANCE = 40;
 
@@ -18,11 +19,20 @@ function getHoverLabelText(node) {
   return faLabel(node.id);
 }
 
+function clearHover(forceGraph, tooltip) {
+  const wasHovering = appState.hoveredNode != null;
+  appState.setHighlighted(null);
+  appState.setHoveredNode(null);
+  tooltip.hide();
+  if (wasHovering && !isPanning() && !appState.isBubblePopMode()) {
+    forceGraph.element.style.setProperty('--graph-cursor',
+      appState.isPanZoomMode() ? 'grab' : 'default');
+  }
+}
+
 function attemptHover(event, forceGraph, tooltip) {
   if (!canHighlight()) {
-    tooltip.hide();
-    appState.setHighlighted(null);
-    appState.setHoveredNode(null);
+    clearHover(forceGraph, tooltip);
     return;
   }
 
@@ -32,9 +42,7 @@ function attemptHover(event, forceGraph, tooltip) {
 
   const nearestNode = findNearestNode(nodes, graphCoords);
   if (!nearestNode) {
-    appState.setHighlighted(null);
-    appState.setHoveredNode(null);
-    tooltip.hide();
+    clearHover(forceGraph, tooltip);
     return;
   }
 
@@ -42,14 +50,17 @@ function attemptHover(event, forceGraph, tooltip) {
   const distPx = euclideanDist(coords, screenPos);
 
   if (distPx > MAX_HOVER_DISTANCE) {
-    appState.setHighlighted(null);
-    appState.setHoveredNode(null);
-    tooltip.hide();
+    clearHover(forceGraph, tooltip);
     return;
   }
 
   appState.setHighlighted([nearestNode]);
   appState.setHoveredNode(nearestNode);
+
+  if (!isPanning() && !appState.isBubblePopMode()) {
+    forceGraph.element.style.setProperty('--graph-cursor',
+      appState.isSelectionMode() ? 'grab' : 'default');
+  }
 
   const labelText = getHoverLabelText(nearestNode);
   tooltip.show(labelText, event.clientX, event.clientY);

@@ -6,7 +6,7 @@ import appState from '../../../app-state.js';
 const MAX_SELECT_DISTANCE = 25;
 
 function attemptSelection(event, forceGraph) {
-    if (!canSingleSelect()) return;
+    if (!canSingleSelect() && !appState.hoveredNode) return;
 
     const hoveredNode = appState.hoveredNode;
     if (!hoveredNode) return;

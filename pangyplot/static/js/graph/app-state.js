@@ -15,9 +15,9 @@ const appState = {
     hoveredNode: null,
     draggedNode: null,
     fixOnDrag: false,
-    mode: "selection",
+    mode: "pan-zoom",
     modes: [],
-    defaultMode: { mode: "selection", keyCheck: null, cursor: "default" },
+    defaultMode: { mode: "pan-zoom", keyCheck: null, cursor: "grab" },
 
     setSelected(nodes) {
         if (nodes == null) {
@@ -59,6 +59,10 @@ const appState = {
 
     isSelectionMode() {
         return this.mode === "selection";
+    },
+
+    isPanZoomMode() {
+        return this.mode === "pan-zoom";
     },
 
     registerMode(modeData) {

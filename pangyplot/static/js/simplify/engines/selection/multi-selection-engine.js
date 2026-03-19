@@ -8,6 +8,7 @@ import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';
 import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
 import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
+import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
@@ -53,7 +54,21 @@ export function setupMultiSelection(canvas) {
                 togglePopChain(chain);
             }
             state.selectedChains.clear();
+            hideSelectionPopup();
             scheduleFrame();
+        }
+    });
+
+    // --- Shift key cursor feedback ---
+    window.addEventListener('keydown', e => {
+        if (e.key === 'Shift' && state.detailData && !isSelecting) {
+            canvas.style.cursor = 'crosshair';
+        }
+    });
+    window.addEventListener('keyup', e => {
+        if (e.key === 'Shift' && !isSelecting) {
+            const hovering = state.hoveredChain || state.hoveredForceNode || state.hoveredBubble || state.hoveredSkeletonPl;
+            canvas.style.cursor = hovering ? 'default' : 'grab';
         }
     });
 
@@ -61,6 +76,7 @@ export function setupMultiSelection(canvas) {
     canvas.addEventListener('mousedown', e => {
         if (!e.shiftKey || !state.detailData) return;
         isSelecting = true;
+        hideSelectionPopup();
         const rect = canvas.getBoundingClientRect();
         const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
@@ -90,10 +106,17 @@ export function setupMultiSelection(canvas) {
         scheduleFrame();
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', e => {
         if (!isSelecting) return;
         isSelecting = false;
+        const endScreenX = e.clientX;
+        const endScreenY = e.clientY;
         state.selectionBox = null;
+        if (state.selectedChains.size > 0) {
+            showSelectionPopup(endScreenX, endScreenY);
+        } else {
+            hideSelectionPopup();
+        }
         scheduleFrame();
     });
 
@@ -105,6 +128,7 @@ export function setupMultiSelection(canvas) {
             state.selectedChains.clear();
             state.selectionBox = null;
             isSelecting = false;
+            hideSelectionPopup();
             changed = true;
         }
         if (state.selectedNode) {

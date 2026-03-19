@@ -17,7 +17,6 @@ export default function setUpCancelSelectionEngine(forceGraph){
     forceGraph.element.addEventListener('pointerup', (event) => {
         if (event.button !== 0) return;
         setTimeout(() => {
-            if (appState.isPanZoomMode()) return;
             if (appState.isDragging()) return;
             if (selectionUpdated) return;
 

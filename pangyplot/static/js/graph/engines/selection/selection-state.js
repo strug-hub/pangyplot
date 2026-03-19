@@ -9,5 +9,5 @@ export function canSingleSelect() {
 }
 
 export function canHighlight() {
-  return !selectionState.multiSelectMode && !appState.isPanZoomMode() && !appState.isDragging();
+  return !selectionState.multiSelectMode && !appState.isDragging();
 }

@@ -632,8 +632,8 @@ The mode system gates which interactions are active:
 
 | Mode | Key trigger | Cursor | Actions enabled |
 |------|-----------|--------|----------------|
-| `selection` | (default, no modifier) | `default` | Click to select, hover, drag |
-| `pan-zoom` | `Shift` held | `grab`/`grabbing` | Pan and zoom the canvas |
+| `pan-zoom` | (default, no modifier) | `grab` | Pan and zoom the canvas |
+| `selection` | `Shift` held | `default` | Click to select, hover, drag |
 | `bubble-pop` | `Ctrl`/`Cmd` held | `pointer` | Click to expand bubbles |
 
 ### Rules

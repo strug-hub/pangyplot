@@ -10,7 +10,7 @@ import { scheduleViewportPublish } from '../../ui/viewport-sync.js';
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
     canvas.addEventListener('mousedown', e => {
-        if (state.draggedForceNode || state.hoveredForceNode) return; // handled by node-drag-engine
+        if (state.hoveredForceNode) return;
         if (e.shiftKey && state.detailData) return; // handled by multi-selection
         // Clear selection on non-shift click
         if (state.selectedChains.size > 0 && !state.hoveredChain) {
@@ -24,7 +24,7 @@ export function setupPanZoom(canvas) {
     });
 
     window.addEventListener('mousemove', e => {
-        if (!state.isDragging || state.draggedForceNode) return;
+        if (!state.isDragging) return;
         state.panX = e.clientX - state.dragStartX;
         state.panY = e.clientY - state.dragStartY;
         scheduleFrame();
@@ -34,7 +34,8 @@ export function setupPanZoom(canvas) {
     window.addEventListener('mouseup', () => {
         if (!state.isDragging) return;
         state.isDragging = false;
-        canvas.style.cursor = 'grab';
+        const hovering = state.hoveredChain || state.hoveredForceNode || state.hoveredBubble || state.hoveredSkeletonPl;
+        canvas.style.cursor = hovering ? 'default' : 'grab';
         scheduleHashUpdate();
         scheduleViewportPublish();
     });

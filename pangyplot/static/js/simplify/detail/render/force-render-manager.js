@@ -6,6 +6,8 @@ import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
+import { getGenePins } from '../../skeleton/data/gene-data.js';
+import { geneHaloColor } from '../../utils/color-hash.js';
 
 export function drawForceGraph(ctx, baseWidth) {
     const nodes = getForceNodes();
@@ -23,6 +25,7 @@ export function drawForceGraph(ctx, baseWidth) {
     const chainSegs = [];
     const junctionSegs = [];
     const delSegs = [];
+    const genePins = getGenePins();
 
     for (const link of links) {
         if (link.isPolychainLink) continue;  // rendered as polyline by polychain-render-manager
@@ -40,6 +43,55 @@ export function drawForceGraph(ctx, baseWidth) {
             chainSegs.push(seg);
         } else {
             junctionSegs.push(seg);
+        }
+    }
+
+    // --- Categorize nodes (needed for gene halos before links) ---
+    const bubbleCircles = [];
+    const segCircles = [];
+    const geneHaloCircles = new Map(); // color → [{x, y, r}]
+
+    for (const node of nodes) {
+        if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
+        const r = (node.width || 5) * scaleFactor * 0.5;
+        const circle = { x: node.x, y: node.y, r };
+        if (node.type === 'bubble') {
+            bubbleCircles.push(circle);
+        } else {
+            segCircles.push(circle);
+            for (const pin of genePins) {
+                if (node.x >= pin.startX && node.x <= pin.endX) {
+                    const color = geneHaloColor(pin.name);
+                    if (!geneHaloCircles.has(color)) geneHaloCircles.set(color, []);
+                    geneHaloCircles.get(color).push({ x: node.x, y: node.y, r: r * 2.5 });
+                    break;
+                }
+            }
+        }
+    }
+
+    // 0. Gene halos (both link and node halos, rendered before all links/nodes)
+    if (genePins.length > 0) {
+        const haloWidth = Math.max(4, 10 / state.zoom);
+        const haloLinksByColor = new Map();
+        for (const segs of kinkByColor.values()) {
+            for (const seg of segs) {
+                const midX = (seg.x1 + seg.x2) / 2;
+                for (const pin of genePins) {
+                    if (midX >= pin.startX && midX <= pin.endX) {
+                        const color = geneHaloColor(pin.name);
+                        if (!haloLinksByColor.has(color)) haloLinksByColor.set(color, []);
+                        haloLinksByColor.get(color).push(seg);
+                        break;
+                    }
+                }
+            }
+        }
+        for (const [color, segs] of haloLinksByColor) {
+            strokeSegments(ctx, segs, color, haloWidth, opacity);
+        }
+        for (const [color, circles] of geneHaloCircles) {
+            fillCircles(ctx, circles, color, opacity);
         }
     }
 
@@ -73,25 +125,10 @@ export function drawForceGraph(ctx, baseWidth) {
         }
     }
 
-    // --- Categorize nodes ---
-    const bubbleCircles = [];
-    const segCircles = [];
-
-    for (const node of nodes) {
-        if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
-        const r = (node.width || 5) * scaleFactor * 0.5;
-        const circle = { x: node.x, y: node.y, r };
-        if (node.type === 'bubble') {
-            bubbleCircles.push(circle);
-        } else {
-            segCircles.push(circle);
-        }
-    }
-
     // 4. Selection highlight underlay (red halo + connected link halos) — before nodes
     drawSelectionHighlight(ctx, scaleFactor, opacity);
 
-    // 5. Nodes
+    // 6. Nodes
     if (bubbleCircles.length > 0) fillCircles(ctx, bubbleCircles, '#F2DC0F', opacity);
     if (segCircles.length > 0) fillCircles(ctx, segCircles, '#0762E5', opacity);
 

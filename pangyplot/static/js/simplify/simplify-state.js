@@ -37,7 +37,6 @@ export const state = {
     // Force simulation
     activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)
     poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
-    draggedForceNode: null,    // force node currently being dragged
 
     // Selection (Shift+drag rectangle)
     selectedChains: new Set(),   // Set of chain objects currently selected
@@ -51,6 +50,9 @@ export const state = {
 
     // Node selection (click-to-select)
     selectedNode: null,       // force node or bubble currently selected
+
+    // Core viewer embed
+    coreViewerActive: false,  // true when core graph canvas is swapped in
 
     // Config (from Jinja via window.__SIMPLIFY_CONFIG)
     GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',

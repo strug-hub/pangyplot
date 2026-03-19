@@ -32,7 +32,7 @@ function checkIfDragging(event, forceGraph) {
     const node = readyNode;
     readyNode = null;
 
-    forceGraph.element.style.cursor = DRAG_CURSOR;
+    forceGraph.element.style.setProperty('--graph-cursor', DRAG_CURSOR);
 
     if (!appState.selected.has(node)) {
       appState.setSelected(null);
@@ -57,8 +57,7 @@ function updateDrag(event, forceGraph) {
 
 function onDragEnd(event, forceGraph) {
 
-    if (forceGraph.element.style.cursor === DRAG_CURSOR)
-      forceGraph.element.style.cursor = 'default';
+    forceGraph.element.style.setProperty('--graph-cursor', appState.hoveredNode ? 'grab' : 'default');
 
     const node = appState.draggedNode;
     if (!node) return;
@@ -81,6 +80,7 @@ export default function setUpDragEngine(forceGraph) {
 
   forceGraph.element.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
+    if (!appState.isSelectionMode()) return;
     setDragStart(event, forceGraph);
   });
 

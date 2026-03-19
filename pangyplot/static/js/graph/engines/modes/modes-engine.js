@@ -12,7 +12,7 @@ export default function setUpModesEngine(forceGraph) {
 
         if (appState.mode !== targetMode.mode) {
             appState.mode = targetMode.mode;
-            forceGraph.element.style.cursor = targetMode.cursor;
+            forceGraph.element.style.setProperty('--graph-cursor', targetMode.cursor);
             eventBus.publish("graph:mode-changed", targetMode.mode);
         }
     }

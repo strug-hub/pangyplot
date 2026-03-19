@@ -4,6 +4,9 @@
 #graph-container {
     position: relative;
 }
+#graph canvas:not(#canvas) {
+    cursor: var(--graph-cursor, grab) !important;
+}
 
 #box-selection {
     position: absolute;

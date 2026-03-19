@@ -17,8 +17,9 @@ function pointerDown(event) {
 
 function destroySelectionBox(forceGraph) {
 
-    if (forceGraph.element.style.cursor === SELECT_CURSOR)
-        forceGraph.element.style.cursor = 'default';
+    if (forceGraph.element.style.getPropertyValue('--graph-cursor').trim() === SELECT_CURSOR) {
+        forceGraph.element.style.setProperty('--graph-cursor', 'default');
+    }
 
     if (overlayElement) {
         removeOverlay(overlayElement);
@@ -38,7 +39,7 @@ function pointerMove(event, forceGraph) {
     const bounds = selectionBox.updateBox(event.offsetX, event.offsetY);
 
     if (bounds) {
-        forceGraph.element.style.cursor = SELECT_CURSOR;
+        forceGraph.element.style.setProperty('--graph-cursor', SELECT_CURSOR);
         selectionState.multiSelectMode = true;
         if (!overlayElement) overlayElement = createOverlay(forceGraph.element);
         updateOverlay(overlayElement, bounds);
@@ -48,7 +49,7 @@ function pointerMove(event, forceGraph) {
         appState.setHighlighted(hitNodes);
 
     } else if (overlayElement) {
-        forceGraph.element.style.cursor = 'default';
+        forceGraph.element.style.setProperty('--graph-cursor', 'default');
         destroySelectionBox(forceGraph)
     }
 }

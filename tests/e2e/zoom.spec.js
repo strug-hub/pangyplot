@@ -24,31 +24,23 @@ test.describe('zoom', () => {
     return { x: cx, y: cy };
   }
 
-  test('shift+scroll zooms in', async ({ page }) => {
+  test('scroll zooms in', async ({ page }) => {
     const zoomBefore = await page.evaluate(() => window._forceGraph.getZoomFactor());
 
     await focusCanvas(page);
-    await page.keyboard.down('Shift');
-    await page.waitForFunction(() => window._forceGraph.isPanZoomMode());
 
     await page.mouse.wheel(0, -300);
-
-    await page.keyboard.up('Shift');
 
     const zoomAfter = await page.evaluate(() => window._forceGraph.getZoomFactor());
     expect(zoomAfter).toBeGreaterThan(zoomBefore);
   });
 
-  test('shift+scroll zooms out', async ({ page }) => {
+  test('scroll zooms out', async ({ page }) => {
     const zoomBefore = await page.evaluate(() => window._forceGraph.getZoomFactor());
 
     await focusCanvas(page);
-    await page.keyboard.down('Shift');
-    await page.waitForFunction(() => window._forceGraph.isPanZoomMode());
 
     await page.mouse.wheel(0, 300);
-
-    await page.keyboard.up('Shift');
 
     const zoomAfter = await page.evaluate(() => window._forceGraph.getZoomFactor());
     expect(zoomAfter).toBeLessThan(zoomBefore);
