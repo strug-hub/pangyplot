@@ -19,7 +19,7 @@ import { drawGenePolylines, drawGeneJunctions } from './skeleton-gene-overlay.js
  *
  * @returns {{ visiblePl: number, visibleJ: number }}
  */
-export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY) {
+export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
     const level = getLevel();
     if (!level) return { visiblePl: 0, visibleJ: 0 };
 
@@ -37,13 +37,13 @@ export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY) {
     }
 
     // 1. Base polylines
-    drawBasePolylines(ctx, level, visibleIndices, skelAlpha, lineWidth);
+    drawBasePolylines(ctx, level, visibleIndices, skelAlpha, lineWidth, svg);
 
-    // 2. Hover highlight
-    drawHoverOverlay(ctx, level, visibleIndices, skelAlpha);
+    // 2. Hover highlight (skip during SVG export)
+    if (!svg) drawHoverOverlay(ctx, level, visibleIndices, skelAlpha);
 
     // 3. Gene-colored polyline overdraw
-    drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY);
+    drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg);
 
     // --- Cull junctions ---
     const visibleJunctions = [];
@@ -53,10 +53,10 @@ export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY) {
     }
 
     // 4. Base junctions
-    drawBaseJunctions(ctx, visibleJunctions, skelAlpha);
+    drawBaseJunctions(ctx, visibleJunctions, skelAlpha, svg);
 
     // 5. Gene-colored junction overdraw
-    drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY);
+    drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg);
 
     return { visiblePl: visibleIndices.length, visibleJ: visibleJunctions.length };
 }

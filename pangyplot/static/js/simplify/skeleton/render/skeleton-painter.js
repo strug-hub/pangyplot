@@ -1,7 +1,10 @@
 // Pure canvas painting primitives for the skeleton layer.
 // No state reads, no culling — just ctx path building and draw calls.
 
-export function strokePolylines(ctx, polylines, indices, color, lineWidth) {
+import { strokePolylinesSvg, fillJunctionsSvg } from '../../render/simplify-svg-utils.js';
+
+export function strokePolylines(ctx, polylines, indices, color, lineWidth, svg = null) {
+    if (svg) return strokePolylinesSvg(svg, polylines, indices, color, lineWidth);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
@@ -17,7 +20,8 @@ export function strokePolylines(ctx, polylines, indices, color, lineWidth) {
     ctx.stroke();
 }
 
-export function fillJunctions(ctx, points, r, color) {
+export function fillJunctions(ctx, points, r, color, svg = null) {
+    if (svg) return fillJunctionsSvg(svg, points, r, color);
     ctx.fillStyle = color;
     ctx.beginPath();
     for (const [x, y] of points) {

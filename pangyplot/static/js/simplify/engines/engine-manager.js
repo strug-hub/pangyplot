@@ -5,6 +5,7 @@ import { setupPanZoom } from './navigation/pan-zoom-engine.js';
 import { setupHover } from './selection/hover-engine.js';
 import { setupMultiSelection } from './selection/multi-selection-engine.js';
 import { setupKeyboardShortcuts } from './keyboard-engine.js';
+import { setupContextMenu } from './simplify-context-menu.js';
 
 export function setupEngines() {
     const canvas = state.canvas;
@@ -13,4 +14,5 @@ export function setupEngines() {
     setupHover(canvas);
     setupMultiSelection(canvas);
     setupKeyboardShortcuts();
+    setupContextMenu(canvas);
 }

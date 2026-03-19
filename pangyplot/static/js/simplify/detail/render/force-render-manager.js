@@ -9,7 +9,7 @@ import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
 import { getGenePins } from '../../skeleton/data/gene-data.js';
 import { geneHaloColor } from '../../utils/color-hash.js';
 
-export function drawForceGraph(ctx, baseWidth) {
+export function drawForceGraph(ctx, baseWidth, svg = null) {
     const nodes = getForceNodes();
     const links = getForceLinks();
     if (nodes.length === 0) return;
@@ -18,7 +18,7 @@ export function drawForceGraph(ctx, baseWidth) {
     const scaleFactor = baseWidth / 5;   // kept for highlight helpers
     const opacity = state.detailOpacity;
 
-    ctx.lineCap = 'round';
+    if (!svg) ctx.lineCap = 'round';
 
     // --- Categorize links ---
     const kinkByColor = new Map();
@@ -88,55 +88,57 @@ export function drawForceGraph(ctx, baseWidth) {
             }
         }
         for (const [color, segs] of haloLinksByColor) {
-            strokeSegments(ctx, segs, color, haloWidth, opacity);
+            strokeSegments(ctx, segs, color, haloWidth, opacity, svg);
         }
         for (const [color, circles] of geneHaloCircles) {
-            fillCircles(ctx, circles, color, opacity);
+            fillCircles(ctx, circles, color, opacity, svg);
         }
     }
 
     // 1. Kink links (segment body) — width matches source node
     for (const [color, segs] of kinkByColor) {
-        strokeSegments(ctx, segs, color, 5 * scaleFactor, opacity);
+        strokeSegments(ctx, segs, color, 5 * scaleFactor, opacity, svg);
     }
 
     // 2. Chain links (bubble-to-bubble)
     if (chainSegs.length > 0) {
-        strokeSegments(ctx, chainSegs, '#FF6700', 5 * scaleFactor, 0.8 * opacity);
+        strokeSegments(ctx, chainSegs, '#FF6700', 5 * scaleFactor, 0.8 * opacity, svg);
     }
 
     // 3. Junction + inter-chain links
     if (junctionSegs.length > 0) {
-        strokeSegments(ctx, junctionSegs, '#969696', Math.max(0.5, 1 / state.zoom), 0.6 * opacity);
+        strokeSegments(ctx, junctionSegs, '#969696', Math.max(0.5, 1 / state.zoom), 0.6 * opacity, svg);
     }
 
     // 3b. Deletion links with -x- cross at midpoint
     if (delSegs.length > 0) {
         const delWidth = Math.max(0.5, 1 / state.zoom);
-        strokeSegments(ctx, delSegs, '#969696', delWidth, 0.6 * opacity);
-        ctx.globalAlpha = 0.6 * opacity;
-        const crossSize = Math.max(3, 6 / state.zoom);
-        const crossWidth = Math.max(0.5, 1 / state.zoom);
-        for (const { x1, y1, x2, y2 } of delSegs) {
-            const midX = (x1 + x2) / 2;
-            const midY = (y1 + y2) / 2;
-            const angle = Math.atan2(y2 - y1, x2 - x1);
-            drawRotatedCross(ctx, midX, midY, crossSize, crossWidth, '#969696', angle);
+        strokeSegments(ctx, delSegs, '#969696', delWidth, 0.6 * opacity, svg);
+        if (!svg) {
+            ctx.globalAlpha = 0.6 * opacity;
+            const crossSize = Math.max(3, 6 / state.zoom);
+            const crossWidth = Math.max(0.5, 1 / state.zoom);
+            for (const { x1, y1, x2, y2 } of delSegs) {
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                drawRotatedCross(ctx, midX, midY, crossSize, crossWidth, '#969696', angle);
+            }
         }
     }
 
     // 4. Selection highlight underlay (red halo + connected link halos) — before nodes
-    drawSelectionHighlight(ctx, scaleFactor, opacity);
+    drawSelectionHighlight(ctx, scaleFactor, opacity, svg);
 
     // 6. Nodes
-    if (bubbleCircles.length > 0) fillCircles(ctx, bubbleCircles, '#F2DC0F', opacity);
-    if (segCircles.length > 0) fillCircles(ctx, segCircles, '#0762E5', opacity);
+    if (bubbleCircles.length > 0) fillCircles(ctx, bubbleCircles, '#F2DC0F', opacity, svg);
+    if (segCircles.length > 0) fillCircles(ctx, segCircles, '#0762E5', opacity, svg);
 
-    // 6. Hover highlight overlay (gray outline ring) — after nodes
-    drawHoverHighlight(ctx, scaleFactor, opacity);
+    // 6. Hover highlight overlay (gray outline ring) — after nodes (skip during SVG export)
+    if (!svg) drawHoverHighlight(ctx, scaleFactor, opacity);
 
-    // 7. Force vector debug overlay (Y key)
-    if (state.forceVectors) {
+    // 7. Force vector debug overlay (Y key, skip during SVG export)
+    if (!svg && state.forceVectors) {
         drawForceVectors(ctx, nodes, links, opacity);
     }
 }

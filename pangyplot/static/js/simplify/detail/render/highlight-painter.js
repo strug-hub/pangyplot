@@ -20,7 +20,7 @@ const HOVER_THICKNESS = 1.5;
 let cachedNode = null;
 let cachedLinks = [];
 
-export function drawSelectionHighlight(ctx, scaleFactor, opacity) {
+export function drawSelectionHighlight(ctx, scaleFactor, opacity, svg = null) {
     const selNode = state.selectedNode;
     if (!selNode || selNode.x == null) return;
 
@@ -46,12 +46,12 @@ export function drawSelectionHighlight(ctx, scaleFactor, opacity) {
 
     // Draw link halos first (behind node halo)
     if (segs.length > 0) {
-        strokeSegments(ctx, segs, SELECTED_COLOR, HALO_THICKNESS * scaleFactor, opacity);
+        strokeSegments(ctx, segs, SELECTED_COLOR, HALO_THICKNESS * scaleFactor, opacity, svg);
     }
 
     // Draw node halo — filled circle larger than the node
     const r = HALO_THICKNESS * scaleFactor * 0.5;
-    fillCircles(ctx, [{ x: selNode.x, y: selNode.y, r }], SELECTED_COLOR, opacity);
+    fillCircles(ctx, [{ x: selNode.x, y: selNode.y, r }], SELECTED_COLOR, opacity, svg);
 }
 
 export function drawHoverHighlight(ctx, scaleFactor, opacity) {

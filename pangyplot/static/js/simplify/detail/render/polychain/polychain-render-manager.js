@@ -29,7 +29,7 @@ function getSelectedPolylines() {
     return polylines;
 }
 
-function drawGeneOverlays(ctx, opacity, baseWidth) {
+function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
     const overlaps = getGeneChainOverlaps();
     if (overlaps.size === 0) return;
 
@@ -38,9 +38,11 @@ function drawGeneOverlays(ctx, opacity, baseWidth) {
 
     // Halo: thicker than chain line, drawn behind it
     const haloWidth = Math.max(4, 10 / state.zoom);
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.setLineDash([]);
+    if (!svg) {
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.setLineDash([]);
+    }
 
     // Batch by color to minimize state changes
     const byColor = new Map();
@@ -60,49 +62,51 @@ function drawGeneOverlays(ctx, opacity, baseWidth) {
     }
 
     for (const [color, polylines] of byColor) {
-        strokePolylines(ctx, polylines, color, haloWidth, opacity);
+        strokePolylines(ctx, polylines, color, haloWidth, opacity, svg);
     }
 }
 
 let _lastPlaceGenes = 0;
 
-export function drawDetail() {
+export function drawDetail(svg = null) {
     // Reposition skeleton gene pins from detail chain data (throttled)
-    const now = Date.now();
-    if (now - _lastPlaceGenes > 500) {
-        _lastPlaceGenes = now;
-        placeGenesFromDetail(state.detailData.chains);
+    if (!svg) {
+        const now = Date.now();
+        if (now - _lastPlaceGenes > 500) {
+            _lastPlaceGenes = now;
+            placeGenesFromDetail(state.detailData.chains);
+        }
     }
 
     const ctx = state.ctx;
     const opacity = state.detailOpacity;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
+    if (!svg) {
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+    }
 
     const baseWidth = Math.max(1.5, 3 / state.zoom);
 
     // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
-    drawGeneOverlays(ctx, opacity, baseWidth);
-
-
+    drawGeneOverlays(ctx, opacity, baseWidth, svg);
 
     // 2. Chain polylines
     const visible = getVisibleChainPolylines(state.detailData.chains);
 
     if (visible.length > 0) {
-        strokePolylines(ctx, visible, '#FF6700', baseWidth, 0.75 * opacity);
+        strokePolylines(ctx, visible, '#FF6700', baseWidth, 0.75 * opacity, svg);
     }
 
     // 3. Selection highlight
     if (state.selectedChains.size > 0) {
         const selected = getSelectedPolylines();
         if (selected.length > 0) {
-            strokePolylines(ctx, selected, '#FAB3AE', Math.max(2.5, 5 / state.zoom), 0.9 * opacity);
+            strokePolylines(ctx, selected, '#FAB3AE', Math.max(2.5, 5 / state.zoom), 0.9 * opacity, svg);
         }
     }
 
-    // 4. Hover highlight
-    if (state.hoveredChain) {
+    // 4. Hover highlight (skip during SVG export)
+    if (!svg && state.hoveredChain) {
         const live = getPolychainPositions(state.hoveredChain.id);
         const pl = live || state.hoveredChain.polyline;
         if (pl.length >= 2) {
@@ -110,5 +114,5 @@ export function drawDetail() {
         }
     }
 
-    ctx.globalAlpha = 1;
+    if (!svg) ctx.globalAlpha = 1;
 }

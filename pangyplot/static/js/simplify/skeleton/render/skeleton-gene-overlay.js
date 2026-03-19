@@ -6,6 +6,7 @@ import { getGenePins } from '../data/gene-data.js';
 import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painter.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
+import { createBlendGroup, drawGeneLabelSvg } from '../../render/simplify-svg-utils.js';
 
 // Persistent map: gene name → current animated dodge offset (screen px above default).
 // Survives across frames so we can lerp toward the target.
@@ -15,15 +16,20 @@ const animatedOffset = new Map();
  * Draw gene-colored polyline overdraw on visible skeleton polylines.
  * Each gene uses its own color.
  */
-export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY) {
+export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
     const bboxes = getLevelBboxes();
     const geneYMargin = (level.gridSize || 50) * 3;
 
-    const prevComp = ctx.globalCompositeOperation;
-    ctx.globalCompositeOperation = 'multiply';
+    let target = svg;
+    if (svg) {
+        target = createBlendGroup(svg, 'multiply');
+    } else {
+        var prevComp = ctx.globalCompositeOperation;
+        ctx.globalCompositeOperation = 'multiply';
+    }
 
     for (const gene of genePins) {
         const indices = [];
@@ -38,25 +44,30 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
             }
         }
         if (indices.length > 0) {
-            strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5);
+            strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5, target);
         }
     }
 
-    ctx.globalCompositeOperation = prevComp;
+    if (!svg) ctx.globalCompositeOperation = prevComp;
 }
 
 /**
  * Draw gene-colored junction overdraw on visible skeleton junctions.
  */
-export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY) {
+export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
     const geneYMargin = (level.gridSize || 50) * 3;
     const gr = Math.max(2, 4.0 / state.zoom);
 
-    const prevComp = ctx.globalCompositeOperation;
-    ctx.globalCompositeOperation = 'multiply';
+    let target = svg;
+    if (svg) {
+        target = createBlendGroup(svg, 'multiply');
+    } else {
+        var prevComp = ctx.globalCompositeOperation;
+        ctx.globalCompositeOperation = 'multiply';
+    }
 
     for (const gene of genePins) {
         const junctions = [];
@@ -68,11 +79,11 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
             }
         }
         if (junctions.length > 0) {
-            fillJunctions(ctx, junctions, gr, hexToRgba(gene.color, skelAlpha));
+            fillJunctions(ctx, junctions, gr, hexToRgba(gene.color, skelAlpha), target);
         }
     }
 
-    ctx.globalCompositeOperation = prevComp;
+    if (!svg) ctx.globalCompositeOperation = prevComp;
 }
 
 /**
@@ -81,7 +92,7 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
  * minimum spacing rather than gene size. Labels avoid each other on the y-axis.
  * Brackets are drawn behind badges.
  */
-export function drawGeneLabelOverlay(ctx, cw) {
+export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
@@ -161,12 +172,10 @@ export function drawGeneLabelOverlay(ctx, cw) {
                 iterations++;
                 const badgeBottom = top + badgeH;
                 for (const seg of chainScreenSegs) {
-                    // Check if any chain segment is near the badge x-range
                     const segMinX = Math.min(seg.x1, seg.x2);
                     const segMaxX = Math.max(seg.x1, seg.x2);
                     if (segMaxX < cx1 || segMinX > cx2) continue;
 
-                    // Check y proximity
                     const segMinY = Math.min(seg.y1, seg.y2);
                     const segMaxY = Math.max(seg.y1, seg.y2);
                     if (badgeBottom + chainClearance > segMinY && top - chainClearance < segMaxY) {
@@ -197,21 +206,36 @@ export function drawGeneLabelOverlay(ctx, cw) {
         const defaultTop = c.badgeTop;
         const targetOffset = top - defaultTop;
 
-        // Lerp the offset, not the absolute position
-        const prevOffset = animatedOffset.get(c.gene.name);
-        let curOffset;
-        if (prevOffset !== undefined) {
-            curOffset = prevOffset + (targetOffset - prevOffset) * 0.12;
-            if (Math.abs(targetOffset - curOffset) > 0.5) {
-                scheduleFrame();
-            }
+        if (svg) {
+            // SVG export: use target positions directly (no animation)
+            c.badgeTop = defaultTop + targetOffset;
         } else {
-            curOffset = targetOffset;
+            // Canvas: lerp the offset for smooth animation
+            const prevOffset = animatedOffset.get(c.gene.name);
+            let curOffset;
+            if (prevOffset !== undefined) {
+                curOffset = prevOffset + (targetOffset - prevOffset) * 0.12;
+                if (Math.abs(targetOffset - curOffset) > 0.5) {
+                    scheduleFrame();
+                }
+            } else {
+                curOffset = targetOffset;
+            }
+            animatedOffset.set(c.gene.name, curOffset);
+            c.badgeTop = defaultTop + curOffset;
         }
-        animatedOffset.set(c.gene.name, curOffset);
 
-        c.badgeTop = defaultTop + curOffset;
         placed.push({ left: cx1, right: cx2, top });
+    }
+
+    if (svg) {
+        // SVG path: build label elements directly
+        const showStem = !inDetail;
+        for (const c of candidates) {
+            drawGeneLabelSvg(svg, c.gene.name, c.sxMid,
+                c.badgeTop, badgeH, c.badgeW, c.syRef, c.gene.color, showStem);
+        }
+        return;
     }
 
     // Pass 1: draw bracket stems (skeleton mode only)

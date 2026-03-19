@@ -1,7 +1,13 @@
 // Pure canvas painting primitives for the detail layer.
 // No state reads, no culling — just ctx path building and draw calls.
 
-export function strokeLines(ctx, lines, color, lineWidth, alpha) {
+import {
+    strokeLinesSvg, fillDotsSvg, strokePolylineSvg, strokeBatchPolylinesSvg,
+    fillCirclesSvg, strokeRingSvg, strokeSegmentsSvg, strokeDashedPolylinesSvg
+} from '../../render/simplify-svg-utils.js';
+
+export function strokeLines(ctx, lines, color, lineWidth, alpha, svg = null) {
+    if (svg) return strokeLinesSvg(svg, lines, color, lineWidth, alpha);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
@@ -14,7 +20,8 @@ export function strokeLines(ctx, lines, color, lineWidth, alpha) {
     ctx.stroke();
 }
 
-export function fillDots(ctx, points, r, color, alpha) {
+export function fillDots(ctx, points, r, color, alpha, svg = null) {
+    if (svg) return fillDotsSvg(svg, points, r, color, alpha);
     ctx.fillStyle = color;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
@@ -25,7 +32,8 @@ export function fillDots(ctx, points, r, color, alpha) {
     ctx.fill();
 }
 
-export function strokePolyline(ctx, pl, color, lineWidth, alpha) {
+export function strokePolyline(ctx, pl, color, lineWidth, alpha, svg = null) {
+    if (svg) return strokePolylineSvg(svg, pl, color, lineWidth, alpha);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
@@ -38,7 +46,8 @@ export function strokePolyline(ctx, pl, color, lineWidth, alpha) {
     ctx.stroke();
 }
 
-export function strokePolylines(ctx, polylines, color, lineWidth, alpha) {
+export function strokePolylines(ctx, polylines, color, lineWidth, alpha, svg = null) {
+    if (svg) return strokeBatchPolylinesSvg(svg, polylines, color, lineWidth, alpha);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
@@ -54,7 +63,8 @@ export function strokePolylines(ctx, polylines, color, lineWidth, alpha) {
     ctx.stroke();
 }
 
-export function fillCircles(ctx, circles, color, alpha) {
+export function fillCircles(ctx, circles, color, alpha, svg = null) {
+    if (svg) return fillCirclesSvg(svg, circles, color, alpha);
     ctx.fillStyle = color;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
@@ -65,7 +75,8 @@ export function fillCircles(ctx, circles, color, alpha) {
     ctx.fill();
 }
 
-export function strokeRing(ctx, x, y, r, color, lineWidth, alpha) {
+export function strokeRing(ctx, x, y, r, color, lineWidth, alpha, svg = null) {
+    if (svg) return strokeRingSvg(svg, x, y, r, color, lineWidth, alpha);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
@@ -74,7 +85,8 @@ export function strokeRing(ctx, x, y, r, color, lineWidth, alpha) {
     ctx.stroke();
 }
 
-export function strokeSegments(ctx, segments, color, lineWidth, alpha) {
+export function strokeSegments(ctx, segments, color, lineWidth, alpha, svg = null) {
+    if (svg) return strokeSegmentsSvg(svg, segments, color, lineWidth, alpha);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
@@ -87,7 +99,8 @@ export function strokeSegments(ctx, segments, color, lineWidth, alpha) {
     ctx.stroke();
 }
 
-export function strokeDashedPolylines(ctx, polylines, color, lineWidth, alpha, dash) {
+export function strokeDashedPolylines(ctx, polylines, color, lineWidth, alpha, dash, svg = null) {
+    if (svg) return strokeDashedPolylinesSvg(svg, polylines, color, lineWidth, alpha, dash);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
