@@ -8,6 +8,19 @@ import { xToBp } from '../engines/reference-spine-engine.js';
 import { viewportStepCount } from '../render/viewport.js';
 import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
 import { positionTooltip } from '@ui/elements/tooltip.js';
+import { isDebugMode } from '@app-state';
+import eventBus from '@event-bus';
+
+// Hide/show debug bars based on debug mode
+function updateDebugBars(enabled) {
+    const controls = document.getElementById('simplify-controls');
+    const detailBar = document.getElementById('detail-bar');
+    if (controls) controls.style.display = enabled ? '' : 'none';
+    if (detailBar) detailBar.style.display = enabled ? '' : 'none';
+}
+
+updateDebugBars(isDebugMode());
+eventBus.subscribe('app:debug-mode-changed', updateDebugBars);
 
 // ---------------------------------------------------------------
 // One-time init

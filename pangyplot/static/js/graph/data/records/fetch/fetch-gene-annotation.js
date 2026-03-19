@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
 import { fetchData, buildUrl } from '../../../../utils/network-utils.js';
 import { deserializeGenes } from '../deserializer/deserializer.js';
 
@@ -11,7 +11,7 @@ export async function fetchGeneAnnotations(coords) {
         const rawGenes = await fetchData(url, 'subgraph');
         geneRecords = deserializeGenes(rawGenes.genes);
 
-        if (DEBUG_MODE) {
+        if (isDebugMode()) {
             console.log("[fetch-gene-annotations]", "raw:", rawGenes, "deserialized:", geneRecords);
         }
 

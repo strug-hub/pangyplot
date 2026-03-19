@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
 import { createPathList } from './path-highlight-ui.js';
 
 var pathData = [];
@@ -26,7 +26,7 @@ function filterPaths(forceGraph, paths) {
 export function loadInPaths(forceGraph, paths) {
     pathData = filterPaths(forceGraph, paths);
 
-    if (DEBUG_MODE){
+    if (isDebugMode()){
         console.log(`[path-highlight] Loaded in ${pathData.length} paths:`, paths, 
             `filtered ${paths.length - pathData.length}, kept:`, pathData);
     }

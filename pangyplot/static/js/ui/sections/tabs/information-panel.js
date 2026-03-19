@@ -1,8 +1,17 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
+import eventBus from '@event-bus';
 
 const panel = document.getElementById('info-selected-container');
 const debugOuterContainer = document.getElementById('info-debug-container-outer');
 const debugContainer = document.getElementById('info-debug-container');
+
+// Hide debug panel when debug mode is toggled off
+eventBus.subscribe('app:debug-mode-changed', (enabled) => {
+    if (!enabled && debugOuterContainer) {
+        debugOuterContainer.classList.add('hidden');
+        debugContainer.innerHTML = '';
+    }
+});
 
 const t = JSON.parse(document.getElementById('info-panel-i18n').textContent);
 
@@ -134,7 +143,7 @@ export function updateSelectionInfo(info) {
     renderBubbleInfo(info);
   }
 
-  if (DEBUG_MODE && info.range) {
+  if (isDebugMode() && info.range) {
     appendRow({ label: 'Range (debug):', valueEl: makeCopyable(info.range, { allowHTML: true }) });
   }
 }
@@ -170,7 +179,7 @@ panel.addEventListener('click', async (e) => {
 
 export function updateDebugInformation(status) {
 
-  if (!DEBUG_MODE) {
+  if (!isDebugMode()) {
     return;
   }
 

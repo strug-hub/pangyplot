@@ -38,4 +38,5 @@ def pangyplot_run(args):
 
 
 
-    app.create_app(args.dir, args.db, args.annotations, args.ref, args.port, development=True)
+    app.create_app(args.dir, args.db, args.annotations, args.ref, args.port,
+                   development=True, debug=args.debug)

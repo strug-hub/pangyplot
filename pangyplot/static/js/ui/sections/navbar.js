@@ -1,4 +1,5 @@
 import eventBus from '@event-bus';
+import { isDebugMode, setDebugMode } from '@app-state';
 import { setupModal } from "@ui/elements/modal.js";
 
 // --- Modals ---
@@ -13,8 +14,27 @@ setupModal({
     modalId: "info-modal",
     openButtonId: "navbar-button-information",
     closeButtonId: "info-modal-close-button",
-    startOpen: true
+    startOpen: !isDebugMode()
 });
+
+// --- Debug mode toggle (Ctrl+click on version overlay) ---
+
+const versionOverlay = document.getElementById('version-overlay');
+
+function updateDebugIndicator(enabled) {
+    versionOverlay.style.backgroundColor = enabled ? 'var(--highlight)' : '';
+}
+
+updateDebugIndicator(isDebugMode());
+
+versionOverlay.addEventListener('click', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setDebugMode(!isDebugMode());
+    }
+});
+
+eventBus.subscribe('app:debug-mode-changed', updateDebugIndicator);
 
 // --- Example buttons ---
 

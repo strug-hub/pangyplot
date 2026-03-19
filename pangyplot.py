@@ -33,6 +33,7 @@ def parse_args():
     parser_run.add_argument('--port', help='Port to run the app on', default=DEFAULT_PORT, type=int, required=False)
     parser_run.add_argument('--dir', help='Directory where the database files are', default=DEFAULT_DB_FOLDER)
     parser_run.add_argument('--annotations', help='Name of annotations to use', default=None, required=False)
+    parser_run.add_argument('--debug', help='Enable debug mode in the frontend', action='store_true')
 
     parser_add = subparsers.add_parser('add', help='Add a dataset.')
     parser_add.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)

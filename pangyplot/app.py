@@ -28,7 +28,7 @@ def get_locale():
     return lang or "en"
 
 
-def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
+def create_app(data_dir, db_name, annotation_name, ref, port, development=True, debug=False):
     app = Flask(__name__)
 
     app.config['BABEL_DEFAULT_LOCALE'] = 'en'
@@ -36,8 +36,10 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
         'en', 'fr', 'es', 'de', 'it',
         'pt_BR', 'ru', 'zh_Hans_CN', 'ja', 'ko', 'ar'
     ]
-    
+
     babel.init_app(app, locale_selector=get_locale)
+
+    app.debug_mode = debug
 
     setup_cytoband(app)
     load_indexes(app, data_dir, db_name, annotation_name, ref)
@@ -54,7 +56,8 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
 
     if development:
         base_url = f"http://127.0.0.1:{port}"
-        print(f"\nStarting PangyPlot (non-production environment)...")
+        debug_label = " [DEBUG]" if debug else ""
+        print(f"\nStarting PangyPlot (non-production environment){debug_label}...")
         print(f"  Core viewer:     {base_url}/#chrY:23129355-23199010")
         print(f"  Simplify viewer: {base_url}/simplify#chrY:23129355-23199010\n")
         app.run(port=port)

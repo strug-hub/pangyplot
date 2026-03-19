@@ -1,4 +1,5 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
+import eventBus from '@event-bus';
 import { installRecordsInspector } from "./records-manager-ui.js";
 
 export const nodeRecordLookup = new Map();
@@ -94,8 +95,35 @@ export function getChildSubgraph(nodeId) {
   return { nodes: nodeRecords, links: linkRecords};
 }
 
-const inspector = DEBUG_MODE ? installRecordsInspector({
-  onHighlightNode: (id) => {
-    console.log('Highlight node', id);
-  }
-}) : null;
+// Records inspector: lazily installed, toggled via floating button
+let inspector = null;
+
+const inspectorBtn = document.createElement('button');
+inspectorBtn.id = 'records-inspector-toggle';
+inspectorBtn.innerHTML = '<i class="fa-solid fa-database"></i>';
+inspectorBtn.title = 'Records Inspector';
+inspectorBtn.style.cssText = `
+    display: none; position: fixed; bottom: 16px; right: 16px; z-index: 9999;
+    width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--darker-green); color: var(--lighter-green);
+    font-size: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    transition: background 0.2s;
+`;
+inspectorBtn.addEventListener('mouseenter', () => { inspectorBtn.style.background = 'var(--highlight)'; inspectorBtn.style.color = 'var(--text-color)'; });
+inspectorBtn.addEventListener('mouseleave', () => { inspectorBtn.style.background = 'var(--darker-green)'; inspectorBtn.style.color = 'var(--lighter-green)'; });
+inspectorBtn.addEventListener('click', () => {
+    if (!inspector) {
+        inspector = installRecordsInspector({
+            onHighlightNode: (id) => { console.log('Highlight node', id); }
+        });
+    }
+    inspector.open();
+});
+document.body.appendChild(inspectorBtn);
+
+if (isDebugMode()) inspectorBtn.style.display = '';
+
+eventBus.subscribe('app:debug-mode-changed', (enabled) => {
+    inspectorBtn.style.display = enabled ? '' : 'none';
+    if (!enabled && inspector) inspector.close();
+});

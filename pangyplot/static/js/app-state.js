@@ -3,9 +3,18 @@
  * URL hash takes priority, then server-injected window.__APP_CONFIG.
  */
 
+import eventBus from '@event-bus';
+
 const config = window.__APP_CONFIG || {};
 
-export const DEBUG_MODE = true;
+let _debugMode = !!(config.debug);
+export function isDebugMode() { return _debugMode; }
+export function setDebugMode(enabled) {
+    if (_debugMode === enabled) return;
+    _debugMode = enabled;
+    console.log(`[app-state] debug mode ${_debugMode ? 'ON' : 'OFF'}`);
+    eventBus.publish('app:debug-mode-changed', _debugMode);
+}
 
 // Parse and validate URL hash: #chrY:12345-67890
 function parseHash() {

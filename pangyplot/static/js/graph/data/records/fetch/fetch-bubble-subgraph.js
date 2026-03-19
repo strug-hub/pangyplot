@@ -1,5 +1,5 @@
 
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
 import { deserializePopResponse } from '../deserializer/deserializer.js';
 import { buildUrl, fetchData } from '../../../../utils/network-utils.js';
 import appState from '../../../app-state.js';
@@ -12,13 +12,13 @@ export async function fetchBubbleSubgraph(bubbleId) {
         const url = buildUrl('/pop', params);
         const rawPop = await fetchData(url, 'subgraph');
 
-        if (DEBUG_MODE) {
+        if (isDebugMode()) {
             console.log("[fetch-bubble-subgraph] raw:", rawPop);
         }
 
         graphBubbleRecords = deserializePopResponse(rawPop, bubbleId);
 
-        if (DEBUG_MODE) {
+        if (isDebugMode()) {
             console.log("[fetch-bubble-subgraph] deserialized:", graphBubbleRecords);
         }
 

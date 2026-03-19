@@ -96,7 +96,8 @@
             start: '{{ init_start }}',
             end: '{{ init_end }}',
             version: '{{ version }}',
-            versionName: '{{ version_name }}'
+            versionName: '{{ version_name }}',
+            debug: {{ debug_mode }}
         };
     </script>
     <script type="module" src="{{ url_for('static', filename='js/graph/force-graph.js') }}"></script>

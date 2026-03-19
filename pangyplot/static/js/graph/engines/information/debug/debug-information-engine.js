@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
 
 import { updateDebugInformation } from '@ui/sections/tabs/information-panel.js';
 import { getZoomFactor,getZoomLevel, getScaleFactor } from '../../../render/render-scaling.js';
@@ -50,7 +50,7 @@ function getDebugStatus(forceGraph) {
 }
 
 export function debugStatusUpdate(forceGraph) {
-    if (!DEBUG_MODE) return;
+    if (!isDebugMode()) return;
 
     calculateFPS();
     const status = getDebugStatus(forceGraph);
@@ -58,7 +58,7 @@ export function debugStatusUpdate(forceGraph) {
 }
 
 export function setUpDebugInformationEngine(forceGraph) {
-    if (!DEBUG_MODE) return;
+    if (!isDebugMode()) return;
 
     forceGraph.d3Force('getAlpha', alpha => lastAlpha = alpha);
 

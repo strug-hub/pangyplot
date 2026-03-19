@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
 import { fetchData, buildUrl } from '../../../../utils/network-utils.js';
 import { showLoader, hideLoader } from './fetch-ui.js';
 import { deserializeGraph } from '../deserializer/deserializer.js';
@@ -11,13 +11,13 @@ export async function fetchCoordinateRange(coords) {
   try {
     const rawGraph = await fetchData(url, 'coords-fetch');
 
-    if (DEBUG_MODE) {
+    if (isDebugMode()) {
       console.log("[fetch-coordinate-range] raw:", rawGraph);
     }
 
     graphRecords = deserializeGraph(rawGraph);
     
-    if (DEBUG_MODE) {
+    if (isDebugMode()) {
       console.log("[fetch-coordinate-range] deserialized:", graphRecords);
     }
 

@@ -43,6 +43,10 @@ def inject_default_genome():
     return { "genome": current_app.genome }
 
 @bp.context_processor
+def inject_debug_mode():
+    return { "debug_mode": "true" if current_app.debug_mode else "false" }
+
+@bp.context_processor
 def inject_organism():
     organism = current_app.cytoband["organism"]
     emoji = organisms.VALID_ORGANISMS.get(organism, "")

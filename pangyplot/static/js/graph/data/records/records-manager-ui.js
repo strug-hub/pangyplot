@@ -346,16 +346,11 @@ export function installRecordsInspector({ onHighlightNode } = {}) {
     }
   });
 
-  // Hotkey toggle
-  window.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'r') {
+  return {
+    open() {
       root.style.display = (root.style.display === 'none' || !root.style.display) ? 'block' : 'none';
       if (root.style.display === 'block') renderAll();
-    }
-  });
-
-  return {
-    open() { root.style.display = 'block'; renderAll(); },
+    },
     close() { root.style.display = 'none'; },
     refresh: renderAll,
   };
