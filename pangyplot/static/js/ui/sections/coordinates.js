@@ -1,7 +1,27 @@
 import eventBus from '@event-bus';
+import { getChromosome, getStart, getEnd } from '@app-state';
 
 const EMPTY = "⬜";
 const EMPTY_FLANKING = "flankingregion";
+
+// --- URL hash ---
+
+function updateUrlHash(chromosome, start, end) {
+    if (chromosome && start != null && end != null) {
+        const hash = `#${chromosome}:${start}-${end}`;
+        history.replaceState(null, '', hash);
+    }
+}
+
+// On page load, populate Go fields from app-state (which reads hash > config)
+document.addEventListener("DOMContentLoaded", function () {
+    const chromosome = getChromosome();
+    const start = getStart();
+    const end = getEnd();
+    if (chromosome && start && end) {
+        updateGoValues(chromosome, start, end);
+    }
+});
 
 document.getElementById("go-button").addEventListener("click", function () {
   const goBox = document.getElementById("go-chrom-start-end");
@@ -36,6 +56,7 @@ document.getElementById("go-button").addEventListener("click", function () {
       start,
       end
     };
+    updateUrlHash(chromosome, start, end);
     eventBus.publish("ui:construct-graph", data);
   }
 });

@@ -1,12 +1,30 @@
 /**
  * Global application state — shared across all layers.
- * Server-injected config is read from window.__APP_CONFIG.
- * UI sections write to it, utilities read from it.
+ * URL hash takes priority, then server-injected window.__APP_CONFIG.
  */
 
 const config = window.__APP_CONFIG || {};
 
 export const DEBUG_MODE = true;
+
+// Parse and validate URL hash: #chrY:12345-67890
+function parseHash() {
+    const hash = location.hash.replace(/^#/, '');
+    if (!hash) return null;
+    const m = hash.match(/^([^:]+):(\d+)-(\d+)$/);
+    if (!m) return null;
+
+    const start = parseInt(m[2], 10);
+    const end = parseInt(m[3], 10);
+
+    if (isNaN(start) || isNaN(end)) return null;
+    if (start < 0 || end < 0) return null;
+    if (start >= end) return null;
+
+    return { chromosome: m[1], start: String(start), end: String(end) };
+}
+
+const hashCoords = parseHash();
 
 export function getCurrentLang() {
     const params = new URLSearchParams(window.location.search);
@@ -14,8 +32,8 @@ export function getCurrentLang() {
 }
 
 export function getGenome()     { return config.genome || ""; }
-export function getChromosome() { return config.chromosome || ""; }
-export function getStart()      { return config.start || ""; }
-export function getEnd()        { return config.end || ""; }
+export function getChromosome() { return (hashCoords && hashCoords.chromosome) || config.chromosome || ""; }
+export function getStart()      { return (hashCoords && hashCoords.start) || config.start || ""; }
+export function getEnd()        { return (hashCoords && hashCoords.end) || config.end || ""; }
 export function getVersion()    { return config.version || ""; }
 export function getVersionName(){ return config.versionName || ""; }

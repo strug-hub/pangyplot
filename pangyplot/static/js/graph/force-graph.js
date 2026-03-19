@@ -1,4 +1,5 @@
 import eventBus from '@event-bus';
+import { getGenome, getChromosome, getStart, getEnd } from '@app-state';
 import appState from './app-state.js';
 import setUpEngineManager from './engines/engine-manager.js';
 import setUpForceManager from './forces/force-manager.js';
@@ -55,17 +56,18 @@ const isStandalonePage = !!window.__APP_CONFIG;
 if (isStandalonePage) {
     document.addEventListener("DOMContentLoaded", function () {
         const standaloneEl = document.getElementById("graph");
-        const cfg = window.__APP_CONFIG || {};
-        let coords;
-        if (cfg.chromosome && cfg.start && cfg.end) {
+        const chromosome = getChromosome();
+        const start = getStart();
+        const end = getEnd();
+        let coords = null;
+
+        if (chromosome && start && end) {
             coords = {
-                genome: cfg.genome,
-                chromosome: cfg.chromosome,
-                start: parseInt(cfg.start, 10),
-                end: parseInt(cfg.end, 10),
+                genome: getGenome(),
+                chromosome,
+                start: parseInt(start, 10),
+                end: parseInt(end, 10),
             };
-        } else {
-            coords = {genome: "GRCh38", chromosome:"chrY", start:23129355, end:23199010};
         }
 
         forceGraph = initCoreViewer(standaloneEl, coords);

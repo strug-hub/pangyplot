@@ -1,4 +1,5 @@
 import os
+import logging
 from pympler.asizeof import asizeof
 
 from flask import Flask, request
@@ -43,8 +44,19 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True):
 
     app.register_blueprint(routes_bp)
 
+    # Filter out static asset request logs (js, css, fonts, images)
+    class StaticFilter(logging.Filter):
+        def filter(self, record):
+            msg = record.getMessage()
+            return not ('/static/' in msg and ('.js ' in msg or '.css ' in msg
+                or '.woff' in msg or '.ttf' in msg or '.svg ' in msg or '.png ' in msg))
+    logging.getLogger('werkzeug').addFilter(StaticFilter())
+
     if development:
-        print(f"Starting PangyPlot (non-production environment)... http://127.0.0.1:{port}")
+        base_url = f"http://127.0.0.1:{port}"
+        print(f"\nStarting PangyPlot (non-production environment)...")
+        print(f"  Core viewer:     {base_url}/#chrY:23129355-23199010")
+        print(f"  Simplify viewer: {base_url}/simplify#chrY:23129355-23199010\n")
         app.run(port=port)
 
     return app

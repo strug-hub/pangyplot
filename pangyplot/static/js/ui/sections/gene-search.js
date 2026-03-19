@@ -167,16 +167,3 @@ eventBus.subscribe("ui:coordinates-changed", function (data) {
     }
 });
 
-// --- Default example ---
-
-var gene1Test = document.getElementById('gene-search-result-1');
-gene1Test.innerHTML = processTemplate(selectedTemplate, {
-    chromosome: "chr18",
-    start: "63476958",
-    end: "63505085",
-    name: "SERPINB5",
-    id: "ENSG00000206075.14",
-    type: "protein coding"
-});
-gene1Test.classList.remove('placeholder-blank');
-resultGroup.select(gene1Test);
