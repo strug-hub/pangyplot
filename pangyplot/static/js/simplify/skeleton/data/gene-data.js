@@ -91,12 +91,17 @@ function placeGenes() {
         if (startX === null || endX === null) continue;
 
         const midX = (startX + endX) / 2;
-        const yStart = xToY(startX);
-        const yEnd = xToY(endX);
-        const yMid = xToY(midX);
-        const refY = yMid;
-        const minY = Math.min(yStart, yMid, yEnd);
-        const maxY = Math.max(yStart, yMid, yEnd);
+        const refY = xToY(midX);
+
+        // Sample spine y at multiple points to capture curves accurately
+        const nSamples = Math.max(3, Math.ceil((endX - startX) / 20));
+        let minY = Infinity, maxY = -Infinity;
+        for (let s = 0; s <= nSamples; s++) {
+            const sx = startX + (endX - startX) * s / nSamples;
+            const sy = xToY(sx);
+            if (sy < minY) minY = sy;
+            if (sy > maxY) maxY = sy;
+        }
         const name = gene.gene || gene.id;
         const color = geneColor(name);
 

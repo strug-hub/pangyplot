@@ -23,7 +23,7 @@ function draw() {
     const ch = state.canvas.height / dpr;
 
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#373737';
     ctx.fillRect(0, 0, cw, ch);
 
     updateLOD();

@@ -101,7 +101,6 @@ function buildGeneChainOverlaps(chains, genes) {
         if (chainBpSpan <= 0) continue;
 
         // Detect if polyline direction is reversed relative to bp direction.
-        // bpHead/bpTail are bp values at polyline start/end respectively.
         const reversed = chain.bpHead != null && chain.bpTail != null &&
             chain.bpHead > chain.bpTail;
 
@@ -113,7 +112,6 @@ function buildGeneChainOverlaps(chains, genes) {
             let tEnd = Math.min(1, (gene.end - chainBpStart) / chainBpSpan);
             if (tEnd - tStart < 0.001) continue;
 
-            // Flip if polyline runs opposite to bp direction
             if (reversed) {
                 const flippedStart = 1 - tEnd;
                 const flippedEnd = 1 - tStart;
