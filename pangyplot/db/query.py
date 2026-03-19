@@ -221,7 +221,7 @@ def get_path_order(indexes, genome, chrom):
 
 CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level
 
-import time as _time
+
 
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     expand_threshold=None,
@@ -254,7 +254,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     seg_index = gfaidx.segment_index
 
     # --- Decompose chains and collect structural adjacency + bypass links ---
-    _t0 = _time.perf_counter()
+
     decomp_adj = {}
     bypass_links = []
     bypass_seg_ids = set()
@@ -315,8 +315,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
-    _t1 = _time.perf_counter()
-    print(f"  [detail-tile] decompose: {(_t1-_t0)*1000:.1f}ms  ({len(chain_result['chains'])} chains)")
+
 
     # --- Strip internal fields, build bubble→chain mapping ---
     _bid_to_chain = {}
@@ -332,8 +331,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         chain_data["graph"] = None
         result_chains.append(chain_data)
 
-    _t2 = _time.perf_counter()
-    print(f"  [detail-tile] strip/map: {(_t2-_t1)*1000:.1f}ms  ({len(result_chains)} chains)")
+
 
     # --- Junction graph BFS ---
     junction_nodes, junction_links, junction_adj, \
@@ -464,8 +462,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         junction_graph = {"nodes": [], "links": []}
         junction_seg_chains = {}
 
-    _t3 = _time.perf_counter()
-    print(f"  [detail-tile] junction+bypass: {(_t3-_t2)*1000:.1f}ms")
+
 
     # --- Merge adjacency ---
     chain_adjacency = {}
@@ -474,8 +471,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             chain_adjacency.setdefault(k, set()).update(v)
     chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
 
-    _t4 = _time.perf_counter()
-    print(f"  [detail-tile] TOTAL: {(_t4-_t0)*1000:.1f}ms")
+
 
     return {
         "tile_start": start,

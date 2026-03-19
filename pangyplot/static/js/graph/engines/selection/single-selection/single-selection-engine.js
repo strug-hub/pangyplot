@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '@app-state';
+import { isDebugMode } from '@app-state';
 import { canSingleSelect } from '../selection-state.js';
 import { euclideanDist } from '../../../utils/node-utils.js';
 import appState from '../../../app-state.js';
@@ -6,6 +6,7 @@ import appState from '../../../app-state.js';
 const MAX_SELECT_DISTANCE = 25;
 
 function attemptSelection(event, forceGraph) {
+    if (appState.isBubblePopMode()) return;
     if (!canSingleSelect() && !appState.hoveredNode) return;
 
     const hoveredNode = appState.hoveredNode;
@@ -17,7 +18,7 @@ function attemptSelection(event, forceGraph) {
 
     if (distPx > MAX_SELECT_DISTANCE) return;
 
-    if (DEBUG_MODE) {
+    if (isDebugMode()) {
         console.log("[single-selection-engine] clicked:", hoveredNode);
         const connectedEdges = forceGraph.graphData().links.filter(link =>
             link.source === hoveredNode || link.target === hoveredNode
