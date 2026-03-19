@@ -6,6 +6,7 @@ import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { updateLOD } from './lod-engine.js';
 import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../ui/status-bar.js';
 import { xToBp, isReady } from './reference-spine-engine.js';
+import { placeGenesFromSpine } from '../skeleton/data/gene-data.js';
 import { getViewport } from '../render/viewport.js';
 
 
@@ -45,6 +46,7 @@ function finishExit() {
     state.detailOpacity = 0;
     state.skeletonOpacity = 1;
     setDetailPhase('none');
+    placeGenesFromSpine();
     scheduleFrame();
 }
 

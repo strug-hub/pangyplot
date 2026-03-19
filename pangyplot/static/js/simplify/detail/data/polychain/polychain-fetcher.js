@@ -8,6 +8,7 @@ import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
 import { fetchGenesForDetail } from './polychain-gene-map.js';
+import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
 
 let fetchController = null;
 
@@ -198,6 +199,9 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
         // Trigger gene fetch for the visible bp range (fire and forget)
         fetchGenesForDetail(chr, state.GENOME,
             Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
+
+        // Reposition skeleton gene pins using detail chain data
+        placeGenesFromDetail(state.detailData.chains);
 
         return true;
     } catch (e) {

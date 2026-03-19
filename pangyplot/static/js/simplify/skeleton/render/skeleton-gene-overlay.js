@@ -5,6 +5,7 @@ import { getLevelBboxes } from '../data/skeleton-data.js';
 import { getGenePins } from '../data/gene-data.js';
 import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painter.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
+import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
 
 // Persistent map: gene name → current animated dodge offset (screen px above default).
 // Survives across frames so we can lerp toward the target.
@@ -84,14 +85,34 @@ export function drawGeneLabelOverlay(ctx, cw) {
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
+    const inDetail = state.detailPhase !== 'none';
     const fontSize = 11;
     const px = 5, py = 2;
     const badgeH = fontSize + py * 2;  // 15px
-    const stemH = 16;                   // bracket stem height
+    const stemH = inDetail ? 0 : 16;   // no stem in detail mode
     const gap = 4;                      // space between bracket top and badge bottom
     const labelPad = 6;                 // vertical padding between stacked labels
+    const chainClearance = 20;          // px clearance from chain polylines in detail mode
 
     ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
+
+    // In detail mode, collect screen-space chain segments for avoidance
+    let chainScreenSegs = null;
+    if (inDetail && state.detailData) {
+        chainScreenSegs = [];
+        for (const chain of state.detailData.chains) {
+            const pl = getPolychainPositions(chain.id) || chain.polyline;
+            if (!pl || pl.length < 2) continue;
+            for (let i = 0; i < pl.length - 1; i++) {
+                chainScreenSegs.push({
+                    x1: pl[i][0] * state.zoom + state.panX,
+                    y1: pl[i][1] * state.zoom + state.panY,
+                    x2: pl[i + 1][0] * state.zoom + state.panX,
+                    y2: pl[i + 1][1] * state.zoom + state.panY,
+                });
+            }
+        }
+    }
 
     // Build all visible candidates (just off-screen culling, no size filter)
     const allVisible = [];
@@ -113,7 +134,6 @@ export function drawGeneLabelOverlay(ctx, cw) {
     allVisible.sort((a, b) => a.sxMid - b.sxMid);
 
     // Density-based culling: enforce minimum horizontal spacing between labels.
-    // At any zoom level, labels must be at least minSpacing px apart (center-to-center).
     const minSpacing = 10;
     const candidates = [];
     let lastAcceptedX = -Infinity;
@@ -125,13 +145,38 @@ export function drawGeneLabelOverlay(ctx, cw) {
     }
 
     // Y-axis collision avoidance: nudge overlapping labels upward.
-    // Use generous x-margin so nearby (not just overlapping) labels dodge too.
     const xMargin = 8;
     const placed = [];
     for (const c of candidates) {
         const cx1 = c.sxMid - c.badgeW / 2 - xMargin;
         const cx2 = c.sxMid + c.badgeW / 2 + xMargin;
         let top = c.badgeTop;
+
+        // In detail mode, also avoid chain polylines
+        if (chainScreenSegs) {
+            let chainConflict = true;
+            let iterations = 0;
+            while (chainConflict && iterations < 20) {
+                chainConflict = false;
+                iterations++;
+                const badgeBottom = top + badgeH;
+                for (const seg of chainScreenSegs) {
+                    // Check if any chain segment is near the badge x-range
+                    const segMinX = Math.min(seg.x1, seg.x2);
+                    const segMaxX = Math.max(seg.x1, seg.x2);
+                    if (segMaxX < cx1 || segMinX > cx2) continue;
+
+                    // Check y proximity
+                    const segMinY = Math.min(seg.y1, seg.y2);
+                    const segMaxY = Math.max(seg.y1, seg.y2);
+                    if (badgeBottom + chainClearance > segMinY && top - chainClearance < segMaxY) {
+                        top = segMinY - badgeH - chainClearance;
+                        chainConflict = true;
+                        break;
+                    }
+                }
+            }
+        }
 
         // Keep nudging until clear of all conflicting placed labels
         let conflict = true;
@@ -157,7 +202,6 @@ export function drawGeneLabelOverlay(ctx, cw) {
         let curOffset;
         if (prevOffset !== undefined) {
             curOffset = prevOffset + (targetOffset - prevOffset) * 0.12;
-            // Keep animating if not settled
             if (Math.abs(targetOffset - curOffset) > 0.5) {
                 scheduleFrame();
             }
@@ -167,22 +211,23 @@ export function drawGeneLabelOverlay(ctx, cw) {
         animatedOffset.set(c.gene.name, curOffset);
 
         c.badgeTop = defaultTop + curOffset;
-        // Use target for collision so dodging stays stable
         placed.push({ left: cx1, right: cx2, top });
     }
 
-    // Pass 1: draw all bracket stems (behind badges)
-    ctx.lineWidth = 1.5;
-    for (const c of candidates) {
-        const bracketY = c.badgeTop + badgeH + gap;
-        ctx.strokeStyle = c.gene.color;
-        ctx.beginPath();
-        ctx.moveTo(c.sxMid, c.syRef + 4);
-        ctx.lineTo(c.sxMid, bracketY);
-        ctx.stroke();
+    // Pass 1: draw bracket stems (skeleton mode only)
+    if (!inDetail) {
+        ctx.lineWidth = 1.5;
+        for (const c of candidates) {
+            const bracketY = c.badgeTop + badgeH + gap;
+            ctx.strokeStyle = c.gene.color;
+            ctx.beginPath();
+            ctx.moveTo(c.sxMid, c.syRef + 4);
+            ctx.lineTo(c.sxMid, bracketY);
+            ctx.stroke();
+        }
     }
 
-    // Pass 2: draw all badge backgrounds + text (on top of stems)
+    // Pass 2: draw all badge backgrounds + text
     ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';

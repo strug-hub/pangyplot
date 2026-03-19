@@ -4,6 +4,7 @@ import { state } from '../../../simplify-state.js';
 import { strokePolyline, strokePolylines } from '../detail-painter.js';
 import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
+import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
 
 function getVisibleChainPolylines(chains) {
     const base = [];
@@ -61,7 +62,16 @@ function drawGeneOverlays(ctx, opacity, baseWidth) {
     }
 }
 
+let _lastPlaceGenes = 0;
+
 export function drawDetail() {
+    // Reposition skeleton gene pins from detail chain data (throttled)
+    const now = Date.now();
+    if (now - _lastPlaceGenes > 500) {
+        _lastPlaceGenes = now;
+        placeGenesFromDetail(state.detailData.chains);
+    }
+
     const ctx = state.ctx;
     const opacity = state.detailOpacity;
     ctx.lineJoin = 'round';
@@ -71,6 +81,8 @@ export function drawDetail() {
 
     // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
     drawGeneOverlays(ctx, opacity, baseWidth);
+
+
 
     // 2. Chain polylines
     if (!state.hideChainOverlay) {

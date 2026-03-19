@@ -8,6 +8,7 @@ let genePins = [];
 let geneCache = [];
 let fetchedRange = null;   // { chr, startBp, endBp }
 let fetchController = null;
+let detailOverride = false; // true when pins are positioned by detail data
 
 export function getGenePins() { return genePins; }
 
@@ -24,10 +25,10 @@ export function clearGeneCache() {
 export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
     if (!chr || !genome) return;
 
-    // If cached range covers the request, just re-place
+    // If cached range covers the request, just re-place (unless detail is active)
     if (fetchedRange && fetchedRange.chr === chr &&
         fetchedRange.startBp <= startBp && fetchedRange.endBp >= endBp) {
-        placeGenes();
+        if (!detailOverride) placeGenes();
         return;
     }
 
@@ -60,7 +61,7 @@ export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
         }
 
         fetchedRange = { chr, startBp: fetchStart, endBp: fetchEnd };
-        placeGenes();
+        if (!detailOverride) placeGenes();
     } catch (err) {
         if (err.name !== 'AbortError') {
             console.warn('[gene-data] fetch failed:', err);
@@ -107,4 +108,82 @@ function placeGenes() {
 
         genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
     }
+}
+
+/**
+ * Reposition gene pins using detail chain data for more accurate placement.
+ * Builds a bp→X lookup from chains' bpStart/bpEnd and polyline endpoints,
+ * then interpolates gene boundaries. Call when detail data is available.
+ */
+export function placeGenesFromDetail(chains) {
+    if (!chains || chains.length === 0 || genePins.length === 0) return;
+    detailOverride = true;
+
+    // Build sorted bp→X anchors from depth-0 chain endpoints only
+    const anchors = [];
+    for (const chain of chains) {
+        if (chain.bpStart == null || chain.bpEnd == null) continue;
+        if ((chain.depth || 0) > 0) continue;
+        const pl = chain.polyline;
+        if (!pl || pl.length < 2) continue;
+
+        const headBp = chain.bpHead ?? chain.bpStart;
+        const tailBp = chain.bpTail ?? chain.bpEnd;
+        anchors.push({ bp: headBp, x: pl[0][0] });
+        anchors.push({ bp: tailBp, x: pl[pl.length - 1][0] });
+    }
+    if (anchors.length < 2) return;
+
+    // Sort by bp, deduplicate
+    anchors.sort((a, b) => a.bp - b.bp);
+    const bps = [anchors[0].bp];
+    const xs = [anchors[0].x];
+    for (let i = 1; i < anchors.length; i++) {
+        if (anchors[i].bp > bps[bps.length - 1]) {
+            bps.push(anchors[i].bp);
+            xs.push(anchors[i].x);
+        }
+    }
+
+    function detailBpToX(bp) {
+        if (bp <= bps[0]) return xs[0];
+        if (bp >= bps[bps.length - 1]) return xs[xs.length - 1];
+        let lo = 0, hi = bps.length - 1;
+        while (lo < hi - 1) {
+            const mid = (lo + hi) >> 1;
+            if (bps[mid] <= bp) lo = mid; else hi = mid;
+        }
+        const t = (bp - bps[lo]) / (bps[hi] - bps[lo]);
+        return xs[lo] + t * (xs[hi] - xs[lo]);
+    }
+
+    // Reposition X from detail chains, keep Y from spine
+    for (const pin of genePins) {
+        pin.startX = detailBpToX(pin.startBp);
+        pin.endX = detailBpToX(pin.endBp);
+        pin.midX = (pin.startX + pin.endX) / 2;
+        // Y stays from spine — it's more stable than chain polyline Y
+        pin.refY = xToY(pin.midX);
+
+        const nSamples = Math.max(3, Math.ceil(Math.abs(pin.endX - pin.startX) / 20));
+        let minY = Infinity, maxY = -Infinity;
+        const lo = Math.min(pin.startX, pin.endX);
+        const hi = Math.max(pin.startX, pin.endX);
+        for (let s = 0; s <= nSamples; s++) {
+            const sx = lo + (hi - lo) * s / nSamples;
+            const sy = xToY(sx);
+            if (sy < minY) minY = sy;
+            if (sy > maxY) maxY = sy;
+        }
+        pin.minY = minY;
+        pin.maxY = maxY;
+    }
+}
+
+/**
+ * Restore gene pins to spine-based positions (call when leaving detail mode).
+ */
+export function placeGenesFromSpine() {
+    detailOverride = false;
+    placeGenes();
 }
