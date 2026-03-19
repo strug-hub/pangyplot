@@ -1,4 +1,4 @@
-import DEBUG_MODE from '../../../../debug-mode.js';
+import { DEBUG_MODE } from '@app-state';
 import { fetchData, buildUrl } from '../../../../utils/network-utils.js';
 import { deserializeGenes } from '../deserializer/deserializer.js';
 

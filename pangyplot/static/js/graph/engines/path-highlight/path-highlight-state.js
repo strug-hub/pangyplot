@@ -1,4 +1,4 @@
-import DEBUG_MODE from '../../../debug-mode.js';
+import { DEBUG_MODE } from '@app-state';
 import { createPathList } from './path-highlight-ui.js';
 
 var pathData = [];

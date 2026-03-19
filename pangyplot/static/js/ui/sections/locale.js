@@ -13,10 +13,7 @@ const supportedLocales = [
 ];
 
 
-export function getCurrentLang() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("lang") || "en";
-}
+import { getCurrentLang } from "@app-state";
 
 function setLang(lang) {
   const params = new URLSearchParams(window.location.search);

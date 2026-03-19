@@ -1,4 +1,4 @@
-import DEBUG_MODE from '../../../../debug-mode.js';
+import { DEBUG_MODE } from '@app-state';
 
 import { updateDebugInformation } from '@ui/sections/tabs/information-panel.js';
 import { getZoomFactor,getZoomLevel, getScaleFactor } from '../../../render/render-scaling.js';

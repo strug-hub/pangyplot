@@ -28,7 +28,8 @@
     {
         "imports": {
             "@ui/": "{{ url_for('static', filename='js/ui/') }}",
-            "@event-bus": "{{ url_for('static', filename='js/event-bus.js') }}"
+            "@event-bus": "{{ url_for('static', filename='js/event-bus.js') }}",
+            "@app-state": "{{ url_for('static', filename='js/app-state.js') }}"
         }
     }
     </script>
@@ -38,30 +39,6 @@
 </head>
 
 <body class="flex-col">
-
-    <div id="info-corner" class="flex-col">
-        <div id="version-overlay" class="flex-row">
-            {{ _('PangyPlot') }} {{ version }} ({{ version_name }}) 
-        </div>
-        <div  class="flex-row">
-
-            <div id="language-button" class="flex-col button-style flex-1">
-                <i class="fa-solid fa-globe"></i>
-                <div class="language-label">{{ _('Locale') }}</div>
-
-            </div>
-            <div id="language-dropdown" class="lang-dropdown hidden"></div>
-
-            {% if organism %}
-            <div id="organism-indicator" class="flex-1 flex-column">
-                <div id="organism-emoji" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
-                <div id="organism-genome"> {{ organism_genome }} </div>
-
-            </div>
-            {% endif %}
-
-        </div>
-    </div>
 
     {% include 'sections/navbar-template.html' %}
 
@@ -113,11 +90,13 @@
     <script src="{{url_for('static', filename='js/d3/force-graph.min.js')}}"></script>
 
     <script>
-        window.__CORE_CONFIG = {
+        window.__APP_CONFIG = {
             genome: '{{ genome }}',
             chromosome: '{{ init_chromosome }}',
             start: '{{ init_start }}',
-            end: '{{ init_end }}'
+            end: '{{ init_end }}',
+            version: '{{ version }}',
+            versionName: '{{ version_name }}'
         };
     </script>
     <script type="module" src="{{ url_for('static', filename='js/graph/force-graph.js') }}"></script>

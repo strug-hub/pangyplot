@@ -1,4 +1,4 @@
-import { getCurrentLang } from "@ui/sections/locale.js";
+import { getCurrentLang } from "@app-state";
 
 export function buildUrl(base, params = {}) {
   // inject current language

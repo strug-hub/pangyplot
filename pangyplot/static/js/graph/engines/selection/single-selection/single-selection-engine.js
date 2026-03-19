@@ -1,4 +1,4 @@
-import DEBUG_MODE from '../../../../debug-mode.js';
+import { DEBUG_MODE } from '@app-state';
 import { canSingleSelect } from '../selection-state.js';
 import { euclideanDist } from '../../../utils/node-utils.js';
 import appState from '../../../app-state.js';

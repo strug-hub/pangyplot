@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/sections/navbar.css') }}">   
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/sections/navbar.css') }}">
 
 {% macro navbar_item(id, text, icon_class, href, target) %}
 <a id="{{ id }}" tabindex="0" class="navbar-button button-style flex-col flex-1" href="{{ href }}" target="{{ target }}">
@@ -6,6 +6,28 @@
     <div class="navbar-button-text">{{ _(text) }}</div>
 </a>
 {% endmacro %}
+
+<div id="info-corner" class="flex-col">
+    <div id="version-overlay" class="flex-row">
+        {{ _('PangyPlot') }} {{ version }} ({{ version_name }})
+    </div>
+    <div class="flex-row">
+
+        <div id="language-button" class="flex-col button-style flex-1">
+            <i class="fa-solid fa-globe"></i>
+            <div class="language-label">{{ _('Locale') }}</div>
+        </div>
+        <div id="language-dropdown" class="lang-dropdown hidden"></div>
+
+        {% if organism %}
+        <div id="organism-indicator" class="flex-1 flex-column">
+            <div id="organism-emoji" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
+            <div id="organism-genome"> {{ organism_genome }} </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
 
 <nav id="navbar" class="container navbar-height">
     
@@ -33,3 +55,4 @@
 {% include 'sections/modal-template.html' %}
 
 <script type="module" src="{{url_for('static', filename='js/ui/sections/navbar.js')}}"></script>
+<script type="module" src="{{url_for('static', filename='js/ui/sections/locale.js')}}"></script>

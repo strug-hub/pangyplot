@@ -1,5 +1,5 @@
 
-import DEBUG_MODE from '../../../../debug-mode.js';
+import { DEBUG_MODE } from '@app-state';
 import { deserializePopResponse } from '../deserializer/deserializer.js';
 import { buildUrl, fetchData } from '../../../../utils/network-utils.js';
 import appState from '../../../app-state.js';

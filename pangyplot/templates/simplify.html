@@ -30,7 +30,8 @@
     {
         "imports": {
             "@ui/": "{{ url_for('static', filename='js/ui/') }}",
-            "@event-bus": "{{ url_for('static', filename='js/event-bus.js') }}"
+            "@event-bus": "{{ url_for('static', filename='js/event-bus.js') }}",
+            "@app-state": "{{ url_for('static', filename='js/app-state.js') }}"
         }
     }
     </script>
@@ -181,30 +182,6 @@
 
 <body class="flex-col">
 
-    <div id="info-corner" class="flex-col">
-        <div id="version-overlay" class="flex-row">
-            {{ _('PangyPlot') }} {{ version }} ({{ version_name }})
-        </div>
-        <div  class="flex-row">
-
-            <div id="language-button" class="flex-col button-style flex-1">
-                <i class="fa-solid fa-globe"></i>
-                <div class="language-label">{{ _('Locale') }}</div>
-
-            </div>
-            <div id="language-dropdown" class="lang-dropdown hidden"></div>
-
-            {% if organism %}
-            <div id="organism-indicator" class="flex-1 flex-column">
-                <div id="organism-emoji" aria-label="Organism: {{ organism }}"> {{ organism_emoji }} </div>
-                <div id="organism-genome"> {{ organism_genome }} </div>
-
-            </div>
-            {% endif %}
-
-        </div>
-    </div>
-
     {% include 'sections/navbar-template.html' %}
 
     <!--<select id="db-selection"> </select>-->
@@ -289,7 +266,11 @@
     <script src="{{url_for('static', filename='js/d3/d3-annotation.min.js')}}"></script>
     <script src="{{url_for('static', filename='js/d3/force-graph.min.js')}}"></script>
     <script>
-        window.__SIMPLIFY_CONFIG = { genome: '{{ genome }}' };
+        window.__APP_CONFIG = {
+            genome: '{{ genome }}',
+            version: '{{ version }}',
+            versionName: '{{ version_name }}'
+        };
 
         // Dismiss the info modal that navbar opens by default
         document.addEventListener('DOMContentLoaded', function() {

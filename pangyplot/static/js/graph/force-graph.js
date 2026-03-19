@@ -51,11 +51,11 @@ export function initCoreViewer(containerEl, coords) {
 }
 
 // Standalone page initialization (only on the core viewer page, not when embedded)
-const isStandalonePage = !!window.__CORE_CONFIG;
+const isStandalonePage = !!window.__APP_CONFIG;
 if (isStandalonePage) {
     document.addEventListener("DOMContentLoaded", function () {
         const standaloneEl = document.getElementById("graph");
-        const cfg = window.__CORE_CONFIG || {};
+        const cfg = window.__APP_CONFIG || {};
         let coords;
         if (cfg.chromosome && cfg.start && cfg.end) {
             coords = {

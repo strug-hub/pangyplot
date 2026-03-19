@@ -54,8 +54,8 @@ export const state = {
     // Core viewer embed
     coreViewerActive: false,  // true when core graph canvas is swapped in
 
-    // Config (from Jinja via window.__SIMPLIFY_CONFIG)
-    GENOME: (window.__SIMPLIFY_CONFIG || {}).genome || '',
+    // Config (from Jinja via window.__APP_CONFIG)
+    GENOME: (window.__APP_CONFIG || {}).genome || '',
 
     // Constants
     DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
