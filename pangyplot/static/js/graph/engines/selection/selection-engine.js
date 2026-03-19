@@ -2,7 +2,6 @@ import setUpMultiSelectionEngine from './multi-selection/multi-selection-engine.
 import setUpHoverEngine from './hover/hover-engine.js';
 import setUpSingleSelectEngine from './single-selection/single-selection-engine.js';
 import setUpCancelSelectionEngine from './cancel-selection/cancel-selection-engine.js';
-import { flipChainMode } from './selection-state.js';
 
 export default function setUpSelectionEngine(forceGraph) {
 
@@ -10,11 +9,4 @@ export default function setUpSelectionEngine(forceGraph) {
     setUpSingleSelectEngine(forceGraph);
     setUpMultiSelectionEngine(forceGraph);
     setUpCancelSelectionEngine(forceGraph);
-
-    forceGraph.element.addEventListener('keydown', (event) => {
-        if (event.key === 'c' || event.key === 'C') {
-            event.preventDefault();
-            flipChainMode();
-        }
-    });
 }

@@ -85,12 +85,10 @@ export function drawDetail() {
 
 
     // 2. Chain polylines
-    if (!state.hideChainOverlay) {
-        const visible = getVisibleChainPolylines(state.detailData.chains);
+    const visible = getVisibleChainPolylines(state.detailData.chains);
 
-        if (visible.length > 0) {
-            strokePolylines(ctx, visible, '#FF6700', baseWidth, 0.75 * opacity);
-        }
+    if (visible.length > 0) {
+        strokePolylines(ctx, visible, '#FF6700', baseWidth, 0.75 * opacity);
     }
 
     // 3. Selection highlight

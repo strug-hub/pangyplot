@@ -116,11 +116,4 @@ export function setupMultiSelection(canvas) {
         if (changed) scheduleFrame();
     });
 
-    // --- C key: toggle chain overlay ---
-    window.addEventListener('keydown', e => {
-        if (e.code === 'KeyC' && !e.repeat) {
-            state.hideChainOverlay = !state.hideChainOverlay;
-            scheduleFrame();
-        }
-    });
 }

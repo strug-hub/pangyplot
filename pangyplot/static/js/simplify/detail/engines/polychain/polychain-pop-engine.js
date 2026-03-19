@@ -26,11 +26,3 @@ export function clearDetailState() {
 export function togglePopChain(chain) {
     return;
 }
-
-/**
- * Replay a saved pop history file.
- * Polychain physics experiment: replay disabled.
- */
-export async function replayHistory() {
-    console.warn('Replay disabled in polychain physics experiment');
-}

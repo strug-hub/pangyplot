@@ -2,9 +2,7 @@
 
 import { state } from '../simplify-state.js';
 import { togglePhysicsDebug } from './physics-activation-engine.js';
-import { setupExportHierarchyEngine } from './export-hierarchy-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
-import { replayHistory } from '../detail/engines/polychain/polychain-pop-engine.js';
 import { unpopLastBubble } from '../detail/data/bubble-unpop-adapter.js';
 
 export function setupKeyboardShortcuts() {
@@ -25,9 +23,6 @@ export function setupKeyboardShortcuts() {
             if (!state.forceVectors) state.forceVectors = true;
             scheduleFrame();
         }
-        if (e.code === 'KeyR' && !e.repeat) {
-            replayHistory();
-        }
         if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.repeat) {
             e.preventDefault();
             if (unpopLastBubble()) {
@@ -35,6 +30,4 @@ export function setupKeyboardShortcuts() {
             }
         }
     });
-
-    setupExportHierarchyEngine();
 }
