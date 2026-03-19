@@ -4,7 +4,7 @@ import { state } from '../../../simplify-state.js';
 import { strokePolyline, strokePolylines } from '../detail-painter.js';
 import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
-import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
+import { placeGenesFromDetail, blendGenePinsToSpine } from '../../../skeleton/data/gene-data.js';
 
 function getVisibleChainPolylines(chains) {
     const base = [];
@@ -69,10 +69,20 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
 let _lastPlaceGenes = 0;
 
 export function drawDetail(svg = null) {
-    // Reposition skeleton gene pins from detail chain data (throttled)
+    // Reposition skeleton gene pins from detail chain data
+    // Every frame during fade-in so pins track moving chains,
+    // blend toward spine during fade-out for smooth transition,
+    // throttled to 500ms once detail is fully static
     if (!svg) {
         const now = Date.now();
-        if (now - _lastPlaceGenes > 500) {
+        if (state.detailPhase === 'fading-in') {
+            placeGenesFromDetail(state.detailData.chains);
+            _lastPlaceGenes = now;
+        } else if (state.detailPhase === 'fading-out') {
+            const t = 1 - state.detailOpacity; // 0 at start of fade-out, 1 at end
+            blendGenePinsToSpine(t);
+            _lastPlaceGenes = now;
+        } else if (now - _lastPlaceGenes > 500) {
             _lastPlaceGenes = now;
             placeGenesFromDetail(state.detailData.chains);
         }

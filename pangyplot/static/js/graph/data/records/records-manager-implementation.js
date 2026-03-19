@@ -1,3 +1,4 @@
+import { DEBUG_MODE } from '@app-state';
 import { installRecordsInspector } from "./records-manager-ui.js";
 
 export const nodeRecordLookup = new Map();
@@ -93,8 +94,8 @@ export function getChildSubgraph(nodeId) {
   return { nodes: nodeRecords, links: linkRecords};
 }
 
-const inspector = installRecordsInspector({
+const inspector = DEBUG_MODE ? installRecordsInspector({
   onHighlightNode: (id) => {
     console.log('Highlight node', id);
   }
-});
+}) : null;

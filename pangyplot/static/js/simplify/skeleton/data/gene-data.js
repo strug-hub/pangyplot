@@ -6,9 +6,12 @@ import { state } from '../../simplify-state.js';
 
 let genePins = [];
 let geneCache = [];
-let fetchedRange = null;   // { chr, startBp, endBp }
+let fetchedRange = null;    // { chr, startBp, endBp } — completed fetch
+let pendingRange = null;    // { chr, startBp, endBp } — in-flight fetch
 let fetchController = null;
 let detailOverride = false; // true when pins are positioned by detail data
+let spinePlaced = false;    // true when pins are placed from spine (skip redundant re-place)
+let detailChainKey = null;  // tracks which chain data was last used for placement
 
 export function getGenePins() { return genePins; }
 
@@ -16,6 +19,9 @@ export function clearGeneCache() {
     genePins = [];
     geneCache = [];
     fetchedRange = null;
+    pendingRange = null;
+    spinePlaced = false;
+    detailChainKey = null;
     if (fetchController) {
         fetchController.abort();
         fetchController = null;
@@ -25,11 +31,13 @@ export function clearGeneCache() {
 export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
     if (!chr || !genome) return;
 
-    // If cached range covers the request, just re-place (unless detail is active)
-    if (fetchedRange && fetchedRange.chr === chr &&
-        fetchedRange.startBp <= startBp && fetchedRange.endBp >= endBp) {
-        if (!detailOverride) placeGenes();
-        return;
+    // If cached or in-flight range covers the request, skip
+    for (const range of [fetchedRange, pendingRange]) {
+        if (range && range.chr === chr &&
+            range.startBp <= startBp && range.endBp >= endBp) {
+            if (range === fetchedRange && !detailOverride && !spinePlaced) placeGenes();
+            return;
+        }
     }
 
     // Expand range by 100% margin on each side
@@ -41,6 +49,7 @@ export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
     if (fetchController) fetchController.abort();
     fetchController = new AbortController();
     const signal = fetchController.signal;
+    pendingRange = { chr, startBp: fetchStart, endBp: fetchEnd };
 
     try {
         let genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, true, signal);
@@ -61,8 +70,12 @@ export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
         }
 
         fetchedRange = { chr, startBp: fetchStart, endBp: fetchEnd };
+        pendingRange = null;
+        spinePlaced = false;
+        detailChainKey = null;
         if (!detailOverride) placeGenes();
     } catch (err) {
+        pendingRange = null;
         if (err.name !== 'AbortError') {
             console.warn('[gene-data] fetch failed:', err);
         }
@@ -108,16 +121,29 @@ function placeGenes() {
 
         genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
     }
+    spinePlaced = true;
 }
 
 /**
  * Reposition gene pins using detail chain data for more accurate placement.
- * Builds a bp→X lookup from chains' bpStart/bpEnd and polyline endpoints,
- * then interpolates gene boundaries. Call when detail data is available.
+ * Skips if the same chain data was already used.
  */
 export function placeGenesFromDetail(chains) {
     if (!chains || chains.length === 0 || genePins.length === 0) return;
+
+    // Build a simple key from chain count + first/last polyline endpoints
+    // to detect whether chain data actually changed
+    const first = chains[0].polyline;
+    const last = chains[chains.length - 1].polyline;
+    const key = chains.length + ':'
+        + (first && first.length > 0 ? first[0][0].toFixed(1) : '')
+        + (last && last.length > 0 ? last[last.length - 1][0].toFixed(1) : '');
+
+    if (key === detailChainKey) return;
+    detailChainKey = key;
+
     detailOverride = true;
+    spinePlaced = false;
 
     // Build sorted bp→X anchors from depth-0 chain endpoints only
     const anchors = [];
@@ -162,7 +188,6 @@ export function placeGenesFromDetail(chains) {
         pin.startX = detailBpToX(pin.startBp);
         pin.endX = detailBpToX(pin.endBp);
         pin.midX = (pin.startX + pin.endX) / 2;
-        // Y stays from spine — it's more stable than chain polyline Y
         pin.refY = xToY(pin.midX);
 
         const nSamples = Math.max(3, Math.ceil(Math.abs(pin.endX - pin.startX) / 20));
@@ -181,9 +206,47 @@ export function placeGenesFromDetail(chains) {
 }
 
 /**
- * Restore gene pins to spine-based positions (call when leaving detail mode).
+ * Blend gene pin positions from detail toward spine by factor t (0=detail, 1=spine).
+ * Called each frame during fade-out for smooth interpolation.
  */
-export function placeGenesFromSpine() {
+export function blendGenePinsToSpine(t) {
+    for (const pin of genePins) {
+        const spineStartX = bpToX(pin.startBp);
+        const spineEndX = bpToX(pin.endBp);
+        if (spineStartX === null || spineEndX === null) continue;
+
+        pin.startX = pin.startX + (spineStartX - pin.startX) * t;
+        pin.endX = pin.endX + (spineEndX - pin.endX) * t;
+        pin.midX = (pin.startX + pin.endX) / 2;
+        pin.refY = xToY(pin.midX);
+
+        const nSamples = Math.max(3, Math.ceil(Math.abs(pin.endX - pin.startX) / 20));
+        let minY = Infinity, maxY = -Infinity;
+        const lo = Math.min(pin.startX, pin.endX);
+        const hi = Math.max(pin.startX, pin.endX);
+        for (let s = 0; s <= nSamples; s++) {
+            const sx = lo + (hi - lo) * s / nSamples;
+            const sy = xToY(sx);
+            if (sy < minY) minY = sy;
+            if (sy > maxY) maxY = sy;
+        }
+        pin.minY = minY;
+        pin.maxY = maxY;
+    }
+}
+
+/**
+ * Restore gene pins to spine-based positioning mode.
+ * @param {boolean} [recompute=true] - If false, just clears the override flag
+ *   without snapping positions (use when blend already placed pins at spine).
+ */
+export function placeGenesFromSpine(recompute = true) {
     detailOverride = false;
-    placeGenes();
+    detailChainKey = null;
+    if (recompute) {
+        spinePlaced = false;
+        placeGenes();
+    } else {
+        spinePlaced = true;
+    }
 }
