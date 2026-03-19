@@ -1,6 +1,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/sections/tabs/keyboard-shortcuts.css') }}">
 
-<div id="keyboard-shortcuts" class="flex-col">
+<!-- Core viewer shortcuts -->
+<div id="keyboard-shortcuts-core" class="flex-col">
   <div>
     <div class="tab-header">{{ _('Navigation') }}</div>
     <hr>
@@ -60,7 +61,54 @@
     <div class="k-label">{{ _('Toggle node fix') }}</div>
     <div class="k-input"><kbd>F</kbd></div>
   </div>
+</div>
 
+<!-- Simplify viewer shortcuts -->
+<div id="keyboard-shortcuts-simplify" class="flex-col hidden">
+  <div>
+    <div class="tab-header">{{ _('Navigation') }}</div>
+    <hr>
+  </div>
+
+  <div class="k-info">
+    <div class="k-label">{{ _('Pan view') }}</div>
+    <div class="k-input"><kbd>{{ _('Drag') }}</kbd></div>
+  </div>
+
+  <div class="k-info">
+    <div class="k-label">{{ _('Zoom in/out') }}</div>
+    <div class="k-input"><kbd>{{ _('Scroll') }}</kbd></div>
+  </div>
+
+  <div class="k-info">
+    <div class="k-label">{{ _('Toggle detail/skeleton') }}</div>
+    <div class="k-input"><kbd>Space</kbd></div>
+  </div>
+
+  <div>
+    <div class="tab-header">{{ _('Selection') }}</div>
+    <hr>
+  </div>
+
+  <div class="k-info">
+    <div class="k-label">{{ _('Select chains') }}</div>
+    <div class="k-input"><kbd class="shift-key">Shift</kbd> + <kbd>{{ _('Drag') }}</kbd></div>
+  </div>
+
+  <div class="k-info">
+    <div class="k-label">{{ _('Clear selection') }}</div>
+    <div class="k-input"><kbd>Esc</kbd></div>
+  </div>
+
+  <div>
+    <div class="tab-header">{{ _('Interaction') }}</div>
+    <hr>
+  </div>
+
+  <div class="k-info">
+    <div class="k-label">{{ _('Undo bubble pop') }}</div>
+    <div class="k-input"><kbd class="ctrl-key">Ctrl</kbd> + <kbd>Z</kbd></div>
+  </div>
 </div>
 
 
