@@ -1,0 +1,19 @@
+#tabs-container{
+    max-height: 750px;
+    height: 100%;
+    overflow: hidden;
+}
+
+.tab-content {
+    flex: 1 1 auto;
+    background-color: var(--tab-box);
+    max-width: 20vw;
+    padding: 10px;
+    border-radius: 5px;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.tab-header{
+    font-size: large;
+}

@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/gene-search-style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/components/gene-search.css') }}">
 
 <div id="gene-search" class="container flex-3">
     <div class="container-title">{{ _('Select by Gene') }}</div>
@@ -8,16 +8,16 @@
 
         <div id="gene-search-bar-container" class="flex-1">
             <input type="text" id="gene-search-bar" placeholder="{{ _('Search genes...') }}">
-            <div id="gene-search-suggestions" class="gene-search-suggestions-dropdown"></div>
+            <div id="gene-search-suggestions" class="search-dropdown"></div>
         </div>
 
         <div id="gene-search-result-container" class="flex-row flex-5">
-            <div id="gene-search-result-1" class="gene-search-result placeholder-blank button-group button-group-unselected flex-1"></div>
-            <div id="gene-search-result-2" class="gene-search-result placeholder-blank button-group button-group-unselected flex-1"></div>
-            <div id="gene-search-result-3" class="gene-search-result placeholder-blank button-group button-group-unselected flex-1"></div>
-            <div id="gene-search-result-4" class="gene-search-result placeholder-blank button-group button-group-unselected flex-1"></div>
+            <div id="gene-search-result-1" class="search-result placeholder-blank button-group button-group-unselected flex-1"></div>
+            <div id="gene-search-result-2" class="search-result placeholder-blank button-group button-group-unselected flex-1"></div>
+            <div id="gene-search-result-3" class="search-result placeholder-blank button-group button-group-unselected flex-1"></div>
+            <div id="gene-search-result-4" class="search-result placeholder-blank button-group button-group-unselected flex-1"></div>
         </div>
     </div>
 </div>
 
-<script type="module" src="{{url_for('static', filename='js/ui/gene-search.js')}}"></script>
+<script type="module" src="{{url_for('static', filename='js/ui/components/gene-search.js')}}"></script>

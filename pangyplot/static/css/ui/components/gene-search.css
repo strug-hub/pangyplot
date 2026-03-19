@@ -1,0 +1,42 @@
+#gene-search-bar-container{
+    align-self: center
+} #gene-search-bar{
+    min-width: 8em;
+    width: 95%;
+}
+
+.gene-search-item-line{
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    column-gap: 3px;
+} .gene-search-item-chrom{
+    background-color: var(--lighter-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    font-size: small;
+    padding: 3px;
+} .gene-search-item-name{
+    font-weight: bold;
+}
+
+.gene-search-item-geneid{
+    font-style: italic;
+    font-size: xx-small;
+} .gene-search-item-type{
+    font-size: xx-small;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+}
+
+.gene-search-item-line1{
+    font-size: small;
+}.gene-search-item-line.gene-search-item-line2{
+    align-items: baseline;
+    flex-wrap: wrap-reverse;
+}

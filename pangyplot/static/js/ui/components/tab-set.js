@@ -1,8 +1,8 @@
-function switchTab(tabId) {
+export function switchTab(tabId) {
     // clear all buttons
     var buttonDivs = document.getElementsByClassName("tab-button");
     for (var i = 0; i < buttonDivs.length; i++) {
-        buttonDivs[i].classList.remove("active-tab-button"); 
+        buttonDivs[i].classList.remove("active-tab-button");
     }
 
     // clear all contents
@@ -31,7 +31,9 @@ window.addEventListener("DOMContentLoaded", function () {
     if (savedTab && document.getElementById(savedTab + "-button")) {
         switchTab(savedTab);
     } else {
-        // fallback: open default tab
         switchTab("keyboard-shortcuts");
     }
 });
+
+// expose for inline onclick handlers in templates
+window.switchTab = switchTab;

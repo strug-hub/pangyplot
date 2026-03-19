@@ -6,25 +6,29 @@
  * @param {Object} [opts]
  * @param {Function} [opts.onChange] - Called with (value, buttonEl) when selection changes.
  *                                     `value` is the button's data-style or data-value attribute.
- * @returns {{ getSelected: () => HTMLElement|null }}
+ * @returns {{ getSelected, deselectAll, select }}
  */
 export function setupButtonGroup(containerId, { onChange } = {}) {
     const container = document.getElementById(containerId);
 
-    function unselectAll() {
+    function deselectAll() {
         container.querySelectorAll(".button-group").forEach(btn => {
             btn.classList.remove("button-group-selected");
             btn.classList.add("button-group-unselected");
         });
     }
 
+    function select(el) {
+        el.classList.add("button-group-selected");
+        el.classList.remove("button-group-unselected");
+    }
+
     container.addEventListener("click", function (event) {
         const target = event.target.closest(".button-group");
         if (!target || !container.contains(target)) return;
 
-        unselectAll();
-        target.classList.add("button-group-selected");
-        target.classList.remove("button-group-unselected");
+        deselectAll();
+        select(target);
 
         if (onChange) {
             const value = target.dataset.style || target.dataset.value || null;
@@ -35,6 +39,8 @@ export function setupButtonGroup(containerId, { onChange } = {}) {
     return {
         getSelected() {
             return container.querySelector(".button-group-selected");
-        }
+        },
+        deselectAll,
+        select
     };
 }

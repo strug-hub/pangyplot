@@ -140,40 +140,7 @@ body {
 .flex-8{ flex: 8; }
 .flex-9{ flex: 9; }
 
-.container {
-    background-color: var(--lighter-green);
-    border-radius: 5px;
-    -ms-overflow-style: none; /* for Internet Explorer, Edge */
-    scrollbar-width: none; /* for Firefox */
-    overflow-y: scroll; 
-} .container::-webkit-scrollbar {
-    display: none; /* for Chrome, Safari, and Opera */
-}
 
-.container-title {
-    height: var(--title-height);
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    text-align: center;
-    color: var(--text-color);
-    background: var(--light-green);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.container-content {
-    margin: 10px;
-    height: calc(100% - var(--title-height) - 20px);
-}
-
-.container-content-no-title {
-    margin: 10px;
-    height: calc(100% - 20px);
-}
 
 hr {
     border: none;
