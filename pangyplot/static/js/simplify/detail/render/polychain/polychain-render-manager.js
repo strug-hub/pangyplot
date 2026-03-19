@@ -19,10 +19,12 @@ function getVisibleChainPolylines(chains) {
 
 function getSelectedPolylines() {
     const polylines = [];
-    for (const chain of state.selectedChains) {
+    for (const [chain, clip] of state.selectedChains) {
         if (chain.polyline.length < 2) continue;
         const live = getPolychainPositions(chain.id);
-        polylines.push(live || chain.polyline);
+        const pl = live || chain.polyline;
+        const sub = extractSubPolyline(pl, clip.tStart, clip.tEnd);
+        if (sub && sub.length >= 2) polylines.push(sub);
     }
     return polylines;
 }

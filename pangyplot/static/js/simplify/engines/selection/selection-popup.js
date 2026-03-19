@@ -20,15 +20,15 @@ function ensurePopup() {
         position: fixed;
         display: none;
         z-index: 30;
-        background: rgba(20, 20, 20, 0.95);
-        border: 1px solid #555;
-        border-radius: 6px;
-        padding: 8px 12px;
+        background: rgba(20, 20, 20, 0.92);
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 6px 10px;
         font-family: 'SF Mono', Consolas, monospace;
         font-size: 11px;
         color: #ccc;
         white-space: nowrap;
-        line-height: 1.6;
+        line-height: 1.5;
         pointer-events: auto;
     `;
     const btn = popupEl.querySelector('.sp-button');
@@ -62,9 +62,24 @@ function ensurePopup() {
 
 function getSelectionBpRange() {
     let minBp = Infinity, maxBp = -Infinity;
-    for (const chain of state.selectedChains) {
-        if (chain.bpStart != null) minBp = Math.min(minBp, chain.bpStart);
-        if (chain.bpEnd != null) maxBp = Math.max(maxBp, chain.bpEnd);
+    for (const [chain, clip] of state.selectedChains) {
+        if (chain.bpStart == null || chain.bpEnd == null) continue;
+        const chainBpSpan = chain.bpEnd - chain.bpStart;
+        if (chainBpSpan <= 0) continue;
+
+        const reversed = chain.bpHead != null && chain.bpTail != null &&
+            chain.bpHead > chain.bpTail;
+
+        let bp0, bp1;
+        if (reversed) {
+            bp0 = chain.bpStart + (1 - clip.tEnd) * chainBpSpan;
+            bp1 = chain.bpStart + (1 - clip.tStart) * chainBpSpan;
+        } else {
+            bp0 = chain.bpStart + clip.tStart * chainBpSpan;
+            bp1 = chain.bpStart + clip.tEnd * chainBpSpan;
+        }
+        if (bp0 < minBp) minBp = bp0;
+        if (bp1 > maxBp) maxBp = bp1;
     }
     if (!isFinite(minBp) || !isFinite(maxBp)) return null;
     return { bpStart: minBp, bpEnd: maxBp };
@@ -124,6 +139,16 @@ export function isCoreViewerActive() {
     return !!state.coreViewerActive;
 }
 
+function formatLength(bp) {
+    if (bp == null || bp <= 0) return null;
+    return bp >= 1000 ? (bp / 1000).toFixed(1) + 'kb' : bp + 'bp';
+}
+
+function row(label, value, color) {
+    const style = color ? ` style="color:${color}"` : '';
+    return `<span class="tt-label">${label}</span> <span class="tt-val"${style}>${value}</span>`;
+}
+
 export function showSelectionPopup(screenX, screenY) {
     const range = getSelectionBpRange();
     if (!range) return;
@@ -132,9 +157,17 @@ export function showSelectionPopup(screenX, screenY) {
     const count = state.selectedChains.size;
     const chr = state.chromosome || '';
     const info = el.querySelector('.sp-info');
-    info.innerHTML =
-        `<span style="color:#fff;font-weight:600">${count}</span> chain${count !== 1 ? 's' : ''}` +
-        ` &middot; <span style="color:#5bb8f0">${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}</span>`;
+
+    let totalSize = 0;
+    for (const chain of state.selectedChains.keys()) {
+        if (chain.length) totalSize += chain.length;
+    }
+
+    const lines = [];
+    lines.push(row('chains', count));
+    lines.push(row('range', `${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}`));
+    if (totalSize > 0) lines.push(row('total size', formatLength(totalSize)));
+    info.innerHTML = lines.join('<br>');
 
     el.style.display = 'block';
 

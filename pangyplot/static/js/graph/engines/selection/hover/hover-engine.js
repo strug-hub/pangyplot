@@ -3,20 +3,55 @@ import { canHighlight } from '../selection-state.js';
 import { findNearestNode, euclideanDist } from '../../../utils/node-utils.js';
 import { makeHoverLabel } from './hover-label.js';
 import { faLabel } from '../../../../utils/node-label.js';
-import DEBUG_MODE from '../../../../debug-mode.js';
 import appState from '../../../app-state.js';
 import { isPanning } from '../../../engines/navigation/pan-zoom/pan-zoom-engine.js';
 
 const MAX_HOVER_DISTANCE = 40;
 
-function getHoverLabelText(node) {
-  if (DEBUG_MODE) {
-    const nodeLabel = faLabel(node.id);
-    const label = `ID: ${nodeLabel} (x: ${node.x.toFixed(1)}, y: ${node.y.toFixed(1)})`;
-    return label;
+const TYPE_COLORS = {
+    simple: '#4a90d9',
+    superbubble: '#d94a90',
+    insertion: '#44bb44',
+    deletion: '#bb4444',
+    segment: '#0762E5',
+    bubble: '#F2DC0F',
+};
+
+function formatLength(bp) {
+    if (bp == null || bp <= 0) return null;
+    return bp >= 1000 ? (bp / 1000).toFixed(1) + 'kb' : bp + 'bp';
+}
+
+function row(label, value, color) {
+    const style = color ? ` style="color:${color}"` : '';
+    return `<span class="tt-label">${label}</span> <span class="tt-val"${style}>${value}</span>`;
+}
+
+function getHoverTooltipHtml(node) {
+  const record = node.record;
+  const lines = [];
+
+  if (node.type === 'segment') {
+    lines.push(row('segment', faLabel(node.id)));
+  } else if (node.type === 'bubble') {
+    lines.push(row('bubble', faLabel(node.id)));
   }
 
-  return faLabel(node.id);
+  if (record) {
+    if (record.subtype) {
+      lines.push(row('type', record.subtype, TYPE_COLORS[record.subtype]));
+    }
+    const len = formatLength(record.seqLength);
+    if (len) lines.push(row('length', len));
+    if (record.chain != null) {
+      lines.push(row('chain', record.chain));
+    }
+    if (record.size != null) {
+      lines.push(row('size', record.size));
+    }
+  }
+
+  return lines.join('<br>');
 }
 
 function clearHover(forceGraph, tooltip) {
@@ -62,8 +97,7 @@ function attemptHover(event, forceGraph, tooltip) {
       appState.isSelectionMode() ? 'grab' : 'default');
   }
 
-  const labelText = getHoverLabelText(nearestNode);
-  tooltip.show(labelText, event.clientX, event.clientY);
+  tooltip.show(getHoverTooltipHtml(nearestNode), event.clientX, event.clientY);
 }
 
 export default function setUpHoverEngine(forceGraph) {

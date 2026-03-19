@@ -39,7 +39,7 @@ export const state = {
     poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
 
     // Selection (Shift+drag rectangle)
-    selectedChains: new Set(),   // Set of chain objects currently selected
+    selectedChains: new Map(),   // Map<chain, { tStart, tEnd }> — clipped arc-length fraction
     selectionBox: null,          // { startX, startY, endX, endY } in screen coords, or null
 
     // Hover

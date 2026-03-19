@@ -2,7 +2,7 @@
 
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
-import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
+import { getPolychainPositions, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -27,22 +27,12 @@ export function hitTestChains(dataX, dataY) {
 
 export function chainsInRect(minX, minY, maxX, maxY) {
     if (!state.detailData) return [];
-    const chains = state.detailData.chains;
-    if (chains.length > 0) {
-        const c0 = chains[0];
-        const pl0 = c0.polyline;
-        console.log('chainsInRect', {
-            rect: { minX, minY, maxX, maxY },
-            chainCount: chains.length,
-            poppedCount: state.poppedChainIds?.size ?? 0,
-            chain0: { id: c0.id, plLen: pl0?.length, first: pl0?.[0], last: pl0?.[pl0?.length - 1] },
-        });
-    }
     const result = [];
     for (const chain of state.detailData.chains) {
         const pl = getPolychainPositions(chain.id) || chain.polyline;
-        if (!pl || pl.length === 0) continue;
+        if (!pl || pl.length < 2) continue;
 
+        // Quick AABB rejection
         let plMinX = Infinity, plMaxX = -Infinity;
         let plMinY = Infinity, plMaxY = -Infinity;
         for (let i = 0; i < pl.length; i++) {
@@ -52,33 +42,59 @@ export function chainsInRect(minX, minY, maxX, maxY) {
             if (y < plMinY) plMinY = y;
             if (y > plMaxY) plMaxY = y;
         }
-        if (plMaxX < minX || plMinX > maxX || plMaxY < minY || plMinY > maxY) {
-            continue;
+        if (plMaxX < minX || plMinX > maxX || plMaxY < minY || plMinY > maxY) continue;
+
+        // Compute cumulative arc lengths
+        const cumLen = cumulativeLengths(pl);
+        const totalLen = cumLen[cumLen.length - 1];
+        if (totalLen === 0) continue;
+
+        // Walk each segment, clip to rect, track min/max arc-length inside rect
+        let arcMin = Infinity, arcMax = -Infinity;
+        for (let i = 0; i < pl.length - 1; i++) {
+            // Check if vertex itself is inside rect
+            const vx = pl[i][0], vy = pl[i][1];
+            if (vx >= minX && vx <= maxX && vy >= minY && vy <= maxY) {
+                const d = cumLen[i];
+                if (d < arcMin) arcMin = d;
+                if (d > arcMax) arcMax = d;
+            }
+
+            const clip = clipSegmentToRect(
+                pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1],
+                minX, minY, maxX, maxY);
+            if (!clip) continue;
+
+            const segLen = cumLen[i + 1] - cumLen[i];
+            const d0 = cumLen[i] + clip.tMin * segLen;
+            const d1 = cumLen[i] + clip.tMax * segLen;
+            if (d0 < arcMin) arcMin = d0;
+            if (d1 > arcMax) arcMax = d1;
+        }
+        // Check last vertex
+        const lx = pl[pl.length - 1][0], ly = pl[pl.length - 1][1];
+        if (lx >= minX && lx <= maxX && ly >= minY && ly <= maxY) {
+            const d = cumLen[pl.length - 1];
+            if (d < arcMin) arcMin = d;
+            if (d > arcMax) arcMax = d;
         }
 
-        let hit = false;
-        for (let i = 0; i < pl.length; i++) {
-            const x = pl[i][0], y = pl[i][1];
-            if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                hit = true;
-                break;
-            }
-        }
-        if (!hit) {
-            for (let i = 0; i < pl.length - 1; i++) {
-                if (segmentIntersectsRect(pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1], minX, minY, maxX, maxY)) {
-                    hit = true;
-                    break;
-                }
-            }
-        }
-        if (hit) result.push(chain);
+        if (!isFinite(arcMin)) continue;
+
+        result.push({
+            chain,
+            tStart: arcMin / totalLen,
+            tEnd: arcMax / totalLen,
+        });
     }
-    console.log('chainsInRect result', { hits: result.length });
     return result;
 }
 
-function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
+/**
+ * Clip a line segment to an axis-aligned rect using parametric clipping.
+ * Returns { tMin, tMax } (segment-local t ∈ [0,1]) or null if no intersection.
+ */
+function clipSegmentToRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
     const dx = bx - ax, dy = by - ay;
 
     let tMin = 0, tMax = 1;
@@ -87,20 +103,20 @@ function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
         if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
         tMin = Math.max(tMin, t1);
         tMax = Math.min(tMax, t2);
-        if (tMin > tMax) return false;
+        if (tMin > tMax) return null;
     } else {
-        if (ax < minX || ax > maxX) return false;
+        if (ax < minX || ax > maxX) return null;
     }
     if (dy !== 0) {
         let t1 = (minY - ay) / dy, t2 = (maxY - ay) / dy;
         if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
         tMin = Math.max(tMin, t1);
         tMax = Math.min(tMax, t2);
-        if (tMin > tMax) return false;
+        if (tMin > tMax) return null;
     } else {
-        if (ay < minY || ay > maxY) return false;
+        if (ay < minY || ay > maxY) return null;
     }
-    return true;
+    return { tMin, tMax };
 }
 
 export function getChainTooltip(chain) {

@@ -9,6 +9,7 @@ import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
 import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
+import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
@@ -50,7 +51,7 @@ export function setupMultiSelection(canvas) {
         if (state.selectedChains.size > 0) {
             e.preventDefault();
             e.stopPropagation();
-            for (const chain of state.selectedChains) {
+            for (const chain of state.selectedChains.keys()) {
                 togglePopChain(chain);
             }
             state.selectedChains.clear();
@@ -60,13 +61,30 @@ export function setupMultiSelection(canvas) {
     });
 
     // --- Shift key cursor feedback ---
+    let zoomNoticeTimer = null;
     window.addEventListener('keydown', e => {
-        if (e.key === 'Shift' && state.detailData && !isSelecting) {
-            canvas.style.cursor = 'crosshair';
+        if (e.key === 'Shift' && !isSelecting) {
+            if (state.detailData) {
+                canvas.style.cursor = 'crosshair';
+            } else {
+                const mx = state._lastMouseX ?? window.innerWidth / 2;
+                const my = state._lastMouseY ?? window.innerHeight / 2;
+                const el = state.dom.tooltip;
+                const container = el.offsetParent || el.parentElement;
+                const cr = container.getBoundingClientRect();
+                el.innerHTML = '<span class="tt-label">zoom in closer to select</span>';
+                el.style.display = 'block';
+                el.style.left = (mx - cr.left + 8) + 'px';
+                el.style.top = (my - cr.top - el.offsetHeight - 4) + 'px';
+                clearTimeout(zoomNoticeTimer);
+                zoomNoticeTimer = setTimeout(() => hideTooltip(), 1500);
+            }
         }
     });
     window.addEventListener('keyup', e => {
         if (e.key === 'Shift' && !isSelecting) {
+            clearTimeout(zoomNoticeTimer);
+            hideTooltip();
             const hovering = state.hoveredChain || state.hoveredForceNode || state.hoveredBubble || state.hoveredSkeletonPl;
             canvas.style.cursor = hovering ? 'default' : 'grab';
         }
@@ -100,9 +118,8 @@ export function setupMultiSelection(canvas) {
         const dMinY = (sMinY - state.panY) / state.zoom;
         const dMaxY = (sMaxY - state.panY) / state.zoom;
         const hits = chainsInRect(dMinX, dMinY, dMaxX, dMaxY);
-        console.log('multi-select', { hits: hits.length, selectedChains: state.selectedChains.size, dMinX, dMinY, dMaxX, dMaxY });
         state.selectedChains.clear();
-        for (const c of hits) state.selectedChains.add(c);
+        for (const h of hits) state.selectedChains.set(h.chain, { tStart: h.tStart, tEnd: h.tEnd });
         scheduleFrame();
     });
 

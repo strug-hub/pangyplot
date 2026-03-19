@@ -37,20 +37,17 @@
   .hover-tooltip {
   position: absolute;
   pointer-events: none;
-  background-color: var(--tab-box);
-  border: 1px solid var(--text-color);
-  padding: 5px 10px;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-  color: var(--text-color);
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: 'SF Mono', Consolas, monospace;
+  color: #ccc;
+  white-space: nowrap;
   z-index: 1000;
-  white-space: pre;
-  display: flex;
-  align-items: center;
-  gap: 6px; /* spacing between icon and text */
-
+  line-height: 1.5;
 }
 
-.hover-tooltip i {
-  color: var(--text-color);
-}
+.hover-tooltip .tt-label { color: #888; }
+.hover-tooltip .tt-val { color: #fff; font-weight: 600; }
