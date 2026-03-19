@@ -11,7 +11,10 @@ bp = Blueprint("routes", __name__)
 
 @bp.route('/')
 def index():
-    return render_template("index.html")
+    return render_template("index.html",
+                           init_chromosome=request.args.get('chromosome', ''),
+                           init_start=request.args.get('start', ''),
+                           init_end=request.args.get('end', ''))
 
 @bp.route('/simplify')
 def simplify_viewer():

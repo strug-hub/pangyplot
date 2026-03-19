@@ -96,6 +96,14 @@
     <script src="{{url_for('static', filename='js/d3/d3-annotation.min.js')}}"></script>
     <script src="{{url_for('static', filename='js/d3/force-graph.min.js')}}"></script>
 
+    <script>
+        window.__CORE_CONFIG = {
+            genome: '{{ genome }}',
+            chromosome: '{{ init_chromosome }}',
+            start: '{{ init_start }}',
+            end: '{{ init_end }}'
+        };
+    </script>
     <script type="module" src="{{ url_for('static', filename='js/graph/force-graph.js') }}"></script>
 
     <script src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>

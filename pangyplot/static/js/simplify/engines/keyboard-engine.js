@@ -4,9 +4,16 @@ import { state } from '../simplify-state.js';
 import { togglePhysicsDebug } from './physics-activation-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { unpopLastBubble } from '../detail/data/bubble-unpop-adapter.js';
+import { returnToSimplify } from './selection/selection-popup.js';
 
 export function setupKeyboardShortcuts() {
     window.addEventListener('keydown', e => {
+        // Escape from core viewer → return to simplify canvas
+        if (e.code === 'Escape' && state.coreViewerActive) {
+            returnToSimplify();
+            scheduleFrame();
+            return;
+        }
         if (e.code === 'KeyL' && !e.repeat) {
             togglePhysicsDebug();
             scheduleFrame();
