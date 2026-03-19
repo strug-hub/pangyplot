@@ -37,12 +37,12 @@ python pangyplot.py annotate --ref <ref_genome> --gff3 <path.gff3> --name <annot
 
 ### Manage translations
 ```bash
-# From the repo root:
-pybabel extract -F babel.cfg -o pangyplot/translations/messages.pot .
-pybabel update -i pangyplot/translations/messages.pot -d pangyplot/translations
-pybabel compile -d pangyplot/translations
+# From pangyplot/translations/:
+pybabel extract -F babel.cfg -o messages.pot ../..
+pybabel update -i messages.pot -d .
+pybabel compile -d .
 ```
-See `compile_translations.sh` for the full workflow. Supported locales: en, fr, es, de, it, pt_BR, ru, zh_CN, ja, ko, ar.
+See `pangyplot/translations/compile_translations.sh` for the full workflow. Supported locales: en, fr, es, de, it, pt_BR, ru, zh_CN, ja, ko, ar.
 
 ### Production deployment
 Use `wsgi.py` with a WSGI server (gunicorn, etc.). Configure via environment variables: `PANGYPLOT_DATA`, `PANGYPLOT_DB`, `PANGYPLOT_ANNOTATION`, `PANGYPLOT_REF`, `PANGYPLOT_PORT`.
