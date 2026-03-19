@@ -1,6 +1,7 @@
 // Main canvas rendering: draw loop.
 
 import { state } from './simplify-state.js';
+import { colorState } from '../graph/render/color/color-state.js';
 import { setDrawCallback } from './utils/frame-scheduler.js';
 import { getViewport } from './render/viewport.js';
 import { isPhysicsDebugActive } from './engines/physics-activation-engine.js';
@@ -23,7 +24,7 @@ function draw() {
     const ch = state.canvas.height / dpr;
 
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = '#373737';
+    ctx.fillStyle = colorState.background;
     ctx.fillRect(0, 0, cw, ch);
 
     updateLOD();

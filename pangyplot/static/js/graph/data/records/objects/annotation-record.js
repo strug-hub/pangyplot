@@ -34,11 +34,12 @@ class AnnotationRecord {
 }
 
 export class GeneRecord extends AnnotationRecord {
-    constructor({ id, gene, transcripts = [] }) {
+    constructor({ id, gene, mane_select = false, transcripts = [] }) {
         super(id, gene);
 
         this.transcripts = transcripts;
         this.showExons = false;
+        this.isMane = mane_select || transcripts.some(t => t.mane_select);
     }
 
     toggleExons() {

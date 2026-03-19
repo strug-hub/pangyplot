@@ -16,6 +16,14 @@ export function setDebugMode(enabled) {
     eventBus.publish('app:debug-mode-changed', _debugMode);
 }
 
+let _canvasMode = window.location.pathname.includes('/simplify') ? 'simplify' : 'core';
+export function getCanvasMode() { return _canvasMode; }
+export function setCanvasMode(mode) {
+    if (_canvasMode === mode) return;
+    _canvasMode = mode;
+    eventBus.publish('app:canvas-mode-changed', _canvasMode);
+}
+
 // Parse and validate URL hash: #chrY:12345-67890
 function parseHash() {
     const hash = location.hash.replace(/^#/, '');

@@ -130,7 +130,17 @@ export function deserializePopResponse(rawPop, bubbleId) {
 }
 
 export function deserializeGenes(rawGenes) {
-    let geneRecords = rawGenes.map(rawGene => new GeneRecord(rawGene));
-    geneRecords = updateExistingGeneRecords(geneRecords);
+    const freshRecords = rawGenes.map(rawGene => new GeneRecord(rawGene));
+
+    // Default non-MANE genes to hidden (if any MANE genes exist in this batch)
+    const hasMane = freshRecords.some(r => r.isMane);
+    if (hasMane) {
+        for (const r of freshRecords) {
+            if (!r.isMane) r.setVisibility(false);
+        }
+    }
+
+    // Swap in existing records (preserves user visibility overrides from prior queries)
+    const geneRecords = updateExistingGeneRecords(freshRecords);
     return geneRecords;
 }

@@ -1,6 +1,7 @@
 // Detail render pipeline: culling, orchestration.
 
 import { state } from '../../../simplify-state.js';
+import { colorState } from '../../../../graph/render/color/color-state.js';
 import { strokePolyline, strokePolylines } from '../detail-painter.js';
 import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
@@ -104,7 +105,7 @@ export function drawDetail(svg = null) {
     const visible = getVisibleChainPolylines(state.detailData.chains);
 
     if (visible.length > 0) {
-        strokePolylines(ctx, visible, '#FF6700', baseWidth, 0.75 * opacity, svg);
+        strokePolylines(ctx, visible, colorState.nodeColors[2], baseWidth, 0.75 * opacity, svg);
     }
 
     // 3. Selection highlight
