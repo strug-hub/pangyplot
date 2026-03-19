@@ -1,6 +1,6 @@
 import eventBus from '@event-bus';
 import recordsManager from "../../../data/records/records-manager.js";
-import { populateGeneAnnotationsTable } from "../gene-annotation-ui.js"
+import { populateGeneAnnotationsTable, buildEntriesFromForceGraph } from "../gene-annotation-ui.js"
 import appState from "../../../app-state.js";
 
 const GFF_QUEUE_NAME = "gff-gene";
@@ -63,7 +63,7 @@ function annotateTranscripts(forceGraph, graphData) {
 }
 
 export function setUpGffGeneEngine(forceGraph) {
-    
+
     forceGraph.addRenderQueue(GFF_QUEUE_NAME, 1);
 
     eventBus.subscribe("graph:data-replaced", async (forceGraph) => {
@@ -74,7 +74,7 @@ export function setUpGffGeneEngine(forceGraph) {
         });
 
         annotateTranscripts(forceGraph, forceGraph.graphData());
-        populateGeneAnnotationsTable(forceGraph);
+        populateGeneAnnotationsTable(buildEntriesFromForceGraph(forceGraph));
     });
 
 

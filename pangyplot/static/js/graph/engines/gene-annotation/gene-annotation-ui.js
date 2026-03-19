@@ -1,33 +1,52 @@
-import { GeneRecord, CustomAnnotationRecord } from "../../data/records/objects/annotation-record.js";
 import { createButton } from "@ui/elements/button.js";
+import { GeneRecord, CustomAnnotationRecord } from "../../data/records/objects/annotation-record.js";
 
-var allRecords = [];
-
-function getTableData(forceGraph) {
-    const tableData = [];
+/**
+ * Build generic entries from a forceGraph's render records (core viewer convenience).
+ */
+export function buildEntriesFromForceGraph(forceGraph) {
+    const entries = [];
     for (const record of forceGraph.getRenderRecords()) {
-        tableData.push({
+        entries.push({
             id: record.id,
             name: record.name,
-            hasExon: record instanceof GeneRecord && record.hasExons(),
-            isCustom: record instanceof CustomAnnotationRecord,
             color: record.color,
             visible: record.isVisible,
-            record: record
+            hasExon: record instanceof GeneRecord && record.hasExons(),
+            onToggle: (visible) => record.setVisibility(visible),
+            onExonToggle: (visible) => record.setShowExons(visible),
+            onColor: (color) => record.setColor(color),
+            onDelete: record instanceof CustomAnnotationRecord
+                ? () => forceGraph.deleteCustomAnnotation(record.id) : null,
         });
     }
-    return tableData;
+    return entries;
 }
 
-export function populateGeneAnnotationsTable(forceGraph) {
+/**
+ * Populate the gene annotations table.
+ *
+ * @param {Array<Object>} entries — each entry:
+ *   { id, name, color, visible, hasExon?,
+ *     onToggle(visible), onColor(color), onExonToggle?(visible), onDelete?() }
+ * @param {Object} [opts]
+ * @param {boolean} [opts.showExonColumn=true]
+ */
 
-    const annotations = getTableData(forceGraph);
-    allRecords = annotations.map(a => a.record);
+let allEntries = [];
+
+export function populateGeneAnnotationsTable(entries, opts = {}) {
+    const { showExonColumn = true } = opts;
+    allEntries = entries;
 
     const tableBody = document.getElementById("gene-annotations-body");
-    tableBody.innerHTML = ""; // Clear previous content
+    tableBody.innerHTML = "";
 
-    if (annotations.length === 0) {
+    // Exon column header visibility
+    const exonHeader = document.getElementById("gene-annotations-exon-header");
+    if (exonHeader) exonHeader.classList.toggle("hidden", !showExonColumn);
+
+    if (entries.length === 0) {
         document.getElementById("no-annotations-text").classList.remove("hidden");
         document.getElementById("gene-annotations-table-container").classList.add("hidden");
         document.getElementById("gene-annotations-control-container").classList.add("hidden");
@@ -38,39 +57,49 @@ export function populateGeneAnnotationsTable(forceGraph) {
     document.getElementById("gene-annotations-table-container").classList.remove("hidden");
     document.getElementById("gene-annotations-control-container").classList.remove("hidden");
 
-    annotations.forEach(annotation => {
+    entries.forEach(entry => {
         const row = document.createElement("tr");
 
         // Gene Name button
         const geneNameCell = document.createElement("td");
         const geneButton = createButton({
-            text: annotation.name,
+            text: entry.name,
             classList: ["gene-toggle-annotation-row"],
-            selected: annotation.visible,
-            onClick: () => toggleGeneSelection(annotation.record, geneButton)
+            selected: entry.visible,
+            onClick: () => {
+                geneButton.classList.toggle("button-selected");
+                const isSelected = geneButton.classList.contains("button-selected");
+                entry.onToggle(isSelected);
+            }
         });
-        geneButton.setAttribute("data-id", annotation.id);
+        geneButton.setAttribute("data-id", entry.id);
         geneNameCell.appendChild(geneButton);
         row.appendChild(geneNameCell);
 
-        // Exon toggle button
-        const exonCell = document.createElement("td");
-        const exonButton = createButton({
-            icon: "eye",
-            classList: ["exon-toggle-annotation-row"],
-            disabled: !annotation.hasExon,
-            onClick: () => toggleExonSelection(annotation.record, exonButton)
-        });
-        exonCell.appendChild(exonButton);
-        row.appendChild(exonCell);
+        // Exon toggle button (only if column is shown)
+        if (showExonColumn) {
+            const exonCell = document.createElement("td");
+            const exonButton = createButton({
+                icon: "eye",
+                classList: ["exon-toggle-annotation-row"],
+                disabled: !entry.hasExon,
+                onClick: () => {
+                    exonButton.classList.toggle("button-selected");
+                    const isSelected = exonButton.classList.contains("button-selected");
+                    if (entry.onExonToggle) entry.onExonToggle(isSelected);
+                }
+            });
+            exonCell.appendChild(exonButton);
+            row.appendChild(exonCell);
+        }
 
         // Delete row button
-        if (annotation.isCustom) {
+        if (entry.onDelete) {
             const deleteCell = document.createElement("td");
             const deleteButton = createButton({
                 icon: "trash",
                 classList: ["delete-annotation-row"],
-                onClick: () => forceGraph.deleteCustomAnnotation(annotation.id)
+                onClick: () => entry.onDelete()
             });
             deleteCell.appendChild(deleteButton);
             row.appendChild(deleteCell);
@@ -83,10 +112,10 @@ export function populateGeneAnnotationsTable(forceGraph) {
         const colorCell = document.createElement("td");
         const colorPicker = document.createElement("input");
         colorPicker.type = "color";
-        colorPicker.value = annotation.color;
-        colorPicker.setAttribute("data-id", annotation.id);
+        colorPicker.value = entry.color;
+        colorPicker.setAttribute("data-id", entry.id);
         colorPicker.classList.add("color-picker-annotation-row", "color-picker");
-        colorPicker.onchange = () => handleColorChange(annotation.record, colorPicker.value);
+        colorPicker.onchange = () => entry.onColor(colorPicker.value);
 
         colorCell.appendChild(colorPicker);
         row.appendChild(colorCell);
@@ -94,52 +123,30 @@ export function populateGeneAnnotationsTable(forceGraph) {
         tableBody.appendChild(row);
     });
 }
-function toggleGeneSelection(record, button) {
-    button.classList.toggle("button-selected");
-    const isSelected = button.classList.contains("button-selected");
-    record.setVisibility(isSelected);
-}
-
-function toggleExonSelection(record, button) {
-    button.classList.toggle("button-selected");
-    const isSelected = button.classList.contains("button-selected");
-    record.setShowExons(isSelected);
-}
-
-function handleColorChange(record, color) {
-    record.setColor(color);
-}
 
 function selectAllGenes() {
     document.querySelectorAll(".gene-toggle-annotation-row").forEach(button => {
         button.classList.add("button-selected");
-        for (const record of allRecords) {
-            record.setVisibility(true);
-        }
     });
+    for (const entry of allEntries) entry.onToggle(true);
 }
 
 function deselectAllGenes() {
     document.querySelectorAll(".gene-toggle-annotation-row").forEach(button => {
         button.classList.remove("button-selected");
-        for (const record of allRecords) {
-            record.setVisibility(false);
-        }
     });
+    for (const entry of allEntries) entry.onToggle(false);
 }
 
 function setAllColors() {
     const color = document.getElementById("set-color-picker-gene-annotations").value;
     document.querySelectorAll(".color-picker-annotation-row").forEach(picker => {
         picker.value = color;
-        for (const record of allRecords) {
-            record.setColor(color);
-        }
     });
+    for (const entry of allEntries) entry.onColor(color);
 }
 
 // Initialize event listeners
 document.getElementById("select-all-gene-annotations").onclick = selectAllGenes;
 document.getElementById("deselect-all-gene-annotations").onclick = deselectAllGenes;
 document.getElementById("set-all-colors-gene-annotations").onclick = setAllColors;
-

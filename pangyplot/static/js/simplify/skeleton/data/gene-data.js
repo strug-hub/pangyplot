@@ -3,9 +3,13 @@
 import { bpToX, xToY } from '../../engines/reference-spine-engine.js';
 import { geneColor } from '../../utils/color-hash.js';
 import { state } from '../../simplify-state.js';
+import { populateGeneAnnotationsTable } from '../../../graph/engines/gene-annotation/gene-annotation-ui.js';
+import { scheduleFrame } from '../../utils/frame-scheduler.js';
 
 let genePins = [];
 let geneCache = [];
+const hiddenGenes = new Set();
+const customColors = new Map();  // gene name → user-set color (persists across rebuilds)
 let fetchedRange = null;    // { chr, startBp, endBp } — completed fetch
 let pendingRange = null;    // { chr, startBp, endBp } — in-flight fetch
 let fetchController = null;
@@ -14,10 +18,13 @@ let spinePlaced = false;    // true when pins are placed from spine (skip redund
 let detailChainKey = null;  // tracks which chain data was last used for placement
 
 export function getGenePins() { return genePins; }
+export function isGeneVisible(name) { return !hiddenGenes.has(name); }
 
 export function clearGeneCache() {
     genePins = [];
     geneCache = [];
+    hiddenGenes.clear();
+    customColors.clear();
     fetchedRange = null;
     pendingRange = null;
     spinePlaced = false;
@@ -117,11 +124,37 @@ function placeGenes() {
             if (sy > maxY) maxY = sy;
         }
         const name = gene.gene || gene.id;
-        const color = geneColor(name);
+        const color = customColors.get(name) || geneColor(name);
 
         genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
     }
     spinePlaced = true;
+    populateSimplifyGeneTable();
+}
+
+function populateSimplifyGeneTable() {
+    const entries = geneCache.map(gene => {
+        const name = gene.gene || gene.id;
+        const pin = genePins.find(p => p.name === name);
+        const color = pin ? pin.color : geneColor(name);
+        return {
+            id: gene.id,
+            name,
+            color,
+            visible: !hiddenGenes.has(name),
+            onToggle: (visible) => {
+                if (visible) hiddenGenes.delete(name);
+                else hiddenGenes.add(name);
+                scheduleFrame();
+            },
+            onColor: (newColor) => {
+                customColors.set(name, newColor);
+                if (pin) pin.color = newColor;
+                scheduleFrame();
+            },
+        };
+    });
+    populateGeneAnnotationsTable(entries, { showExonColumn: false });
 }
 
 /**

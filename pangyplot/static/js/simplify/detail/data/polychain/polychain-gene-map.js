@@ -4,9 +4,15 @@
 // Independent from skeleton — fetches genes directly from the API.
 
 import { cumulativeLengths, interpolateAtDist } from './polychain-adapter.js';
+import { getGenePins, isGeneVisible } from '../../../skeleton/data/gene-data.js';
 import { geneHaloColor } from '../../../utils/color-hash.js';
 import { state } from '../../../simplify-state.js';
 import { scheduleFrame } from '../../../utils/frame-scheduler.js';
+
+function getGeneColor(name) {
+    const pin = getGenePins().find(p => p.name === name);
+    return pin ? pin.color : geneHaloColor(name);
+}
 
 // Gene cache (independent from skeleton gene-data.js)
 let geneCache = [];
@@ -17,6 +23,7 @@ let geneFetchController = null;
 let cachedOverlaps = null;
 let cachedChains = null;
 let cachedGenes = null;
+let cachedVisibilityKey = null;
 
 /**
  * Fetch genes from the API for the given bp range.
@@ -84,6 +91,7 @@ export function clearDetailGeneCache() {
     cachedOverlaps = null;
     cachedChains = null;
     cachedGenes = null;
+    cachedVisibilityKey = null;
 }
 
 /**
@@ -106,6 +114,8 @@ function buildGeneChainOverlaps(chains, genes) {
 
         const overlaps = [];
         for (const gene of genes) {
+            const name = gene.gene || gene.id;
+            if (!isGeneVisible(name)) continue;
             if (gene.end <= chainBpStart || gene.start >= chainBpEnd) continue;
 
             let tStart = Math.max(0, (gene.start - chainBpStart) / chainBpSpan);
@@ -119,10 +129,9 @@ function buildGeneChainOverlaps(chains, genes) {
                 tEnd = flippedEnd;
             }
 
-            const name = gene.gene || gene.id;
             overlaps.push({
                 name,
-                color: geneHaloColor(name),
+                color: getGeneColor(name),
                 tStart,
                 tEnd,
             });
@@ -169,12 +178,16 @@ export function getGeneChainOverlaps() {
 
     const chains = dd.chains;
 
-    if (cachedOverlaps && cachedChains === chains && cachedGenes === geneCache) {
+    // Build a key from visibility + colors to detect changes
+    const pins = getGenePins();
+    const visKey = pins.map(p => (isGeneVisible(p.name) ? '1' : '0') + p.color).join();
+    if (cachedOverlaps && cachedChains === chains && cachedGenes === geneCache && cachedVisibilityKey === visKey) {
         return cachedOverlaps;
     }
 
     cachedChains = chains;
     cachedGenes = geneCache;
+    cachedVisibilityKey = visKey;
     cachedOverlaps = buildGeneChainOverlaps(chains, geneCache);
     return cachedOverlaps;
 }

@@ -1,6 +1,6 @@
 import eventBus from '@event-bus';
 import recordsManager from "../../../data/records/records-manager.js";
-import { populateGeneAnnotationsTable } from "../gene-annotation-ui.js"
+import { populateGeneAnnotationsTable, buildEntriesFromForceGraph } from "../gene-annotation-ui.js"
 import { CustomAnnotationRecord } from "../../../data/records/objects/annotation-record.js";
 
 const CUSTOM_QUEUE_NAME = "custom-gene";
@@ -8,7 +8,6 @@ const CUSTOM_QUEUE_NAME = "custom-gene";
 function deleteCustomAnnotation(forceGraph, id) {
     const record = forceGraph.removeFromRenderQueue(CUSTOM_QUEUE_NAME, id);
     informGraphElements(id, record.nodes, "delete");
-    populateGeneAnnotationsTable(forceGraph);
 }
 
 function createCustomAnnotationRecord(forceGraph, name, nodes) {
@@ -68,12 +67,12 @@ export function setUpCustomGeneEngine(forceGraph) {
 
     forceGraph.createCustomAnnotation = function (name, nodes) {
         createCustomAnnotationRecord(this, name, nodes);
-        populateGeneAnnotationsTable(this);
+        populateGeneAnnotationsTable(buildEntriesFromForceGraph(this));
     }
 
     forceGraph.deleteCustomAnnotation = function (id) {
         deleteCustomAnnotation(this, id);
-        populateGeneAnnotationsTable(this);
+        populateGeneAnnotationsTable(buildEntriesFromForceGraph(this));
     }
 
     eventBus.subscribe('graph:bubble-popped', ({ id, graphData }) => {

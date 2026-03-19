@@ -2,7 +2,7 @@
 
 import { state } from '../../simplify-state.js';
 import { getLevelBboxes } from '../data/skeleton-data.js';
-import { getGenePins } from '../data/gene-data.js';
+import { getGenePins, isGeneVisible } from '../data/gene-data.js';
 import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painter.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
@@ -32,6 +32,7 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
     }
 
     for (const gene of genePins) {
+        if (!isGeneVisible(gene.name)) continue;
         const indices = [];
         for (let i = 0; i < level.polylines.length; i++) {
             const o = i * 4;
@@ -70,6 +71,7 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
     }
 
     for (const gene of genePins) {
+        if (!isGeneVisible(gene.name)) continue;
         const junctions = [];
         for (const [x, y] of level.junctions) {
             if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
@@ -128,6 +130,7 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     // Build all visible candidates (just off-screen culling, no size filter)
     const allVisible = [];
     for (const gene of genePins) {
+        if (!isGeneVisible(gene.name)) continue;
         const sxStart = gene.startX * state.zoom + state.panX;
         const sxEnd = gene.endX * state.zoom + state.panX;
         if (sxEnd < -80 || sxStart > cw + 80) continue;

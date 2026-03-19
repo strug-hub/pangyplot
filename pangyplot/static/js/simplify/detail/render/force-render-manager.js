@@ -6,8 +6,7 @@ import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
-import { getGenePins } from '../../skeleton/data/gene-data.js';
-import { geneHaloColor } from '../../utils/color-hash.js';
+import { getGenePins, isGeneVisible } from '../../skeleton/data/gene-data.js';
 
 export function drawForceGraph(ctx, baseWidth, svg = null) {
     const nodes = getForceNodes();
@@ -60,10 +59,10 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
         } else {
             segCircles.push(circle);
             for (const pin of genePins) {
+                if (!isGeneVisible(pin.name)) continue;
                 if (node.x >= pin.startX && node.x <= pin.endX) {
-                    const color = geneHaloColor(pin.name);
-                    if (!geneHaloCircles.has(color)) geneHaloCircles.set(color, []);
-                    geneHaloCircles.get(color).push({ x: node.x, y: node.y, r: r * 2.5 });
+                    if (!geneHaloCircles.has(pin.color)) geneHaloCircles.set(pin.color, []);
+                    geneHaloCircles.get(pin.color).push({ x: node.x, y: node.y, r: r * 2.5 });
                     break;
                 }
             }
@@ -78,10 +77,10 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
             for (const seg of segs) {
                 const midX = (seg.x1 + seg.x2) / 2;
                 for (const pin of genePins) {
+                    if (!isGeneVisible(pin.name)) continue;
                     if (midX >= pin.startX && midX <= pin.endX) {
-                        const color = geneHaloColor(pin.name);
-                        if (!haloLinksByColor.has(color)) haloLinksByColor.set(color, []);
-                        haloLinksByColor.get(color).push(seg);
+                        if (!haloLinksByColor.has(pin.color)) haloLinksByColor.set(pin.color, []);
+                        haloLinksByColor.get(pin.color).push(seg);
                         break;
                     }
                 }
