@@ -10,12 +10,24 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/option-button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/components/button-group.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/slider.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/tooltip.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/table.css') }}">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/right-click.css') }}">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/utils/slider-set.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/utils/selectable-table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/components/slider-set.css') }}">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "@ui/": "{{ url_for('static', filename='js/ui/') }}"
+        }
+    }
+    </script>
 
     {% include 'google-analytics.html' %}
 
@@ -106,7 +118,7 @@
     </script>
     <script type="module" src="{{ url_for('static', filename='js/graph/force-graph.js') }}"></script>
 
-    <script src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
 
 
 </body>

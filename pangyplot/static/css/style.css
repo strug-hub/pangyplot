@@ -175,30 +175,6 @@ body {
     height: calc(100% - 20px);
 }
 
-.button-style {
-    background-color: var(--light-green);
-    border: none;
-    color: var(--text-color);
-    text-align: center;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: all 0.2s ease;
-    font-size: large;
-    text-decoration: none;
-    padding: 3px;
-} .button-style:hover {
-    background-color: var(--highlight);
-} .button-style:active {
-    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    transform: scale(0.95);
-    background-color: var(--darker-green);
-    color: var(--light-green);
-} .button-selected{
-    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    background-color: var(--highlight);
-
-}
-
 hr {
     border: none;
     height: 2px;

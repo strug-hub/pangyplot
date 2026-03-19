@@ -31,13 +31,5 @@
 </nav>
 
 {% include 'modal-template.html' %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        setupModal("citation-modal", "navbar-button-citation", "citation-modal-close-button", false);
-    });
-    document.addEventListener('DOMContentLoaded', function() {
-        setupModal("info-modal", "navbar-button-information", "info-modal-close-button", true);
-    });
-</script>
 
 <script type="module" src="{{url_for('static', filename='js/ui/navbar.js')}}"></script>

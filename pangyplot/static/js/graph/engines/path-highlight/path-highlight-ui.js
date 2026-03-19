@@ -1,4 +1,4 @@
-import createSelectableTable from '../../../ui/utils/selectable-table.js';
+import createSelectableTable from '@ui/components/selectable-table.js';
 import setupAnimationUi from './animation/animation-ui.js';
 import { setAnimationPath } from './animation/animation-tick.js';
 

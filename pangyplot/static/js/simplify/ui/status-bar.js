@@ -7,6 +7,7 @@ import { formatBp } from '../utils/format-utils.js';
 import { xToBp } from '../engines/reference-spine-engine.js';
 import { viewportStepCount } from '../render/viewport.js';
 import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
+import { positionTooltip } from '@ui/elements/tooltip.js';
 
 // ---------------------------------------------------------------
 // One-time init
@@ -151,13 +152,7 @@ export function showTooltip(html, clientX, clientY) {
     const el = state.dom.tooltip;
     el.innerHTML = html;
     el.style.display = 'block';
-    const ttRect = el.getBoundingClientRect();
-    let tx = clientX + 14;
-    let ty = clientY - ttRect.height - 8;
-    if (tx + ttRect.width > window.innerWidth - 8) tx = clientX - ttRect.width - 14;
-    if (ty < 4) ty = clientY + 18;
-    el.style.left = tx + 'px';
-    el.style.top = ty + 'px';
+    positionTooltip(el, clientX, clientY);
 }
 
 export function hideTooltip() {

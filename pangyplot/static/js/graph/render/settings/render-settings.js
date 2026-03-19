@@ -1,5 +1,5 @@
 import { updateWidthMultiplier, updateTextMultiplier } from '../render-scaling.js';
-import createSliderSet from "../../../ui/utils/slider-set.js";
+import createSliderSet from "@ui/components/slider-set.js";
 
 const settings = [
     {

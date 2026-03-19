@@ -1,7 +1,7 @@
 // UI sliders for polychain force tuning.
 // Populates the "Force Settings" tab in the simplify viewer.
 
-import createSliderSet from '../../ui/utils/slider-set.js';
+import createSliderSet from '@ui/components/slider-set.js';
 import { pcSettings, applyPcSettings } from '../detail/engines/force-engine.js';
 
 function sliderProperties() {

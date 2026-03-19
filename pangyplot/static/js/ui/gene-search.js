@@ -191,14 +191,14 @@ function processSearchItemTemplate(template, data) {
         var gene3 = document.getElementById('gene-search-result-3');
         var gene4 = document.getElementById('gene-search-result-4');
 
-        gene1.classList.remove('option-button-selected');
-        gene1.classList.add('option-button-unselected');
-        gene2.classList.remove('option-button-selected');
-        gene2.classList.add('option-button-unselected');
-        gene3.classList.remove('option-button-selected');
-        gene3.classList.add('option-button-unselected');
-        gene4.classList.remove('option-button-selected');
-        gene4.classList.add('option-button-unselected');
+        gene1.classList.remove('button-group-selected');
+        gene1.classList.add('button-group-unselected');
+        gene2.classList.remove('button-group-selected');
+        gene2.classList.add('button-group-unselected');
+        gene3.classList.remove('button-group-selected');
+        gene3.classList.add('button-group-unselected');
+        gene4.classList.remove('button-group-selected');
+        gene4.classList.add('button-group-unselected');
 
         transferAttributes(gene3, gene4)
         transferAttributes(gene2, gene3)
@@ -220,8 +220,8 @@ function processSearchItemTemplate(template, data) {
         
         gene1.innerHTML = processSearchItemTemplate(selectedTemplate, geneData);
         gene1.classList.remove('placeholder-blank');
-        gene1.classList.add('option-button-selected');
-        gene1.classList.remove('option-button-unselected');
+        gene1.classList.add('button-group-selected');
+        gene1.classList.remove('button-group-unselected');
 
         const data = {
             chromosome: geneData.chromosome,
@@ -284,16 +284,16 @@ function processSearchItemTemplate(template, data) {
         let flag = false;
         for (let i = 1; i <= 4; i++) {
             let element = document.getElementById('gene-search-result-' + i);
-            element.classList.remove('option-button-selected');
-            element.classList.add('option-button-unselected');
+            element.classList.remove('button-group-selected');
+            element.classList.add('button-group-unselected');
 
             let coordData = getCoordinateData(element);
             if( !flag && coordData.chromosome == data.chromosome &&
                 coordData.start == data.start &&
                 coordData.end == data.end){
                     flag = true;
-                    element.classList.add('option-button-selected');
-                    element.classList.remove('option-button-unselected');
+                    element.classList.add('button-group-selected');
+                    element.classList.remove('button-group-unselected');
                 }
         }
     });
@@ -316,5 +316,5 @@ gene1Test.innerHTML = processSearchItemTemplate(selectedTemplateTest, {
     type: "protein coding"
 });
 gene1Test.classList.remove('placeholder-blank');
-gene1Test.classList.add('option-button-selected');
-gene1Test.classList.remove('option-button-unselected');
+gene1Test.classList.add('button-group-selected');
+gene1Test.classList.remove('button-group-unselected');

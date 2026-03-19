@@ -63,7 +63,7 @@ linkColorPicker.addEventListener('change', function(event) {
 
 // default colors below
 
-let defaultChoice = document.getElementsByClassName('color-preset-option option-button-selected')[0];
+let defaultChoice = document.getElementsByClassName('color-preset-option button-group-selected')[0];
 if (defaultChoice) {
     let color1 = defaultChoice.getAttribute('data-color1');
     let color2 = defaultChoice.getAttribute('data-color2');

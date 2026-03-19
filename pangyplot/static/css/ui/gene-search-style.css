@@ -9,7 +9,7 @@
     justify-content: center;
     align-items: center;
 }
-.gene-search-result.placeholder-blank.option-button {
+.gene-search-result.placeholder-blank.button-group {
     border: 1px dashed var(--text-color);
     box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.3);
     pointer-events: none;

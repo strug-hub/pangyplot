@@ -1,4 +1,4 @@
-import createSliderSet from "../../../ui/utils/slider-set.js";
+import createSliderSet from "@ui/components/slider-set.js";
 import defaults from "./force-defaults.js"
 import { setFriction, setCollisionForce, setLinkForce, setLayoutForce, setChargeForce } from "../force-manager.js";
 

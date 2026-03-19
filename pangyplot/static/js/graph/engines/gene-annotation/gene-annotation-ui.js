@@ -1,4 +1,5 @@
 import { GeneRecord, CustomAnnotationRecord } from "../../data/records/objects/annotation-record.js";
+import { createButton } from "@ui/elements/button.js";
 
 var allRecords = [];
 
@@ -42,36 +43,35 @@ export function populateGeneAnnotationsTable(forceGraph) {
 
         // Gene Name button
         const geneNameCell = document.createElement("td");
-        const geneButton = document.createElement("button");
-        geneButton.textContent = annotation.name;
+        const geneButton = createButton({
+            text: annotation.name,
+            classList: ["gene-toggle-annotation-row"],
+            selected: annotation.visible,
+            onClick: () => toggleGeneSelection(annotation.record, geneButton)
+        });
         geneButton.setAttribute("data-id", annotation.id);
-        geneButton.classList.add("button-style", "gene-toggle-annotation-row");
-        if (annotation.visible) {
-            geneButton.classList.add("button-selected");
-        }
-        geneButton.onclick = () => toggleGeneSelection(annotation.record, geneButton);
         geneNameCell.appendChild(geneButton);
         row.appendChild(geneNameCell);
 
         // Exon toggle button
         const exonCell = document.createElement("td");
-        const exonButton = document.createElement("button");
-        exonButton.innerHTML = '<i class="fa-solid fa-eye"></i>';
-        exonButton.classList.add("button-style", "exon-toggle-annotation-row");
-        if (!annotation.hasExon) {
-            exonButton.disabled = true;
-        }
-        exonButton.onclick = () => toggleExonSelection(annotation.record, exonButton);
+        const exonButton = createButton({
+            icon: "eye",
+            classList: ["exon-toggle-annotation-row"],
+            disabled: !annotation.hasExon,
+            onClick: () => toggleExonSelection(annotation.record, exonButton)
+        });
         exonCell.appendChild(exonButton);
         row.appendChild(exonCell);
 
         // Delete row button
         if (annotation.isCustom) {
             const deleteCell = document.createElement("td");
-            const deleteButton = document.createElement("button");
-            deleteButton.innerHTML = '<i class="fa-solid fa-trash"></i>';
-            deleteButton.classList.add("button-style", "delete-annotation-row");
-            deleteButton.onclick = () => forceGraph.deleteCustomAnnotation(annotation.id);
+            const deleteButton = createButton({
+                icon: "trash",
+                classList: ["delete-annotation-row"],
+                onClick: () => forceGraph.deleteCustomAnnotation(annotation.id)
+            });
             deleteCell.appendChild(deleteButton);
             row.appendChild(deleteCell);
         } else {

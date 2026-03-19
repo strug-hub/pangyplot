@@ -1,4 +1,4 @@
-.option-button {
+.button-group {
     text-align:center;
     cursor: pointer;
     border-radius: 5px;
@@ -6,16 +6,16 @@
     padding: 3px;
 }
 
-.option-button-unselected {
+.button-group-unselected {
     box-shadow: 3px 3px 5px rgba(0, 0, 0, 0);
     background-color: var(--unselected-green);
     color: var(--unselected-text);
 
-}.option-button-unselected:hover {
+}.button-group-unselected:hover {
     background-color: var(--highlight);
     color: var(--text-color);
 }
-.option-button-selected {
+.button-group-selected {
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
     background-color: var(--highlight);
 }

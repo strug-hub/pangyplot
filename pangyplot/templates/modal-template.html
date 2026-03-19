@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/modal-style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/modal.css') }}">
 
 {% macro reference(title, github_link, description, image_src, paper_author, paper_title, journal, journal_info, doi) %}
 <div class="modal-reference flex-col flex-1">
@@ -133,4 +133,4 @@
     </div>
 </div>
 
-<script src="{{url_for('static', filename='js/ui/modal.js')}}"></script>
+<script type="module" src="{{url_for('static', filename='js/ui/modal.js')}}"></script>
