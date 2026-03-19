@@ -165,10 +165,6 @@ class BubbleIndex:
 
         return True
 
-    # Chains with more than this many bubbles get split into connectors.
-    # Mirrors MAX_BUBBLES_PER_CHAIN in chain_polyline.py.
-    _MAX_BUBBLES_PER_CHAIN = 100
-
     def create_chains(self, bubbles, parent_bubble=None):
         chain_dict = defaultdict(list)
         for bubble in bubbles:
@@ -178,60 +174,17 @@ class BubbleIndex:
         for chain_id in chain_dict:
             visible_bids = {bubble.id for bubble in chain_dict[chain_id]}
 
-            # Get the full ordered ID list for the chain (cheap SQL query).
-            # This ensures _split_balanced chunk boundaries are canonical
-            # regardless of which viewport subset triggered the request.
+            # Get the full ordered ID list for the chain and fill gaps.
             all_ids = db.get_all_bubble_ids_from_chain(self.dir, chain_id)
-            n = len(all_ids)
-
-            if n <= self._MAX_BUBBLES_PER_CHAIN:
-                # Short chain — no splitting will happen downstream.
-                # Just fill in any gaps in the visible range.
-                missing_ids = [bid for bid in all_ids if bid not in visible_bids]
-                if missing_ids:
-                    missing = db.get_bubbles_batch(self.dir, missing_ids, self.gfaidx)
-                    for b in missing:
-                        self._cache_bubble(b.id, b)
-                    chain_dict[chain_id].extend(missing)
-                chain = Chain(chain_id, chain_dict[chain_id],
-                              parent_bubble=parent_bubble, gfaidx=self.gfaidx)
-                chains.append(chain)
-            else:
-                # Long chain — compute canonical chunk boundaries and
-                # load only the chunks that overlap with visible bubbles.
-                from math import ceil
-                k = ceil(n / self._MAX_BUBBLES_PER_CHAIN)
-                chunk_size = ceil(n / k)
-
-                for ci in range(0, n, chunk_size):
-                    chunk_ids = all_ids[ci:ci + chunk_size]
-                    # Only include this chunk if it overlaps visible bubbles
-                    if not visible_bids.intersection(chunk_ids):
-                        continue
-                    # Batch-load all bubbles in this chunk
-                    to_load = [bid for bid in chunk_ids if bid not in visible_bids]
-                    loaded = {}
-                    if to_load:
-                        for b in db.get_bubbles_batch(self.dir, to_load, self.gfaidx):
-                            self._cache_bubble(b.id, b)
-                            loaded[b.id] = b
-                    # Assemble in canonical order
-                    chunk_bubbles = []
-                    for bid in chunk_ids:
-                        if bid in visible_bids:
-                            # Find in the original dict
-                            for b in chain_dict[chain_id]:
-                                if b.id == bid:
-                                    chunk_bubbles.append(b)
-                                    break
-                        elif bid in loaded:
-                            chunk_bubbles.append(loaded[bid])
-                        else:
-                            chunk_bubbles.append(self[bid])
-                    chain = Chain(chain_id, chunk_bubbles,
-                                  parent_bubble=parent_bubble, gfaidx=self.gfaidx,
-                                  is_chunk=True)
-                    chains.append(chain)
+            missing_ids = [bid for bid in all_ids if bid not in visible_bids]
+            if missing_ids:
+                missing = db.get_bubbles_batch(self.dir, missing_ids, self.gfaidx)
+                for b in missing:
+                    self._cache_bubble(b.id, b)
+                chain_dict[chain_id].extend(missing)
+            chain = Chain(chain_id, chain_dict[chain_id],
+                          parent_bubble=parent_bubble, gfaidx=self.gfaidx)
+            chains.append(chain)
 
         return chains
 

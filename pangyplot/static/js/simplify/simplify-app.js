@@ -12,6 +12,7 @@ import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
 import { isReady, xToBp } from './engines/reference-spine-engine.js';
 import { state } from './simplify-state.js';
 import { setupUiBridge } from './ui/ui-bridge.js';
+import { setupPolychainForceSettings } from './ui/polychain-force-settings.js';
 import { publishViewportCoordinates } from './ui/viewport-sync.js';
 import { getViewport } from './render/viewport.js';
 
@@ -57,5 +58,6 @@ async function init() {
 }
 
 setupUiBridge();
+setupPolychainForceSettings();
 setupEngines();
 init();

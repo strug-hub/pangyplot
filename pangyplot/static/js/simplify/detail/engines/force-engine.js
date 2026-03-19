@@ -6,14 +6,384 @@ import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { setForceNodes, setForceLinks } from '../data/force-data.js';
 import simplifyViewState from '../data/simplify-view-state.js';
 import defaults from '../../../graph/forces/settings/force-defaults.js';
-import layoutForce from '../../../graph/forces/layout-force.js';
-import bubbleCircularForce from '../../../graph/forces/bubble-circular-force.js';
 
 // Simplify-specific overrides for bigger bubble loops
 const SIMPLIFY_LINK_SCALE = 3;   // rest distance = link.length * this (vs 1 in core)
-const SIMPLIFY_CHARGE = -400;    // stronger repulsion (vs -200 in core)
+const SIMPLIFY_CHARGE = -80;     // reduced for polychain experiment (many more nodes)
+
+// Polychain-specific tuning — mutable so UI sliders can update them
+export const pcSettings = {
+    charge: -20,              // global inter-node repulsion
+    chargeMaxDist: 5000,      // long-range charge like core
+    intraChainRepulsion: 2000, // extra repulsion between nodes in the same chain
+    centroidRepulsion: 4,     // push each node away from its chain's centroid (inflates loops)
+    loopClosure: 4,           // magnetic head↔tail pull, decaying toward middle
+    collisionRadius: 5,       // node collision radius
+    layoutStrength: 0.00005,  // gentle home pull — allows deformation
+    linkStrength: 0.1,        // spring stiffness along polyline (softer = curvier)
+    linkMinRest: 80,          // floor for link rest length (expands tight loops)
+    linkRepulsion: 0.8,       // link-link perpendicular push strength
+    linkRepulsionDist: 100,   // max distance for link-link repulsion
+    linkRepulsionGrid: 50,    // grid cell size (~half of repulsion dist)
+    parentSide: 2,            // push child chains to one side of parent
+};
 
 let sim = null;
+
+/**
+ * Grid-accelerated link-link repulsion for polychain links only.
+ * Pushes nearby parallel polyline segments apart for smoother loops.
+ * O(n) per tick via spatial hashing (vs O(n²) brute force).
+ */
+function polychainLinkRepulsion() {
+    let _links = [];
+
+    function force(alpha) {
+        if (_links.length < 2) return;
+        const str = pcSettings.linkRepulsion * alpha;
+        const cellSize = pcSettings.linkRepulsionGrid;
+        const maxDist = pcSettings.linkRepulsionDist;
+
+        // Build grid of link midpoints
+        const grid = new Map();
+        const mids = new Array(_links.length);
+
+        for (let i = 0; i < _links.length; i++) {
+            const l = _links[i];
+            const s = l.source, t = l.target;
+            if (s.x == null || t.x == null) { mids[i] = null; continue; }
+            const mx = (s.x + t.x) * 0.5;
+            const my = (s.y + t.y) * 0.5;
+            mids[i] = { mx, my };
+            const cx = Math.floor(mx / cellSize);
+            const cy = Math.floor(my / cellSize);
+            const key = (cx * 73856093) ^ (cy * 19349663); // spatial hash
+            let bucket = grid.get(key);
+            if (!bucket) { bucket = []; grid.set(key, bucket); }
+            bucket.push(i);
+        }
+
+        // For each link, check its cell + 8 neighbors
+        for (let i = 0; i < _links.length; i++) {
+            const mi = mids[i];
+            if (!mi) continue;
+            const li = _links[i];
+            const s1 = li.source, t1 = li.target;
+            const cx = Math.floor(mi.mx / cellSize);
+            const cy = Math.floor(mi.my / cellSize);
+
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    const key = ((cx + dx) * 73856093) ^ ((cy + dy) * 19349663);
+                    const bucket = grid.get(key);
+                    if (!bucket) continue;
+
+                    for (const j of bucket) {
+                        if (j <= i) continue; // avoid double-counting
+                        const mj = mids[j];
+                        if (!mj) continue;
+
+                        const lj = _links[j];
+                        // Skip consecutive links in same chain (they share a node)
+                        if (li.chainId === lj.chainId) {
+                            if (li.target === lj.source || li.source === lj.target) continue;
+                        }
+
+                        const ddx = mj.mx - mi.mx;
+                        const ddy = mj.my - mi.my;
+                        const dist = Math.hypot(ddx, ddy);
+                        if (dist > maxDist || dist < 0.1) continue;
+
+                        const push = str / (dist * dist);
+                        const ux = ddx / dist * push;
+                        const uy = ddy / dist * push;
+
+                        s1.vx -= ux; s1.vy -= uy;
+                        t1.vx -= ux; t1.vy -= uy;
+                        const s2 = lj.source, t2 = lj.target;
+                        s2.vx += ux; s2.vy += uy;
+                        t2.vx += ux; t2.vy += uy;
+                    }
+                }
+            }
+        }
+    }
+
+    force.initialize = function() {};
+    force.setLinks = function(links) {
+        _links = links.filter(l => l.isPolychainLink);
+    };
+    return force;
+}
+
+/**
+ * Intra-chain repulsion: extra charge between polychain nodes in the same chain.
+ * Groups nodes by chainId, then applies pairwise repulsion within each group.
+ * This inflates loops without pushing unrelated chains apart.
+ */
+function intraChainRepulsion() {
+    let nodes = [];
+
+    function force(alpha) {
+        const str = pcSettings.intraChainRepulsion * alpha;
+        if (str === 0) return;
+
+        // Group polychain nodes by chain
+        const chains = new Map();
+        for (const n of nodes) {
+            if (!n.isPolychainNode) continue;
+            let group = chains.get(n.chainId);
+            if (!group) { group = []; chains.set(n.chainId, group); }
+            group.push(n);
+        }
+
+        for (const group of chains.values()) {
+            const len = group.length;
+            if (len < 2) continue;
+            const lf = group[0].loopFactor || 0;
+            if (lf === 0) continue;
+            // Scale force down by group size so large chains don't explode
+            const scale = str * lf / len;
+            for (let i = 0; i < len; i++) {
+                const a = group[i];
+                for (let j = i + 1; j < len; j++) {
+                    const b = group[j];
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+                    const push = scale / (dist * dist);
+                    const ux = dx / dist * push;
+                    const uy = dy / dist * push;
+                    a.vx -= ux; a.vy -= uy;
+                    b.vx += ux; b.vy += uy;
+                }
+            }
+        }
+    }
+
+    force.initialize = function(n) { nodes = n; };
+    return force;
+}
+
+/**
+ * Centroid repulsion: pushes each polychain node away from its chain's centroid.
+ * Uniform outward pressure that inflates loops evenly. O(n) per tick.
+ */
+function centroidRepulsion() {
+    let nodes = [];
+
+    function force(alpha) {
+        const str = pcSettings.centroidRepulsion * alpha;
+        if (str === 0) return;
+
+        // Group polychain nodes by chain and compute centroids
+        const chains = new Map();
+        for (const n of nodes) {
+            if (!n.isPolychainNode) continue;
+            let g = chains.get(n.chainId);
+            if (!g) { g = { nodes: [], cx: 0, cy: 0 }; chains.set(n.chainId, g); }
+            g.nodes.push(n);
+            g.cx += n.x;
+            g.cy += n.y;
+        }
+
+        for (const g of chains.values()) {
+            const len = g.nodes.length;
+            if (len < 3) continue;
+            const lf = g.nodes[0].loopFactor || 0;
+            if (lf === 0) continue;
+            g.cx /= len;
+            g.cy /= len;
+            const s = str * lf;
+
+            for (const n of g.nodes) {
+                const dx = n.x - g.cx;
+                const dy = n.y - g.cy;
+                const dist = Math.hypot(dx, dy) || 1;
+                n.vx += (dx / dist) * s;
+                n.vy += (dy / dist) * s;
+            }
+        }
+    }
+
+    force.initialize = function(n) { nodes = n; };
+    return force;
+}
+
+/**
+ * Loop closure: magnetic pull along the chain.
+ * Computes the head→tail vector, then each node gets a pull that
+ * interpolates from +100% (toward tail) at the head end to -100%
+ * (toward head) at the tail end. Middle nodes cancel out.
+ * This curls chains into loops without distorting the interior.
+ */
+function loopClosureForce() {
+    let nodes = [];
+
+    function force(alpha) {
+        const str = pcSettings.loopClosure * alpha;
+        if (str === 0) return;
+
+        const chains = new Map();
+        for (const n of nodes) {
+            if (!n.isPolychainNode) continue;
+            let g = chains.get(n.chainId);
+            if (!g) { g = []; chains.set(n.chainId, g); }
+            g.push(n);
+        }
+
+        for (const group of chains.values()) {
+            const len = group.length;
+            if (len < 3) continue;
+            const lf = group[0].loopFactor || 0;
+            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
+            const head = group[0], tail = group[len - 1];
+
+            // Head→tail vector
+            const dx = tail.x - head.x;
+            const dy = tail.y - head.y;
+            const dist = Math.hypot(dx, dy) || 1;
+
+            // loopFactor > 0.5: pull head→tail together (close the loop) — full strength
+            // loopFactor < 0.5: push head→tail apart (straighten) — sigmoid decay with distance
+            const sign = 2 * lf - 1;
+            let scale;
+            if (sign >= 0) {
+                // Loop closure: full strength regardless of distance
+                scale = sign;
+            } else {
+                // Linearization: sigmoid decay so long chains aren't overstretched
+                const midpoint = 500;
+                const distScale = 1 / (1 + (dist / midpoint) * (dist / midpoint));
+                scale = sign * distScale;
+            }
+            const fx = dx / dist * str * scale;
+            const fy = dy / dist * str * scale;
+
+            for (const n of group) {
+                const t = n.nodeIndex / (len - 1);
+                const w = 1 - 2 * t;
+                n.vx += fx * w;
+                n.vy += fy * w;
+            }
+        }
+    }
+
+    force.initialize = function(n) { nodes = n; };
+    return force;
+}
+
+/**
+ * Parent-side force: pushes child chain nodes perpendicular to each ancestor polyline.
+ * Each node has parentPerps[] — one entry per ancestor in the hierarchy.
+ * Recomputes perpendiculars from current positions every ~20 ticks.
+ */
+function parentSideForce() {
+    let nodes = [];
+    let tickCount = 0;
+
+    function recomputePerps() {
+        // Group nodes by chainId, only chains with parentPerps
+        const chains = new Map();
+        for (const n of nodes) {
+            if (!n.parentPerps) continue;
+            let g = chains.get(n.chainId);
+            if (!g) { g = []; chains.set(n.chainId, g); }
+            g.push(n);
+        }
+
+        for (const group of chains.values()) {
+            const perps = group[0].parentPerps;
+
+            // Current centroid
+            let cx = 0, cy = 0;
+            for (const n of group) { cx += n.x; cy += n.y; }
+            cx /= group.length; cy /= group.length;
+
+            for (const p of perps) {
+                const ppl = p.ppl;
+                if (!ppl || ppl.length < 2) continue;
+
+                let bestDist = Infinity, bestIdx = 0;
+                for (let i = 0; i < ppl.length - 1; i++) {
+                    const ax = ppl[i][0], ay = ppl[i][1];
+                    const bx = ppl[i+1][0], by = ppl[i+1][1];
+                    const dx = bx - ax, dy = by - ay;
+                    const lenSq = dx * dx + dy * dy;
+                    if (lenSq === 0) { const d = Math.hypot(cx - ax, cy - ay); if (d < bestDist) { bestDist = d; bestIdx = i; } continue; }
+                    const t = Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / lenSq));
+                    const d = Math.hypot(cx - (ax + t * dx), cy - (ay + t * dy));
+                    if (d < bestDist) { bestDist = d; bestIdx = i; }
+                }
+
+                const ax = ppl[bestIdx][0], ay = ppl[bestIdx][1];
+                const bx = ppl[bestIdx+1][0], by = ppl[bestIdx+1][1];
+                const tx = bx - ax, ty = by - ay;
+                const tLenSq = tx * tx + ty * ty;
+                const tLen = Math.sqrt(tLenSq) || 1;
+                const t = tLenSq > 0
+                    ? Math.max(0, Math.min(1, ((cx - ax) * tx + (cy - ay) * ty) / tLenSq))
+                    : 0;
+                p.mx = ax + t * tx;
+                p.my = ay + t * ty;
+                p.px = -ty / tLen;
+                p.py = tx / tLen;
+                const dot = (cx - p.mx) * p.px + (cy - p.my) * p.py;
+                if (dot < 0) { p.px = -p.px; p.py = -p.py; }
+            }
+        }
+    }
+
+    function force(alpha) {
+        const str = pcSettings.parentSide * alpha;
+        if (str === 0) return;
+
+        // Recompute perpendiculars every 20 ticks
+        if (++tickCount % 20 === 0) recomputePerps();
+
+        for (const n of nodes) {
+            if (!n.parentPerps) continue;
+            for (let ai = 0; ai < n.parentPerps.length; ai++) {
+                const p = n.parentPerps[ai];
+                const depth = 1 / (ai + 1);  // 1, 1/2, 1/3, ...
+                n.vx += p.px * str * depth;
+                n.vy += p.py * str * depth;
+            }
+        }
+    }
+    force.initialize = function(n) { nodes = n; };
+    return force;
+}
+
+/**
+ * Combined layout pull — applies pcSettings.layoutStrength to polychain nodes,
+ * standard layout strength to all other nodes. Replaces the shared layoutForce
+ * so polychain nodes aren't pulled by both.
+ */
+function combinedLayoutForce() {
+    let nodes = [];
+    let standardLevel = 1;
+    const standardStrengths = { 0: 0, 1: 0.0001, 2: 0.001, 3: 0.01, 4: 0.1, 5: 0.5 };
+
+    function force(alpha) {
+        const stdK = (standardStrengths[standardLevel] ?? 0) * alpha;
+        const pcK = pcSettings.layoutStrength * alpha;
+        for (const node of nodes) {
+            if (node.homeX == null) continue;
+            const k = node.isPolychainNode ? pcK : stdK;
+            node.vx += (node.homeX - node.x) * k;
+            node.vy += (node.homeY - node.y) * k;
+        }
+    }
+
+    force.initialize = function(n) { nodes = n; };
+    force.strengthLevel = function(_) {
+        if (_ == null) return standardLevel;
+        standardLevel = +_;
+        return force;
+    };
+    return force;
+}
 
 /**
  * Custom D3 force that pushes inside-bubble nodes perpendicularly away
@@ -70,6 +440,7 @@ function syncNodes(arr) {
 
 function syncLinks(arr) {
     sim.force('link').links(arr);
+    sim.force('pcLinkRepulsion').setLinks(arr);
     setForceLinks(arr);
 }
 
@@ -88,25 +459,70 @@ export function initForce() {
         .alphaDecay(defaults.HEAT_DECAY)
         .velocityDecay(defaults.FRICTION)
         .force('link', d3.forceLink([]).id(d => d.iid)
-            .distance(d => d.length * SIMPLIFY_LINK_SCALE)
-            .strength(d => d.isAnchorLink ? 2 : d.isInterChain ? 0.3 : 1))
-        .force('charge', d3.forceManyBody().strength(SIMPLIFY_CHARGE).distanceMax(defaults.CHARGE_DISTANCE))
-        .force('collide', d3.forceCollide().radius(defaults.COLLISION_RADIUS).strength(defaults.COLLISION_STRENGTH))
-        .force('layout', layoutForce().strengthLevel(defaults.LAYOUT_LEVEL))
-        .force('bubbleRoundness', bubbleCircularForce())
+            .distance(d => d.isPolychainLink
+                ? Math.max(pcSettings.linkMinRest, d.length)
+                : d.length * SIMPLIFY_LINK_SCALE)
+            .strength(d => d.isPolychainLink ? pcSettings.linkStrength : 0.05))
+        .force('charge', d3.forceManyBody()
+            .strength(d => d.isPolychainNode ? pcSettings.charge : SIMPLIFY_CHARGE)
+            .distanceMax(d => d.isPolychainNode ? pcSettings.chargeMaxDist : 200))
+        .force('collide', d3.forceCollide()
+            .radius(d => d.isPolychainNode ? pcSettings.collisionRadius : defaults.COLLISION_RADIUS)
+            .strength(defaults.COLLISION_STRENGTH))
+        .force('layout', combinedLayoutForce().strengthLevel(1))
+        .force('intraChain', intraChainRepulsion())
+        .force('centroid', centroidRepulsion())
+        .force('loopClosure', loopClosureForce())
+        .force('pcLinkRepulsion', polychainLinkRepulsion())
+        .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce())
         .on('tick', onTick);
     sim.stop();
 }
 
-function onTick() {
-    // Dampen forces when zoomed in so nodes don't fly off screen.
-    // At high zoom, the same data-space displacement covers more pixels.
-    const zoom = state.zoom || 1;
-    const baseFriction = defaults.FRICTION;  // 0.1
-    const damped = Math.min(0.9, baseFriction + zoom * 0.5);
-    sim.velocityDecay(damped);
+/**
+ * Compute per-force velocity deltas by running each force individually.
+ * Called on demand by the debug renderer (not every tick).
+ */
+export function computeForceDeltas() {
+    if (!sim) return {};
+    const nodes = sim.nodes();
+    if (nodes.length === 0) return {};
 
+    const alpha = 1; // Use full strength for debug visualization
+    const forceNames = ['charge', 'collide', 'link', 'layout',
+        'intraChain', 'centroid', 'loopClosure', 'pcLinkRepulsion', 'parentSide'];
+    const result = {};
+
+    for (const name of forceNames) {
+        const force = sim.force(name);
+        if (!force) continue;
+
+        // Snapshot
+        for (const n of nodes) { n._pvx = n.vx; n._pvy = n.vy; }
+
+        // Run just this force
+        force(alpha);
+
+        // Capture delta and restore
+        const map = new Map();
+        for (const n of nodes) {
+            const dvx = n.vx - n._pvx;
+            const dvy = n.vy - n._pvy;
+            if (dvx !== 0 || dvy !== 0) {
+                map.set(n, { fx: dvx, fy: dvy });
+            }
+            // Restore vx/vy so we don't double-apply
+            n.vx = n._pvx;
+            n.vy = n._pvy;
+        }
+        result[name] = map;
+    }
+
+    return result;
+}
+
+function onTick() {
     if (state.detailPhase !== 'none' && state.detailPhase !== 'fading-out') {
         scheduleFrame();
     }
@@ -417,6 +833,26 @@ function resolveSegToKink(segId, strand, allNodes) {
 export function reheatSimulation() {
     if (!sim) return;
     sim.alpha(0.1).restart();
+}
+
+/**
+ * Re-apply pcSettings to the live simulation forces and reheat.
+ * Called by the UI sliders after mutating pcSettings.
+ * D3 caches accessor results — we must re-set the accessors to force re-evaluation.
+ */
+export function applyPcSettings() {
+    if (!sim) return;
+    sim.force('charge')
+        .strength(d => d.isPolychainNode ? pcSettings.charge : SIMPLIFY_CHARGE)
+        .distanceMax(d => d.isPolychainNode ? pcSettings.chargeMaxDist : 200);
+    sim.force('collide')
+        .radius(d => d.isPolychainNode ? pcSettings.collisionRadius : defaults.COLLISION_RADIUS);
+    sim.force('link')
+        .distance(d => d.isPolychainLink
+            ? Math.max(pcSettings.linkMinRest, d.length)
+            : d.length * SIMPLIFY_LINK_SCALE)
+        .strength(d => d.isPolychainLink ? pcSettings.linkStrength : 0);
+    sim.alpha(0.3).restart();
 }
 
 export function isSimulating() {

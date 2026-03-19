@@ -6,7 +6,7 @@ import { state } from '../../../simplify-state.js';
 import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
-import { initJunctionLayer, addChainsToJunctionLayer, removeChainsFromJunctionLayer } from './polychain-adapter.js';
+import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
 
 let fetchController = null;
 
@@ -33,8 +33,10 @@ function processResponse(apiResponse) {
             sourceSegs: chain.source_segs,
             sinkSegs: chain.sink_segs,
             bubblePositions: chain.bubble_positions || null,
+            polychainNodes: chain.polychain_nodes || null,
             stepCount: chain.step_count || 0,
             parentChain: chain.parent_chain || null,
+            ancestors: chain.ancestors || [],
             parentBubble: chain.parent_bubble || null,
             parentSubtype: chain.parent_subtype || null,
             minStep: chain._min_step ?? null,
@@ -124,7 +126,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                 start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
             });
             state.detailData = newData;
-            initJunctionLayer();
+            initPolychainLayer();
         } else {
             // --- Incremental merge ---
             const existingIds = new Set(state.detailData.chains.map(c => c.id));
@@ -158,7 +160,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                     removedIds.delete(cid);
                 }
                 if (removedIds.size > 0) {
-                    removeChainsFromJunctionLayer(removedIds);
+                    removeChainsFromPolychainLayer(removedIds);
                     removeNodesByChainIds(removedIds);
                     const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
                     unregisterChains(removedIds, removedChains);
@@ -178,7 +180,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
 
             // Add phantoms + junction links for new chains only
             if (newChains.length > 0) {
-                addChainsToJunctionLayer(newChains, state.detailData);
+                addChainsToPolychainLayer(newChains, state.detailData);
             }
 
             // Expand fetchedRegion to union of old and new

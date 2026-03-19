@@ -32,6 +32,7 @@ export const state = {
     detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
     physicsDebug: false,        // L-key toggle: show physics activation zone overlay
     forceVectors: false,        // Y-key toggle: show per-node force vectors
+    forceVectorMode: 'all',    // U-key cycle: 'all', 'charge', 'intra', 'link', 'layout', 'linkRepul'
 
     // Force simulation
     activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)

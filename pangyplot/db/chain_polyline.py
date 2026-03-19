@@ -10,6 +10,8 @@ and .N connector sub-runs from leaf bubble runs.  Adjacency between
 consecutive groups is emitted from the interleaving order.
 """
 
+import math
+from bisect import bisect_right
 from collections import Counter, defaultdict, deque
 from pangyplot.objects.Chain import Chain
 from pangyplot.preprocess.skeleton.graph_simplify import rdp_simplify
@@ -108,6 +110,95 @@ def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
 
 
 # ---------------------------------------------------------------
+# Polychain resampling
+# ---------------------------------------------------------------
+
+MIN_POLYCHAIN_NODES = 2
+
+
+def resample_polychain(polyline, bp_span, bubble_positions):
+    """Resample a polyline with node count ~ log10(bp)² and density-weighted by bubbles.
+
+    Returns list of [x, y] sample points (always includes first and last).
+    """
+    if len(polyline) < 2:
+        return polyline
+
+    log_bp = math.log10(max(bp_span, 10))
+    n_target = max(MIN_POLYCHAIN_NODES, round(log_bp * log_bp * 2))
+
+    # Cumulative arc lengths
+    cum_len = [0.0]
+    for i in range(1, len(polyline)):
+        dx = polyline[i][0] - polyline[i - 1][0]
+        dy = polyline[i][1] - polyline[i - 1][1]
+        cum_len.append(cum_len[-1] + math.hypot(dx, dy))
+    total_len = cum_len[-1]
+    if total_len == 0:
+        return polyline
+
+    n_interior = n_target - 2
+    if n_interior <= 0:
+        return [polyline[0], polyline[-1]]
+
+    # Build density-weighted t values from bubble positions
+    if bubble_positions and len(bubble_positions) >= 2 and n_interior >= 2:
+        n_bins = 200
+        density = [0.5] * n_bins  # base uniform density
+        sigma = 1.0 / (n_bins * 0.5)
+        for bp in bubble_positions:
+            center = bp["t"]
+            for b in range(n_bins):
+                bt = (b + 0.5) / n_bins
+                d = (bt - center) / sigma
+                density[b] += math.exp(-0.5 * d * d)
+
+        # Build CDF
+        cdf = [0.0] * (n_bins + 1)
+        for b in range(n_bins):
+            cdf[b + 1] = cdf[b] + density[b]
+        total_cdf = cdf[n_bins]
+
+        # Invert CDF for equally-spaced quantiles
+        t_values = []
+        for i in range(n_interior):
+            target = total_cdf * (i + 1) / (n_interior + 1)
+            lo, hi = 0, n_bins
+            while lo < hi:
+                mid = (lo + hi) // 2
+                if cdf[mid + 1] < target:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            t_values.append((lo + 0.5) / n_bins)
+    else:
+        # Uniform spacing
+        t_values = [(i + 1) / (n_interior + 1) for i in range(n_interior)]
+
+    # Interpolate at arc-length positions
+    def _interp(t):
+        d = t * total_len
+        if d <= 0:
+            return list(polyline[0])
+        if d >= total_len:
+            return list(polyline[-1])
+        idx = bisect_right(cum_len, d) - 1
+        idx = min(idx, len(polyline) - 2)
+        seg_len = cum_len[idx + 1] - cum_len[idx]
+        frac = (d - cum_len[idx]) / seg_len if seg_len > 0 else 0
+        return [
+            round(polyline[idx][0] + frac * (polyline[idx + 1][0] - polyline[idx][0]), 1),
+            round(polyline[idx][1] + frac * (polyline[idx + 1][1] - polyline[idx][1]), 1),
+        ]
+
+    samples = [list(polyline[0])]
+    for t in t_values:
+        samples.append(_interp(t))
+    samples.append(list(polyline[-1]))
+    return samples
+
+
+# ---------------------------------------------------------------
 # Polyline building
 # ---------------------------------------------------------------
 
@@ -135,9 +226,16 @@ def build_chain_polyline(chain, stepidx, seg_index):
         if pt:
             raw_polyline.append(pt)
 
-    # Bubble centroids
+    # Bubble centroids + boundary segment lengths
+    counted_boundary_segs = set()
     for b in chain.bubbles:
         total_length += b.length
+        # Add unique boundary segment lengths (shared between adjacent bubbles)
+        for sid in b.source_segments + b.sink_segments:
+            if sid not in counted_boundary_segs:
+                counted_boundary_segs.add(sid)
+                if sid < len(seg_index.length) and seg_index.valid[sid]:
+                    total_length += seg_index.length[sid]
         subtype_counter[b.subtype] += 1
         cx = (b.x1 + b.x2) / 2.0
         cy = (b.y1 + b.y2) / 2.0
@@ -203,9 +301,13 @@ def build_chain_polyline(chain, stepidx, seg_index):
     epsilon = max(0.5, span / 500)
     polyline = rdp_simplify(raw_polyline, epsilon)
 
+    rounded_polyline = [[round(x, 1), round(y, 1)] for x, y in polyline]
+    polychain_nodes = resample_polychain(rounded_polyline, bp_span, bubble_positions)
+
     return {
         "id": f"c{chain.id}",
-        "polyline": [[round(x, 1), round(y, 1)] for x, y in polyline],
+        "polyline": rounded_polyline,
+        "polychain_nodes": polychain_nodes,
         "length": total_length,
         "bp_span": bp_span,
         "n_bubbles": len(chain.bubbles),
@@ -241,7 +343,6 @@ def build_connector(parent_chain, leaf_bubbles, stepidx, seg_index, depth):
     entry["depth"] = depth
     entry["connector"] = True
     entry["bubble_ids"] = [b.id for b in leaf_bubbles]
-    entry["parent_chain"] = f"c{parent_chain.id}"
     return entry
 
 
@@ -250,7 +351,8 @@ def build_connector(parent_chain, leaf_bubbles, stepidx, seg_index, depth):
 # ---------------------------------------------------------------
 
 def decompose_chain(chain, expand_threshold, bubble_threshold,
-                    bubbleidx, stepidx, seg_index, gfaidx, depth, max_depth):
+                    bubbleidx, stepidx, seg_index, gfaidx, depth, max_depth,
+                    _ancestors=None):
     """Decompose a chain into sub-chains or individual bubbles.
 
     Returns {"chains": [...], "bubbles": [...], "adjacency": {...}}
@@ -289,25 +391,14 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     leaf_run = []
 
     def _flush_leaf_run(run):
-        """Flush a leaf run as one or more connectors, splitting if too large."""
+        """Flush a leaf run as a single connector."""
         if not run:
             return
-        chunks = _split_balanced(run, MAX_BUBBLES_PER_CHAIN)
-        group_conns = []
-        for chunk in chunks:
-            conn = build_connector(
-                chain, chunk, stepidx, seg_index, depth)
-            if conn:
-                all_chains.append(conn)
-                group_conns.append(conn)
-        # Wire consecutive chunks as adjacent
-        for i in range(len(group_conns) - 1):
-            a_id = group_conns[i]["id"]
-            b_id = group_conns[i + 1]["id"]
-            all_adj.setdefault(a_id, set()).add(b_id)
-            all_adj.setdefault(b_id, set()).add(a_id)
-        if group_conns:
-            groups.append({'chains': group_conns, 'super': None})
+        conn = build_connector(chain, run, stepidx, seg_index, depth)
+        if not conn:
+            return
+        all_chains.append(conn)
+        groups.append({'chains': [conn], 'super': None})
 
     for b in chain.bubbles:
         if b.children:
@@ -321,13 +412,20 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
             child_chains_obj = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
             group_chains = []
             for cc in child_chains_obj:
+                child_ancestors = (_ancestors or []) + [{
+                    "chain": f"c{chain.id}",
+                    "bubble": f"b{b.id}",
+                    "subtype": b.subtype,
+                }]
                 r = decompose_chain(cc, expand_threshold, bubble_threshold,
                                     bubbleidx, stepidx, seg_index, gfaidx,
-                                    depth + 1, max_depth)
+                                    depth + 1, max_depth,
+                                    _ancestors=child_ancestors)
+                # Stamp ancestors on children that came from non-decomposed
+                # base case (they bypass their own stamping block)
                 for c in r["chains"]:
-                    c["parent_chain"] = f"c{chain.id}"
-                    c["parent_bubble"] = f"b{b.id}"
-                    c["parent_subtype"] = b.subtype
+                    if "ancestors" not in c:
+                        c["ancestors"] = list(child_ancestors)
                 group_chains.extend(r["chains"])
                 all_bubbles.extend(r["bubbles"])
                 all_bypasses.extend(r.get("bypass_links", []))
@@ -377,6 +475,22 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                 if ca_id != cb_id:
                     all_adj.setdefault(cb_id, set()).add(ca_id)
 
+    # Stamp parent_chain on all emitted chains that don't already have one.
+    # Connectors and direct children point to this chain; deeper descendants
+    # already have parent_chain set by the recursive call that produced them.
+    chain_id_str = f"c{chain.id}"
+    own_ancestors = list(_ancestors or [])
+    for c in all_chains:
+        if "parent_chain" not in c:
+            c["parent_chain"] = chain_id_str
+        if "ancestors" not in c:
+            c["ancestors"] = list(own_ancestors)
+        # Derive parent_bubble/parent_subtype from immediate ancestor
+        if "parent_bubble" not in c and c["ancestors"]:
+            imm = c["ancestors"][-1]
+            c["parent_bubble"] = imm["bubble"]
+            c["parent_subtype"] = imm["subtype"]
+
     return {"chains": all_chains, "bubbles": all_bubbles, "adjacency": all_adj,
             "bypass_links": all_bypasses,
             "bypass_seg_ids": all_bypass_seg_ids,
@@ -408,63 +522,8 @@ def _group_entry_chains(group):
                 if set(c.get('source_segs', [])) & bridge]
 
 
-MAX_BUBBLES_PER_CHAIN = 100
-
-
-def _split_balanced(items, max_size):
-    """Split a list into balanced chunks of at most max_size.
-
-    Uses ceil(n/ceil(n/max_size)) to avoid tiny remainders.
-    E.g. n=103, max=100 → 2 chunks of 52+51 (not 100+3).
-    Returns the original list in a single-element list if no split needed.
-    """
-    from math import ceil
-    n = len(items)
-    if n <= max_size:
-        return [items]
-    k = ceil(n / max_size)
-    chunk_size = ceil(n / k)
-    return [items[i:i + chunk_size] for i in range(0, n, chunk_size)]
-
-
 def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
-    """Return a chain as a single polyline (base case, no decomposition).
-
-    If the chain has more than MAX_BUBBLES_PER_CHAIN bubbles, split it into
-    balanced sub-runs using the .N connector system.  This avoids extremely
-    long polylines that are slow to render and interact with.
-
-    If chain.is_chunk is True, the chain was pre-split by create_chains into
-    a canonical chunk — emit it as a connector directly (no further splitting).
-    """
-    n = len(chain.bubbles)
-
-    if getattr(chain, 'is_chunk', False):
-        # Pre-split chunk from create_chains — emit as connector
-        conn = build_connector(chain, chain.bubbles, stepidx, seg_index, depth)
-        if conn is None:
-            return {"chains": [], "bubbles": [], "adjacency": {}}
-        return {"chains": [conn], "bubbles": [], "adjacency": {}}
-
-    if n > MAX_BUBBLES_PER_CHAIN:
-        chunks = _split_balanced(chain.bubbles, MAX_BUBBLES_PER_CHAIN)
-
-        chains = []
-        adj = {}
-        for chunk in chunks:
-            conn = build_connector(chain, chunk, stepidx, seg_index, depth)
-            if conn:
-                chains.append(conn)
-
-        # Wire consecutive chunks as adjacent
-        for i in range(len(chains) - 1):
-            a_id = chains[i]["id"]
-            b_id = chains[i + 1]["id"]
-            adj.setdefault(a_id, set()).add(b_id)
-            adj.setdefault(b_id, set()).add(a_id)
-
-        return {"chains": chains, "bubbles": [], "adjacency": adj}
-
+    """Return a chain as a single polyline (base case, no decomposition)."""
     entry = build_chain_polyline(chain, stepidx, seg_index)
     if entry is None:
         return {"chains": [], "bubbles": [], "adjacency": {}}

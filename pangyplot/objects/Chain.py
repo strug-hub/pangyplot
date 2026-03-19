@@ -1,12 +1,10 @@
 class Chain:
-    def __init__(self, chain_id, bubbles=None, parent_bubble=None, gfaidx=None,
-                 is_chunk=False):
+    def __init__(self, chain_id, bubbles=None, parent_bubble=None, gfaidx=None):
         self.id = chain_id
         self.gfaidx = gfaidx
 
         self.parent_bubble = parent_bubble # object not id
         self.bubbles = bubbles if bubbles is not None else []
-        self.is_chunk = is_chunk  # True when this is a pre-split chunk of a long chain
 
         self._sort_bubbles()
 

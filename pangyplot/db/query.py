@@ -221,6 +221,8 @@ def get_path_order(indexes, genome, chrom):
 
 CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level
 
+import time as _time
+
 def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     expand_threshold=None,
                     layout_min_x=None, layout_max_x=None):
@@ -252,13 +254,27 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     seg_index = gfaidx.segment_index
 
     # --- Decompose chains and collect structural adjacency + bypass links ---
+    _t0 = _time.perf_counter()
     decomp_adj = {}
     bypass_links = []
     bypass_seg_ids = set()
     bypass_gfa_links = []
     decomposed_bubbles = set()
 
-    if layout_min_x is not None and layout_max_x is not None:
+    polychainidx = getattr(indexes, 'polychain_index', {}).get(chrom, None)
+
+    if layout_min_x is not None and layout_max_x is not None and polychainidx is not None:
+        # Fast path: use precomputed decompositions from PolychainIndex
+        merged = polychainidx.get_chains_in_layout_range(layout_min_x, layout_max_x)
+        chain_results = merged["chains"]
+        bubble_results = merged["bubbles"]
+        bypass_links = merged["bypass_links"]
+        bypass_seg_ids = merged["bypass_seg_ids"]
+        bypass_gfa_links = merged["bypass_gfa_links"]
+        decomposed_bubbles = merged["decomposed_bubbles"]
+        decomp_adj = merged["adjacency"]
+        chain_result = {"chains": chain_results, "bubbles": bubble_results}
+    elif layout_min_x is not None and layout_max_x is not None:
         chains = bubbleidx.get_top_level_bubbles_by_layout(
             layout_min_x, layout_max_x, as_chains=True)
         chain_results = []
@@ -277,15 +293,18 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
     else:
-        # get_chains doesn't propagate adjacency, so decompose directly
+        # Step-based path: use precomputed decompositions per-chain if available
         start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
         top_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
         chain_results = []
         bubble_results = []
         for chain in top_chains:
-            r = decompose_chain(
-                chain, expand_threshold, None,
-                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
+            r = (polychainidx.get_decomposition(chain.id)
+                 if polychainidx is not None else None)
+            if r is None:
+                r = decompose_chain(
+                    chain, expand_threshold, None,
+                    bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
             chain_results.extend(r["chains"])
             bubble_results.extend(r["bubbles"])
             bypass_links.extend(r.get("bypass_links", []))
@@ -296,43 +315,25 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 decomp_adj.setdefault(k, set()).update(v)
         chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
-    # --- Inline pop (subgraph expansion for all chains with bubbles) ---
-    # Save bubble→chain mapping before pop removes _bubble_ids
-    _bid_to_chain = {}
-    for cd in chain_result["chains"]:
-        for bid in (cd.get("_bubble_ids") or cd.get("bubble_ids") or []):
-            _bid_to_chain[bid] = cd["id"]
+    _t1 = _time.perf_counter()
+    print(f"  [detail-tile] decompose: {(_t1-_t0)*1000:.1f}ms  ({len(chain_result['chains'])} chains)")
 
-    n_popped = 0
+    # --- Strip internal fields, build bubble→chain mapping ---
+    _bid_to_chain = {}
     result_chains = []
     for chain_data in chain_result["chains"]:
         chain_data.pop("_layout_span", None)
-
-        # Extract internal bubble IDs (already loaded during get_chains)
-        # and strip from the response — connector chains keep their public
-        # "bubble_ids" field, regular chains had only the internal one.
         bubble_ids = chain_data.pop("_bubble_ids", None)
         if bubble_ids is None:
-            # Connector chains store IDs under "bubble_ids"
             bubble_ids = chain_data.get("bubble_ids", [])
-
-        if chain_data["n_bubbles"] > 0:
-            try:
-                bubbles = [bubbleidx[bid] for bid in bubble_ids]
-                graph = _bubbles_to_subgraph(
-                    bubbles, bubbleidx, gfaidx, stepidx)
-                chain_data["popped"] = True
-                chain_data["graph"] = graph
-                n_popped += 1
-            except Exception as e:
-                print(f"  Inline pop failed for {chain_data['id']}: {e}")
-                chain_data["popped"] = False
-                chain_data["graph"] = None
-        else:
-            chain_data["popped"] = False
-            chain_data["graph"] = None
-
+        for bid in bubble_ids:
+            _bid_to_chain[bid] = chain_data["id"]
+        chain_data["popped"] = False
+        chain_data["graph"] = None
         result_chains.append(chain_data)
+
+    _t2 = _time.perf_counter()
+    print(f"  [detail-tile] strip/map: {(_t2-_t1)*1000:.1f}ms  ({len(result_chains)} chains)")
 
     # --- Junction graph BFS ---
     junction_nodes, junction_links, junction_adj, \
@@ -463,12 +464,18 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         junction_graph = {"nodes": [], "links": []}
         junction_seg_chains = {}
 
+    _t3 = _time.perf_counter()
+    print(f"  [detail-tile] junction+bypass: {(_t3-_t2)*1000:.1f}ms")
+
     # --- Merge adjacency ---
     chain_adjacency = {}
     for src in (decomp_adj, junction_adj):
         for k, v in src.items():
             chain_adjacency.setdefault(k, set()).update(v)
     chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
+
+    _t4 = _time.perf_counter()
+    print(f"  [detail-tile] TOTAL: {(_t4-_t0)*1000:.1f}ms")
 
     return {
         "tile_start": start,

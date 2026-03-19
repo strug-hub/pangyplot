@@ -5,14 +5,15 @@ import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
+import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
 
 export function drawForceGraph(ctx, baseWidth) {
     const nodes = getForceNodes();
     const links = getForceLinks();
     if (nodes.length === 0) return;
 
-    // Scale factor matching core: node.width * scaleFactor gives visual size
-    const scaleFactor = Math.max(0.3, 2 / state.zoom);
+    // Use baseWidth (from polychain-render-manager) so naked nodes match polychain size
+    const scaleFactor = baseWidth / 5;   // kept for highlight helpers
     const opacity = state.detailOpacity;
 
     ctx.lineCap = 'round';
@@ -24,6 +25,7 @@ export function drawForceGraph(ctx, baseWidth) {
     const delSegs = [];
 
     for (const link of links) {
+        if (link.isPolychainLink) continue;  // rendered as polyline by polychain-render-manager
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
         const seg = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
@@ -76,7 +78,7 @@ export function drawForceGraph(ctx, baseWidth) {
     const segCircles = [];
 
     for (const node of nodes) {
-        if (node.x == null || node.isPhantom) continue;
+        if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
         const r = (node.width || 5) * scaleFactor * 0.5;
         const circle = { x: node.x, y: node.y, r };
         if (node.type === 'bubble') {
@@ -103,71 +105,88 @@ export function drawForceGraph(ctx, baseWidth) {
 }
 
 function drawForceVectors(ctx, nodes, links, opacity) {
-    // Compute net force vector per node from link springs + layout pull.
-    // This mirrors what D3 computes each tick, shown as arrows.
-    const forces = new Map(); // iid → {fx, fy}
-    for (const n of nodes) {
-        if (n.x == null) continue;
-        forces.set(n.iid, { fx: 0, fy: 0 });
-    }
-
-    // Link forces: spring toward rest length
-    for (const link of links) {
-        const s = link.source, t = link.target;
-        if (s.x == null || t.x == null) continue;
-        const sf = forces.get(s.iid), tf = forces.get(t.iid);
-        if (!sf || !tf) continue;
-
-        const dx = t.x - s.x, dy = t.y - s.y;
-        const dist = Math.hypot(dx, dy) || 1;
-        const rest = (link.length || 10) * 1; // * LINK_STRENGTH
-        const strength = link.isInterChain ? 0.3 : 1;
-        const pull = (dist - rest) / dist * strength;
-
-        const pfx = dx * pull * 0.5;
-        const pfy = dy * pull * 0.5;
-        if (s.fx == null) { sf.fx += pfx; sf.fy += pfy; }
-        if (t.fx == null) { tf.fx -= pfx; tf.fy -= pfy; }
-    }
-
-    // Layout force: pull toward homeX/homeY
-    for (const n of nodes) {
-        if (n.x == null || n.fx != null) continue;
-        const f = forces.get(n.iid);
-        if (!f || n.homeX == null) continue;
-        const dx = n.homeX - n.x, dy = n.homeY - n.y;
-        f.fx += dx * 0.02; // approximate layout force strength
-        f.fy += dy * 0.02;
-    }
-
-    // Draw arrows
-    const arrowScale = Math.max(1, 3 / state.zoom);
-    ctx.globalAlpha = 0.8 * opacity;
-    ctx.lineWidth = Math.max(0.5, 1.5 / state.zoom);
+    const arrowScale = Math.max(3, 10 / state.zoom);
     const headLen = Math.max(3, 6 / state.zoom);
+    const lw = Math.max(0.5, 1.5 / state.zoom);
 
-    for (const n of nodes) {
-        if (n.x == null || n.fx != null || n.isPhantom) continue;
-        const f = forces.get(n.iid);
-        if (!f) continue;
+    const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
+    if (pcNodes.length === 0) return;
 
-        const mag = Math.hypot(f.fx, f.fy);
-        if (mag < 0.01) continue;
+    // Map D3 force names → display names + colors
+    const forceMap = {
+        charge:          { color: '#FF4444', label: 'charge' },
+        collide:         { color: '#AAAAAA', label: 'collide' },
+        link:            { color: '#44AAFF', label: 'link' },
+        layout:          { color: '#FFFF00', label: 'layout' },
+        intraChain:      { color: '#FF00FF', label: 'intra' },
+        centroid:        { color: '#FF8800', label: 'centroid' },
+        loopClosure:     { color: '#AA44FF', label: 'loop' },
+        pcLinkRepulsion: { color: '#00FFAA', label: 'linkRepul' },
+        parentSide:      { color: '#44FF44', label: 'parent' },
+    };
 
-        // Clamp vector length for visibility
-        const maxLen = Math.max(20, 60 / state.zoom);
-        const len = Math.min(mag * arrowScale, maxLen);
-        const ux = f.fx / mag, uy = f.fy / mag;
-        const ex = n.x + ux * len, ey = n.y + uy * len;
+    // Compute real force deltas on demand (runs each force once, restores vx/vy)
+    const deltas = computeForceDeltas();
 
-        // Color: green for link-dominant, blue for layout-dominant
-        ctx.strokeStyle = '#00FF88';
+    // Draw chain centroids as triangles
+    const chains = new Map();
+    for (const n of pcNodes) {
+        let g = chains.get(n.chainId);
+        if (!g) { g = { cx: 0, cy: 0, count: 0 }; chains.set(n.chainId, g); }
+        g.cx += n.x; g.cy += n.y; g.count++;
+    }
+    const triSize = Math.max(3, 8 / state.zoom);
+    ctx.globalAlpha = 0.6 * opacity;
+    ctx.fillStyle = '#FF8800';
+    for (const g of chains.values()) {
+        if (g.count < 3) continue;
+        const cx = g.cx / g.count, cy = g.cy / g.count;
         ctx.beginPath();
-        ctx.moveTo(n.x, n.y);
+        ctx.moveTo(cx, cy - triSize);
+        ctx.lineTo(cx - triSize * 0.866, cy + triSize * 0.5);
+        ctx.lineTo(cx + triSize * 0.866, cy + triSize * 0.5);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    const mode = state.forceVectorMode || 'all';
+
+    // Label in screen space
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.font = '14px monospace';
+    ctx.globalAlpha = 0.9;
+    const lx = ctx.canvas.width / 2 - 80;
+    if (mode === 'all') {
+        let y = ctx.canvas.height - 10;
+        for (const [name, info] of Object.entries(forceMap).reverse()) {
+            ctx.fillStyle = info.color;
+            ctx.fillText(info.label, lx, y);
+            y -= 16;
+        }
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('dominant force [U to cycle]', lx, y);
+    } else {
+        const info = Object.values(forceMap).find(f => f.label === mode);
+        ctx.fillStyle = info?.color || '#FFFFFF';
+        ctx.fillText(`force: ${mode} [U to cycle]`, lx, ctx.canvas.height - 10);
+    }
+    ctx.restore();
+
+    ctx.globalAlpha = 0.7 * opacity;
+    ctx.lineWidth = lw;
+
+    function drawArrow(nx, ny, fx, fy, color) {
+        const mag = Math.hypot(fx, fy);
+        if (mag < 0.0001) return;
+        const len = mag * arrowScale;
+        const ux = fx / mag, uy = fy / mag;
+        const ex = nx + ux * len, ey = ny + uy * len;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(nx, ny);
         ctx.lineTo(ex, ey);
         ctx.stroke();
-
-        // Arrowhead
         const angle = Math.atan2(uy, ux);
         ctx.beginPath();
         ctx.moveTo(ex, ey);
@@ -176,4 +195,99 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
         ctx.stroke();
     }
+
+    // Find the D3 force name matching a display label
+    function forceNameForLabel(label) {
+        for (const [name, info] of Object.entries(forceMap)) {
+            if (info.label === label) return name;
+        }
+        return null;
+    }
+
+    if (mode === 'all') {
+        for (const n of pcNodes) {
+            let bestMag = 0, bestColor = '#FFFFFF', totalFx = 0, totalFy = 0;
+            for (const [name, info] of Object.entries(forceMap)) {
+                const map = deltas[name];
+                if (!map) continue;
+                const d = map.get(n);
+                if (!d) continue;
+                totalFx += d.fx;
+                totalFy += d.fy;
+                const mag = Math.hypot(d.fx, d.fy);
+                if (mag > bestMag) { bestMag = mag; bestColor = info.color; }
+            }
+            drawArrow(n.x, n.y, totalFx, totalFy, bestColor);
+        }
+    } else {
+        const forceName = forceNameForLabel(mode);
+        const map = forceName ? deltas[forceName] : null;
+        const color = Object.values(forceMap).find(f => f.label === mode)?.color || '#FFFFFF';
+        if (map) {
+            for (const n of pcNodes) {
+                const d = map.get(n);
+                if (!d) continue;
+                drawArrow(n.x, n.y, d.fx, d.fy, color);
+            }
+        }
+    }
+
+    // Draw cached parentPerps + tangent lines on child chain nodes
+    if (mode === 'all' || mode === 'parent') {
+        const perpLen = Math.max(8, 20 / state.zoom);
+        const tangentHalf = Math.max(12, 30 / state.zoom);
+        ctx.globalAlpha = 0.8 * opacity;
+        ctx.lineWidth = Math.max(0.5, 2 / state.zoom);
+
+        // Ancestor depth colors: immediate parent → grandparent → great-grandparent
+        const perpColors = ['#44FF44', '#22CC22', '#119911'];
+        const tangentColors = ['#88FF88', '#66DD66', '#44BB44'];
+
+        // Collect unique projection points
+        const drawnTangents = new Set();
+
+        for (const n of pcNodes) {
+            if (!n.parentPerps) continue;
+            for (let ai = 0; ai < n.parentPerps.length; ai++) {
+                const p = n.parentPerps[ai];
+                const perpColor = perpColors[Math.min(ai, perpColors.length - 1)];
+                const tanColor = tangentColors[Math.min(ai, tangentColors.length - 1)];
+
+                // Tangent line at projection point (one per ancestor per chain)
+                const tangentKey = `${ai}:${p.mx},${p.my}`;
+                if (!drawnTangents.has(tangentKey)) {
+                    drawnTangents.add(tangentKey);
+                    const tanX = -p.py, tanY = p.px;
+                    ctx.strokeStyle = tanColor;
+                    ctx.beginPath();
+                    ctx.moveTo(p.mx - tanX * tangentHalf, p.my - tanY * tangentHalf);
+                    ctx.lineTo(p.mx + tanX * tangentHalf, p.my + tanY * tangentHalf);
+                    ctx.stroke();
+                    ctx.fillStyle = tanColor;
+                    ctx.beginPath();
+                    ctx.arc(p.mx, p.my, Math.max(1.5, 3 / state.zoom), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Perp arrow from node
+                ctx.strokeStyle = perpColor;
+                const ex = n.x + p.px * perpLen;
+                const ey = n.y + p.py * perpLen;
+                ctx.beginPath();
+                ctx.moveTo(n.x, n.y);
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+                const angle = Math.atan2(p.py, p.px);
+                const hl = headLen * 0.7;
+                ctx.beginPath();
+                ctx.moveTo(ex, ey);
+                ctx.lineTo(ex - hl * Math.cos(angle - 0.5), ey - hl * Math.sin(angle - 0.5));
+                ctx.moveTo(ex, ey);
+                ctx.lineTo(ex - hl * Math.cos(angle + 0.5), ey - hl * Math.sin(angle + 0.5));
+                ctx.stroke();
+            }
+        }
+    }
+
+    ctx.globalAlpha = 1;
 }

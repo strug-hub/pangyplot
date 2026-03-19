@@ -15,6 +15,14 @@ export function setupKeyboardShortcuts() {
         }
         if (e.code === 'KeyY' && !e.repeat) {
             state.forceVectors = !state.forceVectors;
+            state.forceVectorMode = 'all';
+            scheduleFrame();
+        }
+        if (e.code === 'KeyU' && !e.repeat) {
+            const modes = ['all', 'charge', 'collide', 'link', 'layout', 'intra', 'centroid', 'loop', 'linkRepul', 'parent'];
+            const idx = modes.indexOf(state.forceVectorMode);
+            state.forceVectorMode = modes[(idx + 1) % modes.length];
+            if (!state.forceVectors) state.forceVectors = true;
             scheduleFrame();
         }
         if (e.code === 'KeyR' && !e.repeat) {

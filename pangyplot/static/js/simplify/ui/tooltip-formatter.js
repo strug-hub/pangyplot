@@ -30,6 +30,7 @@ export function formatTooltipHtml(data) {
     if (data.length != null)   lines.push(row('length', formatLength(data.length)));
     if (data.bubbles != null)  lines.push(row('bubbles', data.bubbles));
     if (data.polyline != null) lines.push(row('polyline', data.polyline + ' pts'));
+    if (data.loop != null)     lines.push(row('loop', data.loop));
     if (data.depth != null)    lines.push(row('depth', data.depth));
 
     return lines.join('<br>');

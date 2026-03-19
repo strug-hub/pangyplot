@@ -2,13 +2,15 @@
 
 import { state } from '../../../simplify-state.js';
 import { strokePolyline, strokePolylines } from '../detail-painter.js';
+import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
 
 function getVisibleChainPolylines(chains) {
     const base = [];
     for (const chain of chains) {
-        if (state.poppedChainIds.size > 0 && state.poppedChainIds.has(chain.id)) continue;
         if (chain.polyline.length < 2) continue;
-        base.push(chain.polyline);
+        // Read live positions from force sim polychain nodes, fall back to static
+        const live = getPolychainPositions(chain.id);
+        base.push(live || chain.polyline);
     }
     return base;
 }
@@ -16,9 +18,9 @@ function getVisibleChainPolylines(chains) {
 function getSelectedPolylines() {
     const polylines = [];
     for (const chain of state.selectedChains) {
-        if (state.poppedChainIds.size > 0 && state.poppedChainIds.has(chain.id)) continue;
         if (chain.polyline.length < 2) continue;
-        polylines.push(chain.polyline);
+        const live = getPolychainPositions(chain.id);
+        polylines.push(live || chain.polyline);
     }
     return polylines;
 }
@@ -50,7 +52,8 @@ export function drawDetail() {
 
     // 3. Hover highlight
     if (state.hoveredChain) {
-        const pl = state.hoveredChain.polyline;
+        const live = getPolychainPositions(state.hoveredChain.id);
+        const pl = live || state.hoveredChain.polyline;
         if (pl.length >= 2) {
             strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
         }

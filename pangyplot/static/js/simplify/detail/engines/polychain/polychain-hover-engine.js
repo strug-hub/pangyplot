@@ -2,7 +2,7 @@
 
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
-import { getChainMeta } from '../../../data/chromosome-data.js';
+import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -13,8 +13,7 @@ export function hitTestChains(dataX, dataY) {
     let bestChain = null;
 
     for (const chain of state.detailData.chains) {
-        if (state.poppedChainIds.has(chain.id)) continue;
-        const pl = chain.polyline;
+        const pl = getPolychainPositions(chain.id) || chain.polyline;
         for (let i = 0; i < pl.length - 1; i++) {
             const d = pointToSegmentDist(dataX, dataY, pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1]);
             if (d < bestDist) {
@@ -41,8 +40,7 @@ export function chainsInRect(minX, minY, maxX, maxY) {
     }
     const result = [];
     for (const chain of state.detailData.chains) {
-        if (state.poppedChainIds && state.poppedChainIds.has(chain.id)) continue;
-        const pl = chain.polyline;
+        const pl = getPolychainPositions(chain.id) || chain.polyline;
         if (!pl || pl.length === 0) continue;
 
         let plMinX = Infinity, plMaxX = -Infinity;
@@ -106,27 +104,15 @@ function segmentIntersectsRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 
 export function getChainTooltip(chain) {
-    // Show ancestry for full chains, but not partial connector segments (c122:xxx-yyy)
+    // Show ancestry: walk the ancestors array (each has chain + bubble)
     let label = chain.id;
-    if (!chain.id.includes(':') && chain.parentChain) {
-        const parts = [chain.id];
-        const chainMeta = getChainMeta();
-        // First level: use the chain's own parentBubble from the API response
-        if (chain.parentBubble) {
-            parts.push(chain.parentBubble);
+    if (chain.ancestors?.length > 0) {
+        const parts = [];
+        for (const a of chain.ancestors) {
+            parts.push(a.chain);
+            if (a.bubble) parts.push(a.bubble);
         }
-        let cur = chain.parentChain;
-        while (cur) {
-            parts.push(cur);
-            const numId = cur.startsWith('c') ? cur.slice(1) : cur;
-            const meta = chainMeta?.[numId];
-            // Deeper levels: use chainMeta for parent bubble info
-            if (meta?.parent_bubble != null) {
-                parts.push(`b${meta.parent_bubble}`);
-            }
-            cur = meta?.parent != null ? `c${meta.parent}` : null;
-        }
-        parts.reverse();
+        parts.push(chain.id);
         label = parts.join(' > ');
     }
 
@@ -136,7 +122,8 @@ export function getChainTooltip(chain) {
         length: chain.length,
         steps: chain.stepCount,
         bubbles: chain.nBubbles,
-        polyline: chain.polyline.length,
+        polyline: (getPolychainPositions(chain.id) || chain.polyline).length,
+        loop: chain.loopFactor != null ? chain.loopFactor.toFixed(2) : '?',
         depth: chain.depth,
     };
 }

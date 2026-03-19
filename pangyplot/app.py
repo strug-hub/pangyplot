@@ -12,6 +12,7 @@ from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.AnnotationIndex import AnnotationIndex
+from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 import pangyplot.organisms as organisms
 import pangyplot.preprocess.parser.parse_cytoband as cytoband_parser
 
@@ -53,6 +54,7 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
     app.gfa_index = dict()
     app.step_index = dict()
     app.bubble_index = dict()
+    app.polychain_index = dict()
     app.annotation_index = dict()
     
     app.genome = ref
@@ -83,6 +85,11 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
         app.bubble_index[chr] = BubbleIndex(chr_dir, app.gfa_index[chr])
         print(f"bubble_index size:      {asizeof(app.bubble_index[chr]) / 1024**2:.2f} MB")
+
+        app.polychain_index[chr] = PolychainIndex(
+            chr_dir, app.bubble_index[chr], app.gfa_index[chr],
+            app.step_index[(chr, ref)], ref)
+        print(f"polychain_index size:   {asizeof(app.polychain_index[chr]) / 1024**2:.2f} MB")
 
     print(f"gfa_index size total:      {asizeof(app.gfa_index) / 1024**2:.2f} MB")
     print(f"step_index size total:      {asizeof(app.step_index) / 1024**2:.2f} MB")
