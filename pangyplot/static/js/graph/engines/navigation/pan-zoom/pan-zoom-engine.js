@@ -1,4 +1,4 @@
-import eventBus from "../../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import appState from "../../../app-state.js";
 
 export function isPanning() { return _panning; }

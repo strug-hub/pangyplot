@@ -1,4 +1,4 @@
-import eventBus from "../../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import appState from "../../../app-state.js";
 
 export default function setUpRecenterEngine(forceGraph) {

@@ -1,7 +1,7 @@
 import { addDragSelect } from "./drag-select.js";
 import { drawChromosomeCytoband } from "./painter.js";
 import { buildUrl, fetchData } from "../../../utils/network-utils.js";
-import eventBus from "../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 
 let selected_chr = null;
 const cached_data = {};

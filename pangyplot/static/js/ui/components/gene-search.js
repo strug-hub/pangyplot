@@ -1,4 +1,4 @@
-import eventBus from "../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import { setupSearchDropdown } from "@ui/elements/search-dropdown.js";
 import { setupButtonGroup } from "@ui/components/button-group.js";
 

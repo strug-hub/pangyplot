@@ -1,4 +1,4 @@
-import eventBus from "../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 
 function anchorEndpointNodes(forceGraph) {
     const outgoing = new Set();

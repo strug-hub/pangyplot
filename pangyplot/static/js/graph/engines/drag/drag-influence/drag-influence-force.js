@@ -1,4 +1,4 @@
-import eventBus from '../../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import NodeSet from '../../../utils/node-set.js';
 import { influence } from './drag-influence-engine.js';
 import appState from '../../../app-state.js';

@@ -1,4 +1,4 @@
-import eventBus from "../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import { canvasSize } from "./ui-canvas-size.js";
 
 function scrollIntoView() {

@@ -1,4 +1,4 @@
-import eventBus from '../../utils/event-bus.js';
+import eventBus from '@event-bus';
 
 document.addEventListener('DOMContentLoaded', () => {
     const checkbox = document.getElementById('anchorToggle');

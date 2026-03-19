@@ -1,5 +1,5 @@
 import { buildUrl, fetchData } from "../../utils/network-utils.js";
-import eventBus from "../../utils/event-bus.js";
+import eventBus from '@event-bus';
 
 function checkIfOtherChromosomeInDropdown(input, datalist) {
     const chromosome = input.trim();

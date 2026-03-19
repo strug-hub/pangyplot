@@ -1,4 +1,4 @@
-import eventBus from "../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import recordsManager from "../../data/records/records-manager.js";
 import { colorState } from "../color/color-state.js";
 import { highlightNodePainter, outlineNodePainter } from "../painter/highlight-node-painter.js";

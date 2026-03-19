@@ -2,7 +2,7 @@
 // the simplify canvas. Subscribes to event-bus events and drives canvas
 // navigation / chromosome loading.
 
-import eventBus from '../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import { state } from '../simplify-state.js';
 import { loadChromosome } from '../data/chromosome-loader.js';
 import { navigateToRegion } from '../engines/navigation/hash-navigation.js';

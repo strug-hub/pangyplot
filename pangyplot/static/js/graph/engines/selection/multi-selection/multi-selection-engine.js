@@ -1,4 +1,4 @@
-import eventBus from '../../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import { nodesInBox } from '../../../utils/node-utils.js';
 import { selectionState } from '../selection-state.js';
 import { MultiSelectionBox, createOverlay, updateOverlay, removeOverlay } from './multi-selection-box.js';

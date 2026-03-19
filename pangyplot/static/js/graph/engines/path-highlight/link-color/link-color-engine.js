@@ -1,6 +1,6 @@
 import { fetchData, buildUrl } from '../../../../utils/network-utils.js';
 import { colorState } from '../../../render/color/color-state.js'
-import eventBus from "../../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import appState from '../../../app-state.js';
 
 var selectedSampleIdx = -1

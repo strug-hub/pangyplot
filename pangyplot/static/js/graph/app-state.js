@@ -1,4 +1,4 @@
-import eventBus from '../utils/event-bus.js';
+import eventBus from '@event-bus';
 import NodeSet from './utils/node-set.js';
 
 function toCamelCase(name) {

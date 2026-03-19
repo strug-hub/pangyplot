@@ -1,4 +1,4 @@
-import eventBus from '../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import setUpGraphDataManager from './graph-data/graph-data-manager.js';
 import appState from '../app-state.js';
 import recordsManager  from './records/records-manager.js';

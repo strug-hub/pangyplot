@@ -1,4 +1,4 @@
-import eventBus from '../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import { isNodeActive } from "../data/data-manager.js";
 
 const bubbleEndPairs = []

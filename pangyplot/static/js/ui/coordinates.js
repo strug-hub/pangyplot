@@ -1,4 +1,4 @@
-import eventBus from "../utils/event-bus.js";
+import eventBus from '@event-bus';
 
 const EMPTY = "⬜";
 const EMPTY_FLANKING = "flankingregion";

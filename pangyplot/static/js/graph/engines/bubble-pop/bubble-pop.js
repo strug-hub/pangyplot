@@ -1,4 +1,4 @@
-import eventBus from '../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import recordsManager from '../../data/records/records-manager.js';
 import appState from '../../app-state.js';
 import viewState from '../../data/view-state.js';

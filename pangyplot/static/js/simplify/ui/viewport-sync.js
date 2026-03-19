@@ -2,7 +2,7 @@
 // Keeps coordinate display, cytoband selection box, and genome overview in sync.
 // Also triggers gene fetching on viewport change.
 
-import eventBus from '../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import { state } from '../simplify-state.js';
 import { getViewport } from '../render/viewport.js';
 import { xToBp, isReady } from '../engines/reference-spine-engine.js';

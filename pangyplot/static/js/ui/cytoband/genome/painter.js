@@ -1,5 +1,5 @@
 import { genomeCytobandDimensions } from "./constants.js";
-import eventBus from "../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 
 var dim = null;
 

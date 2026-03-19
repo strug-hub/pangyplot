@@ -1,5 +1,5 @@
 import { unpopBubble } from "../../../data/data-manager.js";
-import eventBus from '../../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 
 const bubblePopUndoStack = [];
 

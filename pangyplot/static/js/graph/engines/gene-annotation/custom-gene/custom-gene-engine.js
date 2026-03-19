@@ -1,4 +1,4 @@
-import eventBus from "../../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 import recordsManager from "../../../data/records/records-manager.js";
 import { populateGeneAnnotationsTable } from "../gene-annotation-ui.js"
 import { CustomAnnotationRecord } from "../../../data/records/objects/annotation-record.js";

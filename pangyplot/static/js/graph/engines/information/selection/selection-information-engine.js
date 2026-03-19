@@ -1,6 +1,6 @@
 import { updateSelectionInfo } from "../../../../ui/tabs/information-panel.js";
 import { faLabel } from '../../../../utils/node-label.js';
-import eventBus from '../../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import appState from '../../../app-state.js';
 
 function formatCoordinates(ranges, coords) {

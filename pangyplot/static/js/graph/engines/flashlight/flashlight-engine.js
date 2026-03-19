@@ -1,5 +1,5 @@
 import appState from '../../app-state.js';
-import eventBus from '../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 import { computeFlashlightAlphas, DIM_ALPHA } from './flashlight-bfs.js';
 
 function applyFlashlight(forceGraph, hoveredNode) {

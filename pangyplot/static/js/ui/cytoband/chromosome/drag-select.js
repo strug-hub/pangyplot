@@ -1,5 +1,5 @@
 import { chromosomeCytobandDimensions } from './constants.js';
-import eventBus from '../../../utils/event-bus.js';
+import eventBus from '@event-bus';
 
 export function addDragSelect(svg, chromSize, chromosome, chromStart, chromEnd) {
   const dim = chromosomeCytobandDimensions();

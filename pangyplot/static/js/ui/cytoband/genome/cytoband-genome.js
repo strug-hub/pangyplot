@@ -3,7 +3,7 @@ import { highlightGenomeCytoband } from "./selector.js";
 import { drawGenomeCytoband } from "./painter.js";
 import { fetchAndDrawChromosomeData } from "../chromosome/cytoband-chromosome.js";
 
-import eventBus from "../../../utils/event-bus.js";
+import eventBus from '@event-bus';
 
 export function setupGenomeCytoband() {
     fetchAndDrawGenome(null);
