@@ -1,4 +1,4 @@
-import { buildUrl, fetchData } from "../../../utils/network-utils.js";
+import { buildUrl, fetchData } from "../../../../utils/network-utils.js";
 import { highlightGenomeCytoband } from "./selector.js";
 import { drawGenomeCytoband } from "./painter.js";
 import { fetchAndDrawChromosomeData } from "../chromosome/cytoband-chromosome.js";

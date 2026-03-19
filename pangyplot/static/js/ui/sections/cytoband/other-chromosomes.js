@@ -1,4 +1,4 @@
-import { buildUrl, fetchData } from "../../utils/network-utils.js";
+import { buildUrl, fetchData } from "../../../utils/network-utils.js";
 import eventBus from '@event-bus';
 
 function checkIfOtherChromosomeInDropdown(input, datalist) {

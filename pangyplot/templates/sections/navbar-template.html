@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/components/navbar.css') }}">   
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui/sections/navbar.css') }}">   
 
 {% macro navbar_item(id, text, icon_class, href, target) %}
 <a id="{{ id }}" tabindex="0" class="navbar-button button-style flex-col flex-1" href="{{ href }}" target="{{ target }}">
@@ -30,6 +30,6 @@
     </div>
 </nav>
 
-{% include 'modal-template.html' %}
+{% include 'sections/modal-template.html' %}
 
-<script type="module" src="{{url_for('static', filename='js/ui/components/navbar.js')}}"></script>
+<script type="module" src="{{url_for('static', filename='js/ui/sections/navbar.js')}}"></script>

@@ -10,7 +10,7 @@ import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleToolti
 import { hitTestSkeleton, getSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
 import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
 import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
-import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
+import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { faLabel } from '../../../utils/node-label.js';
 
 export function setupHover(canvas) {

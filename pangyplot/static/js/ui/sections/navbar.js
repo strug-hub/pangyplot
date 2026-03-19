@@ -1,4 +1,22 @@
 import eventBus from '@event-bus';
+import { setupModal } from "@ui/elements/modal.js";
+
+// --- Modals ---
+
+setupModal({
+    modalId: "citation-modal",
+    openButtonId: "navbar-button-citation",
+    closeButtonId: "citation-modal-close-button"
+});
+
+setupModal({
+    modalId: "info-modal",
+    openButtonId: "navbar-button-information",
+    closeButtonId: "info-modal-close-button",
+    startOpen: true
+});
+
+// --- Example buttons ---
 
 document.getElementById('navbar-button-example').addEventListener('click', function() {
 

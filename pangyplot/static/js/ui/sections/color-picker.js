@@ -1,5 +1,10 @@
+import { setupButtonGroup } from "@ui/components/button-group.js";
+
 const bgColorPicker = document.getElementById('color-picker-bg');
 const linkColorPicker = document.getElementById('color-picker-link');
+
+const colorStyleGroup = setupButtonGroup("color-style");
+const colorPresetGroup = setupButtonGroup("color-preset");
 
 function applyGradient(color1, color2, color3) {
     let gradient;
@@ -20,7 +25,7 @@ document.querySelectorAll('.color-picker-node').forEach(picker => {
         const color1 = document.getElementById('color-picker-node-1').value;
         const color2 = document.getElementById('color-picker-node-2').value;
         const color3 = document.getElementById('color-picker-node-3').value;
-        unselectAllButtons("color-preset")
+        colorPresetGroup.deselectAll();
         applyGradient(color1, color2, color3);
     });
 });
@@ -75,4 +80,3 @@ if (defaultChoice) {
 
 bgColorPicker.value = "#101020";
 linkColorPicker.value = "#969696";
-

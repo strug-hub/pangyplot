@@ -1,4 +1,4 @@
-import { updateSelectionInfo } from "../../../../ui/tabs/information-panel.js";
+import { updateSelectionInfo } from "@ui/sections/tabs/information-panel.js";
 import { faLabel } from '../../../../utils/node-label.js';
 import eventBus from '@event-bus';
 import appState from '../../../app-state.js';

@@ -1,6 +1,6 @@
 import DEBUG_MODE from '../../../../debug-mode.js';
 
-import { updateDebugInformation } from '../../../../ui/tabs/information-panel.js';
+import { updateDebugInformation } from '@ui/sections/tabs/information-panel.js';
 import { getZoomFactor,getZoomLevel, getScaleFactor } from '../../../render/render-scaling.js';
 
 //average across last frames

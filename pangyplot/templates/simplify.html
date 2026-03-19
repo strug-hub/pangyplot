@@ -175,7 +175,7 @@
         #tooltip .tt-subtype { font-weight: 600; }
     </style>
 
-    {% include 'google-analytics.html' %}
+    {% include 'utils/google-analytics.html' %}
 
 </head>
 
@@ -205,16 +205,16 @@
         </div>
     </div>
 
-    {% include 'navbar-template.html' %}
+    {% include 'sections/navbar-template.html' %}
 
     <!--<select id="db-selection"> </select>-->
 
-    {% include 'cytoband-template.html' %}
+    {% include 'sections/cytoband-template.html' %}
 
     <div class="flex-row fixed-height-1">
 
-        {% include 'gene-search-template.html' %}
-        {% include 'coordinate-template.html' %}
+        {% include 'sections/gene-search-template.html' %}
+        {% include 'sections/coordinate-template.html' %}
 
     </div>
 
@@ -268,7 +268,7 @@
                 <!--built by javascript-->
             </div>
 
-            {% include 'tabs/tab-container.html' %}
+            {% include 'sections/tabs/tab-container.html' %}
 
         </div>
     </div>
@@ -281,7 +281,7 @@
 
     <div id="color-picker-container" class="flex-row fixed-height-1">
 
-        {% include 'color-picker.html' %}
+        {% include 'sections/color-picker.html' %}
 
     </div>
 
@@ -298,7 +298,6 @@
     </script>
     <script type="module" src="{{ url_for('static', filename='js/simplify/simplify-app.js') }}"></script>
 
-    <script type="module" src="{{url_for('static', filename='js/ui/option-button.js')}}"></script>
 
 </body>
 

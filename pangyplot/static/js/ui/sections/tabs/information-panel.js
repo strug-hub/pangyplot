@@ -1,4 +1,4 @@
-import DEBUG_MODE from "../../debug-mode.js";
+import DEBUG_MODE from "../../../debug-mode.js";
 
 const panel = document.getElementById('info-selected-container');
 const debugOuterContainer = document.getElementById('info-debug-container-outer');

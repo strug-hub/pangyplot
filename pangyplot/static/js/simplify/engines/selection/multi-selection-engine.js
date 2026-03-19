@@ -6,7 +6,7 @@ import { togglePopChain } from '../../detail/engines/polychain/polychain-pop-eng
 import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';
 import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
-import { updateSelectionInfo } from '../../../ui/tabs/information-panel.js';
+import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
 import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
