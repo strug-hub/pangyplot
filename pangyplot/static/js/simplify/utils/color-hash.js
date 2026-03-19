@@ -37,3 +37,14 @@ function stringToColor(str) {
 export function geneColor(name) {
     return stringToColor(name);
 }
+
+/** Vivid gene color without brightness floor — for halo overlays on dark backgrounds. */
+export function geneHaloColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) - hash) + name.charCodeAt(i);
+        hash |= 0;
+    }
+    const [r, g, b] = intToColor(hash);
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}

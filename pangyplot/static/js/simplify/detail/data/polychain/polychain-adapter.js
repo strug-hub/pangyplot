@@ -25,7 +25,7 @@ const MIN_NODES = 2;
  * Compute cumulative arc lengths along a polyline.
  * Returns array of length pl.length with cumLen[0]=0.
  */
-function cumulativeLengths(pl) {
+export function cumulativeLengths(pl) {
     const cumLen = [0];
     for (let i = 1; i < pl.length; i++) {
         cumLen.push(cumLen[i - 1] + Math.hypot(pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]));
@@ -36,7 +36,7 @@ function cumulativeLengths(pl) {
 /**
  * Interpolate a point at arc-length distance `d` along a polyline.
  */
-function interpolateAtDist(pl, cumLen, d) {
+export function interpolateAtDist(pl, cumLen, d) {
     if (d <= 0) return [pl[0][0], pl[0][1]];
     if (d >= cumLen[cumLen.length - 1]) return [pl[pl.length - 1][0], pl[pl.length - 1][1]];
     // Binary search for the segment

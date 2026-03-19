@@ -7,6 +7,7 @@ import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
+import { fetchGenesForDetail } from './polychain-gene-map.js';
 
 let fetchController = null;
 
@@ -34,6 +35,10 @@ function processResponse(apiResponse) {
             sinkSegs: chain.sink_segs,
             bubblePositions: chain.bubble_positions || null,
             polychainNodes: chain.polychain_nodes || null,
+            bpStart: chain.bp_start ?? null,
+            bpEnd: chain.bp_end ?? null,
+            bpHead: chain.bp_head ?? null,
+            bpTail: chain.bp_tail ?? null,
             stepCount: chain.step_count || 0,
             parentChain: chain.parent_chain || null,
             ancestors: chain.ancestors || [],
@@ -190,6 +195,10 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                 chr,
             };
         }
+        // Trigger gene fetch for the visible bp range (fire and forget)
+        fetchGenesForDetail(chr, state.GENOME,
+            Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
+
         return true;
     } catch (e) {
         if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);

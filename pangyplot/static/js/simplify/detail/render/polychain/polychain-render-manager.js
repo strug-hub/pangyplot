@@ -3,6 +3,7 @@
 import { state } from '../../../simplify-state.js';
 import { strokePolyline, strokePolylines } from '../detail-painter.js';
 import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
+import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 
 function getVisibleChainPolylines(chains) {
     const base = [];
@@ -25,6 +26,41 @@ function getSelectedPolylines() {
     return polylines;
 }
 
+function drawGeneOverlays(ctx, opacity, baseWidth) {
+    const overlaps = getGeneChainOverlaps();
+    if (overlaps.size === 0) return;
+
+    const dd = state.detailData;
+    if (!dd) return;
+
+    // Halo: thicker than chain line, drawn behind it
+    const haloWidth = Math.max(4, 10 / state.zoom);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.setLineDash([]);
+
+    // Batch by color to minimize state changes
+    const byColor = new Map();
+    for (const chain of dd.chains) {
+        const geneList = overlaps.get(chain.id);
+        if (!geneList) continue;
+
+        const pl = getPolychainPositions(chain.id) || chain.polyline;
+        if (!pl || pl.length < 2) continue;
+
+        for (const gene of geneList) {
+            const sub = extractSubPolyline(pl, gene.tStart, gene.tEnd);
+            if (!sub || sub.length < 2) continue;
+            if (!byColor.has(gene.color)) byColor.set(gene.color, []);
+            byColor.get(gene.color).push(sub);
+        }
+    }
+
+    for (const [color, polylines] of byColor) {
+        strokePolylines(ctx, polylines, color, haloWidth, opacity);
+    }
+}
+
 export function drawDetail() {
     const ctx = state.ctx;
     const opacity = state.detailOpacity;
@@ -33,7 +69,10 @@ export function drawDetail() {
 
     const baseWidth = Math.max(1.5, 3 / state.zoom);
 
-    // 1. Chain polylines
+    // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
+    drawGeneOverlays(ctx, opacity, baseWidth);
+
+    // 2. Chain polylines
     if (!state.hideChainOverlay) {
         const visible = getVisibleChainPolylines(state.detailData.chains);
 
@@ -42,7 +81,7 @@ export function drawDetail() {
         }
     }
 
-    // 2. Selection highlight
+    // 3. Selection highlight
     if (state.selectedChains.size > 0) {
         const selected = getSelectedPolylines();
         if (selected.length > 0) {
@@ -50,7 +89,7 @@ export function drawDetail() {
         }
     }
 
-    // 3. Hover highlight
+    // 4. Hover highlight
     if (state.hoveredChain) {
         const live = getPolychainPositions(state.hoveredChain.id);
         const pl = live || state.hoveredChain.polyline;

@@ -291,9 +291,25 @@ def build_chain_polyline(chain, stepidx, seg_index):
 
     if ref_min is not None and ref_max is not None \
        and ref_min < len(stepidx.starts) and ref_max < len(stepidx.ends):
-        bp_span = stepidx.ends[ref_max] - stepidx.starts[ref_min]
+        bp_start = stepidx.starts[ref_min]
+        bp_end = stepidx.ends[ref_max]
+        bp_span = bp_end - bp_start
     else:
+        bp_start = None
+        bp_end = None
         bp_span = total_length
+
+    # Determine bp at polyline head vs tail for direction detection.
+    # The first bubble's ref range gives the head bp, last bubble's gives the tail.
+    head_bp = None
+    tail_bp = None
+    if bp_start is not None:
+        for rs, re in chain.bubbles[0].range_inclusive:
+            head_bp = stepidx.starts[rs] if rs < len(stepidx.starts) else None
+            break
+        for rs, re in chain.bubbles[-1].range_inclusive:
+            tail_bp = stepidx.ends[re] if re < len(stepidx.ends) else None
+            break
 
     # RDP simplification
     span = max(abs(raw_polyline[-1][0] - raw_polyline[0][0]),
@@ -310,6 +326,10 @@ def build_chain_polyline(chain, stepidx, seg_index):
         "polychain_nodes": polychain_nodes,
         "length": total_length,
         "bp_span": bp_span,
+        "bp_start": bp_start,
+        "bp_end": bp_end,
+        "bp_head": head_bp,
+        "bp_tail": tail_bp,
         "n_bubbles": len(chain.bubbles),
         "subtype": subtype_counter.most_common(1)[0][0],
         "source_segs": chain.bubbles[0].source_segments,
