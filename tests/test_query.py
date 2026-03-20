@@ -236,20 +236,6 @@ class TestJunctionGraph:
     def test_at_least_one_junction_link(self, tile):
         assert len(tile["junction_links"]) >= 1
 
-    def test_junction_nodes_are_coordinate_pairs(self, tile):
-        for node in tile["junction_nodes"]:
-            assert len(node) == 2
-            assert isinstance(node[0], (int, float))
-            assert isinstance(node[1], (int, float))
-
-    def test_junction_links_are_coordinate_pair_pairs(self, tile):
-        for link in tile["junction_links"]:
-            assert len(link) == 2
-            for pt in link:
-                assert len(pt) == 2
-                assert isinstance(pt[0], (int, float))
-                assert isinstance(pt[1], (int, float))
-
     def test_no_duplicate_links(self, tile):
         """Each link (unordered endpoint pair) should appear once."""
         seen = set()

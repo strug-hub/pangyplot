@@ -1,39 +1,108 @@
 import bisect
+import json
+import os
 from collections import defaultdict
 from array import array
+
+import numpy as np
+
 import pangyplot.db.sqlite.step_db as db
 import pangyplot.db.db_utils as utils
+from pangyplot.version import __version__
 
 QUICK_INDEX = "steps.quickindex.json"
+MMAP_DIR = "steps.mmapindex"
+
+ARRAYS = {
+    "starts": np.uint32,
+    "ends": np.uint32,
+    "segments": np.uint32,
+}
+
 
 class StepIndex:
     def __init__(self, dir, genome):
         self.dir = dir
         self.genome = genome
 
-        if not self.load_quick_index():
-            self.starts = array('I')
-            self.ends = array('I')
-            self.segments = array('I')
+        if not self.load_mmap_index():
+            self._build_from_db()
+            self.save_mmap_index()
 
-            for row in db.load_steps(self.dir, genome):
-                self.segments.append(row["seg_id"])
-                self.starts.append(row["start"])
-                self.ends.append(row["end"])
+    def _build_from_db(self):
+        self.starts = array('I')
+        self.ends = array('I')
+        self.segments = array('I')
 
-            self.save_quick_index()
+        for row in db.load_steps(self.dir, self.genome):
+            self.segments.append(row["seg_id"])
+            self.starts.append(row["start"])
+            self.ends.append(row["end"])
 
     def __getitem__(self, step):
         if step < 0 or step >= len(self.segments):
             return None
         return self.segments[step]
 
+    # -- mmap binary index ------------------------------------------------
+
+    def save_mmap_index(self):
+        mmap_dir = os.path.join(self.dir, MMAP_DIR)
+        os.makedirs(mmap_dir, exist_ok=True)
+
+        for name, dtype in ARRAYS.items():
+            arr = getattr(self, name)
+            np.save(os.path.join(mmap_dir, f"{name}.npy"),
+                    np.array(arr, dtype=dtype))
+
+        meta = {
+            "version": __version__,
+            "length": len(self.starts),
+        }
+        with open(os.path.join(mmap_dir, "meta.json"), "w") as f:
+            json.dump(meta, f)
+
+    def load_mmap_index(self):
+        mmap_dir = os.path.join(self.dir, MMAP_DIR)
+        meta_path = os.path.join(mmap_dir, "meta.json")
+
+        if not os.path.isdir(mmap_dir) or not os.path.exists(meta_path):
+            return False
+
+        for name in ARRAYS:
+            if not os.path.exists(os.path.join(mmap_dir, f"{name}.npy")):
+                return False
+
+        for name in ARRAYS:
+            setattr(self, name,
+                    np.load(os.path.join(mmap_dir, f"{name}.npy"),
+                            mmap_mode='r'))
+
+        return True
+
+    @classmethod
+    def validate(cls, chr_dir):
+        mmap_dir = os.path.join(chr_dir, MMAP_DIR)
+        meta_path = os.path.join(mmap_dir, "meta.json")
+
+        if not os.path.isdir(mmap_dir) or not os.path.exists(meta_path):
+            return False
+
+        for name in ARRAYS:
+            if not os.path.exists(os.path.join(mmap_dir, f"{name}.npy")):
+                return False
+
+        return True
+
+    # -- legacy JSON quickindex (kept for serialize/export) ----------------
+
     def serialize(self):
         return {
             "starts": self.starts.tolist(),
             "ends": self.ends.tolist(),
-            "segments": self.segments.tolist()
+            "segments": self.segments.tolist(),
         }
+
     def save_quick_index(self):
         utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")
 
@@ -41,12 +110,14 @@ class StepIndex:
         quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
         if quick_index is None:
             return False
-        
+
         self.starts = array('I', quick_index["starts"])
         self.ends = array('I', quick_index["ends"])
         self.segments = array('I', quick_index["segments"])
         return True
-    
+
+    # -- query methods -----------------------------------------------------
+
     def query_segment(self, seg_id):
         return db.get_segment_steps(self.dir, seg_id, self.genome)
 
@@ -71,17 +142,17 @@ class StepIndex:
 
         if exact:
             if debug:
-                print(f"""[DEBUG] Position query results {start}-{end}. 
-                      START: step={res1} 
+                print(f"""[DEBUG] Position query results {start}-{end}.
+                      START: step={res1}
                       END:   step={res2}""")
 
             return (res1, res2)
-        
+
         if res1 is None or res2 is None:
             raise ValueError("Step not found for the given bp position")
 
         if debug:
-            print(f"""[DEBUG] Position query results {start}-{end}. 
+            print(f"""[DEBUG] Position query results {start}-{end}.
                   START: step={res1[0]} / ref coords {res1[1]}-{res1[2]} / nodes {self._step_to_segment[res1[0]]}
                   END:   step={res2[0]} / ref coords {res2[1]}-{res2[2]} / nodes {self._step_to_segment[res2[0]]}""")
         return (res1[0], res2[0])
@@ -90,13 +161,11 @@ class StepIndex:
         start_step, end_step = self.query_coordinates(start, end)
         return (self.segments[start_step], self.segments[end_step])
 
-
     def get_genome(self):
         return self.genome
-    
+
     def segment_map(self):
         seg_map = defaultdict(list)
         for i in range(len(self.segments)):
             seg_map[self.segments[i]].append(i)
         return seg_map
-

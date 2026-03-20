@@ -4,6 +4,7 @@ from pympler.asizeof import asizeof
 
 from flask import Flask, request
 from flask_babel import Babel
+from pangyplot.db.db_utils import NumpyJSONEncoder
 
 
 from dotenv import load_dotenv
@@ -30,6 +31,7 @@ def get_locale():
 
 def create_app(data_dir, db_name, annotation_name, ref, port, development=True, debug=False):
     app = Flask(__name__)
+    app.json.default = NumpyJSONEncoder().default
 
     app.config['BABEL_DEFAULT_LOCALE'] = 'en'
     app.config['BABEL_SUPPORTED_LOCALES'] = [
@@ -40,6 +42,8 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True, 
     babel.init_app(app, locale_selector=get_locale)
 
     app.debug_mode = debug
+    app.data_dir = data_dir
+    app.db_name = db_name
 
     setup_cytoband(app)
     load_indexes(app, data_dir, db_name, annotation_name, ref)
