@@ -3,7 +3,7 @@
 
 import { state } from '../../simplify-state.js';
 import { setCanvasMode } from '@app-state';
-import { formatBp } from '../../utils/format-utils.js';
+import { formatBp } from '@format-utils';
 
 let popupEl = null;
 let coreContainer = null;  // div that holds the core ForceGraph canvas
@@ -193,11 +193,6 @@ export function isCoreViewerActive() {
     return !!state.coreViewerActive;
 }
 
-function formatLength(bp) {
-    if (bp == null || bp <= 0) return null;
-    return bp >= 1000 ? (bp / 1000).toFixed(1) + 'kb' : bp + 'bp';
-}
-
 function row(label, value, color) {
     const style = color ? ` style="color:${color}"` : '';
     return `<span class="tt-label">${label}</span> <span class="tt-val"${style}>${value}</span>`;
@@ -221,7 +216,7 @@ export function showSelectionPopup(screenX, screenY) {
     const lines = [];
     lines.push(row('chains', count));
     lines.push(`<span class="sp-range-link" style="cursor:pointer">${row('range', rangeText, '#5bb8f0')}</span>`);
-    if (totalSize > 0) lines.push(row('total size', formatLength(totalSize)));
+    if (totalSize > 0) lines.push(row('total size', formatBp(totalSize, { unit: true })));
     info.innerHTML = lines.join('<br>');
 
     // Make range row clickable

@@ -4,14 +4,14 @@
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { xToBp, isReady } from '../reference-spine-engine.js';
-import { formatBp } from '../../utils/format-utils.js';
+import { formatBp, formatPercentage } from '@format-utils';
 import { hitTestChains, getChainTooltip } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleTooltip } from '../../detail/engines/node-hover-engine.js';
 import { hitTestSkeleton, getSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
 import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
 import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
-import { faLabel } from '../../../utils/node-label.js';
+import { formatNodeLabel } from '@format-utils';
 
 export function setupHover(canvas) {
     canvas.addEventListener('mousemove', e => {
@@ -123,10 +123,6 @@ function formatCoordinates(ranges) {
     return `${genome}#${chr}:${start.toLocaleString()}-${end.toLocaleString()}`;
 }
 
-function formatGC(gcCount, seqLength) {
-    if (gcCount == null || seqLength == null || seqLength === 0) return null;
-    return ((gcCount / seqLength) * 100).toFixed(1) + '%';
-}
 
 function showNodeInfo(node) {
     const record = node.record;
@@ -135,12 +131,12 @@ function showNodeInfo(node) {
     const rawId = node.id.slice(1).split(':')[0];
 
     const base = {
-        id: faLabel(node.id) || '',
+        id: formatNodeLabel(node.id) || '',
         rawId,
         type: record.type,
         coordinates: formatCoordinates(record.ranges),
         length: record.seqLength,
-        gcPercent: formatGC(record.gcCount, record.seqLength),
+        gcPercent: formatPercentage(record.gcCount, record.seqLength),
         nCount: record.nCount,
     };
 

@@ -2,9 +2,10 @@
 import { canHighlight } from '../selection-state.js';
 import { findNearestNode, euclideanDist } from '../../../utils/node-utils.js';
 import { makeHoverLabel } from './hover-label.js';
-import { faLabel } from '../../../../utils/node-label.js';
+import { formatNodeLabel } from '@format-utils';
 import appState from '../../../app-state.js';
 import { isPanning } from '../../../engines/navigation/pan-zoom/pan-zoom-engine.js';
+import { formatBp } from '@format-utils';
 
 const MAX_HOVER_DISTANCE = 40;
 
@@ -17,11 +18,6 @@ const TYPE_COLORS = {
     bubble: '#F2DC0F',
 };
 
-function formatLength(bp) {
-    if (bp == null || bp <= 0) return null;
-    return bp >= 1000 ? (bp / 1000).toFixed(1) + 'kb' : bp + 'bp';
-}
-
 function row(label, value, color) {
     const style = color ? ` style="color:${color}"` : '';
     return `<span class="tt-label">${label}</span> <span class="tt-val"${style}>${value}</span>`;
@@ -32,16 +28,16 @@ function getHoverTooltipHtml(node) {
   const lines = [];
 
   if (node.type === 'segment') {
-    lines.push(row('segment', faLabel(node.id)));
+    lines.push(row('segment', formatNodeLabel(node.id)));
   } else if (node.type === 'bubble') {
-    lines.push(row('bubble', faLabel(node.id)));
+    lines.push(row('bubble', formatNodeLabel(node.id)));
   }
 
   if (record) {
     if (record.subtype) {
       lines.push(row('type', record.subtype, TYPE_COLORS[record.subtype]));
     }
-    const len = formatLength(record.seqLength);
+    const len = formatBp(record.seqLength, { unit: true });
     if (len) lines.push(row('length', len));
     if (record.chain != null) {
       lines.push(row('chain', record.chain));

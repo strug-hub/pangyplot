@@ -1,5 +1,5 @@
 import { setUpNodeSearchUi, updateNodeSearchResults } from "./node-search-ui.js";
-import { faLabel } from "../../../../utils/node-label.js";
+import { formatNodeLabel } from "@format-utils";
 
 function isPresent(forceGraph, iid, isGraphId=false){
     return forceGraph.graphData().nodes.some(
@@ -16,7 +16,7 @@ function nodeSearch(forceGraph, query){
     const rawId = query;
     if (isPresent(forceGraph, rawId, true)){
         zoom(forceGraph, rawId, true);
-        return [{node:faLabel(rawId)}];
+        return [{node:formatNodeLabel(rawId)}];
     }
     
     let nodeInt;
@@ -40,20 +40,20 @@ function nodeSearch(forceGraph, query){
         const id = `${nodeType}${nodeInt}`
         if (isPresent(forceGraph, id)){
             zoom(forceGraph, id);
-            return [{node:faLabel(id)}];
+            return [{node:formatNodeLabel(id)}];
         }
     }
 
     const segmentId = `s${nodeInt}`
     if (isPresent(forceGraph, segmentId)) {
         zoom(forceGraph, segmentId);
-        return [{node:faLabel(segmentId)}];
+        return [{node:formatNodeLabel(segmentId)}];
     }
 
     const bubbleId = `b${nodeInt}`
     if (isPresent(forceGraph, bubbleId)) {
         zoom(forceGraph, bubbleId);
-        return [{node:faLabel(bubbleId)}];
+        return [{node:formatNodeLabel(bubbleId)}];
     }
 
     return null;

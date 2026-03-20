@@ -1,7 +1,8 @@
 import { updateSelectionInfo } from "@ui/sections/tabs/information-panel.js";
-import { faLabel } from '../../../../utils/node-label.js';
+import { formatNodeLabel } from '@format-utils';
 import eventBus from '@event-bus';
 import appState from '../../../app-state.js';
+import { formatPercentage } from '@format-utils';
 
 function formatCoordinates(ranges, coords) {
     if (!ranges || ranges.length === 0) return null;
@@ -10,11 +11,6 @@ function formatCoordinates(ranges, coords) {
     const start = Math.min(...allStarts);
     const end = Math.max(...allEnds);
     return `${coords.genome || ''}#${coords.chromosome || ''}:${start.toLocaleString()}-${end.toLocaleString()}`;
-}
-
-function formatGC(gcCount, seqLength) {
-    if (gcCount == null || seqLength == null || seqLength === 0) return null;
-    return ((gcCount / seqLength) * 100).toFixed(1) + '%';
 }
 
 function generateSelectionInfo() {
@@ -35,12 +31,12 @@ function generateSelectionInfo() {
     const rawId = node.id.slice(1).split(':')[0];
 
     const base = {
-        id: faLabel(node.id) || '',
+        id: formatNodeLabel(node.id) || '',
         rawId: rawId,
         type: record.type,
         coordinates: formatCoordinates(record.ranges, coords),
         length: record.seqLength,
-        gcPercent: formatGC(record.gcCount, record.seqLength),
+        gcPercent: formatPercentage(record.gcCount, record.seqLength),
         nCount: record.nCount,
     };
 

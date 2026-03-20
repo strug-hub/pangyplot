@@ -1,5 +1,6 @@
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
+import { formatBp } from '@format-utils';
 
 const panel = document.getElementById('info-selected-container');
 const debugOuterContainer = document.getElementById('info-debug-container-outer');
@@ -57,10 +58,6 @@ function makeText(value) {
   return el;
 }
 
-function formatBp(length) {
-  if (length == null) return '?';
-  return Number(length).toLocaleString() + ' bp';
-}
 
 function renderSegmentInfo(info) {
   appendHeader(`<i class="fa-regular fa-square"></i> ${t.segment}`);
@@ -71,7 +68,7 @@ function renderSegmentInfo(info) {
     appendRow({ label: t.coordinates, valueEl: makeCopyable(info.coordinates) });
   }
 
-  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length)) });
+  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length) + ' bp') });
 
   if (info.gcPercent != null) {
     appendRow({ label: t.gcContent, valueEl: makeText(info.gcPercent) });
@@ -99,7 +96,7 @@ function renderBubbleInfo(info) {
     appendRow({ label: t.subtype, valueEl: makeText(info.subtype) });
   }
 
-  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length)) });
+  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length) + ' bp') });
 
   if (info.size != null) {
     appendRow({ label: t.insideSegments, valueEl: makeText(Number(info.size).toLocaleString()) });

@@ -3,7 +3,7 @@
 // loop (or event handlers) call these functions to flush state to the DOM.
 
 import { state } from '../simplify-state.js';
-import { formatBp } from '../utils/format-utils.js';
+import { formatBp } from '@format-utils';
 import { xToBp } from '../engines/reference-spine-engine.js';
 import { viewportStepCount } from '../render/viewport.js';
 import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
