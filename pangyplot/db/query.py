@@ -473,6 +473,15 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    # Strip remaining internal fields before sending to frontend
+    for cd in result_chains:
+        cd.pop("_start_seg", None)
+        cd.pop("_end_seg", None)
+        cd.pop("_min_step", None)
+        cd.pop("_max_step", None)
+        cd.pop("_pl_x_min", None)
+        cd.pop("_pl_x_max", None)
+
     return {
         "tile_start": start,
         "tile_end": end,

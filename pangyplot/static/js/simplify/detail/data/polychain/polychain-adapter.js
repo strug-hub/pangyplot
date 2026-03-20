@@ -94,8 +94,8 @@ function resamplePolyline(chain) {
         density.fill(0.5);
         // Add bubble contributions
         const sigma = 1 / (nBins * 0.5); // ~1% of chain length spread
-        for (const bp of bubPos) {
-            const center = bp.t;
+        for (const t of bubPos) {
+            const center = t;
             for (let b = 0; b < nBins; b++) {
                 const bt = (b + 0.5) / nBins;
                 const d = (bt - center) / sigma;

@@ -1,11 +1,29 @@
+import json
+import os
 from array import array
 from collections import defaultdict
+
+import numpy as np
 from bitarray import bitarray
+
 import pangyplot.db.sqlite.link_db as db
 from pangyplot.objects.Link import Link
 import pangyplot.db.db_utils as utils
+from pangyplot.version import __version__
 
 QUICK_INDEX = "links.quickindex.json"
+MMAP_DIR = "links.mmapindex"
+
+ARRAYS = {
+    "from_ids": np.uint32,
+    "to_ids": np.uint32,
+    "from_strands": np.uint8,
+    "to_strands": np.uint8,
+    "seg_index_offsets": np.uint32,
+    "seg_index_counts": np.uint8,
+    "seg_index_flat": np.uint32,
+}
+
 
 class LinkIndex:
     def __init__(self, dir):
@@ -14,23 +32,21 @@ class LinkIndex:
         self.strand_map = {'+': 1, '-': 0}
         self.rev_strand_map = {1: '+', 0: '-'}
 
-        if not self.load_quick_index():
-
+        if not self.load_mmap_index():
             self.from_ids = array('I')
             self.to_ids = array('I')
             self.from_strands = bitarray()
             self.to_strands = bitarray()
-
-            self.seg_index_offsets = array('I')   # start index into self.seg_index_flat
-            self.seg_index_counts  = array('B')   # max 255 links per segment
-            self.seg_index_flat    = array('I')   # flattened list of link indices
+            self.seg_index_offsets = array('I')
+            self.seg_index_counts = array('B')
+            self.seg_index_flat = array('I')
 
             self._load_links()
-            self.save_quick_index()
+            self.save_mmap_index()
 
     def __iter__(self):
         return db.get_all(self.dir)
-       
+
     def __getitem__(self, key):
         if isinstance(key, tuple) and len(key) == 2:
             from_id, to_id = key
@@ -45,7 +61,7 @@ class LinkIndex:
             return db.get_link(self.dir, key)
         else:
             raise TypeError("Key must be int or tuple of two ints or a link id")
-        
+
     def __len__(self):
         return len(self.from_ids)
 
@@ -73,7 +89,61 @@ class LinkIndex:
             self.seg_index_offsets.append(len(self.seg_index_flat))
             self.seg_index_counts.append(len(links))
             self.seg_index_flat.extend(links)
-        
+
+    # -- mmap binary index ------------------------------------------------
+
+    def save_mmap_index(self):
+        mmap_dir = os.path.join(self.dir, MMAP_DIR)
+        os.makedirs(mmap_dir, exist_ok=True)
+
+        for name, dtype in ARRAYS.items():
+            arr = getattr(self, name)
+            # bitarray doesn't convert directly to numpy; use .tolist()
+            data = arr.tolist() if isinstance(arr, bitarray) else arr
+            np.save(os.path.join(mmap_dir, f"{name}.npy"),
+                    np.array(data, dtype=dtype))
+
+        meta = {
+            "version": __version__,
+            "num_links": len(self.from_ids),
+        }
+        with open(os.path.join(mmap_dir, "meta.json"), "w") as f:
+            json.dump(meta, f)
+
+    def load_mmap_index(self):
+        mmap_dir = os.path.join(self.dir, MMAP_DIR)
+        meta_path = os.path.join(mmap_dir, "meta.json")
+
+        if not os.path.isdir(mmap_dir) or not os.path.exists(meta_path):
+            return False
+
+        for name in ARRAYS:
+            if not os.path.exists(os.path.join(mmap_dir, f"{name}.npy")):
+                return False
+
+        for name in ARRAYS:
+            setattr(self, name,
+                    np.load(os.path.join(mmap_dir, f"{name}.npy"),
+                            mmap_mode='r'))
+
+        return True
+
+    @classmethod
+    def validate(cls, chr_dir):
+        mmap_dir = os.path.join(chr_dir, MMAP_DIR)
+        meta_path = os.path.join(mmap_dir, "meta.json")
+
+        if not os.path.isdir(mmap_dir) or not os.path.exists(meta_path):
+            return False
+
+        for name in ARRAYS:
+            if not os.path.exists(os.path.join(mmap_dir, f"{name}.npy")):
+                return False
+
+        return True
+
+    # -- legacy JSON quickindex (kept for serialize/export) ----------------
+
     def serialize(self):
         return {
             "from_ids": self.from_ids.tolist(),
@@ -82,9 +152,9 @@ class LinkIndex:
             "to_strands": self.to_strands.tolist(),
             "seg_index_offsets": self.seg_index_offsets.tolist(),
             "seg_index_counts": self.seg_index_counts.tolist(),
-            "seg_index_flat": self.seg_index_flat.tolist()
+            "seg_index_flat": self.seg_index_flat.tolist(),
         }
-    
+
     def save_quick_index(self):
         utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")
 
@@ -92,7 +162,7 @@ class LinkIndex:
         quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
         if quick_index is None:
             return False
-        
+
         self.from_ids = array('I', quick_index["from_ids"])
         self.to_ids = array('I', quick_index["to_ids"])
         self.from_strands = bitarray(quick_index["from_strands"])
@@ -101,6 +171,8 @@ class LinkIndex:
         self.seg_index_counts = array('B', quick_index["seg_index_counts"])
         self.seg_index_flat = array('I', quick_index["seg_index_flat"])
         return True
+
+    # -- query methods -----------------------------------------------------
 
     def get_links_by_id(self, link_ids):
         return db.get_link_by_ids(self.dir, link_ids)

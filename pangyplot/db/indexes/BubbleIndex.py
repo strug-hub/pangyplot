@@ -1,60 +1,74 @@
+import json
+import os
 from collections import defaultdict
 from bisect import bisect_left, bisect_right
 from array import array
 
-import pangyplot.db.sqlite.bubble_db as db
+import numpy as np
 
+import pangyplot.db.sqlite.bubble_db as db
 import pangyplot.db.db_utils as utils
 from pangyplot.objects.Chain import Chain
+from pangyplot.version import __version__
 
 QUICK_INDEX = "bubbles.quickindex.json"
+MMAP_DIR = "bubbles.mmapindex"
+
+ARRAYS = {
+    "bubble_to_parent": np.uint32,
+    "segment_to_bubble": np.uint32,
+    "start_steps": np.uint32,
+    "end_steps": np.uint32,
+    "ids": np.uint32,
+    "layout_x1": np.float32,
+    "layout_x2": np.float32,
+    "layout_ids": np.uint32,
+}
+
 
 class BubbleIndex:
     def __init__(self, dir, gfaidx, cache_size=1000):
         self.dir = dir
-        
         self.gfaidx = gfaidx
-
         self.cache_size = cache_size
-        self.cached_bubbles = dict()  # bubble_id -> Bubble
+        self.cached_bubbles = dict()
 
-        if not self.load_quick_index():
+        if not self.load_mmap_index():
+            self._build_from_db()
+            self.save_mmap_index()
 
-            max_seg_id = gfaidx.max_segment_id()
-            max_bubble_id = db.get_max_id(self.dir)
-            self.segment_to_bubble = array('I', [0] * (max_seg_id + 1))
-            self.bubble_to_parent = array('I', [0] * (max_bubble_id + 1))
+    def _build_from_db(self):
+        max_seg_id = self.gfaidx.max_segment_id()
+        max_bubble_id = db.get_max_id(self.dir)
+        self.segment_to_bubble = array('I', [0] * (max_seg_id + 1))
+        self.bubble_to_parent = array('I', [0] * (max_bubble_id + 1))
 
-            for row in db.iter_relationships(self.dir):
-                if row["parent"] is not None:
-                    self.bubble_to_parent[row["id"]] = row["parent"]
-                    for sid in row["source"] + row["sink"]:
-                        self.segment_to_bubble[sid] = row["parent"]
+        for row in db.iter_relationships(self.dir):
+            if row["parent"] is not None:
+                self.bubble_to_parent[row["id"]] = row["parent"]
+                for sid in row["source"] + row["sink"]:
+                    self.segment_to_bubble[sid] = row["parent"]
+            for sid in row["inside"]:
+                self.segment_to_bubble[sid] = row["id"]
 
-                for sid in row["inside"]:
-                    self.segment_to_bubble[sid] = row["id"]
+        self.start_steps = array('I')
+        self.end_steps = array('I')
+        self.ids = array('I')
 
-            # top-level bubbles only
-            self.start_steps = array('I')
-            self.end_steps = array('I')
-            self.ids = array('I')
+        parentless_bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
 
-            parentless_bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
+        ranges = []
+        for bubble in parentless_bubbles:
+            for start, end in bubble.get_ranges(exclusive=False):
+                ranges.append((start, end, bubble.id))
 
-            ranges = []
-            for bubble in parentless_bubbles:
-                for start, end in bubble.get_ranges(exclusive=False):
-                    ranges.append((start, end, bubble.id))
+        ranges.sort()
+        for start, end, bid in ranges:
+            self.start_steps.append(start)
+            self.end_steps.append(end)
+            self.ids.append(bid)
 
-            ranges.sort()
-            for start, end, bid in ranges:
-                self.start_steps.append(start)
-                self.end_steps.append(end)
-                self.ids.append(bid)
-
-            self._build_layout_arrays(parentless_bubbles)
-
-            self.save_quick_index()
+        self._build_layout_arrays(parentless_bubbles)
 
     def __getitem__(self, bubble_id):
         if bubble_id in self.cached_bubbles:
@@ -63,18 +77,14 @@ class BubbleIndex:
         bubble = db.get_bubble(self.dir, bubble_id, self.gfaidx)
         self._cache_bubble(bubble_id, bubble)
         return bubble
-    
+
     def _cache_bubble(self, bubble_id, bubble_obj):
         if len(self.cached_bubbles) >= self.cache_size:
-            self.cached_bubbles.pop(next(iter(self.cached_bubbles)))  # Simple FIFO
+            self.cached_bubbles.pop(next(iter(self.cached_bubbles)))
         self.cached_bubbles[bubble_id] = bubble_obj
 
     def _build_layout_arrays(self, parentless_bubbles):
-        """Build layout_x1/x2/ids arrays sorted by layout_x1, plus prefix_max_x2.
-
-        prefix_max_x2[i] = max(layout_x2[0..i]) — monotonically non-decreasing,
-        enabling bisect to skip the initial portion where no entry can overlap.
-        """
+        """Build layout_x1/x2/ids arrays sorted by layout_x1, plus prefix_max_x2."""
         layout_entries = []
         for bubble in parentless_bubbles:
             lx1 = min(bubble.x1, bubble.x2)
@@ -95,13 +105,66 @@ class BubbleIndex:
     def _build_prefix_max(self):
         """Build prefix_max_x2 from layout_x2. Rebuilt on load, not serialized."""
         n = len(self.layout_x2)
-        self.prefix_max_x2 = array('f', bytes(n * 4))
+        self.prefix_max_x2 = np.empty(n, dtype=np.float32)
         if n > 0:
             self.prefix_max_x2[0] = self.layout_x2[0]
             for i in range(1, n):
                 prev = self.prefix_max_x2[i - 1]
                 cur = self.layout_x2[i]
                 self.prefix_max_x2[i] = cur if cur > prev else prev
+
+    # -- mmap binary index ------------------------------------------------
+
+    def save_mmap_index(self):
+        mmap_dir = os.path.join(self.dir, MMAP_DIR)
+        os.makedirs(mmap_dir, exist_ok=True)
+
+        for name, dtype in ARRAYS.items():
+            arr = getattr(self, name)
+            np.save(os.path.join(mmap_dir, f"{name}.npy"),
+                    np.array(arr, dtype=dtype))
+
+        meta = {
+            "version": __version__,
+            "num_bubbles": int(len(self.ids)),
+        }
+        with open(os.path.join(mmap_dir, "meta.json"), "w") as f:
+            json.dump(meta, f)
+
+    def load_mmap_index(self):
+        mmap_dir = os.path.join(self.dir, MMAP_DIR)
+        meta_path = os.path.join(mmap_dir, "meta.json")
+
+        if not os.path.isdir(mmap_dir) or not os.path.exists(meta_path):
+            return False
+
+        for name in ARRAYS:
+            if not os.path.exists(os.path.join(mmap_dir, f"{name}.npy")):
+                return False
+
+        for name in ARRAYS:
+            setattr(self, name,
+                    np.load(os.path.join(mmap_dir, f"{name}.npy"),
+                            mmap_mode='r'))
+
+        self._build_prefix_max()
+        return True
+
+    @classmethod
+    def validate(cls, chr_dir):
+        mmap_dir = os.path.join(chr_dir, MMAP_DIR)
+        meta_path = os.path.join(mmap_dir, "meta.json")
+
+        if not os.path.isdir(mmap_dir) or not os.path.exists(meta_path):
+            return False
+
+        for name in ARRAYS:
+            if not os.path.exists(os.path.join(mmap_dir, f"{name}.npy")):
+                return False
+
+        return True
+
+    # -- legacy JSON quickindex (kept for serialize/export) ----------------
 
     def serialize(self):
         return {
@@ -115,31 +178,8 @@ class BubbleIndex:
             "layout_ids": self.layout_ids.tolist(),
         }
 
-    def get_chain_ends(self, chain_id):
-        return db.get_chain_ends(self.dir, chain_id)
-
-    def get_bubble_by_chain(self, chain_id, chain_step):
-        result = db.get_bubble_ids_from_chain(self.dir, chain_id, chain_step, chain_step)
-        print(f"Lookup for bubble in chain {chain_id} at step {chain_step} returned: {result}")
-        if result:
-            bubble_id = result[0]
-            return self[bubble_id]
-        return None
-    
-    def segment_in_bubble(self, seg_id):
-        if seg_id >= len(self.segment_to_bubble) or seg_id < 0:
-            return None
-        bubble_id = self.segment_to_bubble[seg_id]
-        return None if bubble_id == 0 else bubble_id
-    
-    def parent_of_bubble(self, bubble_id):
-        if bubble_id >= len(self.bubble_to_parent) or bubble_id < 0:
-            return None
-        parent_id = self.bubble_to_parent[bubble_id]
-        return None if parent_id == 0 else parent_id
-
     def save_quick_index(self):
-        utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")  
+        utils.dump_json(self.serialize(), f"{self.dir}/{QUICK_INDEX}")
 
     def load_quick_index(self):
         quick_index = utils.load_json(f"{self.dir}/{QUICK_INDEX}")
@@ -157,13 +197,37 @@ class BubbleIndex:
             self.layout_ids = array('I', quick_index["layout_ids"])
             self._build_prefix_max()
         else:
-            # Auto-rebuild: load parentless bubbles, build layout arrays, re-save
             print(f"  [BubbleIndex] Rebuilding layout arrays for {self.dir}...")
             parentless_bubbles = db.load_parentless_bubbles(self.dir, self.gfaidx)
             self._build_layout_arrays(parentless_bubbles)
             self.save_quick_index()
 
         return True
+
+    # -- query methods -----------------------------------------------------
+
+    def get_chain_ends(self, chain_id):
+        return db.get_chain_ends(self.dir, chain_id)
+
+    def get_bubble_by_chain(self, chain_id, chain_step):
+        result = db.get_bubble_ids_from_chain(self.dir, chain_id, chain_step, chain_step)
+        print(f"Lookup for bubble in chain {chain_id} at step {chain_step} returned: {result}")
+        if result:
+            bubble_id = result[0]
+            return self[bubble_id]
+        return None
+
+    def segment_in_bubble(self, seg_id):
+        if seg_id >= len(self.segment_to_bubble) or seg_id < 0:
+            return None
+        bubble_id = self.segment_to_bubble[seg_id]
+        return None if bubble_id == 0 else bubble_id
+
+    def parent_of_bubble(self, bubble_id):
+        if bubble_id >= len(self.bubble_to_parent) or bubble_id < 0:
+            return None
+        parent_id = self.bubble_to_parent[bubble_id]
+        return None if parent_id == 0 else parent_id
 
     def create_chains(self, bubbles, parent_bubble=None):
         chain_dict = defaultdict(list)
@@ -174,7 +238,6 @@ class BubbleIndex:
         for chain_id in chain_dict:
             visible_bids = {bubble.id for bubble in chain_dict[chain_id]}
 
-            # Get the full ordered ID list for the chain and fill gaps.
             all_ids = db.get_all_bubble_ids_from_chain(self.dir, chain_id)
             missing_ids = [bid for bid in all_ids if bid not in visible_bids]
             if missing_ids:
@@ -190,17 +253,15 @@ class BubbleIndex:
 
     def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
         bubbles = []
-        
+
         start_index = bisect_left(self.end_steps, min_step)
         for i in range(start_index, len(self.start_steps)):
             if self.start_steps[i] > max_step:
-                break  # No more possible overlaps
+                break
             bubble_id = self.ids[i]
             bubble = self[bubble_id]
             bubble_results = self._traverse_descendants(bubble, min_step, max_step)
             bubbles.extend(bubble_results)
-
-        #results.extend(self._collect_non_ref(results))
 
         if as_chains:
             return self.create_chains(bubbles)
@@ -208,17 +269,7 @@ class BubbleIndex:
         return bubbles
 
     def get_top_level_bubbles_by_layout(self, min_x, max_x, as_chains=False):
-        """Return top-level bubbles whose layout bbox overlaps [min_x, max_x].
-
-        Unlike get_top_level_bubbles, returns whole superbubbles (no descendant
-        traversal) — _decompose_chain handles progressive detail.
-
-        Overlap condition: layout_x1 <= max_x AND layout_x2 >= min_x.
-        Two bisects narrow the scan range:
-        - bisect_right(layout_x1, max_x) → upper bound (x1 <= max_x)
-        - bisect_left(prefix_max_x2, min_x) → lower bound (no entry
-          before this can have x2 >= min_x, since prefix_max is non-decreasing)
-        """
+        """Return top-level bubbles whose layout bbox overlaps [min_x, max_x]."""
         bubbles = []
 
         upper = bisect_right(self.layout_x1, max_x)
@@ -236,7 +287,6 @@ class BubbleIndex:
     def _traverse_descendants(self, bubble, min_step, max_step):
         if bubble.is_contained(min_step, max_step):
             return [bubble]
-        # Otherwise, recurse through children
         results = []
         for child_id in bubble.children:
             child = self[child_id]
@@ -257,7 +307,6 @@ class BubbleIndex:
         traverse(bubble)
         return descendants
 
-    #TODO: remove?
     def _collect_non_ref(self, results, debug=False):
         result_bubbles = set(results)
         visited = set(result_bubbles)
@@ -268,7 +317,7 @@ class BubbleIndex:
                 sib = self[sib_id]
                 if sib.is_ref() or sib in visited:
                     continue
-                
+
                 component = set()
                 stack = [sib]
                 anchors = {bubble}
@@ -297,10 +346,9 @@ class BubbleIndex:
                         if b not in collected:
                             collected.add(b)
                             results.append(b)
-        
+
         return list(collected)
 
-    
     def get_popped_subgraph(self, bubble_id, stepidx):
         bubble = self[bubble_id]
         if bubble is None:
@@ -308,8 +356,6 @@ class BubbleIndex:
 
         child_bubble_objects = [self[cid] for cid in bubble.children]
 
-        # Include child boundary segments so cross-chain links between
-        # children are found (they were removed from inside by _clean_inside)
         all_segs = set(bubble.source_segments + bubble.sink_segments) | bubble.inside
         for child in child_bubble_objects:
             all_segs.update(child.source_segments + child.sink_segments)

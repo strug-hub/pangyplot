@@ -14,7 +14,7 @@ import math
 from bisect import bisect_right
 from collections import Counter, defaultdict, deque
 from pangyplot.objects.Chain import Chain
-from pangyplot.preprocess.skeleton.graph_simplify import rdp_simplify
+from pangyplot.preprocess.skeleton.skeleton_builder import rdp_simplify
 
 
 # ---------------------------------------------------------------
@@ -258,20 +258,14 @@ def build_chain_polyline(chain, stepidx, seg_index):
         else:
             return None
 
-    # Bubble positions: fractional t along chain by index
-    bubble_positions = []
+    # Bubble t-values: fractional position along chain by index
+    bubble_t = []
     n_bubbles = len(chain.bubbles)
     for idx, b in enumerate(chain.bubbles):
         if b.children:
             continue
         t = idx / max(1, n_bubbles - 1) if n_bubbles > 1 else 0.5
-        bubble_positions.append({
-            "t": round(t, 4),
-            "subtype": b.subtype,
-            "length": b.length,
-            "id": f"b{b.id}",
-            "pos": b.chain_step,
-        })
+        bubble_t.append(round(t, 4))
 
     # Chain position from bubble ordinals (reference-independent)
     ordinals = [b.chain_step for b in chain.bubbles
@@ -318,12 +312,10 @@ def build_chain_polyline(chain, stepidx, seg_index):
     polyline = rdp_simplify(raw_polyline, epsilon)
 
     rounded_polyline = [[round(x, 1), round(y, 1)] for x, y in polyline]
-    polychain_nodes = resample_polychain(rounded_polyline, bp_span, bubble_positions)
 
     return {
         "id": f"c{chain.id}",
         "polyline": rounded_polyline,
-        "polychain_nodes": polychain_nodes,
         "length": total_length,
         "bp_span": bp_span,
         "bp_start": bp_start,
@@ -334,12 +326,11 @@ def build_chain_polyline(chain, stepidx, seg_index):
         "subtype": subtype_counter.most_common(1)[0][0],
         "source_segs": chain.bubbles[0].source_segments,
         "sink_segs": chain.bubbles[-1].sink_segments,
-        "bubble_positions": bubble_positions,
+        "bubble_t": bubble_t,
         "_bubble_ids": [b.id for b in chain.bubbles],
         "_layout_span": span,
         "_start_seg": polyline_start_seg,
         "_end_seg": polyline_end_seg,
-        "step_count": (max_step - min_step) if min_step is not None and max_step is not None else 0,
         "_min_step": min_step if min_step is not None else 0,
         "_max_step": max_step if max_step is not None else 0,
     }
@@ -506,11 +497,6 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
         if "ancestors" not in c:
             c["ancestors"] = list(own_ancestors)
         # Derive parent_bubble/parent_subtype from immediate ancestor
-        if "parent_bubble" not in c and c["ancestors"]:
-            imm = c["ancestors"][-1]
-            c["parent_bubble"] = imm["bubble"]
-            c["parent_subtype"] = imm["subtype"]
-
     return {"chains": all_chains, "bubbles": all_bubbles, "adjacency": all_adj,
             "bypass_links": all_bypasses,
             "bypass_seg_ids": all_bypass_seg_ids,

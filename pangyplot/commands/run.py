@@ -1,5 +1,7 @@
 import os
 import pangyplot.app as app
+from pangyplot.preprocess.skeleton.skeleton_builder import ensure_skeleton
+from pangyplot.db.indexes.ensure_indexes import ensure_indexes
 
 def pangyplot_run(args):
 
@@ -37,6 +39,9 @@ def pangyplot_run(args):
 
 
 
+
+    ensure_indexes(args.dir, args.db, args.ref)
+    ensure_skeleton(args.dir, args.db, args.ref)
 
     app.create_app(args.dir, args.db, args.annotations, args.ref, args.port,
                    development=True, debug=args.debug)
