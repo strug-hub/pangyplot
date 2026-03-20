@@ -2,11 +2,13 @@
 // Shows chain count, bp range, and a button to swap in the core graph viewer canvas.
 
 import { state } from '../../simplify-state.js';
+import { setCanvasMode } from '@app-state';
 import { formatBp } from '../../utils/format-utils.js';
 
 let popupEl = null;
 let coreContainer = null;  // div that holds the core ForceGraph canvas
 let coreViewer = null;     // the ForceGraph instance
+let backBtn = null;        // "Back to Simplify" button shown during core viewer
 
 function ensurePopup() {
     if (popupEl) return popupEl;
@@ -14,7 +16,7 @@ function ensurePopup() {
     popupEl.id = 'selection-popup';
     popupEl.innerHTML = `
         <div class="sp-info"></div>
-        <button class="sp-button">Open in Graph Viewer</button>
+        <button class="sp-button">Open Bubble View</button>
     `;
     popupEl.style.cssText = `
         position: fixed;
@@ -58,6 +60,41 @@ function ensurePopup() {
     });
 
     return popupEl;
+}
+
+function ensureBackButton() {
+    if (backBtn) return backBtn;
+    backBtn = document.createElement('button');
+    backBtn.id = 'back-to-simplify';
+    backBtn.textContent = '\u25C0 Full Chain View';
+    backBtn.style.cssText = `
+        position: absolute;
+        left: 50%;
+        top: 8px;
+        transform: translateX(-50%);
+        z-index: 30;
+        display: none;
+        padding: 6px 14px;
+        background: rgba(20, 20, 20, 0.82);
+        color: #ccc;
+        border: 1px solid #444;
+        border-radius: 4px;
+        font-family: 'SF Mono', Consolas, monospace;
+        font-size: 11px;
+        cursor: pointer;
+    `;
+    backBtn.addEventListener('mouseenter', () => {
+        backBtn.style.background = 'rgba(42, 109, 217, 0.85)';
+        backBtn.style.color = '#fff';
+    });
+    backBtn.addEventListener('mouseleave', () => {
+        backBtn.style.background = 'rgba(20, 20, 20, 0.82)';
+        backBtn.style.color = '#ccc';
+    });
+    backBtn.addEventListener('click', returnToSimplify);
+    const container = document.getElementById('canvas-container');
+    container.appendChild(backBtn);
+    return backBtn;
 }
 
 function getSelectionBpRange() {
@@ -120,6 +157,15 @@ async function switchToCoreViewer() {
     coreViewer = initCoreViewer(coreContainer, coords);
 
     state.coreViewerActive = true;
+    setCanvasMode('core');
+
+    // Hide simplify status bars so they don't push down the core canvas
+    const controls = document.getElementById('simplify-controls');
+    const detailBar = document.getElementById('detail-bar');
+    if (controls) controls.style.display = 'none';
+    if (detailBar) detailBar.style.display = 'none';
+
+    ensureBackButton().style.display = 'block';
 }
 
 export function returnToSimplify() {
@@ -130,9 +176,17 @@ export function returnToSimplify() {
     coreContainer.innerHTML = '';
     coreViewer = null;
 
-    // Restore simplify canvas
+    // Restore simplify canvas and status bars
     state.canvas.style.display = 'block';
     state.coreViewerActive = false;
+    setCanvasMode('simplify');
+
+    const controls = document.getElementById('simplify-controls');
+    const detailBar = document.getElementById('detail-bar');
+    if (controls) controls.style.display = '';
+    if (detailBar) detailBar.style.display = '';
+
+    if (backBtn) backBtn.style.display = 'none';
 }
 
 export function isCoreViewerActive() {
@@ -163,11 +217,25 @@ export function showSelectionPopup(screenX, screenY) {
         if (chain.length) totalSize += chain.length;
     }
 
+    const rangeText = `${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}`;
     const lines = [];
     lines.push(row('chains', count));
-    lines.push(row('range', `${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}`));
+    lines.push(`<span class="sp-range-link" style="cursor:pointer">${row('range', rangeText, '#5bb8f0')}</span>`);
     if (totalSize > 0) lines.push(row('total size', formatLength(totalSize)));
     info.innerHTML = lines.join('<br>');
+
+    // Make range row clickable
+    const rangeLink = info.querySelector('.sp-range-link');
+    if (rangeLink) {
+        rangeLink.addEventListener('mouseenter', () => {
+            rangeLink.style.textDecoration = 'underline';
+            rangeLink.style.textDecorationColor = '#5bb8f0';
+        });
+        rangeLink.addEventListener('mouseleave', () => {
+            rangeLink.style.textDecoration = 'none';
+        });
+        rangeLink.addEventListener('click', switchToCoreViewer);
+    }
 
     el.style.display = 'block';
 
