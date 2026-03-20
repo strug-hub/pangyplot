@@ -45,7 +45,7 @@ Quick Links
           <div class="icon-text">
           <div class="icon-label">Paper</div>
           <div class="icon-description">
-            <a href="https://doi.org/xxx">biorxiv</a>.
+            <a href="https://doi.org/10.1101/2025.10.31.684064">biorxiv</a>.
           </div>
           </div>
       </div>
@@ -66,17 +66,17 @@ If you use PangyPlot in your research, please cite:
 
 .. code-block:: text
 
-   Mastromatteo, Scott., *et al.* (2025). PangyPlot: xxx. *bioRxiv*.
-   https://doi.org/10.1101/xxxxxxx
+   Mastromatteo, Scott., *et al.* (2025). Beyond reference bias: Making pangenomes accessible with PangyPlot. *bioRxiv*.
+   https://doi.org/10.1101/2025.10.31.684064
 
 .. code-block:: bibtex
 
    @article{Mastromatteo2025pangyplot,
-     title = {PangyPlot: xxx},
+     title = {Beyond reference bias: Making pangenomes accessible with PangyPlot},
      author = {Mastromatteo, Scott and ...},
      journal = {bioRxiv},
      year = {2025},
-     doi = {10.1101/xxxxxxx}
+     doi = {10.1101/2025.10.31.684064}
    }
 
 .. toctree::

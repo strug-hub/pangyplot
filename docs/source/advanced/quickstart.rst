@@ -50,7 +50,7 @@ Quick Start - Loading Prepared Data
    mkdir -p datastore/graphs/hprc.prepared
    mv chrY datastore/graphs/hprc.prepared/chrY
 
-   python pangyplot.py run --db hprc.clip --ref GRCh38
+   python pangyplot.py run --db hprc.prepared --ref GRCh38
 
 .. dropdown:: What is it doing?
 

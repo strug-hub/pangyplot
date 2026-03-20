@@ -1,6 +1,8 @@
-# Bubble Link System
+# Bubble Link System (ARCHIVED)
 
-Developer notes on the bubble/chain/link serialization layer — the most complex part of the backend. Companion to `codebase-notes/backend-query.md`.
+> **This document is historical.** The BubbleJunction class, Chain.serialize(), Chain.get_chain_links(), and the 3-variant link pattern described here were all deleted in the canonical s→s link refactor. The backend now returns pure GFA s→s links; link resolution happens on the frontend via `viewState`. See `backend-query.md` for the current architecture.
+
+Developer notes on the pre-refactor bubble/chain/link serialization layer.
 
 ---
 

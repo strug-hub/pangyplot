@@ -67,20 +67,6 @@ When a node is selected, information about that node will be displayed here. Ico
         <div class="icon-description">A bubble containing one or more segments.</div>
       </div>
     </div>
-    <div class="icon-item">
-      <i class="fa-solid fa-right-to-bracket"></i>
-      <div class="icon-text">
-        <div class="icon-label">Bubble Source</div>
-        <div class="icon-description">The source node for a bubble. Revealed when a bubble is popped.</div>
-      </div>
-    </div>
-    <div class="icon-item">
-      <i class="fa-solid fa-right-from-bracket"></i>
-      <div class="icon-text">
-        <div class="icon-label">Bubble Sink</div>
-        <div class="icon-description">The sink node for a bubble. Revealed when a bubble is popped.</div>
-      </div>
-    </div>
   </div>
 
 

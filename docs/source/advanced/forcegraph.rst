@@ -66,3 +66,8 @@ Rendering functionality is found here:
 ``pangyplot/static/js/graph/render/``
 
 These scripts either override or extend the default force-graph behavior.
+
+Chromosome View
+-------------------
+
+PangyPlot also includes a chromosome-scale view that displays the full chromosome as chain polylines, with progressive detail as the user zooms in. See :ref:`chromosome-view` for more details.

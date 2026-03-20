@@ -77,24 +77,32 @@ Quick indexes use Python `array` module (typed arrays) for memory efficiency. Th
 
 `pangyplot/objects/`:
 - **`Bubble`** — a pangenome variation bubble with source/sink segments, inside segments, children (nested bubbles), siblings, chain membership
-- **`Chain`** — an ordered sequence of bubbles; serializes to `{nodes, links}` for the frontend
+- **`Chain`** — an ordered sequence of bubbles along a linear variation path
 - **`Segment`**, **`Link`**, **`Path`** — GFA primitives
-- **`BubbleJunction`** — the visible "collapsed" node representing a bubble in the graph view
 
 ### Frontend
 
-Single-page app in `pangyplot/static/js/` using d3-force-graph. Templates are Jinja2 in `pangyplot/templates/`. The main view is a force-directed graph where bubbles can be "popped" (expanded) interactively via the `/pop` API endpoint.
+Two viewers in `pangyplot/static/js/`: a core force-directed graph viewer (`graph/`) using d3-force-graph, and a simplify viewer (`simplify/`) using raw canvas for multi-resolution skeleton exploration. Templates are Jinja2 in `pangyplot/templates/`. Bubbles can be "popped" (expanded) interactively via the `/pop` API endpoint.
 
 ### Key API endpoints
 
 | Endpoint | Description |
 |----------|-------------|
+| `GET /` | Renders core viewer |
+| `GET /simplify` | Renders simplify (multi-resolution skeleton) viewer |
 | `GET /select?genome=&chromosome=&start=&end=` | Returns bubble graph (nodes+links) for a genomic region |
 | `GET /pop?id=&genome=&chromosome=` | Expands a bubble node into its internal subgraph |
 | `GET /path?genome=&chromosome=&start=&end=&sample=` | Returns a sample's haplotype path through a region |
+| `GET /pathorder?genome=&chromosome=` | Returns sample ordering for frontend color mapping |
 | `GET /genes?genome=&chromosome=&start=&end=` | Returns gene annotations for a region |
+| `GET /search?type=&query=` | Searches genes by name |
 | `GET /chromosomes` | Lists available chromosomes |
+| `GET /cytoband?chromosome=` | Returns cytoband data for ideogram |
 | `GET /samples` | Lists available samples/haplotypes |
+| `GET /skeleton?chromosome=` | Returns precomputed simplification data |
+| `GET /chains?genome=&chromosome=&start=&end=` | Returns chain decomposition for a region |
+| `GET /detail-tiles?genome=&chromosome=&start=&end=&ppbp=` | Returns high-resolution tiles for detail view |
+| `GET /chain-graph?id=&genome=&chromosome=` | Returns subgraph for a specific chain |
 
 ### Organism/cytoband configuration
 

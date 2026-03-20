@@ -52,10 +52,10 @@ Interactions
 
    <div class="icon-list">
       <div class="icon-item">
-         <i class="fa-solid fa-arrow-pointer"></i>
+         <i class="fa-solid fa-up-down-left-right"></i>
          <div class="icon-text">
-            <div class="icon-label">Selection Mode <code>default</code></div>
-            <div class="icon-description">Click nodes to select and drag.</div>
+            <div class="icon-label">Pan/Zoom Mode <code>default</code></div>
+            <div class="icon-description">Click and drag to pan the view. Use mouse wheel to zoom in and out.</div>
          </div>
       </div>
 
@@ -68,10 +68,10 @@ Interactions
       </div>
 
       <div class="icon-item">
-         <i class="fa-solid fa-up-down-left-right"></i>
+         <i class="fa-solid fa-arrow-pointer"></i>
          <div class="icon-text">
-            <div class="icon-label">Pan/Zoom Mode <code>shift key</code></div>
-            <div class="icon-description">Click and drag to pan the view. Use mouse wheel to zoom in and out.</div>
+            <div class="icon-label">Selection Mode <code>shift key</code></div>
+            <div class="icon-description">Click nodes to select. Drag to create a selection rectangle.</div>
          </div>
       </div>
 

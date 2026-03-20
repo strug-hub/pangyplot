@@ -8,6 +8,8 @@ Developer notes on the backend data flow, index classes, domain objects, and coo
 
 | Endpoint | Params | Purpose |
 |---|---|---|
+| `GET /` | — | Renders core viewer |
+| `GET /simplify` | — | Renders simplify (multi-resolution skeleton) viewer |
 | `GET /select` | genome, chromosome, start, end | Primary query: bubble graph for genomic region |
 | `GET /pop` | id, genome, chromosome | Expand a collapsed bubble node into its subgraph |
 | `GET /path` | genome, chromosome, start, end, sample | Sample haplotype path through a region |
@@ -17,6 +19,10 @@ Developer notes on the backend data flow, index classes, domain objects, and coo
 | `GET /samples` | — | Lists all samples/haplotypes |
 | `GET /chromosomes` | noncanonical (optional) | Lists available chromosomes |
 | `GET /cytoband` | chromosome | Cytoband data for ideogram |
+| `GET /skeleton` | chromosome | Precomputed simplification data |
+| `GET /chains` | genome, chromosome, start, end, expand, bubble | Chain decomposition for a region |
+| `GET /detail-tiles` | genome, chromosome, start, end, ppbp, expand | High-resolution tiles for detail view |
+| `GET /chain-graph` | id, genome, chromosome | Subgraph for a specific chain |
 
 All endpoints delegate to `pangyplot/db/query.py`. Errors raise `ValueError`, caught as JSON 404.
 
@@ -27,9 +33,12 @@ All endpoints delegate to `pangyplot/db/query.py`. Errors raise `ValueError`, ca
 Thin layer bridging routes to index classes.
 
 Key functions:
-- **`get_bubble_graph(indexes, genome, chrom, start, end)`** — main `/select` handler
-- **`pop_bubble(indexes, id, genome, chrom)`** — expands a bubble via `BubbleIndex.get_popped_subgraph()`
-- **`get_bubble_end(indexes, id, genome, chrom)`** — returns source/sink endpoint subgraph (`b123:0`, `b123:1`)
+- **`get_bubble_graph(indexes, genome, chrom, start, end)`** — main `/select` handler; returns bubbles + boundary links (pure s→s GFA links)
+- **`pop_bubble(indexes, id, genome, chrom)`** — expands a bubble via `BubbleIndex.get_popped_subgraph()`; returns `{source_segs, sink_segs, child_bubbles, nodes, links}`
+- **`get_chains(indexes, genome, chrom, start, end, expand_threshold, bubble_threshold)`** — `/chains` handler; decomposes top-level bubbles into polyline chains
+- **`get_chain_graph(indexes, chain_id, genome, chrom)`** — `/chain-graph` handler; builds hybrid subgraph for a chain (leaf bubbles as nodes, superbubbles auto-popped one level)
+- **`get_detail_tile(indexes, genome, chrom, start, end, ppbp, ...)`** — `/detail-tiles` handler; chains + junction graph + bypass links for the simplify detail layer
+- **`get_bubbles_subgraph(indexes, bubble_ids, genome, chrom)`** — builds subgraph from a list of bubble IDs
 - **`get_path(indexes, genome, chrom, start, end, sample)`** — calls `Path.subset_path()` to extract portion
 - **`get_path_order(indexes, genome, chrom)`** — returns sample ordering index
 
@@ -92,9 +101,9 @@ Key methods:
   3. Recurse into children (`_traverse_descendants`) to find leaf bubbles
   4. Group by `chain_id`, create `Chain` objects
 - **`get_popped_subgraph(bubble_id, stepidx)`** — expand a bubble:
-  - Emits `BubbleJunction` source+sink
+  - Returns `{source_segs, sink_segs, child_bubbles, child_bubble_objects, nodes, links}`
   - Gets inner segments+links via `gfaidx.get_subgraph()`
-  - Recursively gets child bubbles → chains
+  - Recursively gets child bubbles
 - `segment_in_bubble(seg_id)` — O(1) typed array lookup
 - `[bubble_id]` — fetch Bubble by ID (FIFO cached)
 
@@ -136,7 +145,7 @@ Represents a pangenome variation bubble (a divergence + reconvergence).
 
 Key fields: `id`, `chain`, `chain_step`, `parent`, `children`, `siblings[2]`, `subtype`, `source_segments[]`, `sink_segments[]`, `inside{set}`, `range_inclusive[]`, `range_exclusive[]`, `length`, `gc_count`, `n_count`, `x1,y1,x2,y2`, `link_data`
 
-Key methods: `serialize()`, `is_contained(start_step, end_step)`, `emit_junctions(gfaidx)`, `get_chain_link(gfaidx)`
+Key methods: `serialize()`, `is_contained(start_step, end_step)`, `correct_source_sink()`, `get_source_segments()`, `get_sink_segments()`
 
 ### `Chain`
 
@@ -144,25 +153,15 @@ An ordered sequence of bubbles forming a linear variation path.
 
 Fields: `id`, `bubbles[]` (sorted by `chain_step`), `parent_bubble`, `gfaidx`
 
-Methods: `serialize()` → `{"nodes": bubbles, "links": chain_links}`, `decompose()`, `get_chain_links()`
-
-### `BubbleJunction`
-
-The visible source or sink endpoint of an expanded bubble in the popped view.
-
-ID format: `"b{bubble_id}:0"` (source) or `"b{bubble_id}:1"` (sink)
-
-Fields: `bubble`, `is_source`, `contained{set}`, `segments[]`, `length`, `is_chain_end`
-
-Method: `get_popped_links()` → `{chain_links, deletion_links, end_links, child_links}`
+Methods: `source_bubble()`, `sink_bubble()`, `chain_step_range()`, `get_internal_segment_ids()`
 
 ### `Link`
 
 Graph edge between segments.
 
-Key fields: `from_id`, `to_id`, `from_strand`, `to_strand`, `haplotype` (hex bitmask of which samples have it), `frequency`, `link_type` (`"link"`, `"chain"`, `"deletion"`, `"self-destruct"`, …), `contained[]`, `deletion_bubble_id`
+Key fields: `from_id`, `to_id`, `from_strand`, `to_strand`, `from_type`, `to_type`, `haplotype` (hex bitmask of which samples have it), `frequency`, `link_type`, `contained[]`
 
-Methods: `serialize()`, `combine_links()` (OR haplotypes), `update_to_chain_link()`, `flip()`
+Methods: `serialize()`, `clone()`, `flip()`, `update_to_chain_link()`, `id()`, `gfa_id()`
 
 ### `Segment`
 
@@ -205,16 +204,17 @@ SQLite wrapper modules: `bubble_db.py`, `step_db.py`, `segment_db.py`, `link_db.
 GET /select?genome=GRCh38&chromosome=chr7&start=23128355&end=23200010
 
 routes.select()
-  └─ query.get_bubble_graph(app, "GRCh38", "chr7", 23128355, 23200010)
-       ├─ stepidx = app.step_index[("chr7", "GRCh38")]
-       ├─ bubbleidx = app.bubble_index["chr7"]
+  └─ query.get_bubble_graph(indexes, "GRCh38", "chr7", 23128355, 23200010)
        ├─ stepidx.query_coordinates(23128355, 23200010) → (start_step, end_step)
-       ├─ bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
+       ├─ bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=False)
        │    ├─ Binary search bubble start_steps
-       │    ├─ _traverse_descendants() for nested bubbles
-       │    └─ Group → Chain objects
-       └─ chain.serialize() → {"nodes": [...], "links": [...]}
+       │    └─ _traverse_descendants() for nested bubbles → flat list of Bubble objects
+       ├─ Collect boundary segments (source_segments + sink_segments of all bubbles)
+       ├─ gfaidx.get_subgraph(boundary_segs, stepidx) → raw s→s links
+       └─ Return {"nodes": [b.serialize()...], "links": [l.serialize()...]}
 ```
+
+Backend returns pure GFA s→s links. The frontend's `viewState` singleton maps segment IDs to owning bubble records and resolves raw links to visual b→b/s→b endpoints at render time.
 
 ---
 

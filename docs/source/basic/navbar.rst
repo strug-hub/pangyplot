@@ -6,7 +6,7 @@ Navigation Bar
 Navigation Bar Buttons
 --------------------------
 
-.. figure:: ../_images/ui/navbar.svg
+.. figure:: ../_images/ui/navbar.png
    :alt: navbar
    :align: center
    :width: 800px
@@ -69,11 +69,7 @@ Navigation Bar Buttons
 Instance Information
 --------------------------
 
-.. figure:: ../_images/ui/navbar_instance.svg
-   :alt: navbar instance info
-   :align: center
-   :width: 400px
+Version number of PangyPlot is shown on the right side of the navigation bar, along with the genome build used for the cytoband display. Organism and genome build is specified during setup.
 
-   Instance information is shown on the right side.
-
-Version number of PangyPlot is shown along with genome build used for the cytoband display. Organism and genome build is specified during setup. 
+.. tip::
+   ``Ctrl`` + click (or ``Cmd`` + click) on the version overlay to toggle debug mode.

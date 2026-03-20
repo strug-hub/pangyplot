@@ -1,6 +1,8 @@
-# Bubble Link Refactor — Problem Diagnosis
+# Bubble Link Refactor — Problem Diagnosis (COMPLETED)
 
-Diagnosis of complexity in the bubble/chain/link serialization layer, and options for cleanup. The goal is to minimize backend changes.
+> **This refactor is complete.** The "Frontend Resolution" approach was implemented: the backend now emits only canonical s→s links, and the frontend's `viewState` resolves them to visual endpoints. BubbleJunction was deleted entirely.
+
+Historical diagnosis of complexity in the pre-refactor bubble/chain/link serialization layer.
 
 ---
 

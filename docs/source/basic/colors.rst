@@ -282,10 +282,26 @@ Depending on the mode selected, the colors will either be used to form as a cont
           </div>
 
           <div class="icon-item">
+          <i class="fa-solid fa-map-location"></i>
+          <div class="icon-text">
+               <div class="icon-label">Position <code>continuous</code></div>
+               <div class="icon-description">The color is determined by the genomic position along the reference path.</div>
+          </div>
+          </div>
+
+          <div class="icon-item">
           <i class="fa-solid fa-dna"></i>
           <div class="icon-text">
                <div class="icon-label">GC Content <code>continuous</code></div>
                <div class="icon-description">The color is determined by the GC percentage of all basepairs represented by a node (with the human genome averaging ~41%).</div>
+          </div>
+          </div>
+
+          <div class="icon-item">
+          <i class="fa-solid fa-droplet"></i>
+          <div class="icon-text">
+               <div class="icon-label">Solid <code>discrete</code></div>
+               <div class="icon-description">A single uniform color is applied to all nodes.</div>
           </div>
           </div>
      </div>

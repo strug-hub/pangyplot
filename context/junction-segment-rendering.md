@@ -1,4 +1,6 @@
-# Junction Segment Rendering Problem
+# Junction Segment Rendering (HISTORICAL)
+
+> **Note:** The force-based activation system described under "The old approach" has been fully removed. The current rendering approach (thin gray segment lines) is stable. This document is kept for context on why the simpler approach was chosen.
 
 ## What are junction segments?
 

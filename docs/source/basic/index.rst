@@ -11,6 +11,7 @@ Basic Usage
    navbar
    regions
    visuals
+   chromosome-view
    tools
    colors
 

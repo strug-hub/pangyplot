@@ -6,14 +6,14 @@ Choosing a Region
 Selecting by Chromosome
 --------------------------
 
-.. figure:: ../_images/ui/chromosome_selector.svg
+.. figure:: ../_images/ui/chromosome_selector.png
    :alt: chromosome selector
    :align: center
    :width: 800px
 
    Genome cytoband selector.
 
-.. figure:: ../_images/ui/locus_selector.svg
+.. figure:: ../_images/ui/locus_selector.png
    :alt: locus selector
    :align: center
    :width: 800px
@@ -33,7 +33,7 @@ Selecting by Gene
 
 Gene annotations data is specified during setup. The gene search bar will search for any preloaded genes. The last four searches are saved as buttons.
 
-.. figure:: ../_images/ui/gene_selector.svg
+.. figure:: ../_images/ui/gene_selector.png
    :alt: gene selector
    :align: center
    :width: 800px
@@ -50,7 +50,7 @@ PangyPlot uses a coordinate system based on one of the reference paths embedded 
 
    Selection methods above will fill the <i class="fas fa-crosshairs"></i> with a set of coordinates.</p>
 
-.. figure:: ../_images/ui/coordinate_selector.svg
+.. figure:: ../_images/ui/coordinate_selector.png
    :alt: coordinate section
    :align: center
    :width: 800px

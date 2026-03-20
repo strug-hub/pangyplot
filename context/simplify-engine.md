@@ -1,55 +1,97 @@
 # Simplify Viewer — Module Architecture
 
-The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. Restructured from 17 flat files into a core-style hierarchy with `render/`, `engines/`, `data/`, `lod/`, `utils/` subdirectories (24 files total).
+The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. Organized into a core-style hierarchy with `skeleton/`, `detail/`, `engines/`, `render/`, `data/`, `ui/`, `utils/` subdirectories (56 files total).
 
 ## Module Map
 
 ```
 pangyplot/static/js/simplify/
-├── simplify-app.js                   Entry point: init(), wire up modules
-├── simplify-state.js                 Singleton: shared mutable state + DOM refs + constants
+├── simplify-app.js                        Entry point: init(), wire up modules
+├── simplify-state.js                      Singleton: shared mutable state + DOM refs + constants
+├── render-manager.js                      Top-level draw(), RAF scheduling
 ├── render/
-│   ├── render-manager.js             Main draw(), RAF scheduling, detail bar DOM update
-│   ├── viewport.js                   getViewport(), precomputeBboxes(), fitToScreen()
-│   ├── painter/
-│   │   ├── skeleton-painter.js       Skeleton LOD layer: polylines, junctions, gene overdraw
-│   │   ├── detail-painter.js         Detail layer: chains, junction nodes/links, selections
-│   │   ├── force-painter.js          Force graph: D3 simulation nodes + links
-│   │   └── simplify-painter.js       Core app drawing primitives + colors for popped nodes
-│   └── annotation/
-│       └── gene-label-renderer.js    Gene landmarks + screen-space label rendering
+│   ├── viewport.js                        getViewport(), precomputeBboxes(), fitToScreen()
+│   ├── export-simplify.js                 SVG + PNG export via right-click context menu
+│   └── simplify-svg-utils.js              SVG rendering helpers
+├── skeleton/
+│   ├── data/
+│   │   ├── skeleton-data.js               Skeleton data structures + parsing
+│   │   ├── skeleton-init.js               Skeleton initialization
+│   │   └── gene-data.js                   Gene annotation data management
+│   ├── render/
+│   │   ├── skeleton-painter.js            Skeleton LOD layer: polylines, junctions
+│   │   ├── skeleton-render-manager.js     Orchestrates skeleton rendering passes
+│   │   ├── skeleton-base-overlay.js       Base skeleton overlay drawing
+│   │   ├── skeleton-gene-overlay.js       Gene landmark rendering on skeleton
+│   │   └── skeleton-hover-overlay.js      Hover highlight overlay for skeleton
+│   └── engines/
+│       └── skeleton-hover-engine.js       Skeleton-level hover hit-testing
+├── detail/
+│   ├── data/
+│   │   ├── bubble-pop-adapter.js          Pop response → force simulation nodes
+│   │   ├── bubble-unpop-adapter.js        Undo pop, restore parent bubble
+│   │   ├── force-data.js                  Force simulation data management
+│   │   ├── simplify-view-state.js         Segment → owning bubble mapping (like core viewState)
+│   │   └── polychain/
+│   │       ├── polychain-adapter.js       API response → polychain elements
+│   │       ├── polychain-fetcher.js       Viewport-based polychain data fetching
+│   │       ├── polychain-gene-map.js      Gene annotation mapping to polychains
+│   │       ├── polychain-tile-cache.js    Tile caching for polychain data
+│   │       └── activation-data.js         Budget-based chain activation for force sim
+│   ├── render/
+│   │   ├── detail-painter.js              Detail layer: chains, junction nodes/links
+│   │   ├── force-render-manager.js        Force graph rendering orchestration
+│   │   ├── highlight-painter.js           Selection highlight rendering
+│   │   ├── physics-debug-painter.js       Physics debug visualization
+│   │   └── polychain/
+│   │       └── polychain-render-manager.js  Polychain-specific rendering
+│   └── engines/
+│       ├── force-engine.js                D3-force simulation management
+│       ├── node-hover-engine.js           Force-node-level hover
+│       └── polychain/
+│           ├── polychain-force-engine.js  Force simulation for polychain graphs
+│           ├── polychain-hover-engine.js  Polychain hover hit-testing
+│           └── polychain-pop-engine.js    Pop/unpop for polychains
 ├── engines/
-│   ├── engine-manager.js             Orchestrator: sets up all interaction engines
-│   ├── keyboard-engine.js            L-key physics debug toggle
+│   ├── engine-manager.js                  Orchestrator: sets up all interaction engines
+│   ├── keyboard-engine.js                 Keyboard shortcuts (L-key debug, etc.)
+│   ├── lod-engine.js                      LOD level management
+│   ├── detail-transition-engine.js        Fade transition between skeleton ↔ detail
+│   ├── physics-activation-engine.js       Budget-based physics zone activation
+│   ├── reference-spine-engine.js          Reference spine coordinate transforms
+│   ├── simplify-context-menu.js           Right-click context menu
 │   ├── navigation/
-│   │   ├── pan-zoom-engine.js        Pan, drag, zoom (wheel), dblclick reset, resize
-│   │   └── hash-navigation.js        URL hash: parse, navigate, debounced update
-│   ├── selection/
-│   │   ├── hover-engine.js           Cursor readout + hover hit-test
-│   │   └── multi-selection-engine.js Shift+drag rect, X-key pop, Escape clear, C-key toggle
-│   └── bubble-pop/
-│       └── chain-pop-engine.js       Pop/unpop state machine, fade animation, seed force
+│   │   ├── pan-zoom-engine.js             Pan, drag, zoom (wheel), dblclick reset, resize
+│   │   └── hash-navigation.js            URL hash: parse, navigate, debounced update
+│   └── selection/
+│       ├── hover-engine.js                Cursor readout + hover hit-test
+│       ├── multi-selection-engine.js      Shift+drag rect, X-key pop, Escape clear
+│       └── selection-popup.js             Selection info popup with "Open Bubble View" action
 ├── data/
-│   ├── detail-fetcher.js             Single-viewport fetch, response parsing, debounced trigger
-│   ├── detail-adapter.js             API response → core elements for force simulation
-│   ├── detail-tile-cache.js          TileCache class (bp-space tile caching)
-│   ├── simplify-force.js             D3-force simulation for popped chain subgraphs
-│   └── spine.js                      Reference spine: coordinate transforms (x↔bp, x→y)
-├── lod/
-│   ├── lod.js                        Auto-LOD: selectLevel(), grid meter display
-│   └── physics-zone.js               BFS activation zone debug overlay
+│   ├── chromosome-data.js                 Chromosome metadata management
+│   └── chromosome-loader.js               Chromosome data loading
+├── ui/
+│   ├── polychain-force-settings.js        Runtime force parameter sliders
+│   ├── status-bar.js                      Status bar with viewport info
+│   ├── tooltip-formatter.js               Tooltip content formatting
+│   ├── ui-bridge.js                       Bridge between simplify and shared UI
+│   └── viewport-sync.js                   Viewport synchronization
 └── utils/
-    ├── hit-test.js                   Chain/bubble/skeleton hover detection, tooltip formatting
-    └── format-utils.js               formatBp(), subtypeColor()
+    ├── color-hash.js                      Color hashing utilities
+    ├── format-utils.js                    formatBp(), subtypeColor()
+    ├── frame-scheduler.js                 RAF frame scheduling
+    └── geometry.js                        Geometry utilities
 ```
 
 ## Key Dependencies
 
-- `render-manager.js` orchestrates: skeleton-painter, detail-painter, gene-label-renderer, physics-zone
-- `detail-fetcher.js` ↔ `chain-pop-engine.js` have a circular import (safe: no top-level calls)
-- `engine-manager.js` wires: pan-zoom-engine, hover-engine, multi-selection-engine, keyboard-engine
+- `render-manager.js` orchestrates: skeleton-render-manager, detail-painter, polychain-render-manager
+- `engine-manager.js` wires: pan-zoom-engine, hover-engine, multi-selection-engine, keyboard-engine, lod-engine, detail-transition-engine, physics-activation-engine, reference-spine-engine, simplify-context-menu
+- `skeleton/` is self-contained: own data, render, and engine layers for the coarse zoom level
+- `detail/` is self-contained: own data (polychain fetcher/adapter), render, and engines for fine zoom
+- `detail/data/polychain/` handles progressive data loading with tile caching and budget-based activation
 - All painters import `simplify-state.js` for zoom/pan/opacity
-- Force simulation (`data/simplify-force.js`) imported by force-painter and chain-pop-engine
+- `selection-popup.js` enables "Open Bubble View" to switch to core viewer for deep inspection
 
 ## Key Patterns
 
@@ -61,12 +103,11 @@ pangyplot/static/js/simplify/
 
 ### Module-Local State
 Some state is private to its module rather than shared:
-- `data/spine.js`: Float64Arrays (spineX, spineBp, spineY, spineStep), chromosome name
-- `render/annotation/gene-label-renderer.js`: genePins array (accessed via `getGenePins()`)
-- `data/detail-fetcher.js`: fadeStartTime, fetchController, fetchTimer, fetchedRegion
-- `render/render-manager.js`: rafId
+- `engines/reference-spine-engine.js`: spine coordinate transforms (x↔bp, x→y)
+- `skeleton/data/gene-data.js`: gene pins array
+- `detail/data/polychain/polychain-fetcher.js`: fetchController, fetchTimer, fetchedRegion
 - `engines/navigation/hash-navigation.js`: hashTimer
-- `lod/physics-zone.js`: activationSet, adjacency, viewport snapshot
+- `engines/physics-activation-engine.js`: activationSet, adjacency, viewport snapshot
 
 ### Side-Effect-Free Viewport Functions
 `resizeCanvas()` and `fitToScreen()` do not call `scheduleFrame()`. Callers are responsible for triggering redraws. This prevents render↔viewport cycles.
@@ -83,166 +124,59 @@ none → fading-in → static
 
 ## Template (`simplify.html`)
 - CSS stays inline (consistent with main `index.html`)
-- HTML body unchanged
-- JS replaced with:
+- Uses import maps for `@event-bus` and `@app-state` aliases (shared with core)
+- JS entry:
   ```html
   <script>window.__SIMPLIFY_CONFIG = { genome: '{{ genome }}' };</script>
   <script type="module" src="…/simplify-app.js"></script>
   ```
 
-## Detail Layer: Progressive Chain-to-Graph Zoom
+## Architecture: Skeleton / Detail Duality
 
-The detail layer is a progressive zoom system where chain polylines serve as
-placeholders that get replaced by actual bubble-segment graph views as the
-user zooms in. The goal is a seamless visual transition from skeleton → chains
-→ full pangyplot graph.
+The viewer has two distinct rendering layers that crossfade based on zoom level:
 
-### Three Canvas Layers (back to front)
+### Skeleton Layer (`skeleton/`)
+- Coarse zoom level: polylines representing chain paths + gene landmarks
+- Self-contained data/render/engine modules
+- Skeleton-specific hover with chain ancestry tooltips
+- Gene overlay with hide/show + custom color persistence
 
-1. **Skeleton polylines** — static, faded when detail is active
-2. **Chain polylines** — static, for chains too complex to expand
-3. **Force-simulated nodes+links** — for "popped" chains showing their
-   internal bubble-segment graph
+### Detail Layer (`detail/`)
+- Fine zoom level: polychains with bubble-segment graph subgraphs
+- **Polychain system** (`detail/data/polychain/`): chains rendered as polylines with RDP simplification, fetched via `/detail-tiles` API with tile caching
+- **Budget-based activation** (`activation-data.js`): chains sorted by complexity, greedily filled up to POP_BUDGET for force simulation
+- **Force simulation** (`detail/engines/force-engine.js`, `polychain/polychain-force-engine.js`): D3-force for popped chain nodes with anchoring to polyline endpoints
+- **Bubble pop/unpop** (`bubble-pop-adapter.js`, `bubble-unpop-adapter.js`, `polychain-pop-engine.js`): expand individual bubbles within popped chains
+- **View state** (`simplify-view-state.js`): segment → owning bubble mapping, like core viewer's viewState
 
-### Chain Polylines (placeholder layer)
-- **Uniform thickness**: `Math.max(1.5, 3 / zoom)` — matches skeleton
-- **RDP simplification** applied. Walks min_step to max_step at adaptive stride
-- Expand threshold derived from skeleton's current `cellSize * 2`
-- Chains too complex to pop (>50 bubbles) stay as polylines
-
-### Chain Popping (graph layer)
-When the detail layer activates, chains under a complexity threshold (budget
-of 2000 total bubbles) are "popped" — their polyline is replaced by actual
-bubble-segment nodes+links from the `/select` API, rendered with d3-force
-physics and core pangyplot colors via `simplify-painter.js`.
-
-**Single simulation**: One d3-force simulation for all popped nodes. Chain
-polylines and skeleton polylines are NOT in the simulation — they're static
-canvas draws. A faint dashed guide polyline is drawn behind popped chains
-to show the chain path.
-
-**Anchoring**: Source/sink nodes of each popped chain are pinned (`fx`/`fy`)
-to the chain polyline endpoints. This physically connects the expanded
-bubble subgraph to the adjacent chain polylines. Interior nodes are held
-by link forces between the pinned endpoints + weak anchor forces toward
-their ODGI layout centroids. Diamond indicators mark anchor points.
-
-**Zoom-out collapse**: On zoom-out, `collapseToAnchors()` releases fixed
-positions and increases anchor force strength (0.6), pulling all nodes back
-to their home positions. After 400ms settling, the detail layer fades out.
-If the user zooms back in during collapse, `restoreAnchors()` re-pins the
-anchor nodes and restores normal force strength.
-
-**Complexity gate**: Chains are sorted by bubble count (smallest first) and
-greedily filled up to the POP_BUDGET (2000). Connector chains are excluded.
-
-### Implementation Pieces
-
-**Piece 1 — Force simulation infrastructure**
-Add an empty d3-force simulation to the simplify canvas. Skeleton and chain
-polylines render unchanged. The simulation exists but has no nodes yet.
-New module: `simplify-force.js`.
-
-**Piece 2 — Chain popping: data fetch**
-When detail activates, for each chain under a complexity threshold, fetch its
-bubble-segment subgraph via existing API endpoints. Batch if possible.
-Store popped graph data alongside chain polyline data.
-
-**Piece 3 — Node+link rendering on canvas**
-Draw popped nodes (circles/rects) and links (lines) on the canvas in the
-same data-space transform as the skeleton. Use existing color/sizing logic
-from the main app's painters where possible (imported, not copied).
-
-**Piece 4 — Force anchoring and zoom-out collapse**
-Add anchor forces that pin popped nodes to their chain polyline region.
-On zoom-out past the detail threshold, increase anchor strength to collapse
-nodes back onto the polyline, then swap to polyline representation.
-
-### Design Constraints
-- **No changes to core pangyplot app** — this is a sandbox experiment
-- **Reuse existing API endpoints** (`/select`, `/pop`) — no new backend routes
-- **d3.js already loaded** in `simplify.html` template
-- **Canvas-based rendering** — consistent with skeleton, no SVG/WebGL
-
-## Next Steps
-- Integrate with main app's chromosome selector / navigation
-- Share format-utils with main codebase (DRY)
-- Add touch event support for mobile
-- Consider extracting gene landmarks to server-side annotation data
+### Cross-Layer Features
+- **Color integration**: all 7 core color modes work on the simplify canvas (via eventBus)
+- **Gene annotations**: gene table with visibility toggles + custom colors, persisted
+- **Bubble view switching**: selection popup offers "Open Bubble View" to switch to core viewer
+- **SVG/PNG export**: right-click context menu for canvas export
+- **Force settings UI** (`ui/polychain-force-settings.js`): runtime parameter sliders
+- **Junction graph**: naked GFA segments between chains rendered with physics
 
 ---
 
-## Detail Layer: Single Viewport Fetch + Visual Connectivity
+## Detail Layer Implementation Notes
 
-### Single Viewport Fetch (replaced tile grid)
+### Data Fetching (`polychain-fetcher.js`)
+- Single-viewport fetch for the entire visible region (plus 30% margin) in **layout coordinates**
+- `fetchedRegion` tracks last buffered region; no re-fetch while viewport stays inside
+- `AbortController` cancels in-flight requests before starting new ones
+- Tile cache (`polychain-tile-cache.js`) for recently-fetched regions
 
-`detail.js` previously fetched fixed-width tiles and stitched them with a `TileCache`. This caused chain splitting at tile boundaries — the decomposition ran independently per tile, so the same chain could appear differently on each side of a boundary.
+### Chain Hierarchy
+- Backend decomposes large chains (e.g. c122 → c122_r1, c122_r2, c123…)
+- Child chains carry `parent_chain` field in API response
+- Tooltips walk ancestry chain: `"c122_r1 > c122 > c5"`
 
-**Replacement**: one fetch for the entire visible region (plus 30% margin).
+### Junction Graph
+- Naked GFA segments between chains are fetched as part of `/detail-tiles` response
+- `find_junction_graph()` in backend does BFS from chain endpoints through non-bubble segments
+- Frontend renders junction segments with physics simulation
+- `junction_seg_chains` maps junction segment IDs to adjacent chain IDs for link resolution
 
-- Module-level `fetchedRegion = { minX, maxX, chr, expandThreshold }` tracks the last buffered region in **layout coordinates** (not bp). No re-fetch while the viewport stays inside this region.
-- bp conversion happens only at the moment the API URL is built.
-- On pan past the 30% margin, a new single fetch fires and replaces all chain data atomically — no boundary artifacts.
-- `clearDetailState()` resets `fetchedRegion` and `state.detailData` together.
-- `fetchController` (AbortController) cancels any in-flight request before starting a new one.
-
-### Chain Hierarchy: `parent_chain` Field
-
-When the backend decomposes a large chain (e.g. c122 → c122_r1, c122_r2, c123, c621…), child chains and connector runs now carry `parent_chain: "c122"` in the API response.
-
-- Set in `_decompose_chain()` for child chains from expanded superbubbles.
-- Set in `_build_connector()` for leaf-bubble connector runs.
-- Parsed in `detail.js` `processResponse()` as `parentChain`.
-
-### Visual Gap-Fillers (dashed lines between siblings)
-
-`render.js drawDetail()` groups chains by `parentChain`, sorts each sibling group by first-point x, then draws dashed grey lines from the last point of each sibling to the first point of the next. This bridges the visual gap at chain boundaries where the parent chain was decomposed.
-
-```js
-// In drawDetail():
-const byParent = new Map();
-for (const chain of state.detailData.chains) {
-    if (!chain.parentChain) continue;
-    ...
-}
-// Sorted by polyline[0][0], dashed from aPl[-1] to bPl[0]
-```
-
-Style: `strokeStyle '#aaa'`, `lineWidth max(0.8, 1.8/zoom)`, `globalAlpha 0.5`.
-
-### Inter-Chain Connectors (naked GFA segments)
-
-Some top-level chains (e.g. c625, c82, c371) have no shared `parentChain` but are visually adjacent in the skeleton because they are connected via short naked GFA segments — segments not owned by any bubble.
-
-**Backend** (`query.py: _find_inter_chain_connectors`):
-- Builds a map of all chain endpoint segments (both `source_segs` and `sink_segs` of all returned chains).
-- For each chain, BFS **undirected** (all GFA neighbors, not just forward) from each endpoint segment through naked segments (`bubbleidx.segment_in_bubble(nxt) is None`).
-- Stops when reaching another chain's endpoint segment — records a connector polyline from the path segment centroids.
-- Deduplicates chain pairs with `tuple(sorted([from_chain_id, to_chain_id]))`.
-- MAX_HOPS = 8.
-- Result appended to `/detail-tiles` response as `"inter_connectors"`.
-
-Why undirected: GFA strand orientation doesn't reliably align with the chain's visual left→right direction; a forward BFS from sink_segs misses connections that flow "backward" through junction segments.
-
-**Frontend** (`render.js`):
-- Draws connector polylines before chain polylines (underneath).
-- **Extends** each connector to the nearest endpoint of the `from_chain` and `to_chain` rendered polylines (using squared-distance comparison), so connector lines visually attach to the chain polyline tips rather than stopping at the raw segment centroid.
-
-```js
-const nearestEnd = (pl, pt) =>
-    dist2(pl[0], pt) <= dist2(pl[pl.length-1], pt) ? pl[0] : pl[pl.length-1];
-// draws: chain_A_endpoint → [naked seg centroids] → chain_B_endpoint
-```
-
-Style: `strokeStyle '#888'`, `lineWidth max(0.8, 1.8/zoom)`, `globalAlpha 0.5`, solid line.
-
-### Chain Ancestry in Tooltips
-
-`hit-test.js formatTooltip()` walks the ancestry chain when hovering a detail-mode chain:
-1. Start with `chain.parentChain` (the decomposition parent, e.g. `"c122"`)
-2. Walk `state.data.chainMeta[numId].parent` to climb the skeleton hierarchy
-3. Builds a string like `"c122_r1 > c122 > c5"` matching skeleton hover tooltip style.
-
-### Skeleton Opacity in Detail Mode
-
-When detail mode is active, the skeleton fades to `skeletonOpacity = 0.06` (floor), giving the detail chains visual priority while keeping the skeleton as a faint reference.
+### Skeleton Opacity
+When detail mode is active, skeleton fades to `skeletonOpacity = 0.06` (floor).
