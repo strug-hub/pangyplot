@@ -8,7 +8,7 @@
 
 import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import { getForceNodes, getForceLinks } from '../force-data.js';
-import { addPoppedNodes } from '../../engines/force-engine.js';
+import { addPoppedNodes, removeNodesByChainIds } from '../../engines/force-engine.js';
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 
@@ -170,6 +170,41 @@ export function initPolychainLayer() {
     }
 
     // 2. Deserialize junction graph nodes + links
+    processJunctionGraph(dd, allNodes, allLinks);
+
+    // 4. Shared-segment links: adjacent chains sharing an endpoint seg
+    const seenSharedPairs = new Set();
+    for (const chain of dd.chains) {
+        for (const sid of (chain.sinkSegs || [])) {
+            const key = `s${sid}`;
+            const sinkNode = chainPolychainNodes.get(chain.id);
+            if (!sinkNode || sinkNode.length === 0) continue;
+            const tail = sinkNode[sinkNode.length - 1];
+            for (const other of dd.chains) {
+                if (other.id === chain.id) continue;
+                if (!(other.sourceSegs || []).includes(sid)) continue;
+                const otherNodes = chainPolychainNodes.get(other.id);
+                if (!otherNodes || otherNodes.length === 0) continue;
+                const otherHead = otherNodes[0];
+                if (tail === otherHead) continue;
+                const pairKey = `${tail.iid}↔${otherHead.iid}`;
+                if (seenSharedPairs.has(pairKey)) continue;
+                seenSharedPairs.add(pairKey);
+                allLinks.push(makeInterChainLink(tail, otherHead, String(sid), String(sid)));
+            }
+        }
+    }
+
+    if (allNodes.length > 0) {
+        addPoppedNodes(allNodes, allLinks);
+    }
+}
+
+/**
+ * Process junction graph nodes + links into force-sim objects.
+ * Shared by both init and incremental paths.
+ */
+function processJunctionGraph(dd, allNodes, allLinks) {
     const jg = dd.junctionGraph;
     const jls = dd.junctionLinks;
     const junctionNodeIdSet = new Set();
@@ -259,7 +294,6 @@ export function initPolychainLayer() {
                 kinks[i].y = raw.y1 + t * (raw.y2 - raw.y1);
                 kinks[i].homeX = kinks[i].x;
                 kinks[i].homeY = kinks[i].y;
-                // No fx/fy — junction nodes are free too
             }
         }
 
@@ -297,7 +331,7 @@ export function initPolychainLayer() {
 
         allLinks.push(...jLinks);
 
-        // 3. Endpoint-to-endpoint junction links (neither seg in junction graph)
+        // Endpoint-to-endpoint junction links (neither seg in junction graph)
         if (jls && jls.length > 0) {
             for (const jl of jls) {
                 const segA = `s${jl.segs[0]}`;
@@ -320,33 +354,6 @@ export function initPolychainLayer() {
                 allLinks.push(makeInterChainLink(pnA, pnB, String(jl.segs[0]), String(jl.segs[1])));
             }
         }
-    }
-
-    // 4. Shared-segment links: adjacent chains sharing an endpoint seg
-    const seenSharedPairs = new Set();
-    for (const chain of dd.chains) {
-        for (const sid of (chain.sinkSegs || [])) {
-            const key = `s${sid}`;
-            const sinkNode = chainPolychainNodes.get(chain.id);
-            if (!sinkNode || sinkNode.length === 0) continue;
-            const tail = sinkNode[sinkNode.length - 1];
-            for (const other of dd.chains) {
-                if (other.id === chain.id) continue;
-                if (!(other.sourceSegs || []).includes(sid)) continue;
-                const otherNodes = chainPolychainNodes.get(other.id);
-                if (!otherNodes || otherNodes.length === 0) continue;
-                const otherHead = otherNodes[0];
-                if (tail === otherHead) continue;
-                const pairKey = `${tail.iid}↔${otherHead.iid}`;
-                if (seenSharedPairs.has(pairKey)) continue;
-                seenSharedPairs.add(pairKey);
-                allLinks.push(makeInterChainLink(tail, otherHead, String(sid), String(sid)));
-            }
-        }
-    }
-
-    if (allNodes.length > 0) {
-        addPoppedNodes(allNodes, allLinks);
     }
 }
 
@@ -389,21 +396,9 @@ export function addChainsToPolychainLayer(newChains, dd) {
         }
     }
 
-    // 3. Endpoint-to-endpoint junction links involving new chains
-    const jls = dd.junctionLinks;
-    if (jls && jls.length > 0) {
-        for (const jl of jls) {
-            const segA = `s${jl.segs[0]}`;
-            const segB = `s${jl.segs[1]}`;
-            const pnA = segToPolychain.get(segA);
-            const pnB = segToPolychain.get(segB);
-            if (!pnA || !pnB || pnA === pnB) continue;
-            const aIsNew = newChainIds.has(pnA.chainId);
-            const bIsNew = newChainIds.has(pnB.chainId);
-            if (!aIsNew && !bIsNew) continue;
-            allLinks.push(makeInterChainLink(pnA, pnB, String(jl.segs[0]), String(jl.segs[1])));
-        }
-    }
+    // 3. Remove old junction nodes from sim, then rebuild from current data
+    removeNodesByChainIds(new Set(['__junction__']));
+    processJunctionGraph(dd, allNodes, allLinks);
 
     if (allNodes.length > 0 || allLinks.length > 0) {
         addPoppedNodes(allNodes, allLinks);
