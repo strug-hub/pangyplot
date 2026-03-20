@@ -25,6 +25,12 @@ export function initCoreViewer(containerEl, coords) {
     fg.element = containerEl;
     fg.canvas = canvas;
 
+    // Ensure the container can receive keyboard events
+    if (!containerEl.hasAttribute('tabindex')) {
+        containerEl.setAttribute('tabindex', '0');
+    }
+    containerEl.addEventListener('click', () => containerEl.focus());
+
     canvas.ctx = canvas.getContext('2d');
     fg.getZoomFactor = function () {
         return this.canvas.__zoom["k"];
