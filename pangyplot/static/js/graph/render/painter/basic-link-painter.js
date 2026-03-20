@@ -2,7 +2,7 @@ import { getLinkColor } from '../color/color-style.js';
 import { drawLineSvg, drawRotatedCrossSvg } from './painter-svg-utils.js';
 import { drawLine, drawRotatedCross } from './painter-utils.js';
 import { getScaleFactor } from '../render-scaling.js';
-import { mixColors } from '../color/color-utils.js';
+import { mixColors } from '@color-utils';
 
 export function basicLinkPainter(ctx, link, svg=null){
     if (! link.isVisible || !link.isDrawn) return;

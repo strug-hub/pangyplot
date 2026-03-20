@@ -7,6 +7,7 @@ import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painte
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
 import { createBlendGroup, drawGeneLabelSvg } from '../../render/simplify-svg-utils.js';
+import { hexToRgba } from '@color-utils';
 
 // Persistent map: gene name → current animated dodge offset (screen px above default).
 // Survives across frames so we can lerp toward the target.
@@ -275,12 +276,4 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
 /** Clear animated label positions (call on chromosome switch). */
 export function clearLabelAnimation() {
     animatedOffset.clear();
-}
-
-/** Convert hex color (#rrggbb) to rgba string with given alpha. */
-function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

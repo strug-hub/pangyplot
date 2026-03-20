@@ -1,4 +1,4 @@
-import { rgbStringToHex, stringToColor } from "../../../render/color/color-utils.js";
+import { rgbStringToHex, stringToColor } from "@color-utils";
 
 class AnnotationRecord {
     constructor(id, name) {

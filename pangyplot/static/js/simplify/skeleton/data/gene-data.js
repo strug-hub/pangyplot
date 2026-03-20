@@ -1,7 +1,7 @@
 // Gene landmark data: dynamic API fetch with caching and MANE Select filter.
 
 import { bpToX, xToY } from '../../engines/reference-spine-engine.js';
-import { geneColor } from '../../utils/color-hash.js';
+import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../simplify-state.js';
 import { populateGeneAnnotationsTable } from '../../../graph/engines/gene-annotation/gene-annotation-ui.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
@@ -124,7 +124,7 @@ function placeGenes() {
             if (sy > maxY) maxY = sy;
         }
         const name = gene.gene || gene.id;
-        const color = customColors.get(name) || geneColor(name);
+        const color = customColors.get(name) || rgbStringToHex(stringToColor(name));
 
         genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
     }
@@ -136,7 +136,7 @@ function populateSimplifyGeneTable() {
     const entries = geneCache.map(gene => {
         const name = gene.gene || gene.id;
         const pin = genePins.find(p => p.name === name);
-        const color = pin ? pin.color : geneColor(name);
+        const color = pin ? pin.color : rgbStringToHex(stringToColor(name));
         return {
             id: gene.id,
             name,

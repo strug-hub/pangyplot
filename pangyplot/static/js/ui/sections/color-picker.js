@@ -28,6 +28,7 @@ document.querySelectorAll('.color-picker-node').forEach(picker => {
         const color3 = document.getElementById('color-picker-node-3').value;
         colorPresetGroup.deselectAll();
         applyGradient(color1, color2, color3);
+        eventBus.publish('color:updated', { type: "node", color1, color2, color3 });
     });
 });
 
@@ -62,7 +63,7 @@ bgColorPicker.addEventListener('change', function(event) {
     eventBus.publish('color:updated', colorData);
 });
 linkColorPicker.addEventListener('change', function(event) {
-    const colorData = { type: "link", color: bgColorPicker.value };
+    const colorData = { type: "link", color: linkColorPicker.value };
     eventBus.publish('color:updated', colorData);
 });
 

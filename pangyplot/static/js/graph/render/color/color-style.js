@@ -1,5 +1,5 @@
 import { colorState } from './color-state.js';
-import { getGradientColor } from './color-utils.js';
+import { getGradientColor } from '@color-utils';
 import { calculateGCNode, calculateGCLink } from './color-smooth.js'
 
 export function getLinkColor(link) {

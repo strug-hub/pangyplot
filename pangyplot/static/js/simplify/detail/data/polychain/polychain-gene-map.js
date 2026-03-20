@@ -5,13 +5,13 @@
 
 import { cumulativeLengths, interpolateAtDist } from './polychain-adapter.js';
 import { getGenePins, isGeneVisible } from '../../../skeleton/data/gene-data.js';
-import { geneHaloColor } from '../../../utils/color-hash.js';
+import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../../simplify-state.js';
 import { scheduleFrame } from '../../../utils/frame-scheduler.js';
 
 function getGeneColor(name) {
     const pin = getGenePins().find(p => p.name === name);
-    return pin ? pin.color : geneHaloColor(name);
+    return pin ? pin.color : rgbStringToHex(stringToColor(name));
 }
 
 // Gene cache (independent from skeleton gene-data.js)

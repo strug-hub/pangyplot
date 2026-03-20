@@ -2,7 +2,7 @@ import { getNodeColor } from '../color/color-style.js';
 import { drawCircleSvg } from './painter-svg-utils.js';
 import { drawCircle} from './painter-utils.js';
 import { getZoomLevel, getScaleFactor } from '../render-scaling.js';
-import { mixColors } from '../color/color-utils.js';
+import { mixColors } from '@color-utils';
 
 
 export function basicNodePainter(ctx, node, svg=null) {
