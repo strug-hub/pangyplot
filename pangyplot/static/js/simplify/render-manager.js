@@ -2,7 +2,9 @@
 
 import { state } from './simplify-state.js';
 import { colorState } from '../graph/render/color/color-state.js';
-import { setDrawCallback } from './utils/frame-scheduler.js';
+import { setDrawCallback, scheduleFrame } from './utils/frame-scheduler.js';
+import { updateLegend } from '../graph/render/color/legend/legend-manager.js';
+import eventBus from '@event-bus';
 import { getViewport } from './render/viewport.js';
 import { isPhysicsDebugActive } from './engines/physics-activation-engine.js';
 import { drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './detail/render/physics-debug-painter.js';
@@ -105,3 +107,7 @@ function draw() {
 }
 
 setDrawCallback(draw);
+updateLegend();
+
+// Redraw when color state changes (style, presets, individual pickers)
+eventBus.subscribe('color:updated', () => scheduleFrame());

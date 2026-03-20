@@ -1,21 +1,23 @@
 // Detail render pipeline: culling, orchestration.
 
 import { state } from '../../../simplify-state.js';
-import { colorState } from '../../../../graph/render/color/color-state.js';
+import { getNodeColor } from '../../../../graph/render/color/color-style.js';
 import { strokePolyline, strokePolylines } from '../detail-painter.js';
 import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '../../../skeleton/data/gene-data.js';
 
-function getVisibleChainPolylines(chains) {
-    const base = [];
+function getVisibleChainPolylinesByColor(chains) {
+    const byColor = new Map();
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
-        // Read live positions from force sim polychain nodes, fall back to static
         const live = getPolychainPositions(chain.id);
-        base.push(live || chain.polyline);
+        const pl = live || chain.polyline;
+        const color = getNodeColor(chain);
+        if (!byColor.has(color)) byColor.set(color, []);
+        byColor.get(color).push(pl);
     }
-    return base;
+    return byColor;
 }
 
 function getSelectedPolylines() {
@@ -101,11 +103,10 @@ export function drawDetail(svg = null) {
     // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
     drawGeneOverlays(ctx, opacity, baseWidth, svg);
 
-    // 2. Chain polylines
-    const visible = getVisibleChainPolylines(state.detailData.chains);
-
-    if (visible.length > 0) {
-        strokePolylines(ctx, visible, colorState.nodeColors[2], baseWidth, 0.75 * opacity, svg);
+    // 2. Chain polylines (grouped by color style)
+    const polylinesByColor = getVisibleChainPolylinesByColor(state.detailData.chains);
+    for (const [color, polylines] of polylinesByColor) {
+        strokePolylines(ctx, polylines, color, baseWidth, 0.75 * opacity, svg);
     }
 
     // 3. Selection highlight

@@ -132,10 +132,12 @@ export function getChainTooltip(chain) {
         label = parts.join(' > ');
     }
 
+    const gcPct = chain.length > 0 ? ((chain.gcCount / chain.length) * 100).toFixed(1) + '%' : '?';
     return {
         chain: label,
         type: chain.subtype,
         length: chain.length,
+        gc: gcPct,
         steps: chain.stepCount,
         bubbles: chain.nBubbles,
         polyline: (getPolychainPositions(chain.id) || chain.polyline).length,

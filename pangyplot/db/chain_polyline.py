@@ -214,6 +214,7 @@ def build_chain_polyline(chain, stepidx, seg_index):
         return None
 
     total_length = 0
+    total_gc = 0
     subtype_counter = Counter()
     raw_polyline = []
 
@@ -230,6 +231,7 @@ def build_chain_polyline(chain, stepidx, seg_index):
     counted_boundary_segs = set()
     for b in chain.bubbles:
         total_length += b.length
+        total_gc += b.gc_count
         # Add unique boundary segment lengths (shared between adjacent bubbles)
         for sid in b.source_segments + b.sink_segments:
             if sid not in counted_boundary_segs:
@@ -325,6 +327,7 @@ def build_chain_polyline(chain, stepidx, seg_index):
         "polyline": rounded_polyline,
         "polychain_nodes": polychain_nodes,
         "length": total_length,
+        "gc_count": total_gc,
         "bp_span": bp_span,
         "bp_start": bp_start,
         "bp_end": bp_end,

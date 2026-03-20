@@ -16,8 +16,9 @@ export const colorState = {
     textOutline: "#000000",
     style: "node_type",
 
-    smoothGC: false
+    smoothGC: false,
 
+    positionRange: [0, 1],
 };
 
 export function setNodeColors(c1, c2, c3) {

@@ -7,6 +7,8 @@ import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
 import { getGenePins, isGeneVisible } from '../../skeleton/data/gene-data.js';
+import { getNodeColor } from '../../../graph/render/color/color-style.js';
+import { colorState } from '../../../graph/render/color/color-state.js';
 
 export function drawForceGraph(ctx, baseWidth, svg = null) {
     const nodes = getForceNodes();
@@ -35,7 +37,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
         if (link.isDel) {
             delSegs.push(seg);
         } else if (link.isKinkLink) {
-            const color = s.type === 'bubble' ? '#F2DC0F' : '#0762E5';
+            const color = getNodeColor(s);
             if (!kinkByColor.has(color)) kinkByColor.set(color, []);
             kinkByColor.get(color).push(seg);
         } else if (link.type === 'chain') {
@@ -45,19 +47,18 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
         }
     }
 
-    // --- Categorize nodes (needed for gene halos before links) ---
-    const bubbleCircles = [];
-    const segCircles = [];
+    // --- Categorize nodes by color (needed for gene halos before links) ---
+    const nodesByColor = new Map(); // color → [{x, y, r}]
     const geneHaloCircles = new Map(); // color → [{x, y, r}]
 
     for (const node of nodes) {
         if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
         const r = (node.width || 5) * scaleFactor * 0.5;
         const circle = { x: node.x, y: node.y, r };
-        if (node.type === 'bubble') {
-            bubbleCircles.push(circle);
-        } else {
-            segCircles.push(circle);
+        const color = getNodeColor(node);
+        if (!nodesByColor.has(color)) nodesByColor.set(color, []);
+        nodesByColor.get(color).push(circle);
+        if (node.type !== 'bubble') {
             for (const pin of genePins) {
                 if (!isGeneVisible(pin.name)) continue;
                 if (node.x >= pin.startX && node.x <= pin.endX) {
@@ -101,18 +102,18 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
 
     // 2. Chain links (bubble-to-bubble)
     if (chainSegs.length > 0) {
-        strokeSegments(ctx, chainSegs, '#FF6700', 5 * scaleFactor, 0.8 * opacity, svg);
+        strokeSegments(ctx, chainSegs, colorState.nodeColors[2], 5 * scaleFactor, 0.8 * opacity, svg);
     }
 
     // 3. Junction + inter-chain links
     if (junctionSegs.length > 0) {
-        strokeSegments(ctx, junctionSegs, '#969696', Math.max(0.5, 1 / state.zoom), 0.6 * opacity, svg);
+        strokeSegments(ctx, junctionSegs, colorState.linkColor, Math.max(0.5, 1 / state.zoom), 0.6 * opacity, svg);
     }
 
     // 3b. Deletion links with -x- cross at midpoint
     if (delSegs.length > 0) {
         const delWidth = Math.max(0.5, 1 / state.zoom);
-        strokeSegments(ctx, delSegs, '#969696', delWidth, 0.6 * opacity, svg);
+        strokeSegments(ctx, delSegs, colorState.linkColor, delWidth, 0.6 * opacity, svg);
         if (!svg) {
             ctx.globalAlpha = 0.6 * opacity;
             const crossSize = Math.max(3, 6 / state.zoom);
@@ -121,7 +122,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
                 const midX = (x1 + x2) / 2;
                 const midY = (y1 + y2) / 2;
                 const angle = Math.atan2(y2 - y1, x2 - x1);
-                drawRotatedCross(ctx, midX, midY, crossSize, crossWidth, '#969696', angle);
+                drawRotatedCross(ctx, midX, midY, crossSize, crossWidth, colorState.linkColor, angle);
             }
         }
     }
@@ -130,8 +131,9 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
     drawSelectionHighlight(ctx, scaleFactor, opacity, svg);
 
     // 6. Nodes
-    if (bubbleCircles.length > 0) fillCircles(ctx, bubbleCircles, '#F2DC0F', opacity, svg);
-    if (segCircles.length > 0) fillCircles(ctx, segCircles, '#0762E5', opacity, svg);
+    for (const [color, circles] of nodesByColor) {
+        fillCircles(ctx, circles, color, opacity, svg);
+    }
 
     // 6. Hover highlight overlay (gray outline ring) — after nodes (skip during SVG export)
     if (!svg) drawHoverHighlight(ctx, scaleFactor, opacity);

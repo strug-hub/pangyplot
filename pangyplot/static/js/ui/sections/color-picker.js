@@ -1,4 +1,5 @@
 import { setupButtonGroup } from "@ui/components/button-group.js";
+import eventBus from '@event-bus';
 
 const bgColorPicker = document.getElementById('color-picker-bg');
 const linkColorPicker = document.getElementById('color-picker-link');
@@ -36,7 +37,7 @@ function updateColorPickers(color1, color2, color3) {
     document.getElementById('color-picker-node-3').value = color3;
 
     const colorData = { type: "node", color1: color1, color2: color2, color3: color3 };
-    document.dispatchEvent(new CustomEvent("updateColor", { detail: colorData }));
+    eventBus.publish('color:updated', colorData);
 }
 
 document.querySelectorAll('.color-preset-option').forEach(elem => {
@@ -52,17 +53,17 @@ document.querySelectorAll('.color-preset-option').forEach(elem => {
 document.querySelectorAll('.color-style-option').forEach(elem => {
     elem.addEventListener('click', () => {
         const colorData = { type: "style", style: elem.getAttribute('data-style') };
-        document.dispatchEvent(new CustomEvent("updateColor", { detail: colorData }));
+        eventBus.publish('color:updated', colorData);
     });
 });
 
 bgColorPicker.addEventListener('change', function(event) {
     const colorData = { type: "background", color: bgColorPicker.value };
-    document.dispatchEvent(new CustomEvent("updateColor", { detail: colorData }));
+    eventBus.publish('color:updated', colorData);
 });
 linkColorPicker.addEventListener('change', function(event) {
     const colorData = { type: "link", color: bgColorPicker.value };
-    document.dispatchEvent(new CustomEvent("updateColor", { detail: colorData }));
+    eventBus.publish('color:updated', colorData);
 });
 
 

@@ -28,6 +28,7 @@ export function formatTooltipHtml(data) {
     if (data.bubble != null)   lines.push(row('bubble', data.bubble));
     if (data.type != null)     lines.push(row('type', data.type, TYPE_COLORS[data.type]));
     if (data.length != null)   lines.push(row('length', formatLength(data.length)));
+    if (data.gc != null)       lines.push(row('gc', data.gc));
     if (data.bubbles != null)  lines.push(row('bubbles', data.bubbles));
     if (data.polyline != null) lines.push(row('polyline', data.polyline + ' pts'));
     if (data.loop != null)     lines.push(row('loop', data.loop));

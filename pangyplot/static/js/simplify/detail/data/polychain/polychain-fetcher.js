@@ -3,6 +3,7 @@
 // Uses incremental merge: new chains are added, stale chains removed surgically.
 
 import { state } from '../../../simplify-state.js';
+import { colorState } from '../../../../graph/render/color/color-state.js';
 import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
@@ -26,8 +27,19 @@ function processResponse(apiResponse) {
             id: chain.id,
             polyline: chain.polyline,
             length: chain.length,
+            gcCount: chain.gc_count || 0,
             bpSpan: chain.bp_span || chain.length,
             nBubbles: chain.n_bubbles,
+            // Color proxy fields — shape matches what getNodeColor() reads
+            type: 'chain',
+            size: chain.n_bubbles,
+            isRef: chain.bp_start != null,
+            record: {
+                seqLength: chain.length,
+                gcCount: chain.gc_count || 0,
+                start: chain.bp_start ?? null,
+                end: chain.bp_end ?? null,
+            },
             subtype: chain.subtype,
             depth: chain.depth || 0,
             connector: chain.connector || false,
@@ -132,6 +144,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                 start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
             });
             state.detailData = newData;
+            colorState.positionRange = [newData.bpStart, newData.bpEnd];
             initPolychainLayer();
         } else {
             // --- Incremental merge ---
@@ -183,6 +196,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                 chains: mergedChains,
                 totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
             };
+            colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
 
             // Add phantoms + junction links for new chains only
             if (newChains.length > 0) {

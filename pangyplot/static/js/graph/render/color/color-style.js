@@ -134,13 +134,12 @@ function colorByGC(count, total) {
 }
 
 function colorByPosition(start, end) {
-    //TODO
-    return colorState.nullColor;
     if (start == null || isNaN(start) || end == null || isNaN(end)) {
         return colorState.nullColor;
     }
     const position = (start + end) / 2;
-    return getGradientColor(position, GRAPH_START_POS, GRAPH_END_POS, colorState.nodeColors[0]);
+    const [rangeStart, rangeEnd] = colorState.positionRange;
+    return getGradientColor(position, rangeStart, rangeEnd, colorState.nodeColors);
 }
 
 function colorByRef(obj) {
