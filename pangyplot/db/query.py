@@ -425,12 +425,26 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         chain_endpoint_segs.update(cd.get("source_segs") or [])
         chain_endpoint_segs.update(cd.get("sink_segs") or [])
     all_junction_seg_ids = (naked_visited | bypass_seg_ids) - chain_endpoint_segs
+
+    # Filter junction segments to viewport x-range (with 20% buffer).
+    # Uses mmap arrays — no SQLite.  Reduces 28K→~500 segments and
+    # shrinks the payload from ~20MB to <1MB.
+    if all_junction_seg_ids and layout_min_x is not None and layout_max_x is not None:
+        x_span = layout_max_x - layout_min_x
+        buf = x_span * 0.2
+        vp_min = layout_min_x - buf
+        vp_max = layout_max_x + buf
+        all_junction_seg_ids = {
+            sid for sid in all_junction_seg_ids
+            if sid < len(seg_index.x1) and
+               seg_index.x2[sid] >= vp_min and seg_index.x1[sid] <= vp_max
+        }
+
     if all_junction_seg_ids:
         jg_segments, jg_links = gfaidx.get_subgraph(
             all_junction_seg_ids, stepidx, fast=True)
-        # Strip seq and n_count from junction nodes — they're only used
-        # for hover tooltips and dominate the payload (seq alone is ~20MB
-        # for 28K segments).  The frontend handles missing fields gracefully.
+        # Strip seq and n_count from junction nodes — only used for
+        # hover tooltips, not rendering or physics.
         jg_nodes = []
         for s in jg_segments:
             d = s.serialize()
@@ -514,7 +528,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
           f"  junction_ser={_t['junction_serialize']-_t['bypass_merge']:.3f}s"
           f"  total={_t['end']-_s:.3f}s")
 
-    return {
+    result = {
         "tile_start": start,
         "tile_end": end,
         "chains": result_chains,
@@ -525,3 +539,12 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "junction_seg_chains": junction_seg_chains,
         "chain_adjacency": chain_adjacency,
     }
+
+    import json as _json
+    _sizes = {}
+    for k, v in result.items():
+        _sizes[k] = len(_json.dumps(v, default=str)) / 1024
+    _sorted = sorted(_sizes.items(), key=lambda x: -x[1])
+    print(f"    📦 payload breakdown: " + "  ".join(f"{k}={v:.0f}KB" for k, v in _sorted))
+
+    return result

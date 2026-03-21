@@ -193,9 +193,11 @@ def detail_tiles():
     resp = jsonify(result)
     t2 = _time.perf_counter()
     n_chains = len(result.get("chains", []))
-    n_jn = len(result.get("junction_graph", {}).get("nodes", []))
+    jg = result.get("junction_graph", {})
+    n_jn = len(jg.get("nodes", []))
+    n_jl = len(jg.get("links", []))
     payload_kb = resp.content_length / 1024 if resp.content_length else len(resp.get_data()) / 1024
-    print(f"  ⏱ detail-tile total={t2-t0:.3f}s  query={t1-t0:.3f}s  jsonify={t2-t1:.3f}s  chains={n_chains} jnodes={n_jn} payload={payload_kb:.0f}KB")
+    print(f"  ⏱ detail-tile total={t2-t0:.3f}s  query={t1-t0:.3f}s  jsonify={t2-t1:.3f}s  chains={n_chains} jnodes={n_jn} jlinks={n_jl} payload={payload_kb:.0f}KB")
     return resp
 
 @bp.route('/chain-graph', methods=["GET"])
