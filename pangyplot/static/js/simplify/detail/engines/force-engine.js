@@ -1056,3 +1056,17 @@ export function applyPcSettings() {
 export function isSimulating() {
     return sim && sim.alpha() > sim.alphaMin();
 }
+
+let _pausedAlpha = 0;
+
+export function pauseSim() {
+    if (!sim) return;
+    _pausedAlpha = sim.alpha();
+    sim.stop();
+}
+
+export function resumeSim() {
+    if (!sim || _pausedAlpha <= sim.alphaMin()) return;
+    sim.alpha(_pausedAlpha).restart();
+    _pausedAlpha = 0;
+}
