@@ -13,6 +13,7 @@ MMAP_DIR = "segments.mmapindex"
 
 ARRAYS = {
     "length": np.uint32,
+    "gc_count": np.uint32,
     "x1": np.float32,
     "y1": np.float32,
     "x2": np.float32,
@@ -33,6 +34,7 @@ class SegmentIndex:
         max_id = db.get_max_id(self.dir)
 
         self.length = array('I', [0] * (max_id + 1))
+        self.gc_count = array('I', [0] * (max_id + 1))
         self.x1 = array('f', [0.0] * (max_id + 1))
         self.y1 = array('f', [0.0] * (max_id + 1))
         self.x2 = array('f', [0.0] * (max_id + 1))
@@ -43,6 +45,7 @@ class SegmentIndex:
             sid = row["id"]
             self.valid[sid] = 1
             self.length[sid] = row["length"]
+            self.gc_count[sid] = row["gc_count"]
             self.x1[sid] = row["x1"]
             self.y1[sid] = row["y1"]
             self.x2[sid] = row["x2"]
@@ -66,6 +69,8 @@ class SegmentIndex:
         return self.length[seg_id] if seg_id < len(self.length) else 0
 
     def segment_gc_n_count(self, seg_id):
+        if seg_id < len(self.gc_count):
+            return [int(self.gc_count[seg_id]), db.get_segment_gc_n_count(self.dir, seg_id)[1]]
         return db.get_segment_gc_n_count(self.dir, seg_id)
 
     # -- mmap binary index ------------------------------------------------
@@ -131,6 +136,7 @@ class SegmentIndex:
     def serialize(self):
         return {
             "length": self.length.tolist(),
+            "gc_count": self.gc_count.tolist(),
             "x1": self.x1.tolist(),
             "y1": self.y1.tolist(),
             "x2": self.x2.tolist(),
@@ -147,6 +153,7 @@ class SegmentIndex:
             return False
 
         self.length = array('I', quick_index["length"])
+        self.gc_count = array('I', quick_index.get("gc_count", [0] * len(quick_index["length"])))
         self.x1 = array('f', quick_index["x1"])
         self.y1 = array('f', quick_index["y1"])
         self.x2 = array('f', quick_index["x2"])
