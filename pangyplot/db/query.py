@@ -428,8 +428,17 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     if all_junction_seg_ids:
         jg_segments, jg_links = gfaidx.get_subgraph(
             all_junction_seg_ids, stepidx, fast=True)
+        # Strip seq and n_count from junction nodes — they're only used
+        # for hover tooltips and dominate the payload (seq alone is ~20MB
+        # for 28K segments).  The frontend handles missing fields gracefully.
+        jg_nodes = []
+        for s in jg_segments:
+            d = s.serialize()
+            d.pop("seq", None)
+            d.pop("n_count", None)
+            jg_nodes.append(d)
         junction_graph = {
-            "nodes": [s.serialize() for s in jg_segments],
+            "nodes": jg_nodes,
             "links": [l.serialize() for l in jg_links],
         }
         # Build junction_seg_chains: seg_id → list of chain IDs
