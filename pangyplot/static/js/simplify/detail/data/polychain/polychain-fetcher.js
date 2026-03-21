@@ -10,6 +10,8 @@ import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
 import { fetchGenesForDetail } from './polychain-gene-map.js';
 import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
+import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
+import { getForceNodes } from '../force-data.js';
 
 let fetchController = null;
 
@@ -116,10 +118,12 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
 
     state.isFetching = true;
     try {
+        const fetchStart = performance.now();
         const resp = await fetch(url, { signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const apiData = await resp.json();
         if (signal.aborted) return false;
+        updateDetailFetchMs(performance.now() - fetchStart);
 
         const newData = processResponse(apiData);
         const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
@@ -204,6 +208,8 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                 chr,
             };
         }
+        updateDetailForceCount(getForceNodes().length);
+
         // Trigger gene fetch for the visible bp range (fire and forget)
         fetchGenesForDetail(chr, state.GENOME,
             Math.max(0, Math.round(bpLeft)), Math.round(bpRight));

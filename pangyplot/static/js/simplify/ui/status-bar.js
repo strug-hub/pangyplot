@@ -10,6 +10,7 @@ import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
 import { positionTooltip } from '@ui/elements/tooltip.js';
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
+import { renderedJunctionNodes, renderedJunctionLinks } from '../detail/render/force-render-manager.js';
 
 // Hide/show debug bars based on debug mode
 function updateDebugBars(enabled) {
@@ -110,15 +111,35 @@ export function updateViewportBp(vp) {
 /** Flush detail data stats to the detail bar. */
 export function updateDetailBar() {
     if (!state.detailData) return;
-    state.dom.detailChains.textContent = state.detailData.chains.length.toLocaleString();
+    const dd = state.detailData;
+    state.dom.detailChains.textContent = dd.chains.length.toLocaleString();
     state.dom.detailExposed.textContent = '0';
-    state.dom.detailNodes.textContent = (state.detailData.totalBubbles || 0).toLocaleString();
-    if (state.detailData.bpStart != null) {
-        state.dom.detailRange.textContent = `${formatBp(state.detailData.bpStart)}-${formatBp(state.detailData.bpEnd)}`;
+    state.dom.detailNodes.textContent = (dd.totalBubbles || 0).toLocaleString();
+
+    const jg = dd.junctionGraph || { nodes: [], links: [] };
+    const totalJN = jg.nodes.length;
+    const totalJL = (jg.links || []).length;
+    state.dom.detailJNodes.textContent =
+        `${renderedJunctionNodes.toLocaleString()}/${totalJN.toLocaleString()}`;
+    state.dom.detailJLinks.textContent =
+        `${renderedJunctionLinks.toLocaleString()}/${totalJL.toLocaleString()}`;
+
+    if (dd.bpStart != null) {
+        state.dom.detailRange.textContent = `${formatBp(dd.bpStart)}-${formatBp(dd.bpEnd)}`;
     }
     state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
     const steps = viewportStepCount();
     state.dom.detailSteps.textContent = isFinite(steps) ? Math.round(steps).toLocaleString() : '--';
+}
+
+/** Update force node count in detail bar. */
+export function updateDetailForceCount(count) {
+    state.dom.detailForceNodes.textContent = count.toLocaleString();
+}
+
+/** Update fetch timing in detail bar. */
+export function updateDetailFetchMs(ms) {
+    state.dom.detailFetchMs.textContent = ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
 /** Update detail phase indicator (className + text). */

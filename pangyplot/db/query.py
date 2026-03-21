@@ -242,6 +242,10 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     the canonical ``CANONICAL_EXPAND_THRESHOLD`` is always used to ensure
     stable chain IDs across different viewport sizes.
     """
+    import time as _time
+    _t = {}
+    _t['start'] = _time.perf_counter()
+
     expand_threshold = CANONICAL_EXPAND_THRESHOLD
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
@@ -317,6 +321,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    _t['decompose'] = _time.perf_counter()
+
     # --- Strip internal fields, build bubble→chain mapping ---
     _bid_to_chain = {}
     result_chains = []
@@ -333,12 +339,16 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    _t['strip'] = _time.perf_counter()
+
     # --- Junction graph BFS ---
     junction_nodes, junction_links, junction_adj, \
         naked_visited, naked_seg_chains = \
         find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index,
             decomposed_bubbles=decomposed_bubbles)
+
+    _t['junction_bfs'] = _time.perf_counter()
 
     # --- Merge bypass segments into junction nodes/links ---
     if bypass_seg_ids:
@@ -404,6 +414,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 cb = endpoint_coords.get(nxt)
                 if cb:
                     _add_link(ca, cb, sid, nxt)
+
+    _t['bypass_merge'] = _time.perf_counter()
 
     # --- Serialize junction graph (full Segment/Link objects for physics) ---
     # Exclude chain endpoint segments — their geometry overlaps chain polylines
@@ -473,6 +485,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    _t['junction_serialize'] = _time.perf_counter()
+
     # Strip remaining internal fields before sending to frontend
     for cd in result_chains:
         cd.pop("_start_seg", None)
@@ -481,6 +495,15 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         cd.pop("_max_step", None)
         cd.pop("_pl_x_min", None)
         cd.pop("_pl_x_max", None)
+
+    _t['end'] = _time.perf_counter()
+    _s = _t['start']
+    print(f"    ⏱ decompose={_t['decompose']-_s:.3f}s"
+          f"  strip={_t['strip']-_t['decompose']:.3f}s"
+          f"  junction_bfs={_t['junction_bfs']-_t['strip']:.3f}s"
+          f"  bypass_merge={_t['bypass_merge']-_t['junction_bfs']:.3f}s"
+          f"  junction_ser={_t['junction_serialize']-_t['bypass_merge']:.3f}s"
+          f"  total={_t['end']-_s:.3f}s")
 
     return {
         "tile_start": start,

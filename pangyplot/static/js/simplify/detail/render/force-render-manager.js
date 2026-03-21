@@ -10,7 +10,11 @@ import { getGenePins, isGeneVisible } from '../../skeleton/data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
 
-export function drawForceGraph(ctx, baseWidth, svg = null) {
+/** Last-frame rendered junction counts (read by status-bar). */
+export let renderedJunctionNodes = 0;
+export let renderedJunctionLinks = 0;
+
+export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const nodes = getForceNodes();
     const links = getForceLinks();
     if (nodes.length === 0) return;
@@ -20,6 +24,19 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
     const opacity = state.detailOpacity;
 
     if (!svg) ctx.lineCap = 'round';
+
+    // Viewport culling helpers
+    const cull = vp != null;
+    function linkVisible(s, t) {
+        if (!cull) return true;
+        // Visible if either endpoint is inside viewport
+        return (s.x >= vp.minX && s.x <= vp.maxX && s.y >= vp.minY && s.y <= vp.maxY) ||
+               (t.x >= vp.minX && t.x <= vp.maxX && t.y >= vp.minY && t.y <= vp.maxY);
+    }
+    function nodeVisible(x, y) {
+        if (!cull) return true;
+        return x >= vp.minX && x <= vp.maxX && y >= vp.minY && y <= vp.maxY;
+    }
 
     // --- Categorize links ---
     const kinkByColor = new Map();
@@ -32,6 +49,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
         if (link.isPolychainLink) continue;  // rendered as polyline by polychain-render-manager
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
+        if (!linkVisible(s, t)) continue;
         const seg = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
 
         if (link.isDel) {
@@ -47,12 +65,17 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
         }
     }
 
+    renderedJunctionLinks = junctionSegs.length + delSegs.length;
+
     // --- Categorize nodes by color (needed for gene halos before links) ---
     const nodesByColor = new Map(); // color → [{x, y, r}]
     const geneHaloCircles = new Map(); // color → [{x, y, r}]
+    let jNodeCount = 0;
 
     for (const node of nodes) {
         if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
+        if (!nodeVisible(node.x, node.y)) continue;
+        if (node.chainId === '__junction__') jNodeCount++;
         const r = (node.width || 5) * scaleFactor * 0.5;
         const circle = { x: node.x, y: node.y, r };
         const color = getNodeColor(node);
@@ -69,6 +92,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null) {
             }
         }
     }
+    renderedJunctionNodes = jNodeCount;
 
     // 0. Gene halos (both link and node halos, rendered before all links/nodes)
     if (genePins.length > 0) {

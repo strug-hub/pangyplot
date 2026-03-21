@@ -178,7 +178,9 @@ def detail_tiles():
     layout_min_x = request.args.get("layout_min_x", type=float, default=None)
     layout_max_x = request.args.get("layout_max_x", type=float, default=None)
 
+    import time as _time
     print(f"Getting detail tile for {genome}#{chrom}:{start}-{end} ppbp={ppbp:.6f} expand={expand} layout_x=[{layout_min_x},{layout_max_x}]...")
+    t0 = _time.perf_counter()
     try:
         result = query.get_detail_tile(current_app, genome, chrom, start, end,
                                        ppbp, expand_threshold=expand,
@@ -187,7 +189,13 @@ def detail_tiles():
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 
-    return jsonify(result)
+    t1 = _time.perf_counter()
+    resp = jsonify(result)
+    t2 = _time.perf_counter()
+    n_chains = len(result.get("chains", []))
+    n_jn = len(result.get("junction_graph", {}).get("nodes", []))
+    print(f"  ⏱ detail-tile total={t2-t0:.3f}s  query={t1-t0:.3f}s  jsonify={t2-t1:.3f}s  chains={n_chains} jnodes={n_jn}")
+    return resp
 
 @bp.route('/chain-graph', methods=["GET"])
 def chain_graph():

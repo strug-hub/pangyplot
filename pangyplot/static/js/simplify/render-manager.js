@@ -7,6 +7,7 @@ import { updateLegend } from '../graph/render/color/legend/legend-manager.js';
 import eventBus from '@event-bus';
 import { getViewport } from './render/viewport.js';
 import { isPhysicsDebugActive } from './engines/physics-activation-engine.js';
+import { isDebugMode } from '@app-state';
 import { drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './detail/render/physics-debug-painter.js';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
@@ -15,6 +16,13 @@ import { drawGeneLabelOverlay } from './skeleton/render/skeleton-gene-overlay.js
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
 import { getLevelMeta } from './data/chromosome-data.js';
+
+// ---------------------------------------------------------------
+// FPS tracker (debug mode only)
+// ---------------------------------------------------------------
+let _fpsFrames = 0;
+let _fpsLast = performance.now();
+let _fpsDisplay = 0;
 
 // ---------------------------------------------------------------
 // Main draw
@@ -66,7 +74,7 @@ function draw() {
     // ===== DETAIL LAYER (drawn in same data-space transform) =====
     if (state.detailData && state.detailOpacity > 0) {
         drawDetail();
-        drawForceGraph(state.ctx, Math.max(1.5, 3 / state.zoom));
+        drawForceGraph(state.ctx, Math.max(1.5, 3 / state.zoom), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
     }
 
     // ===== PHYSICS DEBUG OVERLAY (data-space) =====
@@ -99,6 +107,24 @@ function draw() {
 
     // --- Gene labels (screen coords) ---
     drawGeneLabelOverlay(ctx, cw);
+
+    // --- FPS counter (debug mode, bottom-right of canvas) ---
+    if (isDebugMode()) {
+        _fpsFrames++;
+        const now = performance.now();
+        if (now - _fpsLast >= 1000) {
+            _fpsDisplay = _fpsFrames;
+            _fpsFrames = 0;
+            _fpsLast = now;
+        }
+        ctx.save();
+        ctx.font = '13px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = _fpsDisplay < 30 ? '#e44' : _fpsDisplay < 50 ? '#f90' : '#0f0';
+        ctx.globalAlpha = 0.8;
+        ctx.fillText(`${_fpsDisplay} fps`, cw - 12, ch - 12);
+        ctx.restore();
+    }
 
     // --- Status bar ---
     updateVisibleCounts(visiblePl, visibleJ);
