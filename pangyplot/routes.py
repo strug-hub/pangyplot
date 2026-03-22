@@ -144,6 +144,19 @@ def skeleton():
     return Response(data, mimetype='application/json',
                     headers={'Content-Encoding': 'gzip'})
 
+@bp.route('/polychain-data')
+def polychain_data_file():
+    chrom = request.args.get('chromosome')
+    if not chrom:
+        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    gz_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "polychain-data.json.gz")
+    if not os.path.exists(gz_path):
+        return jsonify({}), 200
+    with open(gz_path, 'rb') as f:
+        data = f.read()
+    return Response(data, mimetype='application/json',
+                    headers={'Content-Encoding': 'gzip'})
+
 @bp.route('/chains', methods=["GET"])
 def chains():
     genome = request.args.get("genome")
