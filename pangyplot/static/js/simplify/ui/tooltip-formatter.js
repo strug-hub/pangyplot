@@ -20,10 +20,10 @@ export function formatTooltipHtml(data) {
     const lines = [];
 
     if (data.link != null)     lines.push(row('link', data.link, '#999'));
+    if (data.bubble != null)   lines.push(row('bubble', data.bubble));
     if (data.chain != null)    lines.push(row('chain', data.chain));
     if (data.chains != null)   lines.push(row('chains', data.chains));
     if (data.segment != null)  lines.push(row('segment', data.segment));
-    if (data.bubble != null)   lines.push(row('bubble', data.bubble));
     if (data.type != null)     lines.push(row('type', data.type, TYPE_COLORS[data.type]));
     if (data.length != null)   lines.push(row('length', formatBp(data.length, { unit: true })));
     if (data.gc != null)       lines.push(row('gc', data.gc));

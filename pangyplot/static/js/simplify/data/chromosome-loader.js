@@ -5,6 +5,7 @@ import { initSkeleton } from '../skeleton/data/skeleton-init.js';
 import { initSpine } from '../engines/reference-spine-engine.js';
 import { state } from '../simplify-state.js';
 import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
+import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
 
 export async function loadChromosome(chromosome) {
     // Fetch skeleton and polychain data in parallel
@@ -21,6 +22,9 @@ export async function loadChromosome(chromosome) {
         const pdRaw = await pdResp.json();
         initPolychainDataCache(pdRaw);
     }
+
+    // Clear per-chain bubble metadata from previous chromosome
+    clearBubbleMetaCache();
 
     // Spine (shared coordinate infrastructure)
     if (raw.refSpine) initSpine(raw.refSpine);

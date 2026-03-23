@@ -3,6 +3,7 @@
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { getPolychainPositions, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
+import { getBubblePositions } from '../../data/bubble-meta-cache.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -117,6 +118,46 @@ function clipSegmentToRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
         if (ay < minY || ay > maxY) return null;
     }
     return { tMin, tMax };
+}
+
+/**
+ * Hit-test all bubble circles across all visible chains.
+ * Uses precomputed positions from the render pass (stored in bubble-meta-cache).
+ * Returns { x, y, meta, chainId } or null.
+ */
+export function hitTestBubbleCircles(dataX, dataY) {
+    if (!state.detailData || state.detailOpacity < 0.5) return null;
+    const hitR = HIT_RADIUS_PX / state.zoom;
+    let bestDist = hitR;
+    let best = null;
+
+    for (const chain of state.detailData.chains) {
+        const positions = getBubblePositions(chain.id);
+        if (!positions || positions.length === 0) continue;
+        for (const { x, y, meta } of positions) {
+            const d = Math.hypot(dataX - x, dataY - y);
+            if (d < bestDist) {
+                bestDist = d;
+                best = { x, y, meta, chainId: chain.id };
+            }
+        }
+    }
+    return best;
+}
+
+export function getBubbleCircleTooltip(hit) {
+    const meta = hit.meta;
+    const gcPct = meta.length > 0
+        ? ((meta.gc_count / meta.length) * 100).toFixed(1) + '%' : '?';
+    // Trim connector suffix (e.g. "c42:5-10" → "c42")
+    const chainLabel = hit.chainId.split(':')[0];
+    return {
+        bubble: meta.id,
+        chain: chainLabel,
+        type: meta.subtype,
+        length: meta.length,
+        gc: gcPct,
+    };
 }
 
 export function getChainTooltip(chain) {

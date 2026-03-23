@@ -251,6 +251,19 @@ def chain_graph():
 
     return jsonify(graph)
 
+@bp.route('/bubble-meta', methods=["GET"])
+def bubble_meta():
+    chain_id = request.args.get("chain_id", "")
+    chrom = request.args.get("chromosome", "")
+    genome = current_app.genome
+    if not chain_id or not chrom:
+        return jsonify({"error": "Missing chain_id or chromosome"}), 400
+    try:
+        result = query.get_bubble_meta(current_app, genome, chrom, chain_id)
+    except (ValueError, KeyError) as e:
+        return jsonify({"error": str(e)}), 404
+    return jsonify({"bubbles": result})
+
 @bp.route('/select', methods=["GET"])
 def select():
     genome = request.args.get("genome")

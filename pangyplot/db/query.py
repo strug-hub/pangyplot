@@ -2,6 +2,7 @@ from pangyplot.db.chain_polyline import (
     decompose_chain, find_junction_graph,
     _seg_centroid,
 )
+from pangyplot.db.sqlite import bubble_db as db
 
 
 def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
@@ -217,6 +218,78 @@ def get_path(indexes, genome, chrom, start, end, sample):
 def get_path_order(indexes, genome, chrom):
     gfaidx = indexes.gfa_index[chrom]
     return gfaidx.get_sample_idx()
+
+
+def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
+    """Return lightweight per-bubble metadata for a chain.
+
+    raw_chain_id is the frontend chain ID: 'c42' or 'c42:5-10' (connector).
+    Returns a list of dicts with id, t, length, gc_count, size, subtype,
+    bp_start, bp_end, is_ref for each leaf bubble.
+    """
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    if stepidx is None or bubbleidx is None:
+        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found.")
+
+    # Parse chain ID: "c42" or "c42:5-10"
+    stripped = raw_chain_id.lstrip('c')
+    if ':' in stripped:
+        parts = stripped.split(':')
+        chain_id = int(parts[0])
+        step_range = parts[1].split('-')
+        start_step, end_step = int(step_range[0]), int(step_range[1])
+        bubble_ids = db.get_bubble_ids_from_chain(
+            bubbleidx.dir, chain_id, start_step, end_step)
+    else:
+        chain_id = int(stripped)
+        chain_ends = bubbleidx.get_chain_ends(chain_id)
+        if chain_ends is None:
+            return []
+        (_, min_step), (_, max_step) = chain_ends
+        bubble_ids = db.get_bubble_ids_from_chain(
+            bubbleidx.dir, chain_id, min_step, max_step)
+
+    if not bubble_ids:
+        return []
+
+    # Load bubble objects (uses FIFO cache in BubbleIndex)
+    bubbles = [bubbleidx[bid] for bid in bubble_ids]
+
+    # Filter to leaf bubbles (no children) — same as chain_polyline.py
+    leaves = [b for b in bubbles if not b.children]
+    n = len(leaves)
+
+    result = []
+    for idx, b in enumerate(leaves):
+        t = idx / max(1, n - 1) if n > 1 else 0.5
+
+        # Convert step ranges to bp coordinates
+        bp_start = None
+        bp_end = None
+        for rs, re in b.range_inclusive:
+            if rs < len(stepidx.starts):
+                s = stepidx.starts[rs]
+                if bp_start is None or s < bp_start:
+                    bp_start = s
+            if re < len(stepidx.ends):
+                e = stepidx.ends[re]
+                if bp_end is None or e > bp_end:
+                    bp_end = e
+
+        result.append({
+            "id": f"b{b.id}",
+            "t": round(t, 4),
+            "length": b.length,
+            "gc_count": b.gc_count,
+            "size": len(b.inside),
+            "subtype": b.subtype,
+            "bp_start": bp_start,
+            "bp_end": bp_end,
+            "is_ref": len(b.range_inclusive) > 0,
+        })
+
+    return result
 
 
 CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level

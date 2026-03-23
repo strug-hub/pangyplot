@@ -14,10 +14,10 @@ import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
 
-    // --- Ctrl+click: pop/unpop chain or bubble force node ---
+    // --- Ctrl+click: disabled (ctrl is now bubble-browse mode) ---
     canvas.addEventListener('pointerdown', e => {
         if (e.button !== 0 || !(e.ctrlKey || e.metaKey)) return;
-        if (!state.detailData) return;
+        return; // Ctrl reserved for bubble browsing
 
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;

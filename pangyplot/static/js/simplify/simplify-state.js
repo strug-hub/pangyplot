@@ -45,6 +45,7 @@ export const state = {
     // Hover
     hoveredChain: null,
     hoveredBubble: null,
+    hoveredBubbleCircle: null,  // { x, y, meta, chainId } — ctrl+hover bubble browsing
     hoveredForceNode: null,   // popped node from force simulation
     hoveredSkeletonPl: null,  // {plIdx, chainId}
 
@@ -60,6 +61,7 @@ export const state = {
     // Constants
     DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
     DETAIL_EXIT_THRESHOLD: 700,   // exit detail when targetGridSize > this (hysteresis)
+    BUBBLE_CIRCLE_GRID_THRESHOLD: 50,   // show bubble dots when targetGridSize <= this
     PHYSICS_NODE_BUDGET: 1500,    // max estimated D3 nodes for physics zone
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
