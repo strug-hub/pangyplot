@@ -151,7 +151,7 @@ function intraChainRepulsion() {
                     const b = group[j];
                     const dx = b.x - a.x;
                     const dy = b.y - a.y;
-                    const dist = Math.hypot(dx, dy) || 1;
+                    const dist = Math.max(1, Math.hypot(dx, dy));
                     const push = scale / (dist * dist);
                     const ux = dx / dist * push;
                     const uy = dy / dist * push;
@@ -745,7 +745,7 @@ export function addPoppedNodes(nodes, links) {
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
 
-    sim.alpha(0.3).restart();
+    sim.alpha(0.1).restart();
 }
 
 export function removePoppedNodes(chainId) {
