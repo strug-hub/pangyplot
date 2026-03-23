@@ -466,7 +466,7 @@ def generate_skeleton(chr_dir, ref, chrom):
     bubble_to_chain = bubble_db.get_bubble_chain_map(chr_dir)
     chain_stats = bubble_db.get_chain_stats(chr_dir)
     chain_ids = None
-    if seg_to_bubble and bubble_to_chain:
+    if seg_to_bubble is not None and bubble_to_chain:
         chain_ids = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
     print(" Done.")
 
