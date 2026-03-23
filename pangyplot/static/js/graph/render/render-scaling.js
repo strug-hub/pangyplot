@@ -1,3 +1,6 @@
+import { getCanvasWidth, getCanvasHeight } from '../ui/ui-canvas-size.js';
+import eventBus from '@event-bus';
+
 const scaleSettings = {
     constantScale: 2,
     widthMultiplier: 2,
@@ -70,7 +73,34 @@ export function getTextScaleFactor(ctx) {
 }
 
 
+function updateMinZoomFromGraph(forceGraph) {
+    const nodes = forceGraph.graphData().nodes;
+    if (nodes.length === 0) return;
+
+    const xs = nodes.map(n => n.x);
+    const ys = nodes.map(n => n.y);
+    const graphWidth = Math.max(...xs) - Math.min(...xs);
+    const graphHeight = Math.max(...ys) - Math.min(...ys);
+
+    if (graphWidth === 0 && graphHeight === 0) return;
+
+    const canvasWidth = getCanvasWidth();
+    const canvasHeight = getCanvasHeight();
+
+    // At zoom k, visible extent = canvasDim / k.
+    // Limit to 2x graph extent: canvasDim / k <= 2 * graphDim => k >= canvasDim / (2 * graphDim)
+    const minZoomX = graphWidth > 0 ? canvasWidth / (2 * graphWidth) : 0;
+    const minZoomY = graphHeight > 0 ? canvasHeight / (2 * graphHeight) : 0;
+    const minZoom = Math.max(minZoomX, minZoomY, 1e-6);
+
+    forceGraph.minZoom(minZoom);
+}
+
 export function setUpRenderScaling(forceGraph) {
         forceGraph.minZoom(1e-6) //default = 0.01
         forceGraph.maxZoom(1) //default = 1000
+
+        eventBus.subscribe("graph:data-replaced", () => {
+            setTimeout(() => updateMinZoomFromGraph(forceGraph), 600);
+        });
 }
