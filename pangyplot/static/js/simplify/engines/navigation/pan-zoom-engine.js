@@ -6,6 +6,7 @@ import { scheduleDetailFetch, exitDetailMode } from '../detail-transition-engine
 import { scheduleHashUpdate } from '../../engines/navigation/hash-navigation.js';
 import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
 import { scheduleViewportPublish } from '../../ui/viewport-sync.js';
+import { pauseForInteraction, resumeAfterInteraction } from '../force-interaction-gate.js';
 
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
@@ -25,6 +26,7 @@ export function setupPanZoom(canvas) {
 
     window.addEventListener('mousemove', e => {
         if (!state.isDragging) return;
+        pauseForInteraction();
         state.panX = e.clientX - state.dragStartX;
         state.panY = e.clientY - state.dragStartY;
         scheduleFrame();
@@ -34,6 +36,7 @@ export function setupPanZoom(canvas) {
     window.addEventListener('mouseup', () => {
         if (!state.isDragging) return;
         state.isDragging = false;
+        resumeAfterInteraction();
         const hovering = state.hoveredChain || state.hoveredForceNode || state.hoveredBubble || state.hoveredSkeletonPl;
         canvas.style.cursor = hovering ? 'default' : 'grab';
         scheduleHashUpdate();
@@ -43,6 +46,7 @@ export function setupPanZoom(canvas) {
     // --- Wheel zoom ---
     canvas.addEventListener('wheel', e => {
         e.preventDefault();
+        pauseForInteraction();
         const rect = canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
@@ -57,6 +61,7 @@ export function setupPanZoom(canvas) {
         scheduleDetailFetch();
         scheduleHashUpdate();
         scheduleViewportPublish();
+        resumeAfterInteraction();  // debounced — resumes 150ms after last wheel event
     }, { passive: false });
 
     // --- Resize ---

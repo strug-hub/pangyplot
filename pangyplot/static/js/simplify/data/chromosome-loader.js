@@ -1,14 +1,30 @@
-// Fetch chromosome skeleton data and distribute to stores.
+// Fetch chromosome skeleton + polychain data and distribute to stores.
 
 import { setLevelMeta, setChainMeta } from './chromosome-data.js';
 import { initSkeleton } from '../skeleton/data/skeleton-init.js';
 import { initSpine } from '../engines/reference-spine-engine.js';
 import { state } from '../simplify-state.js';
+import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
+import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
 
 export async function loadChromosome(chromosome) {
-    const resp = await fetch(`/skeleton?chromosome=${encodeURIComponent(chromosome)}`);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const raw = await resp.json();
+    // Fetch skeleton and polychain data in parallel
+    const [skelResp, pdResp] = await Promise.all([
+        fetch(`/skeleton?chromosome=${encodeURIComponent(chromosome)}`),
+        fetch(`/polychain-data?chromosome=${encodeURIComponent(chromosome)}`),
+    ]);
+
+    if (!skelResp.ok) throw new Error(`HTTP ${skelResp.status}`);
+    const raw = await skelResp.json();
+
+    // Polychain data (may be empty)
+    if (pdResp.ok) {
+        const pdRaw = await pdResp.json();
+        initPolychainDataCache(pdRaw);
+    }
+
+    // Clear per-chain bubble metadata from previous chromosome
+    clearBubbleMetaCache();
 
     // Spine (shared coordinate infrastructure)
     if (raw.refSpine) initSpine(raw.refSpine);

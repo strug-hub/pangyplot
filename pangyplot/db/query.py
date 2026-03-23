@@ -2,6 +2,7 @@ from pangyplot.db.chain_polyline import (
     decompose_chain, find_junction_graph,
     _seg_centroid,
 )
+from pangyplot.db.sqlite import bubble_db as db
 
 
 def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
@@ -219,6 +220,78 @@ def get_path_order(indexes, genome, chrom):
     return gfaidx.get_sample_idx()
 
 
+def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
+    """Return lightweight per-bubble metadata for a chain.
+
+    raw_chain_id is the frontend chain ID: 'c42' or 'c42:5-10' (connector).
+    Returns a list of dicts with id, t, length, gc_count, size, subtype,
+    bp_start, bp_end, is_ref for each leaf bubble.
+    """
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    if stepidx is None or bubbleidx is None:
+        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found.")
+
+    # Parse chain ID: "c42" or "c42:5-10"
+    stripped = raw_chain_id.lstrip('c')
+    if ':' in stripped:
+        parts = stripped.split(':')
+        chain_id = int(parts[0])
+        step_range = parts[1].split('-')
+        start_step, end_step = int(step_range[0]), int(step_range[1])
+        bubble_ids = db.get_bubble_ids_from_chain(
+            bubbleidx.dir, chain_id, start_step, end_step)
+    else:
+        chain_id = int(stripped)
+        chain_ends = bubbleidx.get_chain_ends(chain_id)
+        if chain_ends is None:
+            return []
+        (_, min_step), (_, max_step) = chain_ends
+        bubble_ids = db.get_bubble_ids_from_chain(
+            bubbleidx.dir, chain_id, min_step, max_step)
+
+    if not bubble_ids:
+        return []
+
+    # Load bubble objects (uses FIFO cache in BubbleIndex)
+    bubbles = [bubbleidx[bid] for bid in bubble_ids]
+
+    # Filter to leaf bubbles (no children) — same as chain_polyline.py
+    leaves = [b for b in bubbles if not b.children]
+    n = len(leaves)
+
+    result = []
+    for idx, b in enumerate(leaves):
+        t = idx / max(1, n - 1) if n > 1 else 0.5
+
+        # Convert step ranges to bp coordinates
+        bp_start = None
+        bp_end = None
+        for rs, re in b.range_inclusive:
+            if rs < len(stepidx.starts):
+                s = stepidx.starts[rs]
+                if bp_start is None or s < bp_start:
+                    bp_start = s
+            if re < len(stepidx.ends):
+                e = stepidx.ends[re]
+                if bp_end is None or e > bp_end:
+                    bp_end = e
+
+        result.append({
+            "id": f"b{b.id}",
+            "t": round(t, 4),
+            "length": b.length,
+            "gc_count": b.gc_count,
+            "size": len(b.inside),
+            "subtype": b.subtype,
+            "bp_start": bp_start,
+            "bp_end": bp_end,
+            "is_ref": len(b.range_inclusive) > 0,
+        })
+
+    return result
+
+
 CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level
 
 
@@ -242,6 +315,10 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     the canonical ``CANONICAL_EXPAND_THRESHOLD`` is always used to ensure
     stable chain IDs across different viewport sizes.
     """
+    import time as _time
+    _t = {}
+    _t['start'] = _time.perf_counter()
+
     expand_threshold = CANONICAL_EXPAND_THRESHOLD
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
@@ -317,6 +394,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    _t['decompose'] = _time.perf_counter()
+
     # --- Strip internal fields, build bubble→chain mapping ---
     _bid_to_chain = {}
     result_chains = []
@@ -333,12 +412,16 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    _t['strip'] = _time.perf_counter()
+
     # --- Junction graph BFS ---
     junction_nodes, junction_links, junction_adj, \
         naked_visited, naked_seg_chains = \
         find_junction_graph(
             result_chains, gfaidx, bubbleidx, seg_index,
             decomposed_bubbles=decomposed_bubbles)
+
+    _t['junction_bfs'] = _time.perf_counter()
 
     # --- Merge bypass segments into junction nodes/links ---
     if bypass_seg_ids:
@@ -405,6 +488,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                 if cb:
                     _add_link(ca, cb, sid, nxt)
 
+    _t['bypass_merge'] = _time.perf_counter()
+
     # --- Serialize junction graph (full Segment/Link objects for physics) ---
     # Exclude chain endpoint segments — their geometry overlaps chain polylines
     # and creates stray lines when chains are popped.
@@ -413,11 +498,34 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         chain_endpoint_segs.update(cd.get("source_segs") or [])
         chain_endpoint_segs.update(cd.get("sink_segs") or [])
     all_junction_seg_ids = (naked_visited | bypass_seg_ids) - chain_endpoint_segs
+
+    # Filter junction segments to viewport x-range (with 20% buffer).
+    # Uses mmap arrays — no SQLite.  Reduces 28K→~500 segments and
+    # shrinks the payload from ~20MB to <1MB.
+    if all_junction_seg_ids and layout_min_x is not None and layout_max_x is not None:
+        x_span = layout_max_x - layout_min_x
+        buf = x_span * 0.2
+        vp_min = layout_min_x - buf
+        vp_max = layout_max_x + buf
+        all_junction_seg_ids = {
+            sid for sid in all_junction_seg_ids
+            if sid < len(seg_index.x1) and
+               seg_index.x2[sid] >= vp_min and seg_index.x1[sid] <= vp_max
+        }
+
     if all_junction_seg_ids:
         jg_segments, jg_links = gfaidx.get_subgraph(
             all_junction_seg_ids, stepidx, fast=True)
+        # Strip seq and n_count from junction nodes — only used for
+        # hover tooltips, not rendering or physics.
+        jg_nodes = []
+        for s in jg_segments:
+            d = s.serialize()
+            d.pop("seq", None)
+            d.pop("n_count", None)
+            jg_nodes.append(d)
         junction_graph = {
-            "nodes": [s.serialize() for s in jg_segments],
+            "nodes": jg_nodes,
             "links": [l.serialize() for l in jg_links],
         }
         # Build junction_seg_chains: seg_id → list of chain IDs
@@ -473,6 +581,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
 
 
 
+    _t['junction_serialize'] = _time.perf_counter()
+
     # Strip remaining internal fields before sending to frontend
     for cd in result_chains:
         cd.pop("_start_seg", None)
@@ -482,7 +592,16 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         cd.pop("_pl_x_min", None)
         cd.pop("_pl_x_max", None)
 
-    return {
+    _t['end'] = _time.perf_counter()
+    _s = _t['start']
+    print(f"    ⏱ decompose={_t['decompose']-_s:.3f}s"
+          f"  strip={_t['strip']-_t['decompose']:.3f}s"
+          f"  junction_bfs={_t['junction_bfs']-_t['strip']:.3f}s"
+          f"  bypass_merge={_t['bypass_merge']-_t['junction_bfs']:.3f}s"
+          f"  junction_ser={_t['junction_serialize']-_t['bypass_merge']:.3f}s"
+          f"  total={_t['end']-_s:.3f}s")
+
+    result = {
         "tile_start": start,
         "tile_end": end,
         "chains": result_chains,
@@ -493,3 +612,12 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "junction_seg_chains": junction_seg_chains,
         "chain_adjacency": chain_adjacency,
     }
+
+    import json as _json
+    _sizes = {}
+    for k, v in result.items():
+        _sizes[k] = len(_json.dumps(v, default=str)) / 1024
+    _sorted = sorted(_sizes.items(), key=lambda x: -x[1])
+    print(f"    📦 payload breakdown: " + "  ".join(f"{k}={v:.0f}KB" for k, v in _sorted))
+
+    return result

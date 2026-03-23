@@ -5,7 +5,7 @@ import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { xToBp, isReady } from '../reference-spine-engine.js';
 import { formatBp, formatPercentage } from '@format-utils';
-import { hitTestChains, getChainTooltip } from '../../detail/engines/polychain/polychain-hover-engine.js';
+import { hitTestChains, getChainTooltip, hitTestBubbleCircles, getBubbleCircleTooltip } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleTooltip } from '../../detail/engines/node-hover-engine.js';
 import { hitTestSkeleton, getSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
 import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
@@ -29,36 +29,61 @@ export function setupHover(canvas) {
             updateCursorBp(`${chr}:${formatBp(bp)}`);
         }
 
-        // Hit-test priority: force nodes > bubbles > chains > skeleton
-        const hitForceNode = hitTestForceNodes(layoutX, layoutY);
-        const hitBubble = hitForceNode ? null : hitTestBubbles(layoutX, layoutY);
-        const hitChain = (hitForceNode || hitBubble) ? null : hitTestChains(layoutX, layoutY);
-        const hitSkel = (hitForceNode || hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
-        const hit = hitForceNode || hitBubble || hitChain || hitSkel;
+        const ctrlHeld = e.ctrlKey || e.metaKey;
 
-        if (hit) {
-            state.hoveredForceNode = hitForceNode;
-            state.hoveredBubble = hitBubble;
-            state.hoveredChain = hitChain;
-            state.hoveredSkeletonPl = hitSkel;
-
-            let data;
-            if (hitForceNode) data = getForceNodeTooltip(hitForceNode);
-            else if (hitBubble) data = getBubbleTooltip(hitBubble);
-            else if (hitChain) data = getChainTooltip(hitChain);
-            else data = getSkeletonTooltip(hitSkel);
-
-            showTooltip(formatTooltipHtml(data), e.clientX, e.clientY);
-            canvas.style.cursor = 'default';
-            scheduleFrame();
-        } else if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
-            state.hoveredChain = null;
-            state.hoveredBubble = null;
+        if (ctrlHeld) {
+            // --- Bubble browsing mode ---
+            // Clear chain-mode hover state
             state.hoveredForceNode = null;
+            state.hoveredBubble = null;
+            state.hoveredChain = null;
             state.hoveredSkeletonPl = null;
-            hideTooltip();
-            canvas.style.cursor = 'grab';
+
+            const hit = hitTestBubbleCircles(layoutX, layoutY);
+            state.hoveredBubbleCircle = hit;
+
+            if (hit) {
+                showTooltip(formatTooltipHtml(getBubbleCircleTooltip(hit)), e.clientX, e.clientY);
+                canvas.style.cursor = 'default';
+            } else {
+                hideTooltip();
+                canvas.style.cursor = 'grab';
+            }
             scheduleFrame();
+        } else {
+            // --- Chain browsing mode (default) ---
+            state.hoveredBubbleCircle = null;
+
+            const hitForceNode = hitTestForceNodes(layoutX, layoutY);
+            const hitBubble = hitForceNode ? null : hitTestBubbles(layoutX, layoutY);
+            const hitChain = (hitForceNode || hitBubble) ? null : hitTestChains(layoutX, layoutY);
+            const hitSkel = (hitForceNode || hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
+            const hit = hitForceNode || hitBubble || hitChain || hitSkel;
+
+            if (hit) {
+                state.hoveredForceNode = hitForceNode;
+                state.hoveredBubble = hitBubble;
+                state.hoveredChain = hitChain;
+                state.hoveredSkeletonPl = hitSkel;
+
+                let data;
+                if (hitForceNode) data = getForceNodeTooltip(hitForceNode);
+                else if (hitBubble) data = getBubbleTooltip(hitBubble);
+                else if (hitChain) data = getChainTooltip(hitChain);
+                else data = getSkeletonTooltip(hitSkel);
+
+                showTooltip(formatTooltipHtml(data), e.clientX, e.clientY);
+                canvas.style.cursor = 'default';
+                scheduleFrame();
+            } else if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
+                state.hoveredChain = null;
+                state.hoveredBubble = null;
+                state.hoveredForceNode = null;
+                state.hoveredSkeletonPl = null;
+                hideTooltip();
+                canvas.style.cursor = 'grab';
+                scheduleFrame();
+            }
         }
     });
 
@@ -100,15 +125,14 @@ export function setupHover(canvas) {
 
     canvas.addEventListener('mouseleave', () => {
         updateCursorBp('');
-        if (state.hoveredChain || state.hoveredBubble || state.hoveredForceNode || state.hoveredSkeletonPl) {
-            state.hoveredChain = null;
-            state.hoveredBubble = null;
-            state.hoveredForceNode = null;
-            state.hoveredSkeletonPl = null;
-            hideTooltip();
-            canvas.style.cursor = 'grab';
-            scheduleFrame();
-        }
+        state.hoveredChain = null;
+        state.hoveredBubble = null;
+        state.hoveredForceNode = null;
+        state.hoveredSkeletonPl = null;
+        state.hoveredBubbleCircle = null;
+        hideTooltip();
+        canvas.style.cursor = 'grab';
+        scheduleFrame();
     });
 }
 

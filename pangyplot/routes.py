@@ -144,6 +144,19 @@ def skeleton():
     return Response(data, mimetype='application/json',
                     headers={'Content-Encoding': 'gzip'})
 
+@bp.route('/polychain-data')
+def polychain_data_file():
+    chrom = request.args.get('chromosome')
+    if not chrom:
+        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    gz_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "polychain-data.json.gz")
+    if not os.path.exists(gz_path):
+        return jsonify({}), 200
+    with open(gz_path, 'rb') as f:
+        data = f.read()
+    return Response(data, mimetype='application/json',
+                    headers={'Content-Encoding': 'gzip'})
+
 @bp.route('/chains', methods=["GET"])
 def chains():
     genome = request.args.get("genome")
@@ -178,7 +191,9 @@ def detail_tiles():
     layout_min_x = request.args.get("layout_min_x", type=float, default=None)
     layout_max_x = request.args.get("layout_max_x", type=float, default=None)
 
+    import time as _time
     print(f"Getting detail tile for {genome}#{chrom}:{start}-{end} ppbp={ppbp:.6f} expand={expand} layout_x=[{layout_min_x},{layout_max_x}]...")
+    t0 = _time.perf_counter()
     try:
         result = query.get_detail_tile(current_app, genome, chrom, start, end,
                                        ppbp, expand_threshold=expand,
@@ -187,7 +202,16 @@ def detail_tiles():
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 
-    return jsonify(result)
+    t1 = _time.perf_counter()
+    resp = jsonify(result)
+    t2 = _time.perf_counter()
+    n_chains = len(result.get("chains", []))
+    jg = result.get("junction_graph", {})
+    n_jn = len(jg.get("nodes", []))
+    n_jl = len(jg.get("links", []))
+    payload_kb = resp.content_length / 1024 if resp.content_length else len(resp.get_data()) / 1024
+    print(f"  ⏱ detail-tile total={t2-t0:.3f}s  query={t1-t0:.3f}s  jsonify={t2-t1:.3f}s  chains={n_chains} jnodes={n_jn} jlinks={n_jl} payload={payload_kb:.0f}KB")
+    return resp
 
 @bp.route('/chain-graph', methods=["GET"])
 def chain_graph():
@@ -226,6 +250,19 @@ def chain_graph():
         return jsonify({"error": str(e)}), 404
 
     return jsonify(graph)
+
+@bp.route('/bubble-meta', methods=["GET"])
+def bubble_meta():
+    chain_id = request.args.get("chain_id", "")
+    chrom = request.args.get("chromosome", "")
+    genome = current_app.genome
+    if not chain_id or not chrom:
+        return jsonify({"error": "Missing chain_id or chromosome"}), 400
+    try:
+        result = query.get_bubble_meta(current_app, genome, chrom, chain_id)
+    except (ValueError, KeyError) as e:
+        return jsonify({"error": str(e)}), 404
+    return jsonify({"bubbles": result})
 
 @bp.route('/select', methods=["GET"])
 def select():

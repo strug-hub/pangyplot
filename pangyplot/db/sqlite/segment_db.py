@@ -60,7 +60,7 @@ def insert_segments_batch(cur, batch):
 
 def get_index_info(dir):
     cur = get_connection(dir).cursor()
-    for row in cur.execute("SELECT id, length, x1, y1, x2, y2 FROM segments"):
+    for row in cur.execute("SELECT id, length, x1, y1, x2, y2, gc_count FROM segments"):
         yield row
 
 def get_all(dir, step_index=None):

@@ -1,6 +1,9 @@
 // Progressive detail: single-viewport fetch, response parsing.
 // Pure data-fetching — no skeleton imports, no UI imports, no fade or LOD decisions.
 // Uses incremental merge: new chains are added, stale chains removed surgically.
+//
+// When polychain-data cache is available (precomputed at chromosome load),
+// reads from cache instead of fetching /detail-tiles.
 
 import { state } from '../../../simplify-state.js';
 import { colorState } from '../../../../graph/render/color/color-state.js';
@@ -10,6 +13,13 @@ import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
 import { fetchGenesForDetail } from './polychain-gene-map.js';
 import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
+import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
+import { getForceNodes } from '../force-data.js';
+import {
+    hasPolychainDataCache, getChainsInRange,
+    getJunctionNodesInRange, getJunctionLinksForNodes,
+    getJunctionSegChains, getJunctionLinkPairs, getChainAdjacency,
+} from '../polychain-data-cache.js';
 
 let fetchController = null;
 
@@ -74,6 +84,78 @@ function processResponse(apiResponse) {
 }
 
 // ---------------------------------------------------------------
+// Build detail data from precomputed cache (no server fetch).
+// ---------------------------------------------------------------
+function buildDataFromCache(minX, maxX, xToBp) {
+    const vpChains = getChainsInRange(minX, maxX);
+    const chains = [];
+    let totalBubbles = 0;
+    for (const chain of vpChains) {
+        chains.push({
+            id: chain.id,
+            polyline: chain.polyline,
+            length: chain.length,
+            gcCount: chain.gc_count || 0,
+            bpSpan: chain.bp_span || chain.length,
+            nBubbles: chain.n_bubbles,
+            type: 'chain',
+            size: chain.n_bubbles,
+            isRef: chain.bp_start != null,
+            record: {
+                seqLength: chain.length,
+                gcCount: chain.gc_count || 0,
+                start: chain.bp_start ?? null,
+                end: chain.bp_end ?? null,
+            },
+            subtype: chain.subtype,
+            depth: chain.depth || 0,
+            connector: chain.connector || false,
+            bubbleIds: chain.bubble_ids || null,
+            sourceSegs: chain.source_segs,
+            sinkSegs: chain.sink_segs,
+            bubblePositions: chain.bubble_t || null,
+            bpStart: chain.bp_start ?? null,
+            bpEnd: chain.bp_end ?? null,
+            bpHead: chain.bp_head ?? null,
+            bpTail: chain.bp_tail ?? null,
+            parentChain: chain.parent_chain || null,
+            ancestors: chain.ancestors || [],
+            popped: false,
+            graph: null,
+        });
+        totalBubbles += chain.n_bubbles;
+    }
+
+    // Junction data: viewport-filtered nodes, construct graph from packed arrays
+    const margin = (maxX - minX) * 0.2;
+    const juncNodes = getJunctionNodesInRange(minX - margin, maxX + margin);
+    const visibleChainIds = new Set(chains.map(c => c.id));
+    const nodeIdSet = new Set(juncNodes.map(n => n.id));
+
+    // Build resolvable set for link filtering
+    const resolvableIds = new Set([...nodeIdSet]);
+    for (const c of chains) {
+        for (const sid of (c.sourceSegs || [])) resolvableIds.add(`s${sid}`);
+        for (const sid of (c.sinkSegs || [])) resolvableIds.add(`s${sid}`);
+    }
+    const juncGraphLinks = getJunctionLinksForNodes(resolvableIds);
+
+    const bpLeft = xToBp(minX);
+    const bpRight = xToBp(maxX);
+
+    return {
+        chains, totalBubbles,
+        bpStart: bpLeft != null ? Math.max(0, Math.round(bpLeft)) : 0,
+        bpEnd: bpRight != null ? Math.round(bpRight) : 0,
+        junctionNodes: [],  // not needed — packed arrays used instead
+        junctionLinks: getJunctionLinkPairs(),
+        junctionGraph: { nodes: juncNodes, links: juncGraphLinks },
+        junctionSegChains: getJunctionSegChains(visibleChainIds),
+        chainAdjacency: getChainAdjacency(),
+    };
+}
+
+// ---------------------------------------------------------------
 // Single-viewport fetch for current visible region.
 // Caller provides pre-computed viewport and coordinate info.
 // Returns true if new data was fetched, false otherwise.
@@ -97,7 +179,82 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
     const fetchMinX = vp.minX - margin;
     const fetchMaxX = vp.maxX + margin;
 
-    // Convert layout bounds -> bp only for the API call
+    // --- Fast path: use precomputed polychain data cache ---
+    if (hasPolychainDataCache()) {
+        const fetchStart = performance.now();
+        const newData = buildDataFromCache(fetchMinX, fetchMaxX, xToBp);
+        updateDetailFetchMs(performance.now() - fetchStart);
+
+        const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
+
+        if (isFirstFetch) {
+            fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
+            state.poppedChainIds.clear();
+            state.activeSeedChainId = null;
+            state._bubblePopStack = [];
+            clearHistory();
+            state.detailData = newData;
+            colorState.positionRange = [newData.bpStart, newData.bpEnd];
+            initPolychainLayer();
+        } else {
+            const existingIds = new Set(state.detailData.chains.map(c => c.id));
+            const incomingIds = new Set(newData.chains.map(c => c.id));
+            const newChains = newData.chains.filter(c => !existingIds.has(c.id));
+
+            const removedIds = new Set();
+            for (const c of state.detailData.chains) {
+                if (incomingIds.has(c.id)) continue;
+                if (c.polyline && c.polyline.length >= 2) {
+                    const chainMinX = Math.min(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
+                    const chainMaxX = Math.max(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
+                    if (chainMaxX < fetchMinX || chainMinX > fetchMaxX) {
+                        removedIds.add(c.id);
+                    }
+                }
+            }
+
+            if (removedIds.size > 0) {
+                for (const cid of state.poppedChainIds) removedIds.delete(cid);
+                if (removedIds.size > 0) {
+                    removeChainsFromPolychainLayer(removedIds);
+                    removeNodesByChainIds(removedIds);
+                    const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
+                    unregisterChains(removedIds, removedChains);
+                }
+            }
+
+            const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
+            const mergedChains = [...keptChains, ...newChains];
+            state.detailData = {
+                ...newData,
+                chains: mergedChains,
+                totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
+            };
+            colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
+
+            if (newChains.length > 0) {
+                addChainsToPolychainLayer(newChains, state.detailData);
+            }
+
+            fetchedRegion = {
+                minX: Math.min(fetchedRegion.minX, fetchMinX),
+                maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
+                chr,
+            };
+        }
+        updateDetailForceCount(getForceNodes().length);
+
+        const bpLeft = xToBp(fetchMinX);
+        const bpRight = xToBp(fetchMaxX);
+        if (bpLeft != null && bpRight != null) {
+            fetchGenesForDetail(chr, state.GENOME,
+                Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
+        }
+        placeGenesFromDetail(state.detailData.chains);
+        return true;
+    }
+
+    // --- Fallback: fetch from server ---
     const bpLeft = xToBp(fetchMinX);
     const bpRight = xToBp(fetchMaxX);
     if (bpLeft === null || bpRight === null) return false;
@@ -116,16 +273,17 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
 
     state.isFetching = true;
     try {
+        const fetchStart = performance.now();
         const resp = await fetch(url, { signal });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const apiData = await resp.json();
         if (signal.aborted) return false;
+        updateDetailFetchMs(performance.now() - fetchStart);
 
         const newData = processResponse(apiData);
         const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
 
         if (isFirstFetch) {
-            // --- First fetch: full initialization ---
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
 
             state.poppedChainIds.clear();
@@ -141,34 +299,24 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
             colorState.positionRange = [newData.bpStart, newData.bpEnd];
             initPolychainLayer();
         } else {
-            // --- Incremental merge ---
             const existingIds = new Set(state.detailData.chains.map(c => c.id));
             const incomingIds = new Set(newData.chains.map(c => c.id));
 
-            // New chains = in response but not in current state
             const newChains = newData.chains.filter(c => !existingIds.has(c.id));
 
-            // Removed chains = in current state but not in response AND
-            // outside the new fetched region (keep chains in the overlap zone)
             const removedIds = new Set();
             for (const c of state.detailData.chains) {
                 if (incomingIds.has(c.id)) continue;
-                // Only remove if the chain is entirely outside the new fetch region
-                // (use polyline bounds as proxy)
                 if (c.polyline && c.polyline.length >= 2) {
                     const chainMinX = Math.min(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
                     const chainMaxX = Math.max(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
                     if (chainMaxX < fetchMinX || chainMinX > fetchMaxX) {
                         removedIds.add(c.id);
                     }
-                    // else: chain overlaps with fetch region but wasn't in response —
-                    // keep it (it's in the overlap zone between old and new)
                 }
             }
 
-            // Remove stale chains from force sim + phantom maps + viewState
             if (removedIds.size > 0) {
-                // Don't remove chains that are currently popped by the user
                 for (const cid of state.poppedChainIds) {
                     removedIds.delete(cid);
                 }
@@ -180,11 +328,9 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
                 }
             }
 
-            // Merge chains: keep existing (minus removed), add new
             const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
             const mergedChains = [...keptChains, ...newChains];
 
-            // Update detailData
             state.detailData = {
                 ...newData,
                 chains: mergedChains,
@@ -192,23 +338,21 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
             };
             colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
 
-            // Add phantoms + junction links for new chains only
             if (newChains.length > 0) {
                 addChainsToPolychainLayer(newChains, state.detailData);
             }
 
-            // Expand fetchedRegion to union of old and new
             fetchedRegion = {
                 minX: Math.min(fetchedRegion.minX, fetchMinX),
                 maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
                 chr,
             };
         }
-        // Trigger gene fetch for the visible bp range (fire and forget)
+        updateDetailForceCount(getForceNodes().length);
+
         fetchGenesForDetail(chr, state.GENOME,
             Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
 
-        // Reposition skeleton gene pins using detail chain data
         placeGenesFromDetail(state.detailData.chains);
 
         return true;
