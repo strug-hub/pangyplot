@@ -3,7 +3,7 @@
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { getPolychainPositions, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
-import { getBubblePositions } from '../../data/bubble-meta-cache.js';
+import { getBubblePositions, bubbleGridThreshold } from '../../data/bubble-meta-cache.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -128,6 +128,7 @@ function clipSegmentToRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
 export function hitTestBubbleCircles(dataX, dataY) {
     if (!state.detailData || state.detailOpacity < 0.5) return null;
     const hitR = HIT_RADIUS_PX / state.zoom;
+    const gridSize = state.targetGridSize;
     let bestDist = hitR;
     let best = null;
 
@@ -135,6 +136,8 @@ export function hitTestBubbleCircles(dataX, dataY) {
         const positions = getBubblePositions(chain.id);
         if (!positions || positions.length === 0) continue;
         for (const { x, y, meta } of positions) {
+            // Skip bubbles not yet visible at current zoom
+            if (gridSize > bubbleGridThreshold(meta.length)) continue;
             const d = Math.hypot(dataX - x, dataY - y);
             if (d < bestDist) {
                 bestDist = d;

@@ -61,7 +61,7 @@ export const state = {
     // Constants
     DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
     DETAIL_EXIT_THRESHOLD: 700,   // exit detail when targetGridSize > this (hysteresis)
-    BUBBLE_CIRCLE_GRID_THRESHOLD: 50,   // show bubble dots when targetGridSize <= this
+    BUBBLE_CIRCLE_GRID_THRESHOLD: 400,  // outer gate; per-bubble threshold scales with bp length
     PHYSICS_NODE_BUDGET: 1500,    // max estimated D3 nodes for physics zone
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
@@ -77,6 +77,7 @@ export const state = {
         loading: document.getElementById('loading'),
         gridMeter: document.getElementById('grid-meter'),
         zoomVal: document.getElementById('zoom-val'),
+        gridVal: document.getElementById('grid-val'),
         viewportBp: document.getElementById('viewport-bp'),
         cursorBp: document.getElementById('cursor-bp'),
         detailPhase: document.getElementById('detail-phase'),

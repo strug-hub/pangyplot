@@ -61,6 +61,7 @@ export function initGridMeter() {
 export function updateZoom() {
     state.dom.zoomVal.textContent = state.zoom < 1
         ? state.zoom.toFixed(4) : state.zoom.toFixed(1);
+    state.dom.gridVal.textContent = state.targetGridSize.toFixed(0);
 }
 
 let prevLevel = -1;

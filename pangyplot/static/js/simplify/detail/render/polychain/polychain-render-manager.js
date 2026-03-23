@@ -6,7 +6,7 @@ import { strokePolyline, strokePolylines, fillCircles, strokeRing } from '../det
 import { getPolychainPositions, cumulativeLengths, interpolateAtDist } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '../../../skeleton/data/gene-data.js';
-import { fetchBubbleMeta, getBubbleMeta, hasBubbleMeta, setBubblePositions } from '../../data/bubble-meta-cache.js';
+import { fetchBubbleMeta, getBubbleMeta, hasBubbleMeta, setBubblePositions, bubbleGridThreshold } from '../../data/bubble-meta-cache.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
@@ -99,11 +99,17 @@ function ensureBubbleMetaFetched(chains, chr) {
     }
 }
 
+// Fade range: bubble fades in over this gridSize range below its threshold.
+// 15 ensures even the smallest bubbles (threshold 20) are fully opaque by gridSize 5.
+const BUBBLE_FADE_RANGE = 15;
+
 /**
  * Compute bubble circles for all chains with cached metadata.
- * Returns Map<color, Array<{x, y, r}>>.
+ * Each bubble's visibility is proportional to its bp length,
+ * with a per-bubble fade-in as zoom crosses its threshold.
+ * Returns Map<color, Array<{x, y, r, alpha}>>.
  */
-function computeBubbleCirclesByColor(chains, r) {
+function computeBubbleCirclesByColor(chains, r, gridSize) {
     const byColor = new Map();
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
@@ -118,7 +124,12 @@ function computeBubbleCirclesByColor(chains, r) {
         if (totalLen === 0) continue;
 
         for (const meta of bubbles) {
-            // Build a color-compatible object for getNodeColor()
+            const thresh = bubbleGridThreshold(meta.length);
+            if (gridSize > thresh) continue;
+
+            // Fade in: 0 at threshold, 1 at threshold - BUBBLE_FADE_RANGE
+            const fade = Math.min(1, (thresh - gridSize) / BUBBLE_FADE_RANGE);
+
             const colorObj = {
                 type: 'bubble',
                 size: meta.size,
@@ -134,7 +145,7 @@ function computeBubbleCirclesByColor(chains, r) {
             if (!byColor.has(color)) byColor.set(color, []);
 
             const [x, y] = interpolateAtDist(pl, cumLen, meta.t * totalLen);
-            byColor.get(color).push({ x, y, r });
+            byColor.get(color).push({ x, y, r, alpha: fade });
         }
     }
     return byColor;
@@ -183,15 +194,24 @@ export function drawDetail(svg = null) {
         strokePolylines(ctx, polylines, color, baseWidth, 0.75 * opacity, svg);
     }
 
-    // 2.5. Bubble circle markers (appear at deeper zoom, fade in per-chain as data loads)
-    const bubbleThresh = state.BUBBLE_CIRCLE_GRID_THRESHOLD;
-    if (state.targetGridSize <= bubbleThresh) {
-        const bubbleFade = Math.min(1, (bubbleThresh - state.targetGridSize) / 100);
+    // 2.5. Bubble circle markers (larger bubbles appear first, smaller follow as zoom deepens)
+    const gridSize = state.targetGridSize;
+    if (gridSize <= state.BUBBLE_CIRCLE_GRID_THRESHOLD) {
         const bubbleR = Math.max(1.5, 3 / state.zoom);
         const circlesByColor = computeBubbleCirclesByColor(
-            state.detailData.chains, bubbleR);
+            state.detailData.chains, bubbleR, gridSize);
+        // Batch by (color, quantized alpha) for efficient draw calls
+        const batches = new Map(); // "color|alphaStep" → { circles, color, alpha }
         for (const [color, circles] of circlesByColor) {
-            fillCircles(ctx, circles, color, bubbleFade * opacity, svg);
+            for (const c of circles) {
+                const a = Math.round(c.alpha * 10) / 10; // quantize to 0.1 steps
+                const key = `${color}|${a}`;
+                if (!batches.has(key)) batches.set(key, { circles: [], color, alpha: a });
+                batches.get(key).circles.push(c);
+            }
+        }
+        for (const { circles, color, alpha } of batches.values()) {
+            fillCircles(ctx, circles, color, alpha * opacity, svg);
         }
     }
 

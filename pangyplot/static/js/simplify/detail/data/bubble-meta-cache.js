@@ -68,6 +68,18 @@ export function getBubblePositions(chainId) {
     return positionCache.get(chainId) || null;
 }
 
+/**
+ * Per-bubble visibility threshold (gridSize below which the bubble is visible).
+ * Shifted log compresses sub-50bp bubbles at the deep-zoom end.
+ */
+const _LOG50 = Math.log10(50);
+const _RANGE_INV = 1 / (Math.log10(100050) - _LOG50);
+export function bubbleGridThreshold(bpLength) {
+    if (bpLength <= 0) return 20;
+    const x = Math.log10(bpLength + 50) - _LOG50;
+    return Math.min(400, 20 + x * _RANGE_INV * 380);
+}
+
 /** Clear all cached data (e.g. on chromosome change). */
 export function clearBubbleMetaCache() {
     cache.clear();
