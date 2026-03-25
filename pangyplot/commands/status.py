@@ -1,8 +1,5 @@
+import json
 import os
-from pangyplot.db.sqlite.step_db import get_genomes, summarize_steps
-from pangyplot.db.sqlite.segment_db import count_segments, summarize_segments
-from pangyplot.db.sqlite.link_db import count_links, summarize_links
-from pangyplot.db.sqlite.bubble_db import count_bubbles, summarize_bubbles
 
 
 def pretty_print_summary(summary, indent=0):
@@ -27,6 +24,15 @@ def pretty_print_summary(summary, indent=0):
         print(pad + str(summary))
 
 
+def _read_genome_from_meta(chr_dir):
+    """Read genome/ref name from steps mmapindex meta.json (no SQLite)."""
+    meta_path = os.path.join(chr_dir, "steps.mmapindex", "meta.json")
+    if os.path.exists(meta_path):
+        with open(meta_path) as f:
+            return json.load(f).get("genome")
+    return None
+
+
 def pangyplot_status(args):
 
     if not os.path.exists(args.dir):
@@ -44,6 +50,11 @@ def pangyplot_status(args):
             return
 
     if args.table:
+        from pangyplot.db.sqlite.step_db import summarize_steps
+        from pangyplot.db.sqlite.segment_db import summarize_segments
+        from pangyplot.db.sqlite.link_db import summarize_links
+        from pangyplot.db.sqlite.bubble_db import summarize_bubbles
+
         db_name = db_names[0]
         db_path = os.path.join(graph_path, db_name)
 
@@ -58,7 +69,7 @@ def pangyplot_status(args):
             print(f"Data for {chr_name}")
 
             printed = False
-            
+
             if "segment" in args.table:
                 summary = summarize_segments(chr_dir)
                 pretty_print_summary(summary, indent=2)
@@ -82,6 +93,8 @@ def pangyplot_status(args):
                 return
 
     else:
+        full = getattr(args, "full", False)
+
         for db_name in db_names:
             db_path = os.path.join(graph_path, db_name)
 
@@ -102,25 +115,40 @@ def pangyplot_status(args):
                     continue
 
                 try:
-                    n_seg = count_segments(chr_dir)
-                    refs = get_genomes(chr_dir)
-                    n_link = count_links(chr_dir)
-                    n_bubble = count_bubbles(chr_dir)
+                    if full:
+                        from pangyplot.db.sqlite.step_db import get_genomes
+                        from pangyplot.db.sqlite.segment_db import count_segments
+                        from pangyplot.db.sqlite.link_db import count_links
+                        from pangyplot.db.sqlite.bubble_db import count_bubbles
 
-                    ref_list = ", ".join(refs)
-                    print(f"  🧬 {chr_name} (refs: {ref_list})")
-                    print(f"    → Segments: {n_seg}")
-                    print(f"    → Links:    {n_link}")
-                    print(f"    → Bubbles:  {n_bubble}")
+                        refs = get_genomes(chr_dir)
+                        n_seg = count_segments(chr_dir)
+                        n_link = count_links(chr_dir)
+                        n_bubble = count_bubbles(chr_dir)
 
-                    total_segments += n_seg
-                    total_links += n_link
-                    total_bubbles += n_bubble
+                        ref_list = ", ".join(refs)
+                        print(f"  \U0001f9ec {chr_name} (refs: {ref_list})")
+                        print(f"    \u2192 Segments: {n_seg:,}")
+                        print(f"    \u2192 Links:    {n_link:,}")
+                        print(f"    \u2192 Bubbles:  {n_bubble:,}")
+
+                        total_segments += n_seg
+                        total_links += n_link
+                        total_bubbles += n_bubble
+                    else:
+                        ref = _read_genome_from_meta(chr_dir)
+                        if ref:
+                            print(f"  \U0001f9ec {chr_name} (ref: {ref})")
+                        else:
+                            print(f"  \U0001f9ec {chr_name}")
 
                 except Exception as e:
                     print(f"  [ERROR] problem reading {chr_name}: {e}\n")
 
-            print(f"\nTotals for {db_name}")
-            print(f"  Segments: {total_segments}")
-            print(f"  Links:    {total_links}")
-            print(f"  Bubbles:  {total_bubbles}\n")
+            if full:
+                print(f"\nTotals for {db_name}")
+                print(f"  Segments: {total_segments:,}")
+                print(f"  Links:    {total_links:,}")
+                print(f"  Bubbles:  {total_bubbles:,}")
+
+            print()

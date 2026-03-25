@@ -58,6 +58,7 @@ class StepIndex:
         meta = {
             "version": __version__,
             "length": len(self.starts),
+            "genome": self.genome,
         }
         with open(os.path.join(mmap_dir, "meta.json"), "w") as f:
             json.dump(meta, f)
