@@ -2,7 +2,7 @@
 
 import { state } from '../../simplify-state.js';
 import { getLevelBboxes } from '../data/skeleton-data.js';
-import { getGenePins, isGeneVisible } from '../data/gene-data.js';
+import { getGenePins, isGeneVisible, isGeneStarred } from '../data/gene-data.js';
 import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painter.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
@@ -12,6 +12,10 @@ import { hexToRgba } from '@color-utils';
 // Persistent map: gene name → current animated dodge offset (screen px above default).
 // Survives across frames so we can lerp toward the target.
 const animatedOffset = new Map();
+
+// Set of gene names that passed density culling last frame.
+// Used by drawGenePolylines/drawGeneJunctions to skip coloring non-pinned genes.
+const pinnedGenes = new Set();
 
 /**
  * Draw gene-colored polyline overdraw on visible skeleton polylines.
@@ -34,6 +38,7 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
 
     for (const gene of genePins) {
         if (!isGeneVisible(gene.name)) continue;
+        if (!pinnedGenes.has(gene.name)) continue;
         const indices = [];
         for (let i = 0; i < level.polylines.length; i++) {
             const o = i * 4;
@@ -73,6 +78,7 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
 
     for (const gene of genePins) {
         if (!isGeneVisible(gene.name)) continue;
+        if (!pinnedGenes.has(gene.name)) continue;
         const junctions = [];
         for (const [x, y] of level.junctions) {
             if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
@@ -148,15 +154,46 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     // Sort by screen x
     allVisible.sort((a, b) => a.sxMid - b.sxMid);
 
-    // Density-based culling: enforce minimum horizontal spacing between labels.
-    const minSpacing = 10;
+    // Density-based culling: starred genes get placed first (guaranteed slots),
+    // then remaining genes fill gaps with minimum spacing.
+    const minSpacing = 20;
     const candidates = [];
-    let lastAcceptedX = -Infinity;
+
+    // Pass 1: place starred genes unconditionally
+    const starredSlots = [];  // sorted x positions of accepted starred genes
     for (const c of allVisible) {
-        if (c.sxMid - lastAcceptedX >= minSpacing) {
+        if (isGeneStarred(c.gene.name)) {
             candidates.push(c);
-            lastAcceptedX = c.sxMid;
+            starredSlots.push(c.sxMid);
         }
+    }
+    starredSlots.sort((a, b) => a - b);
+
+    // Pass 2: fill remaining slots respecting spacing from all accepted genes
+    const acceptedXs = [...starredSlots];
+    for (const c of allVisible) {
+        if (isGeneStarred(c.gene.name)) continue;
+        // Check spacing against all accepted positions
+        let tooClose = false;
+        for (const ax of acceptedXs) {
+            if (Math.abs(c.sxMid - ax) < minSpacing) {
+                tooClose = true;
+                break;
+            }
+        }
+        if (!tooClose) {
+            candidates.push(c);
+            acceptedXs.push(c.sxMid);
+        }
+    }
+
+    // Re-sort candidates by screen x for collision avoidance
+    candidates.sort((a, b) => a.sxMid - b.sxMid);
+
+    // Update pinned set so coloring functions only highlight genes with labels.
+    pinnedGenes.clear();
+    for (const c of candidates) {
+        pinnedGenes.add(c.gene.name);
     }
 
     // Y-axis collision avoidance: nudge overlapping labels upward.
@@ -276,4 +313,5 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
 /** Clear animated label positions (call on chromosome switch). */
 export function clearLabelAnimation() {
     animatedOffset.clear();
+    pinnedGenes.clear();
 }

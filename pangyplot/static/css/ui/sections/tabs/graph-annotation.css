@@ -56,3 +56,38 @@ button.exon-toggle-annotation-row[disabled] {
 } #set-color-picker-gene-annotations {
     height: auto;
 }
+
+/* Filter search bar */
+.gene-filter-input {
+    width: 96%;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+    border: 1px solid var(--unselected-green);
+    border-radius: 5px;
+    background: var(--site-background);
+    color: var(--text-color);
+    font-size: small;
+}
+.gene-filter-input::placeholder {
+    color: var(--unselected-text);
+}
+
+/* Star button */
+.gene-star-btn {
+    font-size: small;
+}
+
+/* Starred section label */
+.gene-starred-label {
+    font-size: x-small;
+    color: var(--dark-green);
+    padding: 5px;
+    letter-spacing: 0.5px;
+}
+
+/* Separator between starred and unstarred */
+.gene-section-separator td {
+    border-bottom: 1px solid var(--unselected-green);
+    padding: 0;
+    height: 5px;
+}

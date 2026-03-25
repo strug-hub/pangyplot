@@ -9,6 +9,7 @@ import { scheduleFrame } from '../../utils/frame-scheduler.js';
 let genePins = [];
 let geneCache = [];
 const hiddenGenes = new Set();
+const starredGenes = new Set();  // starred genes get draw priority
 const customColors = new Map();  // gene name → user-set color (persists across rebuilds)
 let fetchedRange = null;    // { chr, startBp, endBp } — completed fetch
 let pendingRange = null;    // { chr, startBp, endBp } — in-flight fetch
@@ -19,11 +20,18 @@ let detailChainKey = null;  // tracks which chain data was last used for placeme
 
 export function getGenePins() { return genePins; }
 export function isGeneVisible(name) { return !hiddenGenes.has(name); }
+export function isGeneStarred(name) { return starredGenes.has(name); }
+export function toggleGeneStar(name) {
+    if (starredGenes.has(name)) starredGenes.delete(name);
+    else starredGenes.add(name);
+    scheduleFrame();
+}
 
 export function clearGeneCache() {
     genePins = [];
     geneCache = [];
     hiddenGenes.clear();
+    starredGenes.clear();
     customColors.clear();
     fetchedRange = null;
     pendingRange = null;
@@ -142,6 +150,7 @@ function populateSimplifyGeneTable() {
             name,
             color,
             visible: !hiddenGenes.has(name),
+            starred: starredGenes.has(name),
             onToggle: (visible) => {
                 if (visible) hiddenGenes.delete(name);
                 else hiddenGenes.add(name);
@@ -152,9 +161,13 @@ function populateSimplifyGeneTable() {
                 if (pin) pin.color = newColor;
                 scheduleFrame();
             },
+            onStar: () => {
+                toggleGeneStar(name);
+                populateSimplifyGeneTable();
+            },
         };
     });
-    populateGeneAnnotationsTable(entries, { showExonColumn: false });
+    populateGeneAnnotationsTable(entries, { showExonColumn: false, showStarColumn: true });
 }
 
 /**
