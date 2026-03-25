@@ -5,7 +5,7 @@ from sqlite3 import OperationalError
 from pangyplot.preprocess.parser.parse_gfa import parse_gfa
 from pangyplot.preprocess.parser.parse_layout import parse_layout
 import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
-from pangyplot.preprocess.skeleton.skeleton_builder import generate_skeleton
+from pangyplot.preprocess.skeleton.generate_skeleton import generate_skeleton
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex

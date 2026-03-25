@@ -14,7 +14,7 @@ import math
 from bisect import bisect_right
 from collections import Counter, defaultdict, deque
 from pangyplot.objects.Chain import Chain
-from pangyplot.preprocess.skeleton.skeleton_builder import rdp_simplify
+from pangyplot.preprocess.skeleton.skeleton_geometry import rdp_simplify
 
 
 # ---------------------------------------------------------------

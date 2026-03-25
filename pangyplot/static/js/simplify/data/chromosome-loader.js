@@ -7,7 +7,7 @@ import { state } from '../simplify-state.js';
 import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
 import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
 
-/** Decode delta-encoded polylines and junctions in-place. */
+/** Decode delta-encoded polylines in-place. */
 function decodeDelta(levels) {
     for (const level of levels) {
         for (const pl of level.polylines) {
@@ -15,11 +15,6 @@ function decodeDelta(levels) {
                 pl[i][0] += pl[i - 1][0];
                 pl[i][1] += pl[i - 1][1];
             }
-        }
-        const juncs = level.junctions;
-        for (let i = 1; i < juncs.length; i++) {
-            juncs[i][0] += juncs[i - 1][0];
-            juncs[i][1] += juncs[i - 1][1];
         }
     }
 }

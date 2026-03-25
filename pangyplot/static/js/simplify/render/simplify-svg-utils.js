@@ -80,7 +80,7 @@ export function strokePolylinesSvg(target, polylines, indices, color, lineWidth,
     }
 }
 
-export function fillJunctionsSvg(target, points, r, color, alpha) {
+function fillDotPointsSvg(target, points, r, color, alpha) {
     const { color: c, alpha: ca } = parseColor(color);
     const parent = wrapGroup(target, ca, alpha);
     const sr = r * sc;
@@ -115,7 +115,7 @@ export function strokeLinesSvg(target, lines, color, lineWidth, alpha) {
 }
 
 export function fillDotsSvg(target, points, r, color, alpha) {
-    fillJunctionsSvg(target, points, r, color, alpha);
+    fillDotPointsSvg(target, points, r, color, alpha);
 }
 
 export function strokePolylineSvg(target, pl, color, lineWidth, alpha) {

@@ -1,9 +1,9 @@
-// Gene-colored overdraw on skeleton polylines and junctions, plus label positioning.
+// Gene-colored overdraw on skeleton polylines, plus label positioning.
 
 import { state } from '../../simplify-state.js';
 import { getLevelBboxes } from '../data/skeleton-data.js';
 import { getGenePins, isGeneVisible, isGeneStarred } from '../data/gene-data.js';
-import { strokePolylines, fillJunctions, drawGeneLabel } from './skeleton-painter.js';
+import { strokePolylines } from './skeleton-painter.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
 import { createBlendGroup, drawGeneLabelSvg } from '../../render/simplify-svg-utils.js';
@@ -14,15 +14,14 @@ import { hexToRgba } from '@color-utils';
 const animatedOffset = new Map();
 
 // Set of gene names that passed density culling last frame.
-// Used by drawGenePolylines/drawGeneJunctions to skip coloring non-pinned genes.
+// Used by drawGenePolylines to skip coloring non-pinned genes.
 const pinnedGenes = new Set();
 
-// Precomputed spatial index: gene name → polyline indices / junction coords.
+// Precomputed spatial index: gene name → polyline indices.
 // Viewport-independent — rebuilt only when LOD or gene positions change.
 // Canvas clips off-screen polylines automatically.
 let genePinVersion = 0;
 let polylineCache = null;  // { lod, pinVer, data: Map<name, number[]> }
-let junctionCache = null;  // { lod, pinVer, data: Map<name, [number,number][]> }
 
 export function bumpGenePinVersion() { genePinVersion++; }
 
@@ -54,33 +53,6 @@ function buildPolylineIndex(level, bboxes) {
     return data;
 }
 
-function buildJunctionIndex(level) {
-    if (junctionCache && junctionCache.lod === state.currentLOD &&
-        junctionCache.pinVer === genePinVersion) {
-        return junctionCache.data;
-    }
-
-    const genePins = getGenePins();
-    const geneYMargin = (level.gridSize || 50) * 3;
-    const data = new Map();
-
-    for (const gene of genePins) {
-        if (!isGeneVisible(gene.name)) continue;
-        if (!pinnedGenes.has(gene.name)) continue;
-        const junctions = [];
-        for (const [x, y] of level.junctions) {
-            if (x >= gene.startX && x <= gene.endX &&
-                y >= gene.minY - geneYMargin && y <= gene.maxY + geneYMargin) {
-                junctions.push([x, y]);
-            }
-        }
-        if (junctions.length > 0) data.set(gene.name, junctions);
-    }
-
-    junctionCache = { lod: state.currentLOD, pinVer: genePinVersion, data };
-    return data;
-}
-
 /**
  * Draw gene-colored polyline overdraw on visible skeleton polylines.
  * Each gene uses its own color.
@@ -105,35 +77,6 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
         const indices = index.get(gene.name);
         if (!indices) continue;
         strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5, target);
-    }
-
-    if (!svg) ctx.globalCompositeOperation = prevComp;
-}
-
-/**
- * Draw gene-colored junction overdraw on visible skeleton junctions.
- */
-export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
-    const genePins = getGenePins();
-    if (genePins.length === 0) return;
-
-    const index = buildJunctionIndex(level);
-    if (index.size === 0) return;
-
-    const gr = Math.max(2, 4.0 / state.zoom);
-
-    let target = svg;
-    if (svg) {
-        target = createBlendGroup(svg, 'multiply');
-    } else {
-        var prevComp = ctx.globalCompositeOperation;
-        ctx.globalCompositeOperation = 'multiply';
-    }
-
-    for (const gene of genePins) {
-        const junctions = index.get(gene.name);
-        if (!junctions) continue;
-        fillJunctions(ctx, junctions, gr, hexToRgba(gene.color, skelAlpha), target);
     }
 
     if (!svg) ctx.globalCompositeOperation = prevComp;
