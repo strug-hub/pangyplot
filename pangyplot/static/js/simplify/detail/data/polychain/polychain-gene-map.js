@@ -1,23 +1,17 @@
 // Gene-chain overlap mapping for polychain gene overlays.
 // Computes which genes overlap which chains, with fractional coverage,
 // and extracts sub-polylines for rendering.
-// Independent from skeleton — fetches genes directly from the API.
+// Uses the shared gene cache from gene-data.js (loaded at chromosome init).
 
 import { cumulativeLengths, interpolateAtDist } from './polychain-adapter.js';
-import { getGenePins, isGeneVisible } from '../../../skeleton/data/gene-data.js';
+import { getGenePins, getGeneCache, isGeneVisible } from '../../../skeleton/data/gene-data.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../../simplify-state.js';
-import { scheduleFrame } from '../../../utils/frame-scheduler.js';
 
 function getGeneColor(name) {
     const pin = getGenePins().find(p => p.name === name);
     return pin ? pin.color : rgbStringToHex(stringToColor(name));
 }
-
-// Gene cache (independent from skeleton gene-data.js)
-let geneCache = [];
-let geneFetchedRange = null; // { chr, startBp, endBp }
-let geneFetchController = null;
 
 // Overlap cache
 let cachedOverlaps = null;
@@ -25,69 +19,7 @@ let cachedChains = null;
 let cachedGenes = null;
 let cachedVisibilityKey = null;
 
-/**
- * Fetch genes from the API for the given bp range.
- * Caches results; re-fetches only when range extends beyond cached.
- */
-export async function fetchGenesForDetail(chr, genome, startBp, endBp) {
-    if (!chr || !genome) return;
-
-    // If cached range covers the request, skip
-    if (geneFetchedRange && geneFetchedRange.chr === chr &&
-        geneFetchedRange.startBp <= startBp && geneFetchedRange.endBp >= endBp) {
-        return;
-    }
-
-    // Expand range by 100% margin
-    const span = endBp - startBp;
-    const fetchStart = Math.max(0, Math.floor(startBp - span));
-    const fetchEnd = Math.ceil(endBp + span);
-
-    if (geneFetchController) geneFetchController.abort();
-    geneFetchController = new AbortController();
-    const signal = geneFetchController.signal;
-
-    try {
-        let genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, true, signal);
-        if (genes.length === 0) {
-            genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, false, signal);
-        }
-
-        // Deduplicate
-        const seen = new Set();
-        geneCache = [];
-        for (const g of genes) {
-            if (!seen.has(g.id)) {
-                seen.add(g.id);
-                geneCache.push(g);
-            }
-        }
-        geneFetchedRange = { chr, startBp: fetchStart, endBp: fetchEnd };
-        // Invalidate overlap cache and trigger repaint
-        cachedGenes = null;
-        scheduleFrame();
-    } catch (err) {
-        if (err.name !== 'AbortError') {
-            console.warn('[polychain-gene-map] fetch failed:', err);
-        }
-    }
-}
-
-async function fetchGenes(genome, chr, start, end, maneOnly, signal) {
-    const params = new URLSearchParams({
-        genome, chromosome: chr,
-        start: String(start), end: String(end),
-    });
-    if (maneOnly) params.set('mane_only', 'true');
-    const resp = await fetch(`/genes?${params}`, { signal });
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    return data.genes || [];
-}
-
 export function clearDetailGeneCache() {
-    geneCache = [];
-    geneFetchedRange = null;
     cachedOverlaps = null;
     cachedChains = null;
     cachedGenes = null;
@@ -177,17 +109,18 @@ export function getGeneChainOverlaps() {
     if (!dd) return new Map();
 
     const chains = dd.chains;
+    const genes = getGeneCache();
 
     // Build a key from visibility + colors to detect changes
     const pins = getGenePins();
     const visKey = pins.map(p => (isGeneVisible(p.name) ? '1' : '0') + p.color).join();
-    if (cachedOverlaps && cachedChains === chains && cachedGenes === geneCache && cachedVisibilityKey === visKey) {
+    if (cachedOverlaps && cachedChains === chains && cachedGenes === genes && cachedVisibilityKey === visKey) {
         return cachedOverlaps;
     }
 
     cachedChains = chains;
-    cachedGenes = geneCache;
+    cachedGenes = genes;
     cachedVisibilityKey = visKey;
-    cachedOverlaps = buildGeneChainOverlaps(chains, geneCache);
+    cachedOverlaps = buildGeneChainOverlaps(chains, genes);
     return cachedOverlaps;
 }

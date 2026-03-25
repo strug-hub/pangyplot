@@ -304,5 +304,4 @@ export function clearLabelAnimation() {
     animatedOffset.clear();
     pinnedGenes.clear();
     polylineCache = null;
-    junctionCache = null;
 }

@@ -10,8 +10,7 @@ import { resizeCanvas, fitToScreen, getViewport } from '../render/viewport.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { scheduleDetailFetch } from '../engines/detail-transition-engine.js';
 import { scheduleHashUpdate } from '../engines/navigation/hash-navigation.js';
-import { isReady, layoutToBp } from '../engines/reference-spine-engine.js';
-import { fetchAndPlaceGenes, clearGeneCache } from '../skeleton/data/gene-data.js';
+import { clearGeneCache } from '../skeleton/data/gene-data.js';
 import { clearLabelAnimation } from '../skeleton/render/skeleton-gene-overlay.js';
 import { showLoadingError, showStats, initGridMeter } from './status-bar.js';
 import { publishViewportCoordinates } from './viewport-sync.js';
@@ -59,18 +58,8 @@ async function switchChromosome(chrom, start, end) {
     scheduleHashUpdate();
     publishViewportCoordinates();
 
-    // Fetch genes for the new chromosome
-    if (isReady()) {
-        const vp = getViewport();
-        const midY = (vp.minY + vp.maxY) / 2;
-        const bpLeft = layoutToBp(vp.minX, midY);
-        const bpRight = layoutToBp(vp.maxX, midY);
-        if (bpLeft !== null && bpRight !== null) {
-            fetchAndPlaceGenes(chrom, state.GENOME,
-                Math.max(0, Math.round(bpLeft)), Math.round(bpRight))
-                .then(() => scheduleFrame());
-        }
-    }
+    // Genes are loaded by loadChromosome — just schedule a frame
+    scheduleFrame();
 }
 
 export function setupUiBridge() {

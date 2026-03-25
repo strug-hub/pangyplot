@@ -97,12 +97,8 @@ def get_samples():
 def genes():
     genome = request.args.get("genome")
     chrom = request.args.get("chromosome")
-    start = request.args.get("start")
-    end = request.args.get("end")
-    
-    start = int(start)
-    end = int(end)
-    
+    start = request.args.get("start", 0, type=int)
+    end = request.args.get("end", 2_000_000_000, type=int)
     mane_only = request.args.get("mane_only", "false").lower() == "true"
 
     print(f"Getting genes in: {genome}#{chrom}:{start}-{end} (mane_only={mane_only})")

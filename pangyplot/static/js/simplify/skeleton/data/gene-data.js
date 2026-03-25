@@ -1,4 +1,6 @@
-// Gene landmark data: dynamic API fetch with caching and MANE Select filter.
+// Gene landmark data: placement, visibility, starring, colors.
+// Gene cache is populated once at chromosome load by chromosome-loader.js.
+// Placement runs on viewport change; rendering handles density culling.
 
 import { bpToLayout } from '../../engines/reference-spine-engine.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
@@ -10,16 +12,14 @@ import { bumpGenePinVersion } from '../render/skeleton-gene-overlay.js';
 let genePins = [];
 let geneCache = [];
 const hiddenGenes = new Set();
-const starredGenes = new Set();  // starred genes get draw priority
-const customColors = new Map();  // gene name → user-set color (persists across rebuilds)
-let fetchedRange = null;    // { chr, startBp, endBp } — completed fetch
-let pendingRange = null;    // { chr, startBp, endBp } — in-flight fetch
-let fetchController = null;
-let detailOverride = false; // true when pins are positioned by detail data
-let spinePlaced = false;    // true when pins are placed from spine (skip redundant re-place)
-let detailChainKey = null;  // tracks which chain data was last used for placement
+const starredGenes = new Set();
+const customColors = new Map();
+let detailOverride = false;
+let spinePlaced = false;
+let detailChainKey = null;
 
 export function getGenePins() { return genePins; }
+export function getGeneCache() { return geneCache; }
 export function isGeneVisible(name) { return !hiddenGenes.has(name); }
 export function isGeneStarred(name) { return starredGenes.has(name); }
 export function toggleGeneStar(name) {
@@ -28,87 +28,42 @@ export function toggleGeneStar(name) {
     scheduleFrame();
 }
 
+/**
+ * Initialize the gene cache with pre-fetched gene data.
+ * Called once per chromosome load from chromosome-loader.js.
+ */
+export function initGeneCache(genes) {
+    const seen = new Set();
+    geneCache = [];
+    for (const g of genes) {
+        if (!seen.has(g.id)) {
+            seen.add(g.id);
+            geneCache.push(g);
+        }
+    }
+    genePins = [];
+    spinePlaced = false;
+    detailChainKey = null;
+    detailOverride = false;
+    placeGenes();
+}
+
 export function clearGeneCache() {
     genePins = [];
     geneCache = [];
     hiddenGenes.clear();
     starredGenes.clear();
     customColors.clear();
-    fetchedRange = null;
-    pendingRange = null;
     spinePlaced = false;
     detailChainKey = null;
-    if (fetchController) {
-        fetchController.abort();
-        fetchController = null;
-    }
 }
 
-export async function fetchAndPlaceGenes(chr, genome, startBp, endBp) {
-    if (!chr || !genome) return;
-
-    // If cached or in-flight range covers the request, skip
-    for (const range of [fetchedRange, pendingRange]) {
-        if (range && range.chr === chr &&
-            range.startBp <= startBp && range.endBp >= endBp) {
-            if (range === fetchedRange && !detailOverride && !spinePlaced) placeGenes();
-            return;
-        }
-    }
-
-    // Expand range by 100% margin on each side
-    const span = endBp - startBp;
-    const fetchStart = Math.max(0, Math.floor(startBp - span));
-    const fetchEnd = Math.ceil(endBp + span);
-
-    // Abort any in-flight request
-    if (fetchController) fetchController.abort();
-    fetchController = new AbortController();
-    const signal = fetchController.signal;
-    pendingRange = { chr, startBp: fetchStart, endBp: fetchEnd };
-
-    try {
-        let genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, true, signal);
-
-        // Fallback: if MANE Select returned nothing, fetch all genes
-        if (genes.length === 0) {
-            genes = await fetchGenes(genome, chr, fetchStart, fetchEnd, false, signal);
-        }
-
-        // Deduplicate by gene id
-        const seen = new Set();
-        geneCache = [];
-        for (const g of genes) {
-            if (!seen.has(g.id)) {
-                seen.add(g.id);
-                geneCache.push(g);
-            }
-        }
-
-        fetchedRange = { chr, startBp: fetchStart, endBp: fetchEnd };
-        pendingRange = null;
-        spinePlaced = false;
-        detailChainKey = null;
-        if (!detailOverride) placeGenes();
-    } catch (err) {
-        pendingRange = null;
-        if (err.name !== 'AbortError') {
-            console.warn('[gene-data] fetch failed:', err);
-        }
-    }
-}
-
-async function fetchGenes(genome, chr, start, end, maneOnly, signal) {
-    const params = new URLSearchParams({
-        genome, chromosome: chr,
-        start: String(start), end: String(end),
-    });
-    if (maneOnly) params.set('mane_only', 'true');
-
-    const resp = await fetch(`/genes?${params}`, { signal });
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    return data.genes || [];
+/**
+ * Re-place genes for the current viewport. No fetch — just rebuilds
+ * genePins from the full cache. Call on viewport change if needed.
+ */
+export function placeGenesForViewport() {
+    if (!detailOverride && !spinePlaced) placeGenes();
 }
 
 function placeGenes() {
@@ -147,9 +102,10 @@ function placeGenes() {
 }
 
 function populateSimplifyGeneTable() {
+    const pinMap = new Map(genePins.map(p => [p.name, p]));
     const entries = geneCache.map(gene => {
         const name = gene.gene || gene.id;
-        const pin = genePins.find(p => p.name === name);
+        const pin = pinMap.get(name);
         const color = pin ? pin.color : rgbStringToHex(stringToColor(name));
         return {
             id: gene.id,
@@ -183,8 +139,6 @@ function populateSimplifyGeneTable() {
 export function placeGenesFromDetail(chains) {
     if (!chains || chains.length === 0 || genePins.length === 0) return;
 
-    // Build a simple key from chain count + first/last polyline endpoints
-    // to detect whether chain data actually changed
     const first = chains[0].polyline;
     const last = chains[chains.length - 1].polyline;
     const key = chains.length + ':'
@@ -212,7 +166,6 @@ export function placeGenesFromDetail(chains) {
     }
     if (anchors.length < 2) return;
 
-    // Sort by bp, deduplicate
     anchors.sort((a, b) => a.bp - b.bp);
     const bps = [anchors[0].bp];
     const xs = [anchors[0].x];
@@ -235,7 +188,6 @@ export function placeGenesFromDetail(chains) {
         return xs[lo] + t * (xs[hi] - xs[lo]);
     }
 
-    // Reposition X from detail chains, keep Y from spine
     for (const pin of genePins) {
         pin.startX = detailBpToX(pin.startBp);
         pin.endX = detailBpToX(pin.endBp);
@@ -289,8 +241,6 @@ export function blendGenePinsToSpine(t) {
 
 /**
  * Restore gene pins to spine-based positioning mode.
- * @param {boolean} [recompute=true] - If false, just clears the override flag
- *   without snapping positions (use when blend already placed pins at spine).
  */
 export function placeGenesFromSpine(recompute = true) {
     detailOverride = false;

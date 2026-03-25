@@ -31,6 +31,9 @@ export function setLinkColor(color) {
 
 export function setBackgroundColor(color) {
     colorState.background = color;
+    // Sync CSS variable so loading overlay matches
+    const container = document.getElementById('canvas-container');
+    if (container) container.style.setProperty('--canvas-bg', color);
 }
 
 export function setColorStyle(style) {

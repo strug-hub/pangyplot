@@ -3,6 +3,7 @@
 import { setLevelMeta, setChainMeta } from './chromosome-data.js';
 import { initSkeleton } from '../skeleton/data/skeleton-init.js';
 import { initSpine } from '../engines/reference-spine-engine.js';
+import { initGeneCache } from '../skeleton/data/gene-data.js';
 import { state } from '../simplify-state.js';
 import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
 import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
@@ -20,12 +21,14 @@ function decodeDelta(levels) {
 }
 
 export async function loadChromosome(chromosome) {
-    // Fetch skeleton, spine, and polychain data in parallel
+    // Fetch skeleton, spine, polychain, and genes in parallel
     const chr = encodeURIComponent(chromosome);
-    const [skelResp, spineResp, pdResp] = await Promise.all([
+    const genome = encodeURIComponent(state.GENOME);
+    const [skelResp, spineResp, pdResp, geneResp] = await Promise.all([
         fetch(`/skeleton?chromosome=${chr}`),
         fetch(`/spine?chromosome=${chr}`),
         fetch(`/polychain-data?chromosome=${chr}`),
+        fetch(`/genes?genome=${genome}&chromosome=${chr}&mane_only=true`),
     ]);
 
     if (!skelResp.ok) throw new Error(`HTTP ${skelResp.status}`);
@@ -45,6 +48,22 @@ export async function loadChromosome(chromosome) {
         const pdRaw = await pdResp.json();
         initPolychainDataCache(pdRaw);
     }
+
+    // Genes (fetched for entire chromosome; MANE Select first, fallback to all)
+    let genes = [];
+    if (geneResp.ok) {
+        const geneData = await geneResp.json();
+        genes = geneData.genes || [];
+    }
+    if (genes.length === 0) {
+        // Fallback: fetch all genes without MANE filter
+        const fallbackResp = await fetch(`/genes?genome=${genome}&chromosome=${chr}`);
+        if (fallbackResp.ok) {
+            const fallbackData = await fallbackResp.json();
+            genes = fallbackData.genes || [];
+        }
+    }
+    initGeneCache(genes);
 
     // Clear per-chain bubble metadata from previous chromosome
     clearBubbleMetaCache();

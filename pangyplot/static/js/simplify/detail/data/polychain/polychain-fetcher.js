@@ -11,7 +11,6 @@ import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
-import { fetchGenesForDetail } from './polychain-gene-map.js';
 import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
 import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
 import { getForceNodes } from '../force-data.js';
@@ -244,12 +243,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
         }
         updateDetailForceCount(getForceNodes().length);
 
-        const bpLeft = layoutToBp(fetchMinX, 0);
-        const bpRight = layoutToBp(fetchMaxX, 0);
-        if (bpLeft != null && bpRight != null) {
-            fetchGenesForDetail(chr, state.GENOME,
-                Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
-        }
         placeGenesFromDetail(state.detailData.chains);
         return true;
     }
@@ -349,9 +342,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             };
         }
         updateDetailForceCount(getForceNodes().length);
-
-        fetchGenesForDetail(chr, state.GENOME,
-            Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
 
         placeGenesFromDetail(state.detailData.chains);
 

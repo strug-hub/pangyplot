@@ -104,13 +104,38 @@
             height: 100%;
         }
 
+        #canvas-container {
+            --canvas-bg: #373737;
+        }
+
         #loading {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 16px;
-            color: #666;
+            inset: 0;
+            background: var(--canvas-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        #loading .loading-mascot {
+            height: 56px;
+            opacity: 0.6;
+            animation: gentle-bounce 1.8s ease-in-out infinite;
+        }
+
+        #loading .loading-text {
+            font-family: 'Rubik', sans-serif;
+            font-size: 14px;
+            color: var(--dark-green, #5D6C53);
+            letter-spacing: 0.03em;
+        }
+
+        @keyframes gentle-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
         }
 
         #fetch-indicator {
@@ -217,7 +242,10 @@
             <div id="graph" class="flex-1" tabindex="0">
                 <div id="canvas-container">
                     <canvas id="canvas"></canvas>
-                    <div id="loading">Loading graph data...</div>
+                    <div id="loading">
+                        <img src="{{ url_for('static', filename='images/pangyplot_pangy.svg') }}" class="loading-mascot" alt="">
+                        <div class="loading-text">Loading chromosome data...</div>
+                    </div>
                     <div id="fetch-indicator"></div>
                     <div id="tooltip"></div>
                 </div>

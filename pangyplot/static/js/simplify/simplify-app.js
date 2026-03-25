@@ -2,19 +2,16 @@
 
 import { resizeCanvas, fitToScreen } from './render/viewport.js';
 import { loadChromosome } from './data/chromosome-loader.js';
-import { fetchAndPlaceGenes } from './skeleton/data/gene-data.js';
 import { navigateToHash, parseUrlHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
 import { scheduleFrame } from './utils/frame-scheduler.js';
 import './render-manager.js';
 import { scheduleDetailFetch } from './engines/detail-transition-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
 import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
-import { isReady, layoutToBp } from './engines/reference-spine-engine.js';
 import { state } from './simplify-state.js';
 import { setupUiBridge } from './ui/ui-bridge.js';
 import { setupPolychainForceSettings } from './ui/polychain-force-settings.js';
 import { publishViewportCoordinates } from './ui/viewport-sync.js';
-import { getViewport } from './render/viewport.js';
 
 async function init() {
     // Determine initial chromosome from URL hash, fall back to chrY
@@ -43,19 +40,6 @@ async function init() {
 
     // Seed the shared UI (coordinate display + cytoband) with initial viewport
     publishViewportCoordinates();
-
-    // Fetch genes for the initial viewport
-    if (isReady()) {
-        const vp = getViewport();
-        const midY = (vp.minY + vp.maxY) / 2;
-        const bpLeft = layoutToBp(vp.minX, midY);
-        const bpRight = layoutToBp(vp.maxX, midY);
-        if (bpLeft !== null && bpRight !== null) {
-            fetchAndPlaceGenes(state.chromosome, state.GENOME,
-                Math.max(0, Math.round(bpLeft)), Math.round(bpRight))
-                .then(() => scheduleFrame());
-        }
-    }
 }
 
 setupUiBridge();
