@@ -4,8 +4,8 @@
 
 import { state } from '../simplify-state.js';
 import { formatBp } from '@format-utils';
-import { xToBp } from '../engines/reference-spine-engine.js';
-import { viewportStepCount } from '../render/viewport.js';
+import { layoutToBp } from '../engines/reference-spine-engine.js';
+import { viewportBpSpan } from '../render/viewport.js';
 import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
 import { positionTooltip } from '@ui/elements/tooltip.js';
 import { isDebugMode } from '@app-state';
@@ -96,8 +96,9 @@ export function updateVisibleCounts(visiblePl) {
 export function updateViewportBp(vp) {
     const chr = state.chromosome;
     if (chr) {
-        const bpLeft = xToBp(vp.minX);
-        const bpRight = xToBp(vp.maxX);
+        const midY = (vp.minY + vp.maxY) / 2;
+        const bpLeft = layoutToBp(vp.minX, midY);
+        const bpRight = layoutToBp(vp.maxX, midY);
         if (bpLeft !== null && bpRight !== null) {
             state.dom.viewportBp.textContent = `${chr}:${formatBp(bpLeft)}-${formatBp(bpRight)}`;
         }
@@ -127,8 +128,8 @@ export function updateDetailBar() {
     if (dd.bpStart != null) {
         state.dom.detailRange.textContent = `${formatBp(dd.bpStart)}-${formatBp(dd.bpEnd)}`;
     }
-    const steps = viewportStepCount();
-    state.dom.detailSteps.textContent = isFinite(steps) ? Math.round(steps).toLocaleString() : '--';
+    const bpSpan = viewportBpSpan();
+    state.dom.detailSteps.textContent = isFinite(bpSpan) ? formatBp(bpSpan) : '--';
 }
 
 /** Update force node count in detail bar. */

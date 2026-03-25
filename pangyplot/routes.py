@@ -144,6 +144,21 @@ def skeleton():
     return Response(data, mimetype='application/json',
                     headers={'Content-Encoding': 'gzip'})
 
+@bp.route('/spine')
+def spine():
+    chrom = request.args.get('chromosome')
+    ref = request.args.get('ref', current_app.genome)
+    if not chrom:
+        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    from pangyplot.preprocess.spine.spine_builder import spine_filename
+    gz_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, spine_filename(ref))
+    if not os.path.exists(gz_path):
+        return jsonify({"error": f"No spine data for {chrom} ({ref})."}), 404
+    with open(gz_path, 'rb') as f:
+        data = f.read()
+    return Response(data, mimetype='application/json',
+                    headers={'Content-Encoding': 'gzip'})
+
 @bp.route('/polychain-data')
 def polychain_data_file():
     chrom = request.args.get('chromosome')

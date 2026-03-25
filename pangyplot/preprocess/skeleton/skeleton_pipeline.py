@@ -207,57 +207,11 @@ def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats=None
 
 
 # ---------------------------------------------------------------------------
-# Reference spine: layout_x → basepair lookup table
-# ---------------------------------------------------------------------------
-
-def build_reference_spine(step_index, segment_index, stride=50):
-    """Build a compact (x, bp, y) lookup table from the reference path.
-
-    Walks each step, computes segment centroid (x, y) and midpoint bp,
-    filters to a monotone-increasing envelope (drops backward jogs in x)
-    and downsamples by stride for compactness.
-
-    Returns list of [x, bp, y] triples sorted by x.
-    """
-    # Collect (x, bp, y, step_idx) for every reference step
-    points = []
-    for i in range(len(step_index.segments)):
-        sid = step_index.segments[i]
-        if sid >= len(segment_index.valid) or not segment_index.valid[sid]:
-            continue
-        cx = (segment_index.x1[sid] + segment_index.x2[sid]) / 2.0
-        cy = (segment_index.y1[sid] + segment_index.y2[sid]) / 2.0
-        bp = (step_index.starts[i] + step_index.ends[i]) / 2.0
-        points.append((cx, bp, cy, i))
-
-    # Build monotone envelope: only keep points where x exceeds running max
-    envelope = []
-    max_x = -float('inf')
-    for cx, bp, cy, step_idx in points:
-        if cx > max_x:
-            envelope.append((cx, bp, cy, step_idx))
-            max_x = cx
-
-    # Downsample by stride
-    spine = [[round(envelope[i][0], 1), int(envelope[i][1]), round(envelope[i][2], 1), envelope[i][3]]
-             for i in range(0, len(envelope), stride)]
-
-    # Ensure last point is included
-    if len(envelope) > 0:
-        last = [round(envelope[-1][0], 1), int(envelope[-1][1]), round(envelope[-1][2], 1), envelope[-1][3]]
-        if not spine or spine[-1] != last:
-            spine.append(last)
-
-    print(f"Reference spine: {len(points)} steps → {len(envelope)} monotone → {len(spine)} sampled points")
-    return spine
-
-
-# ---------------------------------------------------------------------------
 # JSON export for D3 viewer
 # ---------------------------------------------------------------------------
 
 def export_json(junctions, runs, segment_index, link_index, polylines,
-                grid_cell_sizes, output_path, ref_spine=None, chromosome=None,
+                grid_cell_sizes, output_path, chromosome=None,
                 chain_ids=None, chain_stats=None):
     """Export pure grid-based mipmap data as gzipped JSON for the D3 viewer.
 
@@ -291,11 +245,6 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
         }
         f.write(',"stats":')
         f.write(encoder.encode(stats))
-
-        # RefSpine
-        if ref_spine is not None:
-            f.write(',"refSpine":')
-            f.write(encoder.encode(ref_spine))
 
         # Chromosome
         if chromosome is not None:

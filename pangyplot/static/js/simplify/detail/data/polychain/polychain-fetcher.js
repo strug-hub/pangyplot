@@ -86,7 +86,7 @@ function processResponse(apiResponse) {
 // ---------------------------------------------------------------
 // Build detail data from precomputed cache (no server fetch).
 // ---------------------------------------------------------------
-function buildDataFromCache(minX, maxX, xToBp) {
+function buildDataFromCache(minX, maxX, layoutToBp) {
     const vpChains = getChainsInRange(minX, maxX);
     const chains = [];
     let totalBubbles = 0;
@@ -140,8 +140,8 @@ function buildDataFromCache(minX, maxX, xToBp) {
     }
     const juncGraphLinks = getJunctionLinksForNodes(resolvableIds);
 
-    const bpLeft = xToBp(minX);
-    const bpRight = xToBp(maxX);
+    const bpLeft = layoutToBp(minX, 0);
+    const bpRight = layoutToBp(maxX, 0);
 
     return {
         chains, totalBubbles,
@@ -160,7 +160,7 @@ function buildDataFromCache(minX, maxX, xToBp) {
 // Caller provides pre-computed viewport and coordinate info.
 // Returns true if new data was fetched, false otherwise.
 // ---------------------------------------------------------------
-export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
+export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp }) {
     if (!chr) return false;
 
     const vpWidth = vp.maxX - vp.minX;
@@ -182,7 +182,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
     // --- Fast path: use precomputed polychain data cache ---
     if (hasPolychainDataCache()) {
         const fetchStart = performance.now();
-        const newData = buildDataFromCache(fetchMinX, fetchMaxX, xToBp);
+        const newData = buildDataFromCache(fetchMinX, fetchMaxX, layoutToBp);
         updateDetailFetchMs(performance.now() - fetchStart);
 
         const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
@@ -244,8 +244,8 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
         }
         updateDetailForceCount(getForceNodes().length);
 
-        const bpLeft = xToBp(fetchMinX);
-        const bpRight = xToBp(fetchMaxX);
+        const bpLeft = layoutToBp(fetchMinX, 0);
+        const bpRight = layoutToBp(fetchMaxX, 0);
         if (bpLeft != null && bpRight != null) {
             fetchGenesForDetail(chr, state.GENOME,
                 Math.max(0, Math.round(bpLeft)), Math.round(bpRight));
@@ -255,10 +255,10 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, xToBp }) {
     }
 
     // --- Fallback: fetch from server ---
-    const bpLeft = xToBp(fetchMinX);
-    const bpRight = xToBp(fetchMaxX);
+    const bpLeft = layoutToBp(fetchMinX, 0);
+    const bpRight = layoutToBp(fetchMaxX, 0);
     if (bpLeft === null || bpRight === null) return false;
-    const ppbp = canvasWidth / (xToBp(vp.maxX) - xToBp(vp.minX));
+    const ppbp = canvasWidth / (layoutToBp(vp.maxX, 0) - layoutToBp(vp.minX, 0));
 
     // Cancel any in-flight request
     if (fetchController) fetchController.abort();

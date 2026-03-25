@@ -1,6 +1,6 @@
 // Gene landmark data: dynamic API fetch with caching and MANE Select filter.
 
-import { bpToX, xToY } from '../../engines/reference-spine-engine.js';
+import { bpToLayout } from '../../engines/reference-spine-engine.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../simplify-state.js';
 import { populateGeneAnnotationsTable } from '../../../graph/engines/gene-annotation/gene-annotation-ui.js';
@@ -116,21 +116,25 @@ function placeGenes() {
     for (const gene of geneCache) {
         const startBp = gene.start;
         const endBp = gene.end;
-        const startX = bpToX(startBp);
-        const endX = bpToX(endBp);
-        if (startX === null || endX === null) continue;
+        const startPt = bpToLayout(startBp);
+        const endPt = bpToLayout(endBp);
+        if (!startPt || !endPt) continue;
 
-        const midX = (startX + endX) / 2;
-        const refY = xToY(midX);
+        const startX = startPt.x;
+        const endX = endPt.x;
+        const midBp = (startBp + endBp) / 2;
+        const midPt = bpToLayout(midBp);
+        const midX = midPt.x;
+        const refY = midPt.y;
 
-        // Sample spine y at multiple points to capture curves accurately
-        const nSamples = Math.max(3, Math.ceil((endX - startX) / 20));
+        // Sample spine y at multiple bp positions to capture curves accurately
+        const nSamples = Math.max(3, Math.ceil(Math.abs(endX - startX) / 20));
         let minY = Infinity, maxY = -Infinity;
         for (let s = 0; s <= nSamples; s++) {
-            const sx = startX + (endX - startX) * s / nSamples;
-            const sy = xToY(sx);
-            if (sy < minY) minY = sy;
-            if (sy > maxY) maxY = sy;
+            const sampleBp = startBp + (endBp - startBp) * s / nSamples;
+            const pt = bpToLayout(sampleBp);
+            if (pt.y < minY) minY = pt.y;
+            if (pt.y > maxY) maxY = pt.y;
         }
         const name = gene.gene || gene.id;
         const color = customColors.get(name) || rgbStringToHex(stringToColor(name));
@@ -236,17 +240,16 @@ export function placeGenesFromDetail(chains) {
         pin.startX = detailBpToX(pin.startBp);
         pin.endX = detailBpToX(pin.endBp);
         pin.midX = (pin.startX + pin.endX) / 2;
-        pin.refY = xToY(pin.midX);
+        const midPt = bpToLayout((pin.startBp + pin.endBp) / 2);
+        pin.refY = midPt ? midPt.y : pin.refY;
 
         const nSamples = Math.max(3, Math.ceil(Math.abs(pin.endX - pin.startX) / 20));
         let minY = Infinity, maxY = -Infinity;
-        const lo = Math.min(pin.startX, pin.endX);
-        const hi = Math.max(pin.startX, pin.endX);
         for (let s = 0; s <= nSamples; s++) {
-            const sx = lo + (hi - lo) * s / nSamples;
-            const sy = xToY(sx);
-            if (sy < minY) minY = sy;
-            if (sy > maxY) maxY = sy;
+            const sampleBp = pin.startBp + (pin.endBp - pin.startBp) * s / nSamples;
+            const pt = bpToLayout(sampleBp);
+            if (pt && pt.y < minY) minY = pt.y;
+            if (pt && pt.y > maxY) maxY = pt.y;
         }
         pin.minY = minY;
         pin.maxY = maxY;
@@ -260,24 +263,23 @@ export function placeGenesFromDetail(chains) {
  */
 export function blendGenePinsToSpine(t) {
     for (const pin of genePins) {
-        const spineStartX = bpToX(pin.startBp);
-        const spineEndX = bpToX(pin.endBp);
-        if (spineStartX === null || spineEndX === null) continue;
+        const startPt = bpToLayout(pin.startBp);
+        const endPt = bpToLayout(pin.endBp);
+        if (!startPt || !endPt) continue;
 
-        pin.startX = pin.startX + (spineStartX - pin.startX) * t;
-        pin.endX = pin.endX + (spineEndX - pin.endX) * t;
+        pin.startX = pin.startX + (startPt.x - pin.startX) * t;
+        pin.endX = pin.endX + (endPt.x - pin.endX) * t;
         pin.midX = (pin.startX + pin.endX) / 2;
-        pin.refY = xToY(pin.midX);
+        const midPt = bpToLayout((pin.startBp + pin.endBp) / 2);
+        pin.refY = midPt ? midPt.y : pin.refY;
 
         const nSamples = Math.max(3, Math.ceil(Math.abs(pin.endX - pin.startX) / 20));
         let minY = Infinity, maxY = -Infinity;
-        const lo = Math.min(pin.startX, pin.endX);
-        const hi = Math.max(pin.startX, pin.endX);
         for (let s = 0; s <= nSamples; s++) {
-            const sx = lo + (hi - lo) * s / nSamples;
-            const sy = xToY(sx);
-            if (sy < minY) minY = sy;
-            if (sy > maxY) maxY = sy;
+            const sampleBp = pin.startBp + (pin.endBp - pin.startBp) * s / nSamples;
+            const pt = bpToLayout(sampleBp);
+            if (pt && pt.y < minY) minY = pt.y;
+            if (pt && pt.y > maxY) maxY = pt.y;
         }
         pin.minY = minY;
         pin.maxY = maxY;

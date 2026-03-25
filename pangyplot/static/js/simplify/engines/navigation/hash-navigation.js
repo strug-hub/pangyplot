@@ -2,7 +2,7 @@
 // Format: #chrY:12345-67890
 
 import { state } from '../../simplify-state.js';
-import { xToBp, bpToX, xToY, isReady } from '../reference-spine-engine.js';
+import { layoutToBp, bpToLayout, isReady } from '../reference-spine-engine.js';
 import { getViewport } from '../../render/viewport.js';
 
 let hashTimer = null;
@@ -11,8 +11,9 @@ export function updateUrlHash() {
     const chr = state.chromosome;
     if (!isReady() || !chr) return;
     const vp = getViewport();
-    const bpLeft = xToBp(vp.minX);
-    const bpRight = xToBp(vp.maxX);
+    const midY = (vp.minY + vp.maxY) / 2;
+    const bpLeft = layoutToBp(vp.minX, midY);
+    const bpRight = layoutToBp(vp.maxX, midY);
     if (bpLeft === null || bpRight === null) return;
     const start = Math.max(0, Math.round(bpLeft));
     const end = Math.round(bpRight);
@@ -39,28 +40,28 @@ export function parseUrlHash() {
 export function navigateToRegion(startBp, endBp) {
     if (!isReady()) return false;
 
-    const layoutLeft = bpToX(startBp);
-    const layoutRight = bpToX(endBp);
-    if (layoutLeft === null || layoutRight === null) return false;
+    const leftPt = bpToLayout(startBp);
+    const rightPt = bpToLayout(endBp);
+    if (!leftPt || !rightPt) return false;
 
     const dpr = window.devicePixelRatio || 1;
     const cw = state.canvas.width / dpr;
     const ch = state.canvas.height / dpr;
 
-    const layoutWidth = layoutRight - layoutLeft;
+    const layoutWidth = rightPt.x - leftPt.x;
     if (layoutWidth <= 0) return false;
 
     // Fit the bp range horizontally with padding
     const pad = 40;
     state.zoom = (cw - pad * 2) / layoutWidth;
 
-    // Center on the midpoint; use spine Y for vertical centering
-    const midX = (layoutLeft + layoutRight) / 2;
-    const midY = xToY(midX);
-    if (midY === null) return false;
+    // Center on the midpoint
+    const midBp = (startBp + endBp) / 2;
+    const midPt = bpToLayout(midBp);
+    if (!midPt) return false;
 
-    state.panX = (cw / 2) - (midX * state.zoom);
-    state.panY = (ch / 2) - (midY * state.zoom);
+    state.panX = (cw / 2) - (midPt.x * state.zoom);
+    state.panY = (ch / 2) - (midPt.y * state.zoom);
     return true;
 }
 

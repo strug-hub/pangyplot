@@ -20,10 +20,12 @@ function decodeDelta(levels) {
 }
 
 export async function loadChromosome(chromosome) {
-    // Fetch skeleton and polychain data in parallel
-    const [skelResp, pdResp] = await Promise.all([
-        fetch(`/skeleton?chromosome=${encodeURIComponent(chromosome)}`),
-        fetch(`/polychain-data?chromosome=${encodeURIComponent(chromosome)}`),
+    // Fetch skeleton, spine, and polychain data in parallel
+    const chr = encodeURIComponent(chromosome);
+    const [skelResp, spineResp, pdResp] = await Promise.all([
+        fetch(`/skeleton?chromosome=${chr}`),
+        fetch(`/spine?chromosome=${chr}`),
+        fetch(`/polychain-data?chromosome=${chr}`),
     ]);
 
     if (!skelResp.ok) throw new Error(`HTTP ${skelResp.status}`);
@@ -31,6 +33,12 @@ export async function loadChromosome(chromosome) {
 
     // Decode delta-encoded coordinates before anything reads them
     if (raw.meta?.encoding === 'delta') decodeDelta(raw.levels);
+
+    // Spine (shared coordinate infrastructure)
+    if (spineResp.ok) {
+        const spineData = await spineResp.json();
+        if (spineData.spine) initSpine(spineData.spine);
+    }
 
     // Polychain data (may be empty)
     if (pdResp.ok) {
@@ -40,9 +48,6 @@ export async function loadChromosome(chromosome) {
 
     // Clear per-chain bubble metadata from previous chromosome
     clearBubbleMetaCache();
-
-    // Spine (shared coordinate infrastructure)
-    if (raw.refSpine) initSpine(raw.refSpine);
 
     // LOD metadata (shared)
     setLevelMeta(raw.levels.map(l => ({

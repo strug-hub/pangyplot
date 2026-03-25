@@ -5,7 +5,7 @@ import { state } from '../simplify-state.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { updateLOD } from './lod-engine.js';
 import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../ui/status-bar.js';
-import { xToBp, isReady } from './reference-spine-engine.js';
+import { layoutToBp, isReady } from './reference-spine-engine.js';
 import { placeGenesFromSpine } from '../skeleton/data/gene-data.js';
 import { getViewport } from '../render/viewport.js';
 
@@ -120,7 +120,7 @@ export function scheduleDetailFetch() {
                 chr: state.chromosome,
                 vp,
                 canvasWidth: state.canvas.width / dpr,
-                xToBp,
+                layoutToBp,
             });
             if (ok) beginFadeIn();
         }

@@ -3,7 +3,7 @@
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
-import { xToBp, isReady } from '../reference-spine-engine.js';
+import { layoutToBp, isReady } from '../reference-spine-engine.js';
 import { formatBp, formatPercentage } from '@format-utils';
 import { hitTestChains, getChainTooltip, hitTestBubbleCircles, getBubbleCircleTooltip } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleTooltip } from '../../detail/engines/node-hover-engine.js';
@@ -23,7 +23,7 @@ export function setupHover(canvas) {
         const screenY = e.clientY - rect.top;
         const layoutX = (screenX - state.panX) / state.zoom;
         const layoutY = (screenY - state.panY) / state.zoom;
-        const bp = xToBp(layoutX);
+        const bp = layoutToBp(layoutX, layoutY);
         const chr = state.chromosome;
         if (bp !== null && chr) {
             updateCursorBp(`${chr}:${formatBp(bp)}`);

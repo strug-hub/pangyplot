@@ -1,7 +1,7 @@
 // Viewport bounds, canvas resize, fit-to-screen.
 
 import { state } from '../simplify-state.js';
-import { xToBp, bpToStep } from '../engines/reference-spine-engine.js';
+import { layoutToBp } from '../engines/reference-spine-engine.js';
 import { getDataBounds } from '../data/chromosome-data.js';
 
 export function getViewport() {
@@ -16,12 +16,13 @@ export function getViewport() {
     };
 }
 
-export function viewportStepCount() {
+export function viewportBpSpan() {
     const vp = getViewport();
-    const bpLeft = xToBp(vp.minX);
-    const bpRight = xToBp(vp.maxX);
+    const midY = (vp.minY + vp.maxY) / 2;
+    const bpLeft = layoutToBp(vp.minX, midY);
+    const bpRight = layoutToBp(vp.maxX, midY);
     if (bpLeft === null || bpRight === null) return Infinity;
-    return bpToStep(bpRight) - bpToStep(bpLeft);
+    return bpRight - bpLeft;
 }
 
 export function resizeCanvas() {

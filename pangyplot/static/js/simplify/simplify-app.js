@@ -9,7 +9,7 @@ import './render-manager.js';
 import { scheduleDetailFetch } from './engines/detail-transition-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
 import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
-import { isReady, xToBp } from './engines/reference-spine-engine.js';
+import { isReady, layoutToBp } from './engines/reference-spine-engine.js';
 import { state } from './simplify-state.js';
 import { setupUiBridge } from './ui/ui-bridge.js';
 import { setupPolychainForceSettings } from './ui/polychain-force-settings.js';
@@ -47,8 +47,9 @@ async function init() {
     // Fetch genes for the initial viewport
     if (isReady()) {
         const vp = getViewport();
-        const bpLeft = xToBp(vp.minX);
-        const bpRight = xToBp(vp.maxX);
+        const midY = (vp.minY + vp.maxY) / 2;
+        const bpLeft = layoutToBp(vp.minX, midY);
+        const bpRight = layoutToBp(vp.maxX, midY);
         if (bpLeft !== null && bpRight !== null) {
             fetchAndPlaceGenes(state.chromosome, state.GENOME,
                 Math.max(0, Math.round(bpLeft)), Math.round(bpRight))
