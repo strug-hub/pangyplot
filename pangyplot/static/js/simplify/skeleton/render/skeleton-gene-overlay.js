@@ -17,6 +17,70 @@ const animatedOffset = new Map();
 // Used by drawGenePolylines/drawGeneJunctions to skip coloring non-pinned genes.
 const pinnedGenes = new Set();
 
+// Precomputed spatial index: gene name → polyline indices / junction coords.
+// Viewport-independent — rebuilt only when LOD or gene positions change.
+// Canvas clips off-screen polylines automatically.
+let genePinVersion = 0;
+let polylineCache = null;  // { lod, pinVer, data: Map<name, number[]> }
+let junctionCache = null;  // { lod, pinVer, data: Map<name, [number,number][]> }
+
+export function bumpGenePinVersion() { genePinVersion++; }
+
+function buildPolylineIndex(level, bboxes) {
+    if (polylineCache && polylineCache.lod === state.currentLOD &&
+        polylineCache.pinVer === genePinVersion) {
+        return polylineCache.data;
+    }
+
+    const genePins = getGenePins();
+    const geneYMargin = (level.gridSize || 50) * 3;
+    const data = new Map();
+
+    for (const gene of genePins) {
+        if (!isGeneVisible(gene.name)) continue;
+        if (!pinnedGenes.has(gene.name)) continue;
+        const indices = [];
+        for (let i = 0; i < level.polylines.length; i++) {
+            const o = i * 4;
+            if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX &&
+                bboxes[o+3] >= gene.minY - geneYMargin && bboxes[o+1] <= gene.maxY + geneYMargin) {
+                indices.push(i);
+            }
+        }
+        if (indices.length > 0) data.set(gene.name, indices);
+    }
+
+    polylineCache = { lod: state.currentLOD, pinVer: genePinVersion, data };
+    return data;
+}
+
+function buildJunctionIndex(level) {
+    if (junctionCache && junctionCache.lod === state.currentLOD &&
+        junctionCache.pinVer === genePinVersion) {
+        return junctionCache.data;
+    }
+
+    const genePins = getGenePins();
+    const geneYMargin = (level.gridSize || 50) * 3;
+    const data = new Map();
+
+    for (const gene of genePins) {
+        if (!isGeneVisible(gene.name)) continue;
+        if (!pinnedGenes.has(gene.name)) continue;
+        const junctions = [];
+        for (const [x, y] of level.junctions) {
+            if (x >= gene.startX && x <= gene.endX &&
+                y >= gene.minY - geneYMargin && y <= gene.maxY + geneYMargin) {
+                junctions.push([x, y]);
+            }
+        }
+        if (junctions.length > 0) data.set(gene.name, junctions);
+    }
+
+    junctionCache = { lod: state.currentLOD, pinVer: genePinVersion, data };
+    return data;
+}
+
 /**
  * Draw gene-colored polyline overdraw on visible skeleton polylines.
  * Each gene uses its own color.
@@ -26,7 +90,8 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
     if (genePins.length === 0) return;
 
     const bboxes = getLevelBboxes();
-    const geneYMargin = (level.gridSize || 50) * 3;
+    const index = buildPolylineIndex(level, bboxes);
+    if (index.size === 0) return;
 
     let target = svg;
     if (svg) {
@@ -37,22 +102,9 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
     }
 
     for (const gene of genePins) {
-        if (!isGeneVisible(gene.name)) continue;
-        if (!pinnedGenes.has(gene.name)) continue;
-        const indices = [];
-        for (let i = 0; i < level.polylines.length; i++) {
-            const o = i * 4;
-            if (bboxes[o+2] < vpMinX || bboxes[o] > vpMaxX ||
-                bboxes[o+3] < vpMinY || bboxes[o+1] > vpMaxY) continue;
-
-            if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX &&
-                bboxes[o+3] >= gene.minY - geneYMargin && bboxes[o+1] <= gene.maxY + geneYMargin) {
-                indices.push(i);
-            }
-        }
-        if (indices.length > 0) {
-            strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5, target);
-        }
+        const indices = index.get(gene.name);
+        if (!indices) continue;
+        strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5, target);
     }
 
     if (!svg) ctx.globalCompositeOperation = prevComp;
@@ -65,7 +117,9 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
     const genePins = getGenePins();
     if (genePins.length === 0) return;
 
-    const geneYMargin = (level.gridSize || 50) * 3;
+    const index = buildJunctionIndex(level);
+    if (index.size === 0) return;
+
     const gr = Math.max(2, 4.0 / state.zoom);
 
     let target = svg;
@@ -77,19 +131,9 @@ export function drawGeneJunctions(ctx, level, skelAlpha, vpMinX, vpMinY, vpMaxX,
     }
 
     for (const gene of genePins) {
-        if (!isGeneVisible(gene.name)) continue;
-        if (!pinnedGenes.has(gene.name)) continue;
-        const junctions = [];
-        for (const [x, y] of level.junctions) {
-            if (x < vpMinX || x > vpMaxX || y < vpMinY || y > vpMaxY) continue;
-            if (x >= gene.startX && x <= gene.endX &&
-                y >= gene.minY - geneYMargin && y <= gene.maxY + geneYMargin) {
-                junctions.push([x, y]);
-            }
-        }
-        if (junctions.length > 0) {
-            fillJunctions(ctx, junctions, gr, hexToRgba(gene.color, skelAlpha), target);
-        }
+        const junctions = index.get(gene.name);
+        if (!junctions) continue;
+        fillJunctions(ctx, junctions, gr, hexToRgba(gene.color, skelAlpha), target);
     }
 
     if (!svg) ctx.globalCompositeOperation = prevComp;
@@ -230,7 +274,8 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
 
         // Keep nudging until clear of all conflicting placed labels
         let conflict = true;
-        while (conflict) {
+        let nudges = 0;
+        while (conflict && nudges < 20) {
             conflict = false;
             for (let i = placed.length - 1; i >= 0; i--) {
                 const p = placed[i];
@@ -241,6 +286,7 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
                     conflict = true;
                 }
             }
+            nudges++;
         }
 
         // Dodge offset = how far above default position
@@ -314,4 +360,6 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
 export function clearLabelAnimation() {
     animatedOffset.clear();
     pinnedGenes.clear();
+    polylineCache = null;
+    junctionCache = null;
 }

@@ -5,6 +5,7 @@ import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../simplify-state.js';
 import { populateGeneAnnotationsTable } from '../../../graph/engines/gene-annotation/gene-annotation-ui.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
+import { bumpGenePinVersion } from '../render/skeleton-gene-overlay.js';
 
 let genePins = [];
 let geneCache = [];
@@ -137,6 +138,7 @@ function placeGenes() {
         genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
     }
     spinePlaced = true;
+    bumpGenePinVersion();
     populateSimplifyGeneTable();
 }
 
@@ -249,6 +251,7 @@ export function placeGenesFromDetail(chains) {
         pin.minY = minY;
         pin.maxY = maxY;
     }
+    bumpGenePinVersion();
 }
 
 /**
@@ -279,6 +282,7 @@ export function blendGenePinsToSpine(t) {
         pin.minY = minY;
         pin.maxY = maxY;
     }
+    bumpGenePinVersion();
 }
 
 /**
