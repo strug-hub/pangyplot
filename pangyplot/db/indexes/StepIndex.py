@@ -123,6 +123,8 @@ class StepIndex:
         return db.get_segment_steps(self.dir, seg_id, self.genome)
 
     def query_bp(self, bp_position, exact=False):
+        if len(self.starts) == 0:
+            return None
         i = bisect.bisect_right(self.starts, bp_position) - 1
         i = max(i, 0)
         start = self.starts[i]

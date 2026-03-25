@@ -152,3 +152,22 @@ def pangyplot_status(args):
                 print(f"  Bubbles:  {total_bubbles:,}")
 
             print()
+
+        # Annotations
+        annotations_path = os.path.join(args.dir, "annotations")
+        if os.path.isdir(annotations_path):
+            print("-" * 40)
+            print("annotations")
+            print("-" * 40)
+
+            for ref_name in sorted(os.listdir(annotations_path)):
+                ref_dir = os.path.join(annotations_path, ref_name)
+                if not os.path.isdir(ref_dir):
+                    continue
+
+                annots = sorted(os.listdir(ref_dir))
+                annots = [a for a in annots if os.path.isdir(os.path.join(ref_dir, a))]
+                if annots:
+                    print(f"  {ref_name}: {', '.join(annots)}")
+
+            print()
