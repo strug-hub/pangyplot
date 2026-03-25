@@ -69,7 +69,6 @@ export const state = {
     // DOM element references
     dom: {
         levelLabel: document.getElementById('level-label'),
-        nodeCount: document.getElementById('node-count'),
         polylineCount: document.getElementById('polyline-count'),
         visibleCount: document.getElementById('visible-count'),
         reduction: document.getElementById('reduction'),
@@ -89,7 +88,6 @@ export const state = {
         detailJLinks: document.getElementById('detail-jlinks'),
         detailForceNodes: document.getElementById('detail-force-nodes'),
         detailRange: document.getElementById('detail-range'),
-        detailOpacity: document.getElementById('detail-opacity'),
         detailSteps: document.getElementById('detail-steps'),
         detailFetchMs: document.getElementById('detail-fetch-ms'),
         tooltip: document.getElementById('tooltip'),

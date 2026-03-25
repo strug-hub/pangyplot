@@ -61,7 +61,7 @@ export function initGridMeter() {
 export function updateZoom() {
     state.dom.zoomVal.textContent = state.zoom < 1
         ? state.zoom.toFixed(4) : state.zoom.toFixed(1);
-    state.dom.gridVal.textContent = state.targetGridSize.toFixed(0);
+    state.dom.gridVal.textContent = `[${state.targetGridSize.toFixed(0)}]`;
 }
 
 let prevLevel = -1;
@@ -81,16 +81,15 @@ export function updateSkeletonLevel(levelIndex) {
     // Level info
     const meta = getLevelMeta();
     state.dom.levelLabel.textContent = meta.label;
-    state.dom.nodeCount.textContent = meta.nodeCount.toLocaleString();
     state.dom.polylineCount.textContent = meta.polylineCount.toLocaleString();
     const pct = ((1 - meta.nodeCount / state.stats.totalSegments) * 100).toFixed(1);
     state.dom.reduction.textContent = `${pct}%`;
     return true;
 }
 
-/** Update visible polyline / junction counts. */
-export function updateVisibleCounts(visiblePl, visibleJ) {
-    state.dom.visibleCount.textContent = `${visiblePl.toLocaleString()} / ${visibleJ.toLocaleString()}`;
+/** Update visible polyline count. */
+export function updateVisibleCounts(visiblePl) {
+    state.dom.visibleCount.textContent = visiblePl.toLocaleString();
 }
 
 /** Update viewport coordinate readout. */
@@ -128,7 +127,6 @@ export function updateDetailBar() {
     if (dd.bpStart != null) {
         state.dom.detailRange.textContent = `${formatBp(dd.bpStart)}-${formatBp(dd.bpEnd)}`;
     }
-    state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
     const steps = viewportStepCount();
     state.dom.detailSteps.textContent = isFinite(steps) ? Math.round(steps).toLocaleString() : '--';
 }
@@ -148,17 +146,12 @@ export function updateDetailPhase() {
     const phase = state.detailPhase;
     const cls = (phase === 'fading-in' || phase === 'fading-out') ? 'fading' : phase;
     state.dom.detailPhase.className = cls;
-    if (phase === 'none') {
-        state.dom.detailPhase.textContent = 'DETAILS';
-    } else {
-        state.dom.detailPhase.textContent = `DETAILS ${state.detailOpacity.toFixed(2)}`;
-    }
+    state.dom.detailPhase.textContent = 'DETAILS';
 }
 
-/** Update just the opacity readout (called during fade animation). */
+/** Update just the phase readout (called during fade animation). */
 export function updateDetailOpacityReadout() {
-    state.dom.detailOpacity.textContent = state.detailOpacity.toFixed(2);
-    state.dom.detailPhase.textContent = `DETAILS ${state.detailOpacity.toFixed(2)}`;
+    // Phase indicator only — opacity no longer tracked in UI
 }
 
 // ---------------------------------------------------------------

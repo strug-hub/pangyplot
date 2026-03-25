@@ -73,14 +73,12 @@ function draw() {
     // ===== SKELETON LAYER (skipped when detail is fully active) =====
     const skipSkeleton = state.detailData && state.detailPhase === 'static';
     let visiblePl = 0;
-    let visibleJ = 0;
 
     if (!skipSkeleton) {
         if (_debug) _t0 = performance.now();
         const counts = drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY);
         if (_debug) timings.push(['skeleton', performance.now() - _t0]);
         visiblePl = counts.visiblePl;
-        visibleJ = counts.visibleJ;
     }
 
     // ===== DETAIL LAYER (drawn in same data-space transform) =====
@@ -160,9 +158,13 @@ function draw() {
     }
 
     // --- Status bar ---
-    updateVisibleCounts(visiblePl, visibleJ);
+    updateVisibleCounts(visiblePl);
     updateViewportBp(vp);
     updateFetchIndicator();
+
+    // Hide color legend in skeleton-only mode (no detail data)
+    const legend = document.getElementById('graph-legend');
+    if (legend) legend.style.display = state.detailData ? 'block' : 'none';
 }
 
 setDrawCallback(draw);

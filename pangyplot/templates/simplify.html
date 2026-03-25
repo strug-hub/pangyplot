@@ -54,7 +54,7 @@
         #simplify-controls {
             padding: 10px 20px;
             background: #111;
-            border-bottom: 1px solid #333;
+            border-top: 1px solid #333;
             display: flex;
             align-items: center;
             gap: 24px;
@@ -62,6 +62,7 @@
             z-index: 10;
             font-size: 13px;
             font-variant-numeric: tabular-nums;
+            color: #888;
         }
 
         #simplify-controls span.val {
@@ -145,7 +146,7 @@
         #detail-bar {
             padding: 4px 20px;
             background: #0a0a0a;
-            border-bottom: 1px solid #222;
+            border-top: 1px solid #222;
             display: flex;
             align-items: center;
             gap: 24px;
@@ -214,15 +215,18 @@
         <div class="flex-row">
 
             <div id="graph" class="flex-1" tabindex="0">
+                <div id="canvas-container">
+                    <canvas id="canvas"></canvas>
+                    <div id="loading">Loading graph data...</div>
+                    <div id="fetch-indicator"></div>
+                    <div id="tooltip"></div>
+                </div>
                 <div id="simplify-controls">
-                    <span id="level-label" class="val">--</span>
-                    <span><span id="node-count" class="val">--</span> nodes</span>
-                    <span><span id="polyline-count" class="val">--</span> lines</span>
-                    <span><span id="visible-count" class="val">--</span> visible</span>
+                    <span id="level-label" class="val">--</span> <span id="grid-val" style="color: #555;">[--]</span>
+                    <span><span id="visible-count" class="val">--</span> / <span id="polyline-count" style="color: #555;">--</span> lines</span>
                     <span><span id="reduction" class="val">--</span> reduction</span>
                     <div id="grid-meter"></div>
                     <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
-                    <span style="color: #888; font-size: 12px;">grid <span id="grid-val" class="val" style="color: #aaa;">--</span></span>
                     <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
                     <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
                     <span id="stats"></span>
@@ -236,15 +240,8 @@
                     <span><span id="detail-jlinks" class="val">--</span> jLinks</span>
                     <span><span id="detail-force-nodes" class="val">--</span> force</span>
                     <span><span id="detail-range" class="val">--</span></span>
-                    <span>opacity <span id="detail-opacity" class="val">0</span></span>
                     <span>steps <span id="detail-steps" class="val">--</span></span>
                     <span>fetch <span id="detail-fetch-ms" class="val">--</span></span>
-                </div>
-                <div id="canvas-container">
-                    <canvas id="canvas"></canvas>
-                    <div id="loading">Loading graph data...</div>
-                    <div id="fetch-indicator"></div>
-                    <div id="tooltip"></div>
                 </div>
             </div>
 
