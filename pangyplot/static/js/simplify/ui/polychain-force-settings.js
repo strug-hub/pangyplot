@@ -72,6 +72,11 @@ function sliderProperties() {
 export function setupPolychainForceSettings() {
     const container = document.getElementById('force-settings-container');
     if (!container) return;
+    container.innerHTML = '';
     const sliderSet = createSliderSet('pc-force', sliderProperties());
     container.appendChild(sliderSet);
+
+    // Clear render settings (not used by simplify viewer)
+    const renderContainer = document.getElementById('render-settings-container');
+    if (renderContainer) renderContainer.innerHTML = '';
 }

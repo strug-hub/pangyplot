@@ -65,6 +65,7 @@ function sliderProperties(forceGraph) {
 export default function setUpForceSettings(forceGraph) {
     const settings = sliderProperties(forceGraph);
     const sliderContainer = document.getElementById("force-settings-container");
+    sliderContainer.innerHTML = '';
     const sliderSet = createSliderSet("force", settings);
     sliderContainer.appendChild(sliderSet);
 }

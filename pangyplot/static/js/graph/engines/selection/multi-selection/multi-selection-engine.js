@@ -88,9 +88,11 @@ export default function setUpMultiSelectionEngine(forceGraph) {
         pointerMove(event, forceGraph);
     });
 
-    document.addEventListener('pointerup', event => {
+    const handlePointerUp = event => {
         if (event.button !== 0) return; // Only left click
         pointerUp(event, forceGraph);
-    });
+    };
+    document.addEventListener('pointerup', handlePointerUp);
+    forceGraph._cleanups.push(() => document.removeEventListener('pointerup', handlePointerUp));
 
 }

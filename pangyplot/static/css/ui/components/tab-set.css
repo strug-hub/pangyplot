@@ -1,7 +1,7 @@
 #tabs-container{
-    max-height: 750px;
     height: 100%;
     overflow: hidden;
+    justify-content: flex-start;
 }
 
 .tab-content {

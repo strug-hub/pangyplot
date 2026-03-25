@@ -35,9 +35,9 @@ function resize(forceGraph){
 export default function setUpUiManager(forceGraph){
 
     resize(forceGraph);
-    window.addEventListener('resize', () => {
-        resize(forceGraph);
-    });
+    const handleResize = () => resize(forceGraph);
+    window.addEventListener('resize', handleResize);
+    forceGraph._cleanups.push(() => window.removeEventListener('resize', handleResize));
 
     eventBus.subscribe("graph:data-replaced", () => {
         showGraphInterface();

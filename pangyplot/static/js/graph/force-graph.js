@@ -17,6 +17,24 @@ let forceGraph = null;
  * Can be called from the standalone page or embedded in the simplify viewer.
  * Returns the forceGraph instance.
  */
+export function destroyCoreViewer(fg) {
+    if (!fg) return;
+
+    // Stop animation loop and clear graph data (ForceGraph built-in)
+    if (fg._destructor) fg._destructor();
+
+    // Run all registered cleanup functions (global event listeners, etc.)
+    if (fg._cleanups) {
+        fg._cleanups.forEach(fn => fn());
+        fg._cleanups.length = 0;
+    }
+
+    // Restore eventBus to the state before core viewer engines subscribed
+    if (fg._eventBusSnapshot) {
+        eventBus.events = fg._eventBusSnapshot;
+    }
+}
+
 export function initCoreViewer(containerEl, coords) {
     const fg = ForceGraph()(containerEl);
 
@@ -24,6 +42,12 @@ export function initCoreViewer(containerEl, coords) {
 
     fg.element = containerEl;
     fg.canvas = canvas;
+    fg._cleanups = [];
+
+    // Snapshot eventBus so we can restore it when this viewer is destroyed
+    fg._eventBusSnapshot = Object.fromEntries(
+        Object.entries(eventBus.events).map(([k, v]) => [k, [...v]])
+    );
 
     // Ensure the container can receive keyboard events
     if (!containerEl.hasAttribute('tabindex')) {

@@ -6,7 +6,15 @@ export class RightClickMenu {
         this.options = [];
         this.menuElement = this.createMenuElement();
 
-        document.addEventListener('click', () => this.hideMenu());
+        this._handleClick = () => this.hideMenu();
+        document.addEventListener('click', this._handleClick);
+    }
+
+    destroy() {
+        document.removeEventListener('click', this._handleClick);
+        if (this.menuElement && this.menuElement.parentNode) {
+            this.menuElement.parentNode.removeChild(this.menuElement);
+        }
     }
 
     createMenuElement() {

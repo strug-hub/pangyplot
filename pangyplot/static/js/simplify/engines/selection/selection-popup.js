@@ -4,6 +4,7 @@
 import { state } from '../../simplify-state.js';
 import { setCanvasMode } from '@app-state';
 import { formatBp } from '@format-utils';
+import { setupPolychainForceSettings } from '../../ui/polychain-force-settings.js';
 
 let popupEl = null;
 let coreContainer = null;  // div that holds the core ForceGraph canvas
@@ -168,18 +169,22 @@ async function switchToCoreViewer() {
     ensureBackButton().style.display = 'block';
 }
 
-export function returnToSimplify() {
+export async function returnToSimplify() {
     if (!coreContainer) return;
 
-    // Tear down the core viewer
+    // Tear down the core viewer: stop animation, remove global listeners, clear data
+    // force-graph.js is already loaded from switchToCoreViewer's dynamic import
+    const { destroyCoreViewer } = await import('../../../graph/force-graph.js');
+    destroyCoreViewer(coreViewer);
     coreContainer.style.display = 'none';
     coreContainer.innerHTML = '';
     coreViewer = null;
 
-    // Restore simplify canvas and status bars
+    // Restore simplify canvas, status bars, and toolbar sliders
     state.canvas.style.display = 'block';
     state.coreViewerActive = false;
     setCanvasMode('simplify');
+    setupPolychainForceSettings();
 
     const controls = document.getElementById('simplify-controls');
     const detailBar = document.getElementById('detail-bar');

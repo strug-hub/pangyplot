@@ -84,4 +84,6 @@ export default function setupRightClickMenu(forceGraph) {
         event.preventDefault();
         menu.showMenu(event.pageX, event.pageY);
     });
+
+    forceGraph._cleanups.push(() => menu.destroy());
 }

@@ -42,4 +42,5 @@ export default function setUpPanZoomEngine(forceGraph) {
     };
     el.addEventListener('pointerup', restoreCursor, true);
     window.addEventListener('pointerup', restoreCursor);
+    forceGraph._cleanups.push(() => window.removeEventListener('pointerup', restoreCursor));
 }

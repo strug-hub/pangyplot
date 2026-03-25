@@ -18,6 +18,7 @@ const settings = [
 
 export default function setUpRenderSettings(forceGraph) {
     const sliderContainer = document.getElementById("render-settings-container");
+    sliderContainer.innerHTML = '';
     const sliderSet = createSliderSet("render", settings);
     sliderContainer.appendChild(sliderSet);
 }

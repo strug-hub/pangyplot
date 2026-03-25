@@ -8,6 +8,9 @@ node_modules/
 test-results/
 playwright-report/
 
+# Paper working directory
+pangypaper/
+
 # Sphinx build
 build/
 docs/build/
