@@ -4,14 +4,14 @@
 
 import eventBus from '@event-bus';
 import { state } from '../simplify-state.js';
-import { loadChromosome } from '../data/chromosome-loader.js';
+import { loadChromosome } from '@simplify-data/chromosome-loader.js';
 import { navigateToRegion } from '../engines/navigation/hash-navigation.js';
 import { resizeCanvas, fitToScreen, getViewport } from '../render/viewport.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { scheduleDetailFetch } from '../engines/detail-transition-engine.js';
 import { scheduleHashUpdate } from '../engines/navigation/hash-navigation.js';
-import { clearGeneCache } from '../skeleton/data/gene-data.js';
-import { clearLabelAnimation } from '../skeleton/render/skeleton-gene-overlay.js';
+import { clearGeneCache } from '@simplify-data/gene-data.js';
+import { clearLabelAnimation } from '../skeleton/render/gene-label-overlay.js';
 import { showLoadingError, showStats, initGridMeter } from './status-bar.js';
 import { publishViewportCoordinates } from './viewport-sync.js';
 

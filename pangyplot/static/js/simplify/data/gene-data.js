@@ -2,12 +2,12 @@
 // Gene cache is populated once at chromosome load by chromosome-loader.js.
 // Placement runs on viewport change; rendering handles density culling.
 
-import { bpToLayout } from '../../engines/reference-spine-engine.js';
+import { bpToLayout } from '../engines/reference-spine-engine.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
-import { state } from '../../simplify-state.js';
-import { populateGeneAnnotationsTable } from '../../../graph/engines/gene-annotation/gene-annotation-ui.js';
-import { scheduleFrame } from '../../utils/frame-scheduler.js';
-import { bumpGenePinVersion } from '../render/skeleton-gene-overlay.js';
+import { state } from '../simplify-state.js';
+import { populateGeneAnnotationsTable } from '../../graph/engines/gene-annotation/gene-annotation-ui.js';
+import { scheduleFrame } from '../utils/frame-scheduler.js';
+import { bumpGenePinVersion } from '../skeleton/render/gene-polyline-overlay.js';
 
 let genePins = [];
 let geneCache = [];
@@ -250,5 +250,6 @@ export function placeGenesFromSpine(recompute = true) {
         placeGenes();
     } else {
         spinePlaced = true;
+        populateSimplifyGeneTable();
     }
 }

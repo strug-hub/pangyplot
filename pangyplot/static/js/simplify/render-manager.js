@@ -12,10 +12,10 @@ import { drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './detail/render/ph
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from './detail/render/force-render-manager.js';
-import { drawGeneLabelOverlay } from './skeleton/render/skeleton-gene-overlay.js';
+import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
-import { getLevelMeta } from './data/chromosome-data.js';
+import { getLevelMeta } from '@simplify-data/chromosome-data.js';
 
 // ---------------------------------------------------------------
 // FPS tracker (debug mode only)

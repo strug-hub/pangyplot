@@ -2,7 +2,7 @@
 
 import { state } from '../simplify-state.js';
 import { layoutToBp } from '../engines/reference-spine-engine.js';
-import { getDataBounds } from '../data/chromosome-data.js';
+import { getDataBounds } from '@simplify-data/chromosome-data.js';
 
 export function getViewport() {
     const dpr = window.devicePixelRatio || 1;

@@ -3,7 +3,7 @@
 import { setLevelMeta, setChainMeta } from './chromosome-data.js';
 import { initSkeleton } from '../skeleton/data/skeleton-init.js';
 import { initSpine } from '../engines/reference-spine-engine.js';
-import { initGeneCache } from '../skeleton/data/gene-data.js';
+import { initGeneCache } from './gene-data.js';
 import { state } from '../simplify-state.js';
 import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
 import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';

@@ -4,11 +4,11 @@
 
 import { state } from '../simplify-state.js';
 import { getViewport } from './viewport.js';
-import { getLevelMeta } from '../data/chromosome-data.js';
+import { getLevelMeta } from '@simplify-data/chromosome-data.js';
 import { drawSkeleton } from '../skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from '../detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from '../detail/render/force-render-manager.js';
-import { drawGeneLabelOverlay } from '../skeleton/render/skeleton-gene-overlay.js';
+import { drawGeneLabelOverlay } from '../skeleton/render/gene-label-overlay.js';
 import { getImageName } from '../../graph/render/download/download-utils.js';
 import { setSvgTransform, clearSvgTransform } from './simplify-svg-utils.js';
 

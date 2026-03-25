@@ -4,7 +4,7 @@
 // Uses the shared gene cache from gene-data.js (loaded at chromosome init).
 
 import { cumulativeLengths, interpolateAtDist } from './polychain-adapter.js';
-import { getGenePins, getGeneCache, isGeneVisible } from '../../../skeleton/data/gene-data.js';
+import { getGenePins, getGeneCache, isGeneVisible } from '@simplify-data/gene-data.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../../simplify-state.js';
 

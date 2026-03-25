@@ -6,7 +6,7 @@ import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
-import { getGenePins, isGeneVisible } from '../../skeleton/data/gene-data.js';
+import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
 

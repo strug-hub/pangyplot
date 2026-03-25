@@ -1,86 +1,20 @@
-// Gene-colored overdraw on skeleton polylines, plus label positioning.
+// Gene label layout: density culling, collision avoidance, animated dodge, drawing.
 
 import { state } from '../../simplify-state.js';
-import { getLevelBboxes } from '../data/skeleton-data.js';
-import { getGenePins, isGeneVisible, isGeneStarred } from '../data/gene-data.js';
-import { strokePolylines } from './skeleton-painter.js';
+import { getGenePins, isGeneVisible, isGeneStarred } from '@simplify-data/gene-data.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
-import { createBlendGroup, drawGeneLabelSvg } from '../../render/simplify-svg-utils.js';
-import { hexToRgba } from '@color-utils';
+import { drawGeneLabelSvg } from '../../render/simplify-svg-utils.js';
+import { clearPolylineCache } from './gene-polyline-overlay.js';
 
 // Persistent map: gene name → current animated dodge offset (screen px above default).
-// Survives across frames so we can lerp toward the target.
 const animatedOffset = new Map();
 
 // Set of gene names that passed density culling last frame.
-// Used by drawGenePolylines to skip coloring non-pinned genes.
+// Shared with gene-polyline-overlay so it only colors genes with visible labels.
 const pinnedGenes = new Set();
 
-// Precomputed spatial index: gene name → polyline indices.
-// Viewport-independent — rebuilt only when LOD or gene positions change.
-// Canvas clips off-screen polylines automatically.
-let genePinVersion = 0;
-let polylineCache = null;  // { lod, pinVer, data: Map<name, number[]> }
-
-export function bumpGenePinVersion() { genePinVersion++; }
-
-function buildPolylineIndex(level, bboxes) {
-    if (polylineCache && polylineCache.lod === state.currentLOD &&
-        polylineCache.pinVer === genePinVersion) {
-        return polylineCache.data;
-    }
-
-    const genePins = getGenePins();
-    const geneYMargin = (level.gridSize || 50) * 3;
-    const data = new Map();
-
-    for (const gene of genePins) {
-        if (!isGeneVisible(gene.name)) continue;
-        if (!pinnedGenes.has(gene.name)) continue;
-        const indices = [];
-        for (let i = 0; i < level.polylines.length; i++) {
-            const o = i * 4;
-            if (bboxes[o+2] >= gene.startX && bboxes[o] <= gene.endX &&
-                bboxes[o+3] >= gene.minY - geneYMargin && bboxes[o+1] <= gene.maxY + geneYMargin) {
-                indices.push(i);
-            }
-        }
-        if (indices.length > 0) data.set(gene.name, indices);
-    }
-
-    polylineCache = { lod: state.currentLOD, pinVer: genePinVersion, data };
-    return data;
-}
-
-/**
- * Draw gene-colored polyline overdraw on visible skeleton polylines.
- * Each gene uses its own color.
- */
-export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
-    const genePins = getGenePins();
-    if (genePins.length === 0) return;
-
-    const bboxes = getLevelBboxes();
-    const index = buildPolylineIndex(level, bboxes);
-    if (index.size === 0) return;
-
-    let target = svg;
-    if (svg) {
-        target = createBlendGroup(svg, 'multiply');
-    } else {
-        var prevComp = ctx.globalCompositeOperation;
-        ctx.globalCompositeOperation = 'multiply';
-    }
-
-    for (const gene of genePins) {
-        const indices = index.get(gene.name);
-        if (!indices) continue;
-        strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5, target);
-    }
-
-    if (!svg) ctx.globalCompositeOperation = prevComp;
-}
+export function getPinnedGenes() { return pinnedGenes; }
 
 /**
  * Compute screen-space label positions and draw gene labels.
@@ -147,7 +81,7 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     const candidates = [];
 
     // Pass 1: place starred genes unconditionally
-    const starredSlots = [];  // sorted x positions of accepted starred genes
+    const starredSlots = [];
     for (const c of allVisible) {
         if (isGeneStarred(c.gene.name)) {
             candidates.push(c);
@@ -160,7 +94,6 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     const acceptedXs = [...starredSlots];
     for (const c of allVisible) {
         if (isGeneStarred(c.gene.name)) continue;
-        // Check spacing against all accepted positions
         let tooClose = false;
         for (const ax of acceptedXs) {
             if (Math.abs(c.sxMid - ax) < minSpacing) {
@@ -237,10 +170,8 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
         const targetOffset = top - defaultTop;
 
         if (svg) {
-            // SVG export: use target positions directly (no animation)
             c.badgeTop = defaultTop + targetOffset;
         } else {
-            // Canvas: lerp the offset for smooth animation
             const prevOffset = animatedOffset.get(c.gene.name);
             let curOffset;
             if (prevOffset !== undefined) {
@@ -259,7 +190,6 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     }
 
     if (svg) {
-        // SVG path: build label elements directly
         const showStem = !inDetail;
         for (const c of candidates) {
             drawGeneLabelSvg(svg, c.gene.name, c.sxMid,
@@ -303,5 +233,5 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
 export function clearLabelAnimation() {
     animatedOffset.clear();
     pinnedGenes.clear();
-    polylineCache = null;
+    clearPolylineCache();
 }

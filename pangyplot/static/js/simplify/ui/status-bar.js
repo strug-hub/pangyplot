@@ -6,7 +6,7 @@ import { state } from '../simplify-state.js';
 import { formatBp } from '@format-utils';
 import { layoutToBp } from '../engines/reference-spine-engine.js';
 import { viewportBpSpan } from '../render/viewport.js';
-import { getLevelCount, getLevelMeta } from '../data/chromosome-data.js';
+import { getLevelCount, getLevelMeta } from '@simplify-data/chromosome-data.js';
 import { positionTooltip } from '@ui/elements/tooltip.js';
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';

@@ -6,7 +6,7 @@ import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { updateLOD } from './lod-engine.js';
 import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../ui/status-bar.js';
 import { layoutToBp, isReady } from './reference-spine-engine.js';
-import { placeGenesFromSpine } from '../skeleton/data/gene-data.js';
+import { placeGenesFromSpine } from '@simplify-data/gene-data.js';
 import { getViewport } from '../render/viewport.js';
 
 

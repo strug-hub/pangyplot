@@ -2,7 +2,7 @@
 // Called from the render manager's draw loop before rendering.
 
 import { state } from '../simplify-state.js';
-import { getAllLevelMeta } from '../data/chromosome-data.js';
+import { getAllLevelMeta } from '@simplify-data/chromosome-data.js';
 
 export function updateLOD() {
     const dpr = window.devicePixelRatio || 1;

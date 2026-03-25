@@ -3,7 +3,7 @@
 import { state } from '../../simplify-state.js';
 import { getViewport } from '../../render/viewport.js';
 import { getLevel, getLevelBboxes } from '../data/skeleton-data.js';
-import { getChainMeta } from '../../data/chromosome-data.js';
+import { getChainMeta } from '@simplify-data/chromosome-data.js';
 import { pointToSegmentDist } from '../../utils/geometry.js';
 const SKELETON_HIT_RADIUS_PX = 14;
 

@@ -4,7 +4,7 @@ import { state } from '../../simplify-state.js';
 import { getLevel, getLevelBboxes } from '../data/skeleton-data.js';
 import { drawBasePolylines } from './skeleton-base-overlay.js';
 import { drawHoverOverlay } from './skeleton-hover-overlay.js';
-import { drawGenePolylines } from './skeleton-gene-overlay.js';
+import { drawGenePolylines } from './gene-polyline-overlay.js';
 
 /**
  * Draw the full skeleton layer for the current LOD level.

@@ -2,7 +2,7 @@
 // Called by simplify-app.js after fetch; no longer fetches itself.
 
 import { getLevels, setLevels, setChainFamily, setLevelBboxes } from './skeleton-data.js';
-import { setDataBounds } from '../../data/chromosome-data.js';
+import { setDataBounds } from '@simplify-data/chromosome-data.js';
 import { polylineBbox } from '../../utils/geometry.js';
 
 export function initSkeleton(levels, chainMeta) {

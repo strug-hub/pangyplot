@@ -11,7 +11,7 @@ import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
-import { placeGenesFromDetail } from '../../../skeleton/data/gene-data.js';
+import { placeGenesFromDetail } from '@simplify-data/gene-data.js';
 import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
 import { getForceNodes } from '../force-data.js';
 import {

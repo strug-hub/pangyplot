@@ -5,7 +5,7 @@ import { getNodeColor } from '../../../../graph/render/color/color-style.js';
 import { strokePolyline, strokePolylines, fillCircles, strokeRing } from '../detail-painter.js';
 import { getPolychainPositions, cumulativeLengths, interpolateAtDist } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
-import { placeGenesFromDetail, blendGenePinsToSpine } from '../../../skeleton/data/gene-data.js';
+import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-data.js';
 import { fetchBubbleMeta, getBubbleMeta, hasBubbleMeta, setBubblePositions, bubbleGridThreshold } from '../../data/bubble-meta-cache.js';
 
 function getVisibleChainPolylinesByColor(chains) {

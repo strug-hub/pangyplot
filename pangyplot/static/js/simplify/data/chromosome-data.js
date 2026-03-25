@@ -1,5 +1,4 @@
 // Shared chromosome-level data: LOD metadata, data bounds, chain metadata.
-// Populated by simplify-app.js during chromosome load.
 // Read by engines, render managers, and UI modules.
 
 import { state } from '../simplify-state.js';

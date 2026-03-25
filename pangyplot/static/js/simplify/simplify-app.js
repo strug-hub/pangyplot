@@ -1,7 +1,7 @@
 // Entry point: init(), wire up modules.
 
 import { resizeCanvas, fitToScreen } from './render/viewport.js';
-import { loadChromosome } from './data/chromosome-loader.js';
+import { loadChromosome } from '@simplify-data/chromosome-loader.js';
 import { navigateToHash, parseUrlHash, scheduleHashUpdate } from './engines/navigation/hash-navigation.js';
 import { scheduleFrame } from './utils/frame-scheduler.js';
 import './render-manager.js';
