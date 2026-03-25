@@ -7,6 +7,23 @@ import { state } from '../simplify-state.js';
 import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
 import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
 
+/** Decode delta-encoded polylines and junctions in-place. */
+function decodeDelta(levels) {
+    for (const level of levels) {
+        for (const pl of level.polylines) {
+            for (let i = 1; i < pl.length; i++) {
+                pl[i][0] += pl[i - 1][0];
+                pl[i][1] += pl[i - 1][1];
+            }
+        }
+        const juncs = level.junctions;
+        for (let i = 1; i < juncs.length; i++) {
+            juncs[i][0] += juncs[i - 1][0];
+            juncs[i][1] += juncs[i - 1][1];
+        }
+    }
+}
+
 export async function loadChromosome(chromosome) {
     // Fetch skeleton and polychain data in parallel
     const [skelResp, pdResp] = await Promise.all([
@@ -16,6 +33,9 @@ export async function loadChromosome(chromosome) {
 
     if (!skelResp.ok) throw new Error(`HTTP ${skelResp.status}`);
     const raw = await skelResp.json();
+
+    // Decode delta-encoded coordinates before anything reads them
+    if (raw.meta?.encoding === 'delta') decodeDelta(raw.levels);
 
     // Polychain data (may be empty)
     if (pdResp.ok) {

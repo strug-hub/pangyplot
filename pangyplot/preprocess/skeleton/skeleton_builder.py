@@ -10,6 +10,7 @@ import gzip
 import json
 import math
 import os
+import re
 from collections import defaultdict
 
 import numpy as np
@@ -22,6 +23,7 @@ from pangyplot.db import db_utils
 
 
 VIEWER_GRID_SIZES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000]
+SKELETON_VERSION = 2  # bump to force regeneration on format changes
 
 
 # ---------------------------------------------------------------------------
@@ -374,6 +376,11 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
     with gzip.open(output_path, 'wt', encoding='utf-8') as f:
         f.write('{')
 
+        # Meta (must be first key for fast version detection)
+        meta = {"version": SKELETON_VERSION, "encoding": "delta"}
+        f.write('"meta":')
+        f.write(encoder.encode(meta))
+
         # Stats
         stats = {
             "totalSegments": total_segments,
@@ -381,7 +388,7 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
             "junctionCount": len(junctions),
             "runCount": len(runs),
         }
-        f.write('"stats":')
+        f.write(',"stats":')
         f.write(encoder.encode(stats))
 
         # RefSpine
@@ -394,10 +401,14 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
             f.write(',"chromosome":')
             f.write(encoder.encode(chromosome))
 
-        # ChainMeta
+        # ChainMeta (strip parent_subtype — not used by frontend)
         if chain_stats is not None:
+            cleaned = {}
+            for k, v in chain_stats.items():
+                entry = {fk: fv for fk, fv in v.items() if fk != "parent_subtype"}
+                cleaned[str(k)] = entry
             f.write(',"chainMeta":')
-            f.write(encoder.encode({str(k): v for k, v in chain_stats.items()}))
+            f.write(encoder.encode(cleaned))
 
         # Levels — stream one at a time
         f.write(',"levels":[')
@@ -410,16 +421,28 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
                 grid_chain_ids = None
 
             # Build polylines and chain IDs in sync (filter len<2 together)
+            # Delta-encode: first point absolute, subsequent points as [dx, dy]
             lines = []
             level_chain_ids = [] if grid_chain_ids is not None else None
             for j, pl in enumerate(grid_pls):
                 if len(pl) < 2:
                     continue
-                lines.append([[round(p[0], 1), round(p[1], 1)] for p in pl])
+                encoded = [[round(pl[0][0], 1), round(pl[0][1], 1)]]
+                for k in range(1, len(pl)):
+                    encoded.append([round(pl[k][0] - pl[k-1][0], 1),
+                                    round(pl[k][1] - pl[k-1][1], 1)])
+                lines.append(encoded)
                 if level_chain_ids is not None:
                     level_chain_ids.append(grid_chain_ids[j])
 
-            juncs = [[round(j[0], 1), round(j[1], 1)] for j in grid_juncs]
+            # Delta-encode junctions (already sorted by grid_simplify)
+            juncs_abs = [[round(j[0], 1), round(j[1], 1)] for j in grid_juncs]
+            juncs = []
+            if juncs_abs:
+                juncs.append(juncs_abs[0])
+                for k in range(1, len(juncs_abs)):
+                    juncs.append([juncs_abs[k][0] - juncs_abs[k-1][0],
+                                  juncs_abs[k][1] - juncs_abs[k-1][1]])
             total_nodes = len(juncs) + sum(max(0, len(pl) - 2) for pl in grid_pls)
             level_data = {
                 "gridSize": cell,
@@ -752,8 +775,19 @@ def generate_skeleton(chr_dir, ref, chrom):
     print(" Done.")
 
 
+def _skeleton_version(gz_path):
+    """Read the skeleton version from the meta field without loading the full file."""
+    try:
+        with gzip.open(gz_path, 'rt', encoding='utf-8') as f:
+            head = f.read(200)
+        m = re.search(r'"version"\s*:\s*(\d+)', head)
+        return int(m.group(1)) if m else 0
+    except Exception:
+        return 0
+
+
 def ensure_skeleton(data_dir, db_name, ref):
-    """Generate skeleton JSON for any chromosome that is missing it.
+    """Generate skeleton JSON for any chromosome that is missing or stale.
 
     Called automatically by the run command before starting the server.
     Discovers chromosomes from the graph directory on disk.
@@ -771,6 +805,10 @@ def ensure_skeleton(data_dir, db_name, ref):
         pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
         if not os.path.exists(gz_path):
             print(f"\n[Skeleton] Missing skeleton for {chrom}, generating...")
+            generate_skeleton(chr_dir, ref, chrom)
+        elif _skeleton_version(gz_path) < SKELETON_VERSION:
+            print(f"\n[Skeleton] Rebuilding stale skeleton for {chrom} "
+                  f"(v{_skeleton_version(gz_path)} → v{SKELETON_VERSION})...")
             generate_skeleton(chr_dir, ref, chrom)
         elif not os.path.exists(pd_path) and PolychainIndex.validate(chr_dir):
             print(f"\n[Skeleton] Missing polychain data for {chrom}, generating...")
