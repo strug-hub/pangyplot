@@ -1,25 +1,112 @@
-#info-debug-container {
-    padding-left: 1em;
-    background-color: var(--debug-bg);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+#graph-info {
+    margin-top: auto;
 }
 
 #info-selected-container {
-    display: grid;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 12px;
 }
 
+#info-selected-container:empty::after {
+    content: 'Click a node or chain to inspect';
+    color: var(--unselected-text);
+    font-size: small;
+    font-style: italic;
+    padding: 12px 0;
+}
+
+/* Type header: icon + label with subtle underline */
 .info-type-header {
     font-weight: 700;
-    padding-bottom: 4px;
-    border-bottom: 2px solid var(--dark-green);
+    font-size: small;
+    padding: 6px 0 6px 0;
+    margin-bottom: 6px;
+    border-bottom: 2px solid var(--lighter-green);
+    color: var(--darker-green);
+    letter-spacing: 0.02em;
+}
+
+.info-type-header i {
+    margin-right: 4px;
+    color: var(--light-green);
+}
+
+/* Row: label above value, stacked vertically */
+.info-row {
+    display: flex;
+    flex-direction: column;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.info-row:last-child {
+    border-bottom: none;
 }
 
 .info-label {
-    font-size: 0.85em;
+    font-size: x-small;
     font-weight: 600;
-    color: var(--dark-green);
-    margin-bottom: 4px;
+    color: var(--unselected-text);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.info-value {
+    color: var(--text-color);
+    padding-left: 10px;
+    word-break: break-all;
+}
+
+/* Copyable values: subtle interactive hint */
+.info-copyable {
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.info-copyable:hover {
+    background: var(--highlight);
+    border-color: var(--light-green);
+}
+
+.info-copyable.info-copy-flash {
+    background: var(--highlight);
+}
+
+/* Monospace code blocks */
+.info-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: x-small;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 5px;
+    padding: 6px 8px;
+    max-height: 80px;
+    overflow-y: auto;
+    display: block;
+}
+
+.info-code pre {
+    text-align: left;
+    margin: 0;
+}
+
+/* Debug section */
+#info-debug-container-outer {
+    margin-top: 10px;
+    border-top: 2px solid var(--lighter-green);
+    padding-top: 6px;
+}
+
+#info-debug-container {
+    padding-left: 0;
+    background-color: var(--debug-bg);
+    border-radius: 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: x-small;
 }
 
 .info-debug-key {
@@ -28,58 +115,8 @@
     font-weight: bold;
 }
 
-.info-copyable {
-    border-radius: 5px;
-
-    padding: 5px;
-    border: 1px solid var(--dark-green);
-    cursor: pointer;
-    position: relative;
-}
-
-.info-copyable:hover {
-    background: var(--highlight);
-    border-radius: 5px;
-}
-
-.info-copyable.info-copy-flash {
-    background: var(--highlight);
-}
-
-.info-content {
-    margin-left: 1em;
-}
-
-.info-optional {
-    display: none;
-}
-
-.button-copy-sequence {
-    margin-left: 5px;
-    cursor: pointer;
-}
-
-#graph-info {
-    margin-top: auto;
-}
-
-#info-full-sequence-container {
-    margin-top: 0.5em;
-}
-
-.info-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    background-color: var(--site-background);
-    border-radius: 5px;
-    display: flex;
-    justify-content: center;
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
-    max-height: 100px;
-
-}
-
-.info-code pre {
-    text-align: left;
-    margin: 0;
-}
+/* Legacy classes kept for compatibility */
+.info-content { margin-left: 0; }
+.info-optional { display: none; }
+.button-copy-sequence { margin-left: 5px; cursor: pointer; }
+#info-full-sequence-container { margin-top: 0.5em; }

@@ -60,7 +60,7 @@ function makeText(value) {
 
 
 function renderSegmentInfo(info) {
-  appendHeader(`<i class="fa-regular fa-square"></i> ${t.segment}`);
+  appendHeader(`\u25A1 ${t.segment}`);
 
   appendRow({ label: t.id, valueEl: makeCopyable(info.id, { allowHTML: true, copyString: info.rawId }) });
 
@@ -68,7 +68,7 @@ function renderSegmentInfo(info) {
     appendRow({ label: t.coordinates, valueEl: makeCopyable(info.coordinates) });
   }
 
-  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length) + ' bp') });
+  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length, { unit: true })) });
 
   if (info.gcPercent != null) {
     appendRow({ label: t.gcContent, valueEl: makeText(info.gcPercent) });
@@ -84,7 +84,7 @@ function renderSegmentInfo(info) {
 }
 
 function renderBubbleInfo(info) {
-  appendHeader(`<i class="fa-regular fa-circle"></i> ${t.bubble}`);
+  appendHeader(`\u25CB ${t.bubble}`);
 
   appendRow({ label: t.id, valueEl: makeCopyable(info.id, { allowHTML: true, copyString: info.rawId }) });
 
@@ -96,7 +96,7 @@ function renderBubbleInfo(info) {
     appendRow({ label: t.subtype, valueEl: makeText(info.subtype) });
   }
 
-  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length) + ' bp') });
+  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length, { unit: true })) });
 
   if (info.size != null) {
     appendRow({ label: t.insideSegments, valueEl: makeText(Number(info.size).toLocaleString()) });
@@ -114,7 +114,7 @@ function renderBubbleInfo(info) {
   }
 
   if (info.parent != null) {
-    const parentLabel = `<i class="fa-regular fa-circle"></i> ${info.parent}`;
+    const parentLabel = `\u25CB ${info.parent}`;
     appendRow({ label: t.parent, valueEl: makeCopyable(parentLabel, { allowHTML: true, copyString: String(info.parent) }) });
   }
 
@@ -129,6 +129,35 @@ function renderBubbleInfo(info) {
   }
 }
 
+function renderChainInfo(info) {
+  appendHeader(`\u25C7 ${t.chain || 'Chain'}`);
+
+  appendRow({ label: t.id, valueEl: makeCopyable(info.id, { allowHTML: true, copyString: info.rawId }) });
+
+  if (info.coordinates) {
+    appendRow({ label: t.coordinates, valueEl: makeCopyable(info.coordinates) });
+  }
+
+  if (info.subtype) {
+    appendRow({ label: t.subtype, valueEl: makeText(info.subtype) });
+  }
+
+  appendRow({ label: t.length, valueEl: makeText(formatBp(info.length, { unit: true })) });
+
+  if (info.size != null) {
+    appendRow({ label: t.insideSegments || 'Bubbles', valueEl: makeText(Number(info.size).toLocaleString()) });
+  }
+
+  if (info.gcPercent != null) {
+    appendRow({ label: t.gcContent, valueEl: makeText(info.gcPercent) });
+  }
+
+  if (info.parent != null) {
+    const parentLabel = `\u25C7 ${info.parent}`;
+    appendRow({ label: t.parent, valueEl: makeCopyable(parentLabel, { allowHTML: true, copyString: String(info.parent) }) });
+  }
+}
+
 export function updateSelectionInfo(info) {
   panel.innerHTML = '';
 
@@ -138,6 +167,8 @@ export function updateSelectionInfo(info) {
     renderSegmentInfo(info);
   } else if (info.type === 'bubble') {
     renderBubbleInfo(info);
+  } else if (info.type === 'chain') {
+    renderChainInfo(info);
   }
 
   if (isDebugMode() && info.range) {

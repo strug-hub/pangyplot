@@ -6,7 +6,6 @@ import eventBus from '@event-bus';
 import { switchTab } from './tab-set.js';
 
 const CORE_ONLY_TABS = [
-    'graph-info',
     'path-selector',
     'search-tab',
     'tool-tab',

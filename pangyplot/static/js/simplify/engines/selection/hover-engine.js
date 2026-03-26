@@ -116,6 +116,10 @@ export function setupHover(canvas) {
             state.selectedNode = hit;
             showNodeInfo(hit);
             scheduleFrame();
+        } else if (state.hoveredChain) {
+            state.selectedNode = state.hoveredChain;
+            showChainInfo(state.hoveredChain);
+            scheduleFrame();
         } else if (state.selectedNode) {
             state.selectedNode = null;
             updateSelectionInfo(null);
@@ -181,6 +185,31 @@ function showNodeInfo(node) {
     }
 
     // Switch to Graph Information tab
+    const btn = document.getElementById('graph-info-button');
+    if (btn) btn.click();
+}
+
+function showChainInfo(chain) {
+    const genome = state.GENOME || '';
+    const chr = state.chromosome || '';
+    const coords = (chain.bpStart != null && chain.bpEnd != null)
+        ? `${genome}#${chr}:${chain.bpStart.toLocaleString()}-${chain.bpEnd.toLocaleString()}`
+        : null;
+
+    updateSelectionInfo({
+        id: `\u25C7 ${chain.id}`,
+        rawId: String(chain.id),
+        type: 'chain',
+        coordinates: coords,
+        length: chain.length || chain.bpSpan || 0,
+        gcPercent: formatPercentage(chain.gcCount, chain.length),
+        nCount: 0,
+        subtype: chain.subtype || '',
+        size: chain.nBubbles || 0,
+        chain: chain.parentChain || null,
+        parent: chain.parentChain || null,
+    });
+
     const btn = document.getElementById('graph-info-button');
     if (btn) btn.click();
 }
