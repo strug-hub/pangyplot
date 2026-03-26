@@ -3,7 +3,7 @@
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { getPolychainPositions, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
-import { getBubblePositions, bubbleGridThreshold } from '../../data/bubble-meta-cache.js';
+import { getBubblePositions } from '../../data/bubble-meta-cache.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -137,7 +137,7 @@ export function hitTestBubbleCircles(dataX, dataY) {
         if (!positions || positions.length === 0) continue;
         for (const { x, y, meta } of positions) {
             // Skip bubbles not yet visible at current zoom
-            if (gridSize > bubbleGridThreshold(meta.length)) continue;
+            if (gridSize > (meta.threshold || 20)) continue;
             const d = Math.hypot(dataX - x, dataY - y);
             if (d < bestDist) {
                 bestDist = d;

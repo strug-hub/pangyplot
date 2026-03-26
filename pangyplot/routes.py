@@ -275,6 +275,22 @@ def bubble_meta():
         return jsonify({"error": str(e)}), 404
     return jsonify({"bubbles": result})
 
+@bp.route('/bubble-meta-batch', methods=["POST"])
+def bubble_meta_batch():
+    data = request.get_json(silent=True) or {}
+    chain_ids = data.get("chain_ids", [])
+    chrom = data.get("chromosome", "")
+    genome = current_app.genome
+    if not chain_ids or not chrom:
+        return jsonify({"error": "Missing chain_ids or chromosome"}), 400
+    result = {}
+    for cid in chain_ids:
+        try:
+            result[cid] = query.get_bubble_meta(current_app, genome, chrom, cid)
+        except (ValueError, KeyError):
+            result[cid] = []
+    return jsonify(result)
+
 @bp.route('/select', methods=["GET"])
 def select():
     genome = request.args.get("genome")
