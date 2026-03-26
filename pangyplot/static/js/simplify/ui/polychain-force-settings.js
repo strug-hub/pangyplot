@@ -13,13 +13,13 @@ function mainSliders() {
         },
         {
             label: "Chain Inflation", icon: "up-down-left-right",
-            min: 0, max: 2000, step: 10, default: pcSettings.intraChainRepulsion,
-            onChange: (v) => { pcSettings.intraChainRepulsion = v; applyPcSettings(); }
+            min: 0, max: 5, step: 1, default: pcSettings.inflationLevel,
+            onChange: (v) => { pcSettings.inflationLevel = v; applyPcSettings(); }
         },
         {
             label: "Loop Pull", icon: "circle",
-            min: 0, max: 5, step: 0.1, default: pcSettings.loopClosure,
-            onChange: (v) => { pcSettings.loopClosure = v; applyPcSettings(); }
+            min: 0, max: 5, step: 1, default: pcSettings.loopLevel,
+            onChange: (v) => { pcSettings.loopLevel = v; applyPcSettings(); }
         },
         {
             label: "Link Stiffness", icon: "link",
@@ -55,6 +55,11 @@ function advancedSliders() {
             label: "Child Offset", icon: "arrow-right-from-bracket",
             min: 0, max: 10, step: 0.1, default: pcSettings.parentSide,
             onChange: (v) => { pcSettings.parentSide = v; applyPcSettings(); }
+        },
+        {
+            label: "Centroid Push", icon: "expand",
+            min: 0, max: 50, step: 0.5, default: pcSettings.centroidRepulsion,
+            onChange: (v) => { pcSettings.centroidRepulsion = v; applyPcSettings(); }
         },
     ];
 }

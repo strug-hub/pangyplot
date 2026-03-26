@@ -10,6 +10,7 @@ import { isDebugMode } from '@app-state';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from './detail/render/force-render-manager.js';
+import { getAlpha } from './detail/engines/force-engine.js';
 import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
@@ -21,8 +22,8 @@ import { getLevelMeta } from '@simplify-data/chromosome-data.js';
 let _fpsFrames = 0;
 let _fpsLast = performance.now();
 let _fpsDisplay = 0;
-let _timings = null;
-let _lastFrameEnd = 0;
+let _timingsHistory = [];  // ring buffer of last 5 frames
+let _timingsAvg = null;
 
 // ---------------------------------------------------------------
 // Main draw
@@ -33,9 +34,7 @@ function draw() {
     const cw = state.canvas.width / dpr;
     const ch = state.canvas.height / dpr;
 
-    const _now = performance.now();
-    const _frameStart = isDebugMode() ? _now : 0;
-    const _gap = _lastFrameEnd > 0 ? _now - _lastFrameEnd : 0;
+    const _debug = isDebugMode();
 
     ctx.clearRect(0, 0, cw, ch);
     ctx.fillStyle = colorState.background;
@@ -64,8 +63,7 @@ function draw() {
     ctx.translate(state.panX, state.panY);
     ctx.scale(state.zoom, state.zoom);
 
-    const _debug = isDebugMode();
-    let _t0, _t1;
+    let _t0;
     const timings = [];
 
     // ===== SKELETON LAYER (skipped when detail is fully active) =====
@@ -111,11 +109,18 @@ function draw() {
     if (_debug) timings.push(['labels', performance.now() - _t0]);
 
     if (_debug) {
-        timings.push(['total', performance.now() - _frameStart]);
-        timings.push(['gap', _gap]);
-        _timings = timings;
+        _timingsHistory.push(timings);
+        if (_timingsHistory.length > 5) _timingsHistory.shift();
+        // Average across recent frames
+        const avg = new Map();
+        for (const frame of _timingsHistory) {
+            for (const [label, ms] of frame) {
+                avg.set(label, (avg.get(label) || 0) + ms);
+            }
+        }
+        const n = _timingsHistory.length;
+        _timingsAvg = [...avg.entries()].map(([label, total]) => [label, total / n]);
     }
-    _lastFrameEnd = performance.now();
 
     // --- FPS counter + timing breakdown (debug mode) ---
     if (isDebugMode()) {
@@ -129,15 +134,29 @@ function draw() {
         ctx.save();
         ctx.font = '13px monospace';
         ctx.textAlign = 'right';
-        ctx.fillStyle = _fpsDisplay < 30 ? '#e44' : _fpsDisplay < 50 ? '#f90' : '#0f0';
         ctx.globalAlpha = 0.8;
+
+        // Alpha decay (top-right)
+        const alpha = getAlpha();
+        if (alpha > 0) {
+            const barW = 80, barH = 6, bx = cw - 12 - barW, by = 14;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(bx, by, barW, barH);
+            ctx.fillStyle = alpha > 0.5 ? '#f90' : alpha > 0.05 ? '#0ff' : '#555';
+            ctx.fillRect(bx, by, barW * alpha, barH);
+            ctx.fillStyle = '#888';
+            ctx.fillText(`\u03B1 ${alpha.toFixed(4)}`, cw - 12, by + barH + 14);
+        }
+
+        // FPS (bottom-right)
+        ctx.fillStyle = _fpsDisplay < 30 ? '#e44' : _fpsDisplay < 50 ? '#f90' : '#0f0';
         ctx.fillText(`${_fpsDisplay} fps`, cw - 12, ch - 12);
-        // Show timing breakdown if available
-        if (_timings) {
+        // Show timing breakdown (averaged over last 5 frames)
+        if (_timingsAvg) {
             ctx.fillStyle = '#ccc';
             ctx.globalAlpha = 0.7;
             let ty = ch - 28;
-            for (const [label, ms] of _timings) {
+            for (const [label, ms] of _timingsAvg) {
                 ctx.fillText(`${label}: ${ms.toFixed(1)}ms`, cw - 12, ty);
                 ty -= 14;
             }

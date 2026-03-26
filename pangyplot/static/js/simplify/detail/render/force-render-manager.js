@@ -9,6 +9,7 @@ import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
+import { bubbleGridThreshold } from '../data/bubble-meta-cache.js';
 
 /** Last-frame rendered junction counts (read by status-bar). */
 export let renderedJunctionNodes = 0;
@@ -38,6 +39,8 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         return x >= vp.minX && x <= vp.maxX && y >= vp.minY && y <= vp.maxY;
     }
 
+    const gridSize = state.targetGridSize;
+
     // --- Categorize links ---
     const kinkByColor = new Map();
     const chainSegs = [];
@@ -61,6 +64,14 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         } else if (link.type === 'chain') {
             chainSegs.push(seg);
         } else {
+            // Hide small junction links when zoomed out (all visible at gridSize <= 50)
+            if (gridSize > 50) {
+                const sLen = s.record?.seqLength || 0;
+                const tLen = t.record?.seqLength || 0;
+                const maxLen = Math.max(sLen, tLen);
+                const thresh = maxLen > 0 ? bubbleGridThreshold(maxLen) : 50;
+                if (gridSize > thresh) continue;
+            }
             junctionSegs.push(seg);
         }
     }
@@ -75,7 +86,15 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     for (const node of nodes) {
         if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
         if (!nodeVisible(node.x, node.y)) continue;
-        if (node.chainId === '__junction__') jNodeCount++;
+        if (node.chainId === '__junction__') {
+            // Hide small junction nodes when zoomed out (all visible at gridSize <= 50)
+            if (gridSize > 50) {
+                const len = node.record?.seqLength || 0;
+                const thresh = len > 0 ? bubbleGridThreshold(len) : 50;
+                if (gridSize > thresh) continue;
+            }
+            jNodeCount++;
+        }
         const r = (node.width || 5) * scaleFactor * 0.5;
         const circle = { x: node.x, y: node.y, r };
         const color = getNodeColor(node);
@@ -295,7 +314,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     }
 
     // Draw cached parentPerps + tangent lines on child chain nodes
-    if (mode === 'all' || mode === 'parent') {
+    if (mode === 'parent') {
         const perpLen = Math.max(8, 20 / state.zoom);
         const tangentHalf = Math.max(12, 30 / state.zoom);
         ctx.globalAlpha = 0.8 * opacity;

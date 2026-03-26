@@ -16,9 +16,9 @@ const SIMPLIFY_CHARGE = -80;     // reduced for polychain experiment (many more 
 export const pcSettings = {
     charge: -20,              // global inter-node repulsion
     chargeMaxDist: 5000,      // long-range charge like core
-    intraChainRepulsion: 2000, // extra repulsion between nodes in the same chain
+    inflationLevel: 2,        // chain inflation level (0-5)
     centroidRepulsion: 4,     // push each node away from its chain's centroid (inflates loops)
-    loopClosure: 4,           // magnetic head↔tail pull, decaying toward middle
+    loopLevel: 2,             // loop pull level (0-5)
     collisionRadius: 5,       // node collision radius
     layoutLevel: 2,           // layout impulse level (0-5), matches core viewer
     linkStrength: 0.1,        // spring stiffness along polyline (softer = curvier)
@@ -28,6 +28,9 @@ export const pcSettings = {
     linkRepulsionGrid: 50,    // grid cell size (~half of repulsion dist)
     parentSide: 2,            // push child chains to one side of parent
 };
+
+const inflationLevels = { 0: 0, 1: 500, 2: 2000, 3: 5000, 4: 10000, 5: 20000 };
+const loopLevels = { 0: 0, 1: 1, 2: 4, 3: 10, 4: 25, 5: 50 };
 
 let sim = null;
 
@@ -126,7 +129,7 @@ function intraChainRepulsion() {
     let nodes = [];
 
     function force(alpha) {
-        const str = pcSettings.intraChainRepulsion * alpha;
+        const str = (inflationLevels[pcSettings.inflationLevel] ?? 0) * alpha;
         if (str === 0) return;
 
         // Group polychain nodes by chain
@@ -222,7 +225,7 @@ function loopClosureForce() {
     let nodes = [];
 
     function force(alpha) {
-        const str = pcSettings.loopClosure * alpha;
+        const str = (loopLevels[pcSettings.loopLevel] ?? 0) * alpha;
         if (str === 0) return;
 
         const chains = new Map();
@@ -745,7 +748,7 @@ export function addPoppedNodes(nodes, links) {
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
 
-    sim.alpha(0.1).restart();
+    sim.alpha(1).restart();
 }
 
 export function removePoppedNodes(chainId) {
@@ -761,7 +764,7 @@ export function removePoppedNodes(chainId) {
     syncLinks(remainingLinks);
 
     if (remaining.length > 0) {
-        sim.alpha(0.1).restart();
+        sim.alpha(1).restart();
     } else {
         sim.stop();
     }
@@ -813,7 +816,7 @@ export function restorePhantom(phantom, anchorNode) {
         isInterChain: true, isKinkLink: false, chainId: null, length: 10,
     }];
     syncLinks(allLinks);
-    sim.alpha(0.1).restart();
+    sim.alpha(1).restart();
 }
 
 export function removeLinksByFlag(flag) {
@@ -848,7 +851,7 @@ export function removeNodesByChainIds(chainIds) {
     syncLinks(remainingLinks);
 
     if (remaining.length > 0) {
-        sim.alpha(0.1).restart();
+        sim.alpha(1).restart();
     } else {
         sim.stop();
     }
@@ -872,7 +875,7 @@ export function collapseToAnchors() {
         }
     }
     sim.force('layout').strengthLevel(5);
-    sim.alpha(0.3).restart();
+    sim.alpha(1).restart();
 }
 
 export function restoreAnchors() {
@@ -885,7 +888,7 @@ export function restoreAnchors() {
         }
     }
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
-    sim.alpha(0.15).restart();
+    sim.alpha(1).restart();
 }
 
 /**
@@ -949,7 +952,7 @@ export function spliceBubbleNodes(removeIids, childNodes, childLinks) {
     syncNodes(allNodes);
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
-    sim.alpha(0.3).restart();
+    sim.alpha(1).restart();
 }
 
 /**
@@ -1005,7 +1008,7 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
     syncNodes(allNodes);
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
-    sim.alpha(0.3).restart();
+    sim.alpha(1).restart();
 }
 
 /**
@@ -1030,7 +1033,7 @@ function resolveSegToKink(segId, strand, allNodes) {
 
 export function reheatSimulation() {
     if (!sim) return;
-    sim.alpha(0.1).restart();
+    sim.alpha(1).restart();
 }
 
 /**
@@ -1050,11 +1053,15 @@ export function applyPcSettings() {
             ? Math.max(pcSettings.linkMinRest, d.length)
             : d.length * SIMPLIFY_LINK_SCALE)
         .strength(d => d.isPolychainLink ? pcSettings.linkStrength : 0);
-    sim.alpha(0.3).restart();
+    sim.alpha(1).restart();
 }
 
 export function isSimulating() {
     return sim && sim.alpha() > sim.alphaMin();
+}
+
+export function getAlpha() {
+    return sim ? sim.alpha() : 0;
 }
 
 let _pausedAlpha = 0;
