@@ -215,26 +215,24 @@ function drawForceVectors(ctx, nodes, links, opacity) {
 
     const mode = state.forceVectorMode || 'all';
 
-    // Label in screen space
+    // Label in screen space — always show all types, arrow on active
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.font = '14px monospace';
     ctx.globalAlpha = 0.9;
     const lx = ctx.canvas.width / 2 - 80;
-    if (mode === 'all') {
-        let y = ctx.canvas.height - 10;
-        for (const [name, info] of Object.entries(forceMap).reverse()) {
-            ctx.fillStyle = info.color;
-            ctx.fillText(info.label, lx, y);
-            y -= 16;
-        }
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('dominant force [U to cycle]', lx, y);
-    } else {
-        const info = Object.values(forceMap).find(f => f.label === mode);
-        ctx.fillStyle = info?.color || '#FFFFFF';
-        ctx.fillText(`force: ${mode} [U to cycle]`, lx, ctx.canvas.height - 10);
+    const entries = Object.entries(forceMap);
+    let y = ctx.canvas.height - 10;
+    // "all" is a virtual mode not in forceMap
+    const allModes = [['all', { color: '#FFFFFF', label: 'net' }], ...entries];
+    for (const [key, info] of [...allModes].reverse()) {
+        const active = key === 'all' ? mode === 'all' : info.label === mode;
+        ctx.fillStyle = active ? info.color : `${info.color}66`;
+        ctx.fillText(`${active ? '\u25B6 ' : '  '}${info.label}`, lx, y);
+        y -= 16;
     }
+    ctx.fillStyle = '#888';
+    ctx.fillText('[U] cycle  [Y] toggle', lx, y);
     ctx.restore();
 
     ctx.globalAlpha = 0.7 * opacity;

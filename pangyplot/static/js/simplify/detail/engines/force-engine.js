@@ -20,7 +20,7 @@ export const pcSettings = {
     centroidRepulsion: 4,     // push each node away from its chain's centroid (inflates loops)
     loopClosure: 4,           // magnetic head↔tail pull, decaying toward middle
     collisionRadius: 5,       // node collision radius
-    layoutStrength: 0.00005,  // gentle home pull — allows deformation
+    layoutLevel: 2,           // layout impulse level (0-5), matches core viewer
     linkStrength: 0.1,        // spring stiffness along polyline (softer = curvier)
     linkMinRest: 80,          // floor for link rest length (expands tight loops)
     linkRepulsion: 0.8,       // link-link perpendicular push strength
@@ -357,7 +357,7 @@ function parentSideForce() {
 }
 
 /**
- * Combined layout pull — applies pcSettings.layoutStrength to polychain nodes,
+ * Combined layout pull — applies pcSettings.layoutLevel to polychain nodes,
  * standard layout strength to all other nodes. Replaces the shared layoutForce
  * so polychain nodes aren't pulled by both.
  */
@@ -368,7 +368,7 @@ function combinedLayoutForce() {
 
     function force(alpha) {
         const stdK = (standardStrengths[standardLevel] ?? 0) * alpha;
-        const pcK = pcSettings.layoutStrength * alpha;
+        const pcK = (standardStrengths[pcSettings.layoutLevel] ?? 0) * alpha;
         for (const node of nodes) {
             if (node.homeX == null) continue;
             const k = node.isPolychainNode ? pcK : stdK;

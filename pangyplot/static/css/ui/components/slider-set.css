@@ -1,3 +1,21 @@
 .slider-reset-all-button{
     font-size: small;
 }
+
+.advanced-settings {
+    margin-top: 8px;
+    border-top: 1px solid var(--dark-green, #333);
+    padding-top: 4px;
+}
+
+.advanced-settings summary {
+    cursor: pointer;
+    font-size: small;
+    color: #888;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.advanced-settings summary:hover {
+    color: #bbb;
+}
