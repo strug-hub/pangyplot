@@ -10,6 +10,7 @@ const stores = new Map();
 
 // Batch fetch queue
 const batchQueue = new Set();
+const pending = new Set();  // chain IDs with in-flight requests
 let batchTimer = null;
 
 // Per-bubble visibility threshold (precomputed at fetch time)
@@ -35,7 +36,7 @@ export function bubbleGridThreshold(bpLength) {
  * multiple calls in the same frame collapse into one POST.
  */
 export function fetchBubbleMeta(chainId, chromosome) {
-    if (stores.has(chainId) || batchQueue.has(chainId)) return;
+    if (stores.has(chainId) || batchQueue.has(chainId) || pending.has(chainId)) return;
     batchQueue.add(chainId);
 
     if (!batchTimer) {
@@ -51,6 +52,7 @@ async function flushBatch(chromosome) {
 
     const chainIds = [...batchQueue];
     batchQueue.clear();
+    for (const cid of chainIds) pending.add(cid);
 
     try {
         const resp = await fetch('/bubble-meta-batch', {
@@ -99,6 +101,8 @@ async function flushBatch(chromosome) {
         if (e.name !== 'AbortError') {
             console.warn('[bubble-meta] batch fetch failed:', e);
         }
+    } finally {
+        for (const cid of chainIds) pending.delete(cid);
     }
 }
 
@@ -186,5 +190,6 @@ export function updateBubblePositions(chainId, pl) {
 export function clearBubbleMetaCache() {
     stores.clear();
     batchQueue.clear();
+    pending.clear();
     batchTimer = null;
 }
