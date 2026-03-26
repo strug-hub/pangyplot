@@ -223,7 +223,8 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const triSize = Math.max(3, 8 / state.zoom);
     ctx.globalAlpha = 0.6 * opacity;
     ctx.fillStyle = '#FF8800';
-    for (const g of chains.values()) {
+    const labelSize = Math.max(4, 10 / state.zoom);
+    for (const [chainId, g] of chains) {
         if (g.count < 3) continue;
         const cx = g.cx / g.count, cy = g.cy / g.count;
         ctx.beginPath();
@@ -232,6 +233,20 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ctx.lineTo(cx + triSize * 0.866, cy + triSize * 0.5);
         ctx.closePath();
         ctx.fill();
+
+        // Arc length label at centroid
+        let arc = 0;
+        const chainNodes = pcNodes.filter(n => n.chainId === chainId);
+        chainNodes.sort((a, b) => a.nodeIndex - b.nodeIndex);
+        for (let i = 1; i < chainNodes.length; i++) {
+            arc += Math.hypot(chainNodes[i].x - chainNodes[i - 1].x,
+                              chainNodes[i].y - chainNodes[i - 1].y);
+        }
+        const arcStr = arc >= 1000 ? (arc / 1000).toFixed(1) + 'k' : arc.toFixed(0);
+        ctx.font = `${labelSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FF8800';
+        ctx.fillText(arcStr, cx, cy + triSize + labelSize);
     }
 
     // Color nodes by loopFactor: blue (0) → yellow (0.5) → red (1)

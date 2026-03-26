@@ -54,8 +54,14 @@ function linkDistance(d) {
         : d.length * SIMPLIFY_LINK_SCALE;
 }
 
+const LINK_SOFTEN_MIDPOINT = 100000;
+
 function linkStrength(d) {
-    return d.isPolychainLink ? pcSettings.linkStrength : 0.01;
+    if (!d.isPolychainLink) return 0.01;
+    const base = pcSettings.linkStrength;
+    const arc = d.chainArcLen || 0;
+    // Soften stiffness on long chains: base / (1 + (arc/midpoint)²)
+    return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
 }
 
 function chargeStrength(d) {

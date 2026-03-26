@@ -24,11 +24,16 @@ function getNodeCountPoints() {
     return chains.map(c => {
         const nodes = pcNodes.get(c.id);
         if (!nodes || nodes.length < 2) return null;
+        let arc = 0;
+        for (let i = 1; i < nodes.length; i++) {
+            arc += Math.hypot(nodes[i].x - nodes[i - 1].x, nodes[i].y - nodes[i - 1].y);
+        }
         return {
             x: c.bpSpan || 0,
             y: nodes.length,
             label: c.id,
             lf: nodes[0].loopFactor || 0,
+            arcLen: arc,
         };
     }).filter(p => p && p.x > 0);
 }
@@ -50,6 +55,7 @@ function getChainPoints() {
             y: arc,
             label: c.id,
             lf: nodes[0].loopFactor || 0,
+            arcLen: arc,
         };
     }).filter(p => p && p.x > 0 && p.y > 0);
 }
@@ -90,7 +96,7 @@ function niceRange(min, max) {
     return [Math.max(0, min - pad), max + pad];
 }
 
-function drawScatter(points, xLabel, yLabel, colorByLf) {
+function drawScatter(points, xLabel, yLabel, colorByLf, curveFn) {
     if (!ctx || !canvas) return;
 
     const dpr = window.devicePixelRatio || 1;
@@ -194,6 +200,7 @@ function drawScatter(points, xLabel, yLabel, colorByLf) {
     lastScreenPoints = points.map(p => ({
         sx: toX(p.x), sy: toY(p.y),
         label: p.label, x: p.x, y: p.y,
+        arcLen: p.arcLen || 0,
     }));
 
     // Point count
@@ -201,13 +208,51 @@ function drawScatter(points, xLabel, yLabel, colorByLf) {
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(`n=${points.length}`, ml + pw - 4, mt + 12);
+
+    // Overlay curve: curveFn maps y-axis values (arc length) → 0–1 stiffness
+    // Drawn as a vertical curve along the right edge with a secondary x-axis (bottom-right)
+    if (curveFn) {
+        const curveW = pw * 0.3;  // curve occupies right 30% of plot
+        ctx.strokeStyle = '#cc3333';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        const steps = 100;
+        for (let i = 0; i <= steps; i++) {
+            const yv = yMin + (yMax - yMin) * i / steps;
+            const cv = curveFn(yv);  // 0–1
+            const sx = ml + pw - curveW + cv * curveW;
+            const sy = toY(yv);
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Label
+        ctx.fillStyle = '#cc3333';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('stiffness \u2192', ml + pw - 2, mt + ph + 28);
+    }
+}
+
+// Stiffness scaling curve: 1 / (1 + (arc / midpoint)²)
+// x-axis on Chains tab is arc length (y values from the data), but we plot against
+// the x-axis which is bp. We want to show stiffness vs arc length, so we need
+// a mapping. Since the curve is over arc length, we plot it using y-axis values.
+// Instead, overlay on Chains tab: x = bp, curve shows stiffness at the arc length
+// for that bp. Since we don't have a direct bp→arc mapping, use the y-axis directly.
+const LINK_SOFTEN_MIDPOINT = 100000;
+function stiffnessCurve(arcLen) {
+    return 1 / (1 + (arcLen / LINK_SOFTEN_MIDPOINT) * (arcLen / LINK_SOFTEN_MIDPOINT));
 }
 
 function render() {
     if (activeTab === 'nodes') {
         drawScatter(getNodeCountPoints(), 'BP Length', 'Node Count', true);
     } else if (activeTab === 'chains') {
-        drawScatter(getChainPoints(), 'BP Length', 'Arc Length (graph units)', true);
+        drawScatter(getChainPoints(), 'BP Length', 'Arc Length (graph units)', true,
+            arcLen => stiffnessCurve(arcLen));
     } else {
         drawScatter(getLinkPoints(), 'BP per Link (uniform)', 'Link Canvas Length', false);
     }
@@ -287,7 +332,8 @@ function buildPanel() {
             tooltip.style.display = '';
             tooltip.style.left = (e.clientX - panel.offsetLeft + 10) + 'px';
             tooltip.style.top = (e.clientY - panel.offsetTop - 20) + 'px';
-            tooltip.textContent = `${best.label}  x=${formatSI(best.x)}  y=${formatSI(best.y)}`;
+            const arcStr = best.arcLen > 0 ? `  arc=${formatSI(best.arcLen)}` : '';
+            tooltip.textContent = `${best.label}  x=${formatSI(best.x)}  y=${formatSI(best.y)}${arcStr}`;
         } else {
             tooltip.style.display = 'none';
         }

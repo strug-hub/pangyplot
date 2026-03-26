@@ -505,6 +505,13 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
     }
 
     // Sequential links — rest length = initial geometric distance between samples
+    // Compute total arc length for variable link stiffness
+    let chainArcLen = 0;
+    for (let i = 0; i < nodes.length - 1; i++) {
+        chainArcLen += Math.hypot(
+            samples[i + 1][0] - samples[i][0],
+            samples[i + 1][1] - samples[i][1]);
+    }
     for (let i = 0; i < nodes.length - 1; i++) {
         const dx = samples[i + 1][0] - samples[i][0];
         const dy = samples[i + 1][1] - samples[i][1];
@@ -516,6 +523,7 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
             chainId: chain.id,
             length: Math.hypot(dx, dy) || 1,
             loopFactor: loopFactor,
+            chainArcLen: chainArcLen,
         });
     }
 
