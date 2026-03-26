@@ -189,7 +189,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
         if (isFirstFetch) {
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
             state.poppedChainIds.clear();
-            state.activeSeedChainId = null;
             state._bubblePopStack = [];
             clearHistory();
             state.detailData = newData;
@@ -280,7 +279,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
 
             state.poppedChainIds.clear();
-            state.activeSeedChainId = null;
             state._bubblePopStack = [];
 
             clearHistory();

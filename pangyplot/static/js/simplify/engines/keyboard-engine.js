@@ -3,7 +3,6 @@
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
 import { state } from '../simplify-state.js';
-import { togglePhysicsDebug } from './physics-activation-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { unpopLastBubble } from '../detail/data/bubble-unpop-adapter.js';
 import { returnToSimplify } from './selection/selection-popup.js';
@@ -13,7 +12,6 @@ eventBus.subscribe('app:debug-mode-changed', (enabled) => {
     if (!enabled) {
         state.forceVectors = false;
         state.forceVectorMode = 'all';
-        if (state.physicsDebug) togglePhysicsDebug();
         scheduleFrame();
     }
 });
@@ -25,10 +23,6 @@ export function setupKeyboardShortcuts() {
             returnToSimplify();
             scheduleFrame();
             return;
-        }
-        if (isDebugMode() && e.code === 'KeyL' && !e.repeat) {
-            togglePhysicsDebug();
-            scheduleFrame();
         }
         if (isDebugMode() && e.code === 'KeyY' && !e.repeat) {
             state.forceVectors = !state.forceVectors;

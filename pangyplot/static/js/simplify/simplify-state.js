@@ -30,12 +30,10 @@ export const state = {
     skeletonOpacity: 1,
     isFetching: false,         // true while a detail fetch is in-flight
     detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
-    physicsDebug: false,        // L-key toggle: show physics activation zone overlay
     forceVectors: false,        // Y-key toggle: show per-node force vectors
     forceVectorMode: 'all',    // U-key cycle: 'all', 'charge', 'intra', 'link', 'layout', 'linkRepul'
 
     // Force simulation
-    activeSeedChainId: null,   // chain ID auto-popped as force graph (seed)
     poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
 
     // Selection (Shift+drag rectangle)
@@ -62,7 +60,6 @@ export const state = {
     DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
     DETAIL_EXIT_THRESHOLD: 700,   // exit detail when targetGridSize > this (hysteresis)
     BUBBLE_CIRCLE_GRID_THRESHOLD: 400,  // outer gate; per-bubble threshold scales with bp length
-    PHYSICS_NODE_BUDGET: 1500,    // max estimated D3 nodes for physics zone
     FETCH_MARGIN: 0.2,
     FADE_DURATION: 600,
 

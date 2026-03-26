@@ -2,10 +2,7 @@
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
-import { togglePopChain } from '../../detail/engines/polychain/polychain-pop-engine.js';
 import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/polychain-hover-engine.js';
-import { hitTestForceNodes } from '../../detail/engines/node-hover-engine.js';
-import { popBubbleForceNode } from '../../detail/data/bubble-pop-adapter.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
@@ -14,51 +11,6 @@ import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
 
-    // --- Ctrl+click: disabled (ctrl is now bubble-browse mode) ---
-    canvas.addEventListener('pointerdown', e => {
-        if (e.button !== 0 || !(e.ctrlKey || e.metaKey)) return;
-        return; // Ctrl reserved for bubble browsing
-
-        const rect = canvas.getBoundingClientRect();
-        const screenX = e.clientX - rect.left;
-        const screenY = e.clientY - rect.top;
-        const layoutX = (screenX - state.panX) / state.zoom;
-        const layoutY = (screenY - state.panY) / state.zoom;
-
-        // Priority: force node bubble pop > chain toggle pop
-        if (state.detailOpacity >= 0.5) {
-            const hitNode = hitTestForceNodes(layoutX, layoutY);
-            if (hitNode && hitNode.type === 'bubble') {
-                e.preventDefault();
-                e.stopPropagation();
-                popBubbleForceNode(hitNode).then(ok => {
-                    if (ok) scheduleFrame();
-                });
-                return;
-            }
-        }
-
-        const hitChain = hitTestChains(layoutX, layoutY);
-        if (hitChain) {
-            e.preventDefault();
-            e.stopPropagation();
-            togglePopChain(hitChain);
-            scheduleFrame();
-            return;
-        }
-
-        // If chains are selected, pop/unpop all of them
-        if (state.selectedChains.size > 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            for (const chain of state.selectedChains.keys()) {
-                togglePopChain(chain);
-            }
-            state.selectedChains.clear();
-            hideSelectionPopup();
-            scheduleFrame();
-        }
-    });
 
     // --- Shift key cursor feedback ---
     let zoomNoticeTimer = null;

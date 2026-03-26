@@ -6,9 +6,7 @@ import { setDrawCallback, scheduleFrame } from './utils/frame-scheduler.js';
 import { updateLegend } from '../graph/render/color/legend/legend-manager.js';
 import eventBus from '@event-bus';
 import { getViewport } from './render/viewport.js';
-import { isPhysicsDebugActive } from './engines/physics-activation-engine.js';
 import { isDebugMode } from '@app-state';
-import { drawPhysicsDebugOverlay, drawPhysicsDebugHUD } from './detail/render/physics-debug-painter.js';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from './detail/render/force-render-manager.js';
@@ -89,17 +87,7 @@ function draw() {
         if (_debug) timings.push(['detail', performance.now() - _t0]);
     }
 
-    // ===== PHYSICS DEBUG OVERLAY (data-space) =====
-    if (isPhysicsDebugActive() && state.detailData) {
-        drawPhysicsDebugOverlay(ctx, vp);
-    }
-
     ctx.restore();
-
-    // ===== PHYSICS DEBUG HUD (screen-space) =====
-    if (isPhysicsDebugActive() && state.detailData) {
-        drawPhysicsDebugHUD(ctx, cw);
-    }
 
     // --- Selection rectangle (screen coords) ---
     if (state.selectionBox) {
