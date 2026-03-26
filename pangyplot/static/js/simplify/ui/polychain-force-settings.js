@@ -28,7 +28,7 @@ function mainSliders() {
         },
         {
             label: "Link Stiffness", icon: "link",
-            min: 0, max: 1, step: 0.05, default: pcSettings.linkStrength,
+            min: 0.01, max: 1, step: 0.05, default: pcSettings.linkStrength,
             onChange: (v) => { pcSettings.linkStrength = v; applyPcSettings(); }
         },
         {
@@ -40,6 +40,16 @@ function mainSliders() {
             label: "Edge Separation", icon: "maximize",
             min: 0, max: 5, step: 0.1, default: pcSettings.linkRepulsion,
             onChange: (v) => { pcSettings.linkRepulsion = v; applyPcSettings(); }
+        },
+        {
+            label: "Smoothing", icon: "wand-magic-sparkles",
+            min: 0, max: 0.03, step: 0.001, default: pcSettings.smoothing,
+            onChange: (v) => { pcSettings.smoothing = v; applyPcSettings(); }
+        },
+        {
+            label: "Inflate", icon: "expand",
+            min: 0, max: 0.02, step: 0.001, default: pcSettings.inflate,
+            onChange: (v) => { pcSettings.inflate = v; applyPcSettings(); }
         },
     ];
 }

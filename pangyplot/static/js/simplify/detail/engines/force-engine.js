@@ -15,7 +15,8 @@ import { pcSettings, SIMPLIFY_LINK_SCALE, SIMPLIFY_CHARGE } from './forces/pc-se
 // Force factories
 import { viewportFreezeForce, viewportCharge, viewportCollide } from './forces/viewport-forces.js';
 import { polychainLinkRepulsion, intraChainRepulsion, centroidRepulsion,
-         loopClosureForce, parentSideForce } from './forces/polychain-forces.js';
+         loopClosureForce, parentSideForce, laplacianSmoothing,
+         balloonInflation } from './forces/polychain-forces.js';
 import { combinedLayoutForce, delLinkForce } from './forces/layout-forces.js';
 
 // ---------------------------------------------------------------
@@ -54,7 +55,7 @@ function linkDistance(d) {
 }
 
 function linkStrength(d) {
-    return d.isPolychainLink ? pcSettings.linkStrength : 0.05;
+    return d.isPolychainLink ? pcSettings.linkStrength : 0.01;
 }
 
 function chargeStrength(d) {
@@ -94,6 +95,8 @@ export function initForce() {
         .force('intraChain', intraChainRepulsion())
         .force('centroid', centroidRepulsion())
         .force('loopClosure', loopClosureForce())
+        .force('smoothing', laplacianSmoothing())
+        .force('balloon', balloonInflation())
         .force('pcLinkRepulsion', polychainLinkRepulsion())
         .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce(getLinks))
@@ -112,7 +115,7 @@ export function computeForceDeltas() {
 
     const alpha = 1; // Use full strength for debug visualization
     const forceNames = ['charge', 'collide', 'link', 'layout',
-        'intraChain', 'centroid', 'loopClosure', 'pcLinkRepulsion', 'parentSide'];
+        'intraChain', 'centroid', 'loopClosure', 'smoothing', 'balloon', 'pcLinkRepulsion', 'parentSide'];
     const result = {};
 
     for (const name of forceNames) {
@@ -155,7 +158,7 @@ export function profileForces() {
     const nodes = sim.nodes();
     const alpha = sim.alpha();
     const allForces = ['vpFreeze', 'charge', 'collide', 'link', 'layout',
-        'intraChain', 'centroid', 'loopClosure', 'pcLinkRepulsion', 'parentSide', 'delLink'];
+        'intraChain', 'centroid', 'loopClosure', 'smoothing', 'balloon', 'pcLinkRepulsion', 'parentSide', 'delLink'];
 
     console.log(`Profiling ${nodes.length} nodes, alpha=${alpha.toFixed(4)}`);
     const frozen = nodes.filter(n => n._vpFrozen).length;

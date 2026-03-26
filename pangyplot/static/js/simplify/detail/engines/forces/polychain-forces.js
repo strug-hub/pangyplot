@@ -325,3 +325,114 @@ export function parentSideForce() {
     force.initialize = function(n) { nodes = n; };
     return force;
 }
+
+/**
+ * Laplacian smoothing: nudges each interior polychain node toward
+ * the midpoint of its two sequential neighbors along the chain.
+ * F_i = k * (x[i-1] + x[i+1] - 2*x[i])
+ * Smooths kinks without changing overall chain shape.
+ */
+export function laplacianSmoothing() {
+    let nodes = [];
+
+    function force(alpha) {
+        const k = pcSettings.smoothing * alpha;
+        if (k === 0) return;
+
+        // Group polychain nodes by chain
+        const chains = new Map();
+        for (const n of nodes) {
+            if (!n.isPolychainNode) continue;
+            let group = chains.get(n.chainId);
+            if (!group) { group = []; chains.set(n.chainId, group); }
+            group.push(n);
+        }
+
+        for (const group of chains.values()) {
+            const len = group.length;
+            if (len < 3) continue;
+            // Reduce smoothing on loops to avoid collapsing curvature,
+            // but keep 30% so kinks on loops still get cleaned up
+            const lf = group[0].loopFactor || 0;
+            const scale = k * (1 - 0.7 * lf);
+            if (scale < 1e-6) continue;
+            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
+
+            for (let i = 1; i < len - 1; i++) {
+                const prev = group[i - 1];
+                const curr = group[i];
+                const next = group[i + 1];
+                curr.vx += scale * (prev.x + next.x - 2 * curr.x);
+                curr.vy += scale * (prev.y + next.y - 2 * curr.y);
+            }
+        }
+    }
+
+    force.initialize = function(n) { nodes = n; };
+    return force;
+}
+
+/**
+ * Balloon inflation: pushes each polychain node outward along the
+ * local curve normal via the signed-area gradient (active contour).
+ * F_i = k * ((y[i+1] - y[i-1]) / 2, (x[i-1] - x[i+1]) / 2)
+ * Inflates enclosed area while respecting local curvature.
+ * Link springs provide the counterforce to reach equilibrium.
+ */
+export function balloonInflation() {
+    let nodes = [];
+
+    function force(alpha) {
+        const k = pcSettings.inflate * alpha;
+        if (k === 0) return;
+
+        // Group polychain nodes by chain
+        const chains = new Map();
+        for (const n of nodes) {
+            if (!n.isPolychainNode) continue;
+            let group = chains.get(n.chainId);
+            if (!group) { group = []; chains.set(n.chainId, group); }
+            group.push(n);
+        }
+
+        for (const group of chains.values()) {
+            const len = group.length;
+            if (len < 3) continue;
+            const lf = group[0].loopFactor || 0;
+            if (lf === 0) continue;
+            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
+
+            // Signed area (shoelace) to detect winding direction
+            let signedArea = 0;
+            for (let i = 0; i < len; i++) {
+                const curr = group[i];
+                const next = group[(i + 1) % len];
+                signedArea += curr.x * next.y - next.x * curr.y;
+            }
+            // Positive = CCW (normals already outward), negative = CW (flip)
+            const sign = signedArea >= 0 ? 1 : -1;
+            const scale = k * lf * sign;
+
+            // Interior nodes: central difference
+            for (let i = 1; i < len - 1; i++) {
+                const prev = group[i - 1];
+                const curr = group[i];
+                const next = group[i + 1];
+                curr.vx += scale * (next.y - prev.y) * 0.5;
+                curr.vy += scale * (prev.x - next.x) * 0.5;
+            }
+
+            // Endpoints: one-sided difference
+            const head = group[0], h1 = group[1];
+            head.vx += scale * (h1.y - head.y);
+            head.vy += scale * (head.x - h1.x);
+
+            const tail = group[len - 1], t1 = group[len - 2];
+            tail.vx += scale * (tail.y - t1.y);
+            tail.vy += scale * (t1.x - tail.x);
+        }
+    }
+
+    force.initialize = function(n) { nodes = n; };
+    return force;
+}

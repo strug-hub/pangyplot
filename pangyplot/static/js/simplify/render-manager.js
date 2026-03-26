@@ -148,6 +148,28 @@ function draw() {
             ctx.fillText(`\u03B1 ${alpha.toFixed(4)}`, cw - 12, by + barH + 14);
         }
 
+        // Scale bar (middle-left)
+        const scaleBarScreenPx = 100;
+        const graphUnitsPerBar = scaleBarScreenPx / state.zoom;
+        const bx2 = 16, by2 = ch / 2;
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bx2, by2);
+        ctx.lineTo(bx2 + scaleBarScreenPx, by2);
+        // End ticks
+        ctx.moveTo(bx2, by2 - 4);
+        ctx.lineTo(bx2, by2 + 4);
+        ctx.moveTo(bx2 + scaleBarScreenPx, by2 - 4);
+        ctx.lineTo(bx2 + scaleBarScreenPx, by2 + 4);
+        ctx.stroke();
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ccc';
+        ctx.fillText(`${scaleBarScreenPx}px`, bx2, by2 - 10);
+        ctx.fillText(`${graphUnitsPerBar.toFixed(1)} graph`, bx2, by2 + 18);
+        ctx.fillText(`zoom: ${state.zoom.toFixed(3)}`, bx2, by2 + 32);
+        ctx.textAlign = 'right';
+
         // FPS (bottom-right)
         ctx.fillStyle = _fpsDisplay < 30 ? '#e44' : _fpsDisplay < 50 ? '#f90' : '#0f0';
         ctx.fillText(`${_fpsDisplay} fps`, cw - 12, ch - 12);

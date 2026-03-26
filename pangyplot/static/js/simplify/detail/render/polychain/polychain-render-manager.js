@@ -154,9 +154,10 @@ export function drawDetail(svg = null) {
     }
 
     // 2.5. Bubble positions + circle markers (single pass, positions updated in-place)
+    // Hide bubbles when force vectors debug is active
     const gridSize = state.targetGridSize;
     const bubbleR = Math.max(1.5, 3 / state.zoom);
-    const circlesByColor = updateBubblesAndBuildCircles(
+    const circlesByColor = state.forceVectors ? null : updateBubblesAndBuildCircles(
         state.detailData.chains, state.chromosome, bubbleR, gridSize);
     if (circlesByColor) {
         // Batch by (color, quantized alpha) for efficient draw calls

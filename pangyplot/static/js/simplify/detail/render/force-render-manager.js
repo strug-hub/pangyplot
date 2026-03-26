@@ -204,6 +204,8 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         intraChain:      { color: '#FF00FF', label: 'intra' },
         centroid:        { color: '#FF8800', label: 'centroid' },
         loopClosure:     { color: '#AA44FF', label: 'loop' },
+        smoothing:       { color: '#FF6688', label: 'smooth' },
+        balloon:         { color: '#FFD700', label: 'balloon' },
         pcLinkRepulsion: { color: '#00FFAA', label: 'linkRepul' },
         parentSide:      { color: '#44FF44', label: 'parent' },
     };
@@ -230,6 +232,18 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ctx.lineTo(cx + triSize * 0.866, cy + triSize * 0.5);
         ctx.closePath();
         ctx.fill();
+    }
+
+    // Color nodes by loopFactor: blue (0) → yellow (0.5) → red (1)
+    const dotS = Math.max(3, 8 / state.zoom);
+    ctx.globalAlpha = 0.8 * opacity;
+    for (const n of pcNodes) {
+        const lf = n.loopFactor || 0;
+        const r = Math.round(Math.min(1, lf * 2) * 255);
+        const g = Math.round(lf < 0.5 ? lf * 2 * 255 : (1 - (lf - 0.5) * 2) * 255);
+        const b = Math.round(Math.max(0, 1 - lf * 2) * 255);
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(n.x - dotS / 2, n.y - dotS / 2, dotS, dotS);
     }
 
     const mode = state.forceVectorMode || 'all';
@@ -310,6 +324,22 @@ function drawForceVectors(ctx, nodes, links, opacity) {
                 if (!d) continue;
                 drawArrow(n.x, n.y, d.fx, d.fy, color);
             }
+        }
+    }
+
+    // Draw node indices on polychain nodes in balloon mode
+    if (mode === 'balloon') {
+        const fontSize = Math.max(4, 10 / state.zoom);
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.9 * opacity;
+        for (const n of pcNodes) {
+            if (n.nodeIndex == null) continue;
+            ctx.fillStyle = n.nodeIndex === 0 ? '#00FF00'
+                : n.nodeIndex === n.chainNodeCount - 1 ? '#FF4444'
+                : '#FFD700';
+            ctx.fillText(n.nodeIndex, n.x, n.y - fontSize * 1.2);
         }
     }
 
