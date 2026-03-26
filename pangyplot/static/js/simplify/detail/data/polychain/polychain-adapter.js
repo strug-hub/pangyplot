@@ -54,8 +54,8 @@ export function interpolateAtDist(pl, cumLen, d) {
 }
 
 /**
- * Resample a chain's polyline with node count proportional to bpSpan
- * and density concentrated where bubbles are denser.
+ * Resample a chain's polyline with node count proportional to bpSpan,
+ * uniformly spaced along arc length.
  *
  * Returns array of [x, y] sample points (always includes first and last).
  */
@@ -64,8 +64,8 @@ function resamplePolyline(chain) {
     if (!pl || pl.length < 2) return null;
 
     // Determine target node count from bp span (log curve)
-    // log10(1k)=3 → 3, log10(10k)=4 → 8, log10(100k)=5 → 17
-    // log10(1M)=6 → 28, log10(10M)=7 → 43
+    // log10(1k)=3 → 9, log10(10k)=4 → 16, log10(100k)=5 → 25
+    // log10(1M)=6 → 36, log10(10M)=7 → 49
     const bp = chain.bpSpan || chain.length || 1;
     const logBp = Math.log10(Math.max(bp, 10));
     let nTarget = Math.max(MIN_NODES, Math.round(logBp * logBp));
@@ -77,63 +77,10 @@ function resamplePolyline(chain) {
     const totalLen = cumLen[cumLen.length - 1];
     if (totalLen === 0) return pl;
 
-    // Interior points = nTarget - 2 (first and last are always included)
-    const nInterior = nTarget - 2;
-    if (nInterior <= 0) return [pl[0], pl[pl.length - 1]];
-
-    // Build density-weighted t values from bubble positions
-    const bubPos = chain.bubblePositions;
-    let tValues;
-
-    if (bubPos && bubPos.length >= 2 && nInterior >= 2) {
-        // Build a CDF from bubble density, then invert to get sample t values.
-        // Each bubble contributes a Gaussian-ish bump; we discretize into bins.
-        const nBins = 200;
-        const density = new Float64Array(nBins);
-        // Base uniform density (so empty regions still get some nodes)
-        density.fill(0.5);
-        // Add bubble contributions
-        const sigma = 1 / (nBins * 0.5); // ~1% of chain length spread
-        for (const t of bubPos) {
-            const center = t;
-            for (let b = 0; b < nBins; b++) {
-                const bt = (b + 0.5) / nBins;
-                const d = (bt - center) / sigma;
-                density[b] += Math.exp(-0.5 * d * d);
-            }
-        }
-        // Build CDF
-        const cdf = new Float64Array(nBins + 1);
-        for (let b = 0; b < nBins; b++) {
-            cdf[b + 1] = cdf[b] + density[b];
-        }
-        const total = cdf[nBins];
-
-        // Invert CDF: for each of nInterior equally-spaced quantiles, find t
-        tValues = [];
-        for (let i = 0; i < nInterior; i++) {
-            const target = total * (i + 1) / (nInterior + 1);
-            // Binary search in CDF
-            let lo = 0, hi = nBins;
-            while (lo < hi) {
-                const mid = (lo + hi) >> 1;
-                if (cdf[mid + 1] < target) lo = mid + 1; else hi = mid;
-            }
-            const binT = (lo + 0.5) / nBins;
-            tValues.push(binT);
-        }
-    } else {
-        // No bubble data — uniform spacing
-        tValues = [];
-        for (let i = 0; i < nInterior; i++) {
-            tValues.push((i + 1) / (nInterior + 1));
-        }
-    }
-
-    // Convert t values (0-1) to arc-length distances and sample
+    // Uniform spacing along arc length
     const samples = [pl[0]];
-    for (const t of tValues) {
-        samples.push(interpolateAtDist(pl, cumLen, t * totalLen));
+    for (let i = 1; i < nTarget - 1; i++) {
+        samples.push(interpolateAtDist(pl, cumLen, totalLen * i / (nTarget - 1)));
     }
     samples.push(pl[pl.length - 1]);
     return samples;
@@ -556,7 +503,7 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
         }
     }
 
-    // Sequential links
+    // Sequential links — rest length = initial geometric distance between samples
     for (let i = 0; i < nodes.length - 1; i++) {
         const dx = samples[i + 1][0] - samples[i][0];
         const dy = samples[i + 1][1] - samples[i][1];
@@ -567,6 +514,7 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
             isKinkLink: false,
             chainId: chain.id,
             length: Math.hypot(dx, dy) || 1,
+            loopFactor: loopFactor,
         });
     }
 

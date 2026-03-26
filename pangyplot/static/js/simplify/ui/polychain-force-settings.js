@@ -17,13 +17,18 @@ function mainSliders() {
             onChange: (v) => { pcSettings.inflationLevel = v; applyPcSettings(); }
         },
         {
-            label: "Loop Pull", icon: "circle",
+            label: "Loop Push", icon: "up-right-and-down-left-from-center",
+            min: 0, max: 5, step: 1, default: pcSettings.centroidLevel,
+            onChange: (v) => { pcSettings.centroidLevel = v; applyPcSettings(); }
+        },
+        {
+            label: "Loop Pull", icon: "down-left-and-up-right-to-center",
             min: 0, max: 5, step: 1, default: pcSettings.loopLevel,
             onChange: (v) => { pcSettings.loopLevel = v; applyPcSettings(); }
         },
         {
             label: "Link Stiffness", icon: "link",
-            min: 0, max: 5, step: 0.1, default: pcSettings.linkStrength,
+            min: 0, max: 1, step: 0.05, default: pcSettings.linkStrength,
             onChange: (v) => { pcSettings.linkStrength = v; applyPcSettings(); }
         },
         {
@@ -55,11 +60,6 @@ function advancedSliders() {
             label: "Child Offset", icon: "arrow-right-from-bracket",
             min: 0, max: 10, step: 0.1, default: pcSettings.parentSide,
             onChange: (v) => { pcSettings.parentSide = v; applyPcSettings(); }
-        },
-        {
-            label: "Centroid Push", icon: "expand",
-            min: 0, max: 50, step: 0.5, default: pcSettings.centroidRepulsion,
-            onChange: (v) => { pcSettings.centroidRepulsion = v; applyPcSettings(); }
         },
     ];
 }
