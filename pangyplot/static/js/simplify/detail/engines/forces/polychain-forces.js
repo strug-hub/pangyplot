@@ -177,13 +177,18 @@ export function parentSideForce() {
         // Recompute perpendiculars every 20 ticks
         if (++tickCount % 20 === 0) recomputePerps();
 
+        const maxDist = 500;  // stop pushing when child is far enough from parent
         for (const n of nodes) {
             if (!n.parentPerps) continue;
             for (let ai = 0; ai < n.parentPerps.length; ai++) {
                 const p = n.parentPerps[ai];
+                // Skip if node is already far from projection point
+                const dist = Math.hypot(n.x - p.mx, n.y - p.my);
+                if (dist > maxDist) continue;
+                const falloff = 1 - dist / maxDist;
                 const depth = 1 / (ai + 1);  // 1, 1/2, 1/3, ...
-                n.vx += p.px * str * depth;
-                n.vy += p.py * str * depth;
+                n.vx += p.px * str * depth * falloff;
+                n.vy += p.py * str * depth * falloff;
             }
         }
     }

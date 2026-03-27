@@ -7,12 +7,12 @@ import { pcSettings, applyPcSettings, pauseSim, resumeSim, isSimulating } from '
 function mainSliders() {
     return [
         {
-            label: "Repulsion", icon: "atom",
-            min: -200, max: 0, step: 1, default: pcSettings.charge,
+            label: "Node Repulsion", icon: "atom",
+            min: -500, max: 0, step: 1, default: pcSettings.charge,
             onChange: (v) => { pcSettings.charge = v; applyPcSettings(); }
         },
         {
-            label: "Loop Push", icon: "up-right-and-down-left-from-center",
+            label: "Centroid Repulsion", icon: "up-right-and-down-left-from-center",
             min: 0, max: 5, step: 1, default: pcSettings.centroidLevel,
             onChange: (v) => { pcSettings.centroidLevel = v; applyPcSettings(); }
         },
@@ -22,9 +22,9 @@ function mainSliders() {
             onChange: (v) => { pcSettings.loopLevel = v; applyPcSettings(); }
         },
         {
-            label: "Link Stiffness", icon: "link",
-            min: 0, max: 1, step: 0.05, default: pcSettings.linkStrength,
-            onChange: (v) => { pcSettings.linkStrength = v; applyPcSettings(); }
+            label: "Link Strength", icon: "link",
+            min: 1, max: 5, step: 1, default: pcSettings.linkStrengthLevel,
+            onChange: (v) => { pcSettings.linkStrengthLevel = v; applyPcSettings(); }
         },
         {
             label: "Layout Impulse", icon: "circle-nodes",
@@ -50,11 +50,6 @@ function advancedSliders() {
             label: "Collision Radius", icon: "explosion",
             min: 0, max: 30, step: 1, default: pcSettings.collisionRadius,
             onChange: (v) => { pcSettings.collisionRadius = v; applyPcSettings(); }
-        },
-        {
-            label: "Min Link Length", icon: "arrows-left-right",
-            min: 0, max: 500, step: 5, default: pcSettings.linkMinRest,
-            onChange: (v) => { pcSettings.linkMinRest = v; applyPcSettings(); }
         },
         {
             label: "Child Offset", icon: "arrow-right-from-bracket",

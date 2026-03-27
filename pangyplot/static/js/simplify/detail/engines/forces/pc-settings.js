@@ -11,11 +11,11 @@ export const pcSettings = {
     loopLevel: 0,             // loop pull level (0-5)
     collisionRadius: 5,       // node collision radius
     layoutLevel: 2,           // layout impulse level (0-5), matches core viewer
-    linkStrength: 0.1,        // spring stiffness along polyline (softer = curvier)
-    linkMinRest: 80,          // floor for link rest length (expands tight loops)
+    linkStrengthLevel: 2,     // link strength level (1-5)
     smoothing: 0.005,         // Laplacian smoothing stiffness (0-0.03)
     inflate: 0.005,           // balloon inflation strength (0-0.02)
     parentSide: 1.5,          // push child chains to one side of parent
 };
 
 export const loopLevels = { 0: 0, 1: 1, 2: 4, 3: 10, 4: 25, 5: 50 };
+export const linkStrengthLevels = { 1: 0.05, 2: 0.1, 3: 0.5, 4: 0.75, 5: 1.0 };

@@ -10,7 +10,7 @@ import defaults from '../../../graph/forces/settings/force-defaults.js';
 
 // Settings (re-exported so existing importers don't break)
 export { pcSettings } from './forces/pc-settings.js';
-import { pcSettings, SIMPLIFY_LINK_SCALE, SIMPLIFY_CHARGE } from './forces/pc-settings.js';
+import { pcSettings, SIMPLIFY_LINK_SCALE, SIMPLIFY_CHARGE, linkStrengthLevels } from './forces/pc-settings.js';
 
 // Force factories
 import { viewportFreezeForce } from './forces/viewport-forces.js';
@@ -48,16 +48,14 @@ function getLinks() { return sim.force('link').links(); }
 // ---------------------------------------------------------------
 
 function linkDistance(d) {
-    return d.isPolychainLink
-        ? Math.max(pcSettings.linkMinRest, d.length)
-        : d.length * SIMPLIFY_LINK_SCALE;
+    return d.isPolychainLink ? d.length : d.length * SIMPLIFY_LINK_SCALE;
 }
 
 const LINK_SOFTEN_MIDPOINT = 100000;
 
 function linkStrength(d) {
     if (!d.isPolychainLink) return 0.01;
-    const base = pcSettings.linkStrength;
+    const base = linkStrengthLevels[pcSettings.linkStrengthLevel] ?? 0.1;
     const arc = d.chainArcLen || 0;
     return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
 }
@@ -484,14 +482,12 @@ export function reheatSimulation() {
  */
 export function applyPcSettings() {
     if (!sim) return;
-    sim.force('charge')
-        .strength(chargeStrength)
-        .distanceMax(chargeMaxDist);
-    sim.force('collide')
-        .radius(collideRadius);
-    sim.force('link')
-        .distance(linkDistance)
-        .strength(linkStrength);
+    const charge = sim.force('charge');
+    if (charge) charge.strength(chargeStrength).distanceMax(chargeMaxDist);
+    const collide = sim.force('collide');
+    if (collide) collide.radius(collideRadius);
+    const link = sim.force('link');
+    if (link) link.distance(linkDistance).strength(linkStrength);
     sim.alpha(1).restart();
 }
 

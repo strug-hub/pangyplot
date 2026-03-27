@@ -15,6 +15,7 @@ export function combinedLayoutForce() {
     function force(alpha) {
         const stdK = (standardStrengths[standardLevel] ?? 0) * alpha;
         const pcK = (standardStrengths[pcSettings.layoutLevel] ?? 0) * alpha;
+        if (stdK === 0 && pcK === 0) return;
         for (const node of nodes) {
             if (node.homeX == null) continue;
             const k = node.isPolychainNode ? pcK : stdK;
