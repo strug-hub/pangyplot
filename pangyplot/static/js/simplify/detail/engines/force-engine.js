@@ -455,6 +455,181 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
 }
 
 /**
+ * Splice a chain at a bubble's position: remove the polychain link spanning
+ * position t, insert child nodes/links, and create bridge links connecting
+ * the two chain halves to the child subgraph's boundary nodes.
+ *
+ * @param {string} chainId - chain to split
+ * @param {number} t - fractional position [0,1] along the polychain
+ * @param {Array} pcNodes - polychain nodes for the chain (from getPolychainNodesForChain)
+ * @param {Array} childNodes - deserialized child nodes to insert
+ * @param {Array} childLinks - deserialized child links (internal connectivity)
+ * @param {Array} sourceSegs - source boundary segment IDs from /pop
+ * @param {Array} sinkSegs - sink boundary segment IDs from /pop
+ * @param {Map} recordMap - id → NodeRecord from deserializeSubgraph
+ * @returns {{ splitIdx, removedLink, bridgeLinks }} for undo, or null on failure
+ */
+export function spliceChainAtBubble(chainId, t, pcNodes, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
+    if (!sim) initForce();
+    if (!pcNodes || pcNodes.length < 2) return null;
+
+    // Find the polychain link that spans position t using cumulative arc lengths
+    let cumLen = 0;
+    const cumLens = [0];
+    for (let i = 1; i < pcNodes.length; i++) {
+        cumLen += Math.hypot(pcNodes[i].x - pcNodes[i-1].x, pcNodes[i].y - pcNodes[i-1].y);
+        cumLens.push(cumLen);
+    }
+    const totalLen = cumLens[cumLens.length - 1];
+    const targetDist = t * totalLen;
+
+    // Find split index: the last node before the target distance
+    let splitIdx = 0;
+    for (let i = 1; i < pcNodes.length; i++) {
+        if (cumLens[i] > targetDist) break;
+        splitIdx = i;
+    }
+    // Clamp so we always have a node on each side
+    splitIdx = Math.min(splitIdx, pcNodes.length - 2);
+
+    const leftNode = pcNodes[splitIdx];
+    const rightNode = pcNodes[splitIdx + 1];
+
+    // Find and remove the polychain link between leftNode and rightNode
+    const links = getLinks();
+    let removedLink = null;
+    const keptLinks = [];
+    for (const l of links) {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        if (!removedLink && l.isPolychainLink && l.chainId === chainId &&
+            ((sIid === leftNode.iid && tIid === rightNode.iid) ||
+             (sIid === rightNode.iid && tIid === leftNode.iid))) {
+            removedLink = l;
+        } else {
+            keptLinks.push(l);
+        }
+    }
+
+    // Position child nodes near the split point
+    for (const n of childNodes) {
+        n.homeX = n.fx ?? n.x;
+        n.homeY = n.fy ?? n.y;
+    }
+
+    // Find boundary child nodes for bridge links.
+    // Source-side: find the first kink of a record whose segment is in sourceSegs
+    // Sink-side: find the last kink of a record whose segment is in sinkSegs
+    const sourceSet = new Set(sourceSegs.map(String));
+    const sinkSet = new Set(sinkSegs.map(String));
+
+    let sourceChildNode = null;
+    let sinkChildNode = null;
+
+    for (const [id, record] of recordMap) {
+        const plainId = id.startsWith('s') ? id.slice(1) : id;
+        if (sourceSet.has(plainId) && !sourceChildNode) {
+            // Find first kink (#0) of this record among childNodes
+            const kinks = childNodes.filter(n => n.id === id)
+                .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
+            if (kinks.length > 0) sourceChildNode = kinks[0];
+        }
+        if (sinkSet.has(plainId) && !sinkChildNode) {
+            const kinks = childNodes.filter(n => n.id === id)
+                .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
+            if (kinks.length > 0) sinkChildNode = kinks[kinks.length - 1];
+        }
+    }
+
+    // Fallback: if boundary segs are owned by child bubbles (collapsed in viewState),
+    // find the child bubble that owns each boundary seg
+    if (!sourceChildNode || !sinkChildNode) {
+        for (const [id, record] of recordMap) {
+            if (record.type !== 'bubble') continue;
+            const kinks = childNodes.filter(n => n.id === id)
+                .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
+            if (kinks.length === 0) continue;
+            // Check if this bubble's record owns any source/sink segs
+            const ownedSegs = [];
+            if (simplifyViewState.segmentToNode) {
+                for (const [segId, rec] of simplifyViewState.segmentToNode) {
+                    if (rec === record) ownedSegs.push(segId);
+                }
+            }
+            if (!sourceChildNode && ownedSegs.some(s => sourceSet.has(s))) {
+                sourceChildNode = kinks[0];
+            }
+            if (!sinkChildNode && ownedSegs.some(s => sinkSet.has(s))) {
+                sinkChildNode = kinks[kinks.length - 1];
+            }
+        }
+    }
+
+    // Create bridge links
+    const bridgeLinks = [];
+    if (sourceChildNode) {
+        const bridge = {
+            source: leftNode,
+            target: sourceChildNode,
+            isBridgeLink: true,
+            isKinkLink: false,
+            chainId,
+            length: removedLink ? removedLink.length / 2 : 10,
+        };
+        bridgeLinks.push(bridge);
+    }
+    if (sinkChildNode) {
+        const bridge = {
+            source: sinkChildNode,
+            target: rightNode,
+            isBridgeLink: true,
+            isKinkLink: false,
+            chainId,
+            length: removedLink ? removedLink.length / 2 : 10,
+        };
+        bridgeLinks.push(bridge);
+    }
+
+    const allNodes = [...getNodes(), ...childNodes];
+    const allLinks = [...keptLinks, ...childLinks, ...bridgeLinks];
+
+    syncNodes(allNodes);
+    syncLinks(allLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(1).restart();
+
+    return { splitIdx, removedLink, bridgeLinks };
+}
+
+/**
+ * Reverse of spliceChainAtBubble: remove child nodes and bridge links,
+ * restore the removed polychain link.
+ */
+export function unspliceChainAtBubble(childIids, removedLink, bridgeLinks) {
+    if (!sim) return;
+
+    const childSet = new Set(childIids);
+    const bridgeSet = new Set(bridgeLinks);
+
+    const remaining = getNodes().filter(n => !childSet.has(n.iid));
+    const keptLinks = getLinks().filter(l => {
+        if (bridgeSet.has(l)) return false;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        if (childSet.has(sIid) || childSet.has(tIid)) return false;
+        return true;
+    });
+
+    // Restore the removed polychain link
+    if (removedLink) keptLinks.push(removedLink);
+
+    syncNodes(remaining);
+    syncLinks(keptLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(1).restart();
+}
+
+/**
  * Resolve a chain endpoint seg ID to the correct kink node in the force sim.
  */
 function resolveSegToKink(segId, strand, allNodes) {

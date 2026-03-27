@@ -183,6 +183,32 @@ export function updateBubblePositions(chainId, pl) {
 }
 
 // ---------------------------------------------------------------
+// Pop / unpop helpers
+// ---------------------------------------------------------------
+
+/** Remove a bubble from a chain's store (after popping). Returns the removed meta or null. */
+export function removeBubbleFromStore(chainId, bubbleId) {
+    const store = stores.get(chainId);
+    if (!store) return null;
+    const idx = store.bubbles.findIndex(b => b.id === bubbleId);
+    if (idx === -1) return null;
+    const [meta] = store.bubbles.splice(idx, 1);
+    store.positions.splice(idx, 1);
+    return meta;
+}
+
+/** Restore a previously removed bubble into a chain's store (for undo). */
+export function restoreBubbleToStore(chainId, meta) {
+    const store = stores.get(chainId);
+    if (!store || !meta) return;
+    // Insert in sorted order by t
+    let insertIdx = store.bubbles.findIndex(b => b.t > meta.t);
+    if (insertIdx === -1) insertIdx = store.bubbles.length;
+    store.bubbles.splice(insertIdx, 0, meta);
+    store.positions.splice(insertIdx, 0, { x: 0, y: 0, meta });
+}
+
+// ---------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------
 

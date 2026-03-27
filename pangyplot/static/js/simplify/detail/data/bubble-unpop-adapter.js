@@ -4,8 +4,9 @@
 // collapses simplifyViewState.
 
 import { state } from '../../simplify-state.js';
-import { unspliceBubbleNodes } from '../engines/force-engine.js';
+import { unspliceBubbleNodes, unspliceChainAtBubble } from '../engines/force-engine.js';
 import simplifyViewState from './simplify-view-state.js';
+import { restoreBubbleToStore } from './bubble-meta-cache.js';
 
 /**
  * Undo the most recent bubble pop. Returns true on success.
@@ -14,6 +15,53 @@ export function unpopLastBubble() {
     if (!state._bubblePopStack || state._bubblePopStack.length === 0) return false;
 
     const popEntry = state._bubblePopStack.pop();
+
+    // Chain-split pop (bubble circle on polychain)
+    if (popEntry.isChainSplitPop) {
+        return unpopChainSplit(popEntry);
+    }
+
+    // Original force-node pop
+    return unpopForceNode(popEntry);
+}
+
+function unpopChainSplit(popEntry) {
+    const {
+        bubbleId,
+        chainId,
+        parentRecord,
+        childIids,
+        sourceSegs,
+        sinkSegs,
+        childBubbles,
+        removedLink,
+        bridgeLinks,
+        bubbleMeta,
+    } = popEntry;
+
+    // Remove child nodes and bridge links, restore the polychain link
+    unspliceChainAtBubble(childIids, removedLink, bridgeLinks);
+
+    // Collapse simplify viewState
+    if (parentRecord) {
+        simplifyViewState.collapse(
+            parentRecord,
+            sourceSegs,
+            sinkSegs,
+            [],  // insideSegs not tracked for chain-split pops
+            childBubbles,
+        );
+    }
+
+    // Restore the bubble circle in the meta cache
+    if (bubbleMeta) {
+        restoreBubbleToStore(chainId, bubbleMeta);
+    }
+
+    return true;
+}
+
+function unpopForceNode(popEntry) {
     const {
         bubbleId,
         chainId,
@@ -40,7 +88,6 @@ export function unpopLastBubble() {
             isSingleton: parentKinks === 1,
             chainId,
         };
-        // Restore position from the original parent node
         kinkNode.x = parentNode.x + (i * 5);
         kinkNode.y = parentNode.y;
         parentNodes.push(kinkNode);
@@ -70,12 +117,9 @@ export function unpopLastBubble() {
         });
     }
 
-    // Atomic unsplice: remove children + their links, add parent + restored links.
-    // Inter-chain links are re-resolved via viewState (endpointSegId + strand).
     const childIidSet = new Set(childIids);
     unspliceBubbleNodes(childIidSet, parentNodes, [...parentLinks, ...externalLinks]);
 
-    // Collapse simplify viewState: re-register parent bubble, unmap children
     if (parentRecord) {
         simplifyViewState.collapse(
             parentRecord,

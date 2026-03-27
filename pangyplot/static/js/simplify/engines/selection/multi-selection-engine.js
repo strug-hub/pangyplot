@@ -2,7 +2,8 @@
 
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
-import { hitTestChains, chainsInRect } from '../../detail/engines/polychain/polychain-hover-engine.js';
+import { hitTestChains, chainsInRect, hitTestBubbleCircles } from '../../detail/engines/polychain/polychain-hover-engine.js';
+import { popBubbleCircle } from '../../detail/data/bubble-pop-adapter.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
@@ -11,6 +12,26 @@ import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
 
+    // --- Ctrl+click: pop bubble circle on chain ---
+    canvas.addEventListener('pointerdown', e => {
+        if (e.button !== 0 || !(e.ctrlKey || e.metaKey)) return;
+        if (!state.detailData || state.detailOpacity < 0.5) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const layoutX = (screenX - state.panX) / state.zoom;
+        const layoutY = (screenY - state.panY) / state.zoom;
+
+        const hit = hitTestBubbleCircles(layoutX, layoutY);
+        if (hit) {
+            e.preventDefault();
+            e.stopPropagation();
+            popBubbleCircle(hit).then(ok => {
+                if (ok) scheduleFrame();
+            });
+        }
+    });
 
     // --- Shift key cursor feedback ---
     let zoomNoticeTimer = null;
