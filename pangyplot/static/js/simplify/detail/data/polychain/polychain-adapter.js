@@ -104,6 +104,25 @@ export function getPolychainNodesForChain(chainId) {
 }
 
 /**
+ * Flip a chain: reverse polychain node positions so head↔tail swap visually.
+ * Node array order, nodeIndex, links, and segToPolychain are unchanged.
+ */
+export function flipChain(chainId) {
+    const nodes = chainPolychainNodes.get(chainId);
+    if (!nodes || nodes.length < 2) return false;
+
+    const positions = nodes.map(n => ({ x: n.x, y: n.y, homeX: n.homeX, homeY: n.homeY }));
+    for (let i = 0; i < nodes.length; i++) {
+        const rev = positions[nodes.length - 1 - i];
+        nodes[i].x = rev.x;
+        nodes[i].y = rev.y;
+        nodes[i].homeX = rev.homeX;
+        nodes[i].homeY = rev.homeY;
+    }
+    return true;
+}
+
+/**
  * Initialize the polychain layer: create polychain nodes from chain polylines,
  * junction nodes from naked segments, and all links connecting them.
  * Called once after detailData is set.

@@ -2,6 +2,10 @@
 // Reuses the same CSS classes as core's right-click-menu (css/graph/right-click.css).
 
 import { exportSimplifyToPng, exportSimplifyToSvg } from '../render/export-simplify.js';
+import { state } from '../simplify-state.js';
+import { flipChain } from '../detail/data/polychain/polychain-adapter.js';
+import { reheatSimulation } from '../detail/engines/force-engine.js';
+import { scheduleFrame } from '../utils/frame-scheduler.js';
 
 let menuElement = null;
 
@@ -35,15 +39,31 @@ function addRow(menu, iconName, label, onClick) {
     menu.appendChild(row);
 }
 
+function addCategoryLabel(menu, text) {
+    const label = document.createElement('div');
+    label.classList.add('context-menu-category-label');
+    label.textContent = text;
+    menu.appendChild(label);
+}
+
 function showMenu(x, y) {
     const menu = ensureMenu();
     menu.innerHTML = '';
 
-    const label = document.createElement('div');
-    label.classList.add('context-menu-category-label');
-    label.textContent = 'Export:';
-    menu.appendChild(label);
+    // --- Chain actions (only when hovering a chain) ---
+    const chain = state.hoveredChain;
+    if (chain) {
+        addCategoryLabel(menu, `Chain:`);
+        addRow(menu, 'exchange', 'Flip Chain', () => {
+            if (flipChain(chain.id)) {
+                reheatSimulation();
+                scheduleFrame();
+            }
+        });
+    }
 
+    // --- Export actions (always shown) ---
+    addCategoryLabel(menu, 'Export:');
     addRow(menu, 'download', 'Download PNG', exportSimplifyToPng);
     addRow(menu, 'download', 'Download SVG', exportSimplifyToSvg);
 
