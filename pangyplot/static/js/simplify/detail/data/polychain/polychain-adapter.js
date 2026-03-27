@@ -96,6 +96,14 @@ export function getPolychainPositions(chainId) {
 }
 
 /**
+ * Get the raw polychain node array for a chain (for direct fx/fy manipulation).
+ * Returns null if the chain has no polychain nodes.
+ */
+export function getPolychainNodesForChain(chainId) {
+    return chainPolychainNodes.get(chainId) || null;
+}
+
+/**
  * Initialize the polychain layer: create polychain nodes from chain polylines,
  * junction nodes from naked segments, and all links connecting them.
  * Called once after detailData is set.

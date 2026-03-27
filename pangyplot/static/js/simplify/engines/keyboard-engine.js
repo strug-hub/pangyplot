@@ -16,8 +16,8 @@ eventBus.subscribe('app:debug-mode-changed', (enabled) => {
     }
 });
 
-export function setupKeyboardShortcuts() {
-    window.addEventListener('keydown', e => {
+export function setupKeyboardShortcuts(canvas) {
+    canvas.addEventListener('keydown', e => {
         // Escape from core viewer → return to simplify canvas
         if (e.code === 'Escape' && state.coreViewerActive) {
             returnToSimplify();

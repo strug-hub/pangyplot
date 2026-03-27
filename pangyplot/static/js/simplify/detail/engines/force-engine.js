@@ -18,6 +18,7 @@ import { centroidRepulsion,
          loopClosureForce, parentSideForce, laplacianSmoothing,
          balloonInflation } from './forces/polychain-forces.js';
 import { combinedLayoutForce, delLinkForce } from './forces/layout-forces.js';
+import { centroidAnchorForce, releaseAllChains } from '../../engines/drag/centroid-anchor-force.js';
 
 // ---------------------------------------------------------------
 // Simulation state
@@ -61,7 +62,7 @@ function linkStrength(d) {
 }
 
 function chargeStrength(d) {
-    return d.isPolychainNode ? pcSettings.charge : SIMPLIFY_CHARGE;
+    return pcSettings.charge;
 }
 
 function chargeMaxDist(d) {
@@ -100,6 +101,7 @@ export function initForce() {
         .force('balloon', balloonInflation())
         .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce(getLinks))
+        .force('centroidAnchor', centroidAnchorForce())
         .on('tick', onTick);
     sim.stop();
 }
@@ -311,6 +313,7 @@ export function clearForce() {
     sim.stop();
     syncNodes([]);
     syncLinks([]);
+    releaseAllChains();
 }
 
 export function collapseToAnchors() {
@@ -473,6 +476,16 @@ function resolveSegToKink(segId, strand, allNodes) {
 export function reheatSimulation() {
     if (!sim) return;
     sim.alpha(1).restart();
+}
+
+export function reheatDrag() {
+    if (!sim) return;
+    sim.alpha(Math.max(sim.alpha(), 0.3)).restart();
+}
+
+export function registerCustomForce(name, forceFn) {
+    if (!sim) initForce();
+    sim.force(name, forceFn);
 }
 
 /**

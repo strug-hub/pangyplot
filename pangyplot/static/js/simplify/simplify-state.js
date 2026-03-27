@@ -20,6 +20,14 @@ export const state = {
     dragStartX: 0,
     dragStartY: 0,
 
+    // Element drag (node/chain movement, distinct from pan-drag)
+    dragMode: null,        // null | 'node' | 'chain' | 'segment'
+    dragTarget: null,      // force node (node mode) or chain object (chain/segment mode)
+    dragChainNodes: null,  // polychain node array being moved (chain/segment mode)
+    dragPrevDataX: 0,
+    dragPrevDataY: 0,
+    fixOnDrag: false,
+
     // LOD
     currentLOD: -1,
 

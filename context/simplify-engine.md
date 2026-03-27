@@ -60,6 +60,11 @@ pangyplot/static/js/simplify/
 │   ├── physics-activation-engine.js       Budget-based physics zone activation
 │   ├── reference-spine-engine.js          Reference spine coordinate transforms
 │   ├── simplify-context-menu.js           Right-click context menu
+│   ├── force-interaction-gate.js          Pause/resume force sim during interaction
+│   ├── drag/
+│   │   ├── drag-engine.js                 Main drag orchestrator (node + chain modes)
+│   │   ├── drag-fix-engine.js             Anchor-on-drag toggle (F key + checkbox)
+│   │   └── centroid-anchor-force.js       D3 force: pins chain centroid, nodes flex
 │   ├── navigation/
 │   │   ├── pan-zoom-engine.js             Pan, drag, zoom (wheel), dblclick reset, resize
 │   │   └── hash-navigation.js            URL hash: parse, navigate, debounced update

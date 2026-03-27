@@ -12,6 +12,7 @@ export function setupPanZoom(canvas) {
     // --- Pan & drag ---
     canvas.addEventListener('mousedown', e => {
         if (state.hoveredForceNode) return;
+        if (state.hoveredChain && state.detailData) return; // handled by drag-engine
         if (e.shiftKey && state.detailData) return; // handled by multi-selection
         // Clear selection on non-shift click
         if (state.selectedChains.size > 0 && !state.hoveredChain) {
@@ -71,7 +72,7 @@ export function setupPanZoom(canvas) {
     });
 
     // --- Spacebar: toggle detail <-> skeleton while zoomed in ---
-    window.addEventListener('keydown', e => {
+    canvas.addEventListener('keydown', e => {
         if (e.code !== 'Space' || e.repeat) return;
         if (state.targetGridSize > state.DETAIL_EXIT_THRESHOLD) return;
         e.preventDefault();

@@ -15,6 +15,7 @@ import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
 import { getLevelMeta } from '@simplify-data/chromosome-data.js';
+// import { renderDragInfluenceCircle } from './engines/drag/drag-influence-render.js';
 
 // ---------------------------------------------------------------
 // FPS tracker (debug mode only)

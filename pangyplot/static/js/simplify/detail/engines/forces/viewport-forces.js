@@ -24,6 +24,7 @@ export function viewportFreezeForce() {
         for (let i = 0; i < _nodes.length; i++) {
             const n = _nodes[i];
             if (n.x == null) continue;
+            if (n._centroidAnchored) continue;
             const inside = n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY;
             if (inside) {
                 if (n._vpFrozen) {

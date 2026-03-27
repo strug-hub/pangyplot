@@ -14,7 +14,7 @@ export function setupMultiSelection(canvas) {
 
     // --- Shift key cursor feedback ---
     let zoomNoticeTimer = null;
-    window.addEventListener('keydown', e => {
+    canvas.addEventListener('keydown', e => {
         if (e.key === 'Shift' && !isSelecting) {
             if (state.detailData) {
                 canvas.style.cursor = 'crosshair';
@@ -33,7 +33,7 @@ export function setupMultiSelection(canvas) {
             }
         }
     });
-    window.addEventListener('keyup', e => {
+    canvas.addEventListener('keyup', e => {
         if (e.key === 'Shift' && !isSelecting) {
             clearTimeout(zoomNoticeTimer);
             hideTooltip();
@@ -90,7 +90,7 @@ export function setupMultiSelection(canvas) {
     });
 
     // --- Escape key: clear selection ---
-    window.addEventListener('keydown', e => {
+    canvas.addEventListener('keydown', e => {
         if (e.code !== 'Escape') return;
         let changed = false;
         if (state.selectedChains.size > 0 || state.selectionBox) {
