@@ -2,7 +2,7 @@
 // Populates the "Force Settings" tab in the simplify viewer.
 
 import createSliderSet from '@ui/components/slider-set.js';
-import { pcSettings, applyPcSettings } from '../detail/engines/force-engine.js';
+import { pcSettings, applyPcSettings, pauseSim, resumeSim, isSimulating } from '../detail/engines/force-engine.js';
 
 function mainSliders() {
     return [
@@ -10,11 +10,6 @@ function mainSliders() {
             label: "Repulsion", icon: "atom",
             min: -200, max: 0, step: 1, default: pcSettings.charge,
             onChange: (v) => { pcSettings.charge = v; applyPcSettings(); }
-        },
-        {
-            label: "Chain Inflation", icon: "up-down-left-right",
-            min: 0, max: 5, step: 1, default: pcSettings.inflationLevel,
-            onChange: (v) => { pcSettings.inflationLevel = v; applyPcSettings(); }
         },
         {
             label: "Loop Push", icon: "up-right-and-down-left-from-center",
@@ -28,18 +23,13 @@ function mainSliders() {
         },
         {
             label: "Link Stiffness", icon: "link",
-            min: 0.01, max: 1, step: 0.05, default: pcSettings.linkStrength,
+            min: 0, max: 1, step: 0.05, default: pcSettings.linkStrength,
             onChange: (v) => { pcSettings.linkStrength = v; applyPcSettings(); }
         },
         {
             label: "Layout Impulse", icon: "circle-nodes",
             min: 0, max: 5, step: 1, default: pcSettings.layoutLevel,
             onChange: (v) => { pcSettings.layoutLevel = v; applyPcSettings(); }
-        },
-        {
-            label: "Edge Separation", icon: "maximize",
-            min: 0, max: 5, step: 0.1, default: pcSettings.linkRepulsion,
-            onChange: (v) => { pcSettings.linkRepulsion = v; applyPcSettings(); }
         },
         {
             label: "Smoothing", icon: "wand-magic-sparkles",
@@ -78,6 +68,27 @@ export function setupPolychainForceSettings() {
     const container = document.getElementById('force-settings-container');
     if (!container) return;
     container.innerHTML = '';
+
+    // Stop/resume button
+    const stopBtn = document.createElement('button');
+    stopBtn.textContent = 'Stop Forces';
+    stopBtn.style.cssText = `
+        width: 100%; padding: 6px; margin-bottom: 8px; border: 1px solid var(--dark-green);
+        border-radius: 4px; cursor: pointer; font-size: 12px;
+        background: var(--tab-box); color: var(--unselected-text);
+    `;
+    let stopped = false;
+    stopBtn.addEventListener('click', () => {
+        if (stopped) {
+            resumeSim();
+            stopBtn.textContent = 'Stop Forces';
+        } else {
+            pauseSim();
+            stopBtn.textContent = 'Resume Forces';
+        }
+        stopped = !stopped;
+    });
+    container.appendChild(stopBtn);
 
     // Main sliders
     const mainSet = createSliderSet('pc-force', mainSliders());

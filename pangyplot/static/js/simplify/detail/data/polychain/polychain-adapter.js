@@ -64,21 +64,19 @@ function resamplePolyline(chain) {
     const pl = chain.polyline;
     if (!pl || pl.length < 2) return null;
 
-    // Determine target node count from bp span (log curve)
+    // Target node count from bp span (log curve), always enforced
     // log10(1k)=3 → 9, log10(10k)=4 → 16, log10(100k)=5 → 25
     // log10(1M)=6 → 36, log10(10M)=7 → 49
     const bp = chain.bpSpan || chain.length || 1;
     const logBp = Math.log10(Math.max(bp, 10));
-    let nTarget = Math.max(MIN_NODES, Math.round(logBp * logBp));
-
-    // If polyline already has fewer points than target, just use it directly
-    if (pl.length <= nTarget) return pl;
+    const nTarget = Math.max(MIN_NODES, Math.round(logBp * logBp));
 
     const cumLen = cumulativeLengths(pl);
     const totalLen = cumLen[cumLen.length - 1];
     if (totalLen === 0) return pl;
 
-    // Uniform spacing along arc length
+    // Always resample to nTarget: both downsample dense and upsample sparse
+    if (nTarget === pl.length) return pl;
     const samples = [pl[0]];
     for (let i = 1; i < nTarget - 1; i++) {
         samples.push(interpolateAtDist(pl, cumLen, totalLen * i / (nTarget - 1)));
@@ -512,16 +510,15 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
             samples[i + 1][0] - samples[i][0],
             samples[i + 1][1] - samples[i][1]);
     }
+    const uniformLen = chainArcLen / (nodes.length - 1) || 1;
     for (let i = 0; i < nodes.length - 1; i++) {
-        const dx = samples[i + 1][0] - samples[i][0];
-        const dy = samples[i + 1][1] - samples[i][1];
         allLinks.push({
             source: nodes[i],
             target: nodes[i + 1],
             isPolychainLink: true,
             isKinkLink: false,
             chainId: chain.id,
-            length: Math.hypot(dx, dy) || 1,
+            length: uniformLen,
             loopFactor: loopFactor,
             chainArcLen: chainArcLen,
         });

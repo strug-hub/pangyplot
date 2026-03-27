@@ -13,8 +13,8 @@ export { pcSettings } from './forces/pc-settings.js';
 import { pcSettings, SIMPLIFY_LINK_SCALE, SIMPLIFY_CHARGE } from './forces/pc-settings.js';
 
 // Force factories
-import { viewportFreezeForce, viewportCharge, viewportCollide } from './forces/viewport-forces.js';
-import { polychainLinkRepulsion, intraChainRepulsion, centroidRepulsion,
+import { viewportFreezeForce } from './forces/viewport-forces.js';
+import { centroidRepulsion,
          loopClosureForce, parentSideForce, laplacianSmoothing,
          balloonInflation } from './forces/polychain-forces.js';
 import { combinedLayoutForce, delLinkForce } from './forces/layout-forces.js';
@@ -37,7 +37,6 @@ function syncNodes(arr) {
 
 function syncLinks(arr) {
     sim.force('link').links(arr);
-    sim.force('pcLinkRepulsion').setLinks(arr);
     setForceLinks(arr);
 }
 
@@ -60,7 +59,6 @@ function linkStrength(d) {
     if (!d.isPolychainLink) return 0.01;
     const base = pcSettings.linkStrength;
     const arc = d.chainArcLen || 0;
-    // Soften stiffness on long chains: base / (1 + (arc/midpoint)²)
     return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
 }
 
@@ -91,19 +89,17 @@ export function initForce() {
         .force('link', d3.forceLink([]).id(d => d.iid)
             .distance(linkDistance)
             .strength(linkStrength))
-        .force('charge', viewportCharge()
+        .force('charge', d3.forceManyBody()
             .strength(chargeStrength)
-            .distanceMax(chargeMaxDist))
-        .force('collide', viewportCollide()
-            .radius(collideRadius)
-            .strength(defaults.COLLISION_STRENGTH))
+            .distanceMax(400))
+        // .force('collide', d3.forceCollide()
+        //     .radius(collideRadius)
+        //     .strength(defaults.COLLISION_STRENGTH))
         .force('layout', combinedLayoutForce().strengthLevel(1))
-        .force('intraChain', intraChainRepulsion())
         .force('centroid', centroidRepulsion())
         .force('loopClosure', loopClosureForce())
         .force('smoothing', laplacianSmoothing())
         .force('balloon', balloonInflation())
-        .force('pcLinkRepulsion', polychainLinkRepulsion())
         .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce(getLinks))
         .on('tick', onTick);
@@ -121,7 +117,7 @@ export function computeForceDeltas() {
 
     const alpha = 1; // Use full strength for debug visualization
     const forceNames = ['charge', 'collide', 'link', 'layout',
-        'intraChain', 'centroid', 'loopClosure', 'smoothing', 'balloon', 'pcLinkRepulsion', 'parentSide'];
+        'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide'];
     const result = {};
 
     for (const name of forceNames) {
@@ -164,7 +160,7 @@ export function profileForces() {
     const nodes = sim.nodes();
     const alpha = sim.alpha();
     const allForces = ['vpFreeze', 'charge', 'collide', 'link', 'layout',
-        'intraChain', 'centroid', 'loopClosure', 'smoothing', 'balloon', 'pcLinkRepulsion', 'parentSide', 'delLink'];
+        'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide', 'delLink'];
 
     console.log(`Profiling ${nodes.length} nodes, alpha=${alpha.toFixed(4)}`);
     const frozen = nodes.filter(n => n._vpFrozen).length;

@@ -201,12 +201,10 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         collide:         { color: '#AAAAAA', label: 'collide' },
         link:            { color: '#44AAFF', label: 'link' },
         layout:          { color: '#FFFF00', label: 'layout' },
-        intraChain:      { color: '#FF00FF', label: 'intra' },
         centroid:        { color: '#FF8800', label: 'centroid' },
         loopClosure:     { color: '#AA44FF', label: 'loop' },
         smoothing:       { color: '#FF6688', label: 'smooth' },
         balloon:         { color: '#FFD700', label: 'balloon' },
-        pcLinkRepulsion: { color: '#00FFAA', label: 'linkRepul' },
         parentSide:      { color: '#44FF44', label: 'parent' },
     };
 
@@ -356,6 +354,20 @@ function drawForceVectors(ctx, nodes, links, opacity) {
                 : '#FFD700';
             ctx.fillText(n.nodeIndex, n.x, n.y - fontSize * 1.2);
         }
+    }
+
+    // Draw charge max distance circles
+    if (mode === 'charge') {
+        ctx.globalAlpha = 0.15 * opacity;
+        ctx.strokeStyle = '#FF4444';
+        ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
+        for (const n of pcNodes) {
+            const r = n.isPolychainNode ? pcSettings.chargeMaxDist : 200;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
     }
 
     // Draw cached parentPerps + tangent lines on child chain nodes
