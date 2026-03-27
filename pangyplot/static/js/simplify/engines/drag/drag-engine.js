@@ -8,6 +8,8 @@ import { reheatDrag } from '../../detail/engines/force-engine.js';
 import { getPolychainNodesForChain } from '../../detail/data/polychain/polychain-adapter.js';
 import { setupDragFixEngine } from './drag-fix-engine.js';
 import { anchorChain } from './centroid-anchor-force.js';
+import { setupDragLockBadge, showDragLock, hideDragLock } from './drag-lock-render.js';
+import { hideTooltip } from '../../ui/status-bar.js';
 
 const MIN_MOVEMENT_PX = 5;
 
@@ -63,6 +65,8 @@ function activateDrag(e) {
         }
     }
 
+    hideTooltip();
+    showDragLock();
     reheatDrag();
     scheduleFrame();
     return true;
@@ -125,11 +129,11 @@ function endDrag() {
                 n.fx = undefined;
                 n.fy = undefined;
             }
-            if (state.fixOnDrag) {
-                anchorChain(target.id, nodes);
-            }
+            anchorChain(target.id, nodes, state.fixOnDrag);
         }
     }
+
+    hideDragLock();
 
     const hovering = state.hoveredChain || state.hoveredForceNode || state.hoveredBubble;
     state.canvas.style.cursor = hovering ? 'grab' : 'default';
@@ -146,6 +150,7 @@ function endDrag() {
 
 export function setupDragEngine(canvas) {
     setupDragFixEngine(canvas);
+    setupDragLockBadge(canvas);
 
     // --- Pointer down: detect drag-ready target ---
     canvas.addEventListener('pointerdown', e => {

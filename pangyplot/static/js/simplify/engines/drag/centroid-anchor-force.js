@@ -1,18 +1,19 @@
-// Centroid anchor force: pins a chain's center of mass to a fixed point
-// while allowing individual polychain nodes to flex under other forces.
+// Soft-spring anchor force: pins each node in a chain to its drop position
+// with a tunable spring strength. Constrains translation, rotation, and
+// stretch — unlike centroid-only anchoring which only constrains translation.
 
-const anchored = new Map();  // chainId → { cx, cy, nodes }
+const anchored = new Map();  // chainId → { rests, nodes, strength }
 
-export function anchorChain(chainId, nodes) {
-    let cx = 0, cy = 0;
+const SPRING_SOFT = 0.01;
+const SPRING_FIXED = 0.4;
+
+export function anchorChain(chainId, nodes, fixed) {
+    const rests = new Map();
     for (const n of nodes) {
-        cx += n.x;
-        cy += n.y;
+        rests.set(n, { x: n.x, y: n.y });
         n._centroidAnchored = true;
     }
-    cx /= nodes.length;
-    cy /= nodes.length;
-    anchored.set(chainId, { cx, cy, nodes });
+    anchored.set(chainId, { rests, nodes, strength: fixed ? SPRING_FIXED : SPRING_SOFT });
 }
 
 export function releaseChain(chainId) {
@@ -36,21 +37,12 @@ export function isChainAnchored(chainId) {
 
 export function centroidAnchorForce() {
     return function force(_alpha) {
-        for (const { cx, cy, nodes } of anchored.values()) {
-            let curCx = 0, curCy = 0;
+        for (const { rests, nodes, strength } of anchored.values()) {
             for (const n of nodes) {
-                curCx += n.x;
-                curCy += n.y;
-            }
-            curCx /= nodes.length;
-            curCy /= nodes.length;
-
-            const dx = cx - curCx;
-            const dy = cy - curCy;
-
-            for (const n of nodes) {
-                n.x += dx;
-                n.y += dy;
+                const rest = rests.get(n);
+                if (!rest) continue;
+                n.x += (rest.x - n.x) * strength;
+                n.y += (rest.y - n.y) * strength;
             }
         }
     };
