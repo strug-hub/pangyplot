@@ -22,24 +22,13 @@ VIEWER_GRID_SIZES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000]
 # ---------------------------------------------------------------------------
 
 def compute_degrees(link_index):
-    """Returns dict: seg_id -> (in_degree, out_degree) from LinkIndex arrays."""
-    degrees = {}
-    n_links = len(link_index.from_ids)
-
-    in_deg = defaultdict(int)
-    out_deg = defaultdict(int)
-
-    for i in range(n_links):
-        fid = link_index.from_ids[i]
-        tid = link_index.to_ids[i]
-        out_deg[fid] += 1
-        in_deg[tid] += 1
-
-    all_segs = set(in_deg.keys()) | set(out_deg.keys())
-    for sid in all_segs:
-        degrees[sid] = (in_deg[sid], out_deg[sid])
-
-    return degrees
+    """Returns (in_deg, out_deg) numpy arrays indexed by segment ID."""
+    from_ids = np.asarray(link_index.from_ids)
+    to_ids = np.asarray(link_index.to_ids)
+    max_id = max(int(from_ids.max()), int(to_ids.max())) if len(from_ids) else 0
+    out_deg = np.bincount(from_ids, minlength=max_id + 1).astype(np.uint16)
+    in_deg = np.bincount(to_ids, minlength=max_id + 1).astype(np.uint16)
+    return in_deg, out_deg
 
 
 # ---------------------------------------------------------------------------
@@ -47,23 +36,24 @@ def compute_degrees(link_index):
 # ---------------------------------------------------------------------------
 
 def find_junctions(degrees):
-    """Returns set of segment IDs where total degree != 2.
+    """Returns a numpy bool array where True means junction (total degree != 2).
 
+    Accepts either (in_deg, out_deg) numpy arrays or a legacy dict.
     A degree-2 node has exactly one incoming and one outgoing edge — it's a
     pass-through that can be collapsed. Everything else is a junction.
     """
-    junctions = set()
-    for sid, (ind, outd) in degrees.items():
-        if ind + outd != 2:
-            junctions.add(sid)
-    return junctions
+    in_deg, out_deg = degrees
+    total = in_deg.astype(np.uint32) + out_deg.astype(np.uint32)
+    is_junction = total != 2
+    is_junction[total == 0] = False
+    return is_junction
 
 
 # ---------------------------------------------------------------------------
 # Linear run extraction
 # ---------------------------------------------------------------------------
 
-def find_linear_runs(gfaidx, junctions, segment_index):
+def find_linear_runs(gfaidx, is_junction, segment_index):
     """Walk from each junction through degree-2 segments until hitting another
     junction. Returns list of runs, each a list of segment IDs
     [junction, deg2, ..., deg2, junction].
@@ -71,15 +61,27 @@ def find_linear_runs(gfaidx, junctions, segment_index):
     Handles edge cases:
     - Isolated degree-2 cycles (no junctions) are detected separately.
     - Each run is found exactly once via visited-edge tracking.
+
+    is_junction is a numpy bool array indexed by segment ID.
     """
+    # Pack undirected edge (a, b) into a single Python int to avoid
+    # tuple overhead: lo << shift | hi.
+    shift = int(len(is_junction) - 1).bit_length()
+
+    def _edge_key(a, b):
+        lo, hi = (a, b) if a < b else (b, a)
+        return (lo << shift) | hi
+
     visited_edges = set()
     runs = []
 
-    for junc in junctions:
+    junction_ids = np.flatnonzero(is_junction)
+    for junc in junction_ids:
+        junc = int(junc)
         neighbors = gfaidx.get_neighbors(junc)
         for neighbor in neighbors:
-            edge_key = (min(junc, neighbor), max(junc, neighbor))
-            if edge_key in visited_edges:
+            neighbor = int(neighbor)
+            if _edge_key(junc, neighbor) in visited_edges:
                 continue
 
             if not segment_index.valid[neighbor]:
@@ -90,19 +92,19 @@ def find_linear_runs(gfaidx, junctions, segment_index):
             prev = junc
             curr = neighbor
 
-            while curr not in junctions:
-                visited_edges.add((min(prev, curr), max(prev, curr)))
+            while not is_junction[curr]:
+                visited_edges.add(_edge_key(prev, curr))
                 run.append(curr)
 
-                nexts = [n for n in gfaidx.get_neighbors(curr) if n != prev]
+                nexts = [int(n) for n in gfaidx.get_neighbors(curr) if n != prev]
                 if not nexts:
                     break
                 prev = curr
                 curr = nexts[0]
 
             # Add the final junction (or dead-end)
-            visited_edges.add((min(prev, curr), max(prev, curr)))
-            if curr in junctions:
+            visited_edges.add(_edge_key(prev, curr))
+            if is_junction[curr]:
                 run.append(curr)
 
             runs.append(run)
@@ -237,10 +239,11 @@ def export_json(junctions, runs, segment_index, link_index, polylines,
         f.write(encoder.encode(meta))
 
         # Stats
+        junction_count = int(np.count_nonzero(junctions)) if hasattr(junctions, 'dtype') else len(junctions)
         stats = {
             "totalSegments": total_segments,
             "totalLinks": len(link_index),
-            "junctionCount": len(junctions),
+            "junctionCount": junction_count,
             "runCount": len(runs),
         }
         f.write(',"stats":')
