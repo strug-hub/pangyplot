@@ -10,6 +10,7 @@ import { setupDragFixEngine } from './drag-fix-engine.js';
 import { anchorChain } from './centroid-anchor-force.js';
 import { setupDragLockBadge, showDragLock, hideDragLock } from './drag-lock-render.js';
 import { hideTooltip } from '../../ui/status-bar.js';
+import { resetDragInfluence } from './drag-influence-force.js';
 
 const MIN_MOVEMENT_PX = 5;
 
@@ -46,6 +47,11 @@ function activateDrag(e) {
     state.dragMode = mode;
     state.dragTarget = target;
     state.canvas.style.cursor = 'grabbing';
+
+    // Reset influence tracking so stale prevPos from a previous drag
+    // (which may not have been cleared if the sim cooled and stopped
+    // before endDrag ran) can't produce a huge first-tick delta.
+    resetDragInfluence();
 
     const data = screenToData(e.clientX, e.clientY);
     state.dragPrevDataX = data.x;

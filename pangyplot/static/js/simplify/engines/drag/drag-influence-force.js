@@ -151,3 +151,10 @@ export function dragInfluenceForce() {
 export function invalidateCache() {
     cache = null;
 }
+
+/** Reset tracking state — call when a new drag begins so stale
+ *  prevPos from a previous drag can't produce a huge delta. */
+export function resetDragInfluence() {
+    prevPos = { x: null, y: null };
+    cache = null;
+}
