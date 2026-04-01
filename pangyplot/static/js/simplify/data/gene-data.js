@@ -8,6 +8,7 @@ import { state } from '../simplify-state.js';
 import { populateGeneAnnotationsTable } from '../../graph/engines/gene-annotation/gene-annotation-ui.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { bumpGenePinVersion } from '../skeleton/render/gene-polyline-overlay.js';
+import { getCustomAnnotationEntries, clearCustomAnnotations, setTableRefreshFn } from './custom-annotation-data.js';
 
 let genePins = [];
 let geneCache = [];
@@ -56,6 +57,7 @@ export function clearGeneCache() {
     customColors.clear();
     spinePlaced = false;
     detailChainKey = null;
+    clearCustomAnnotations();
 }
 
 /**
@@ -101,7 +103,7 @@ function placeGenes() {
     populateSimplifyGeneTable();
 }
 
-function populateSimplifyGeneTable() {
+export function populateSimplifyGeneTable() {
     const pinMap = new Map(genePins.map(p => [p.name, p]));
     const entries = geneCache.map(gene => {
         const name = gene.gene || gene.id;
@@ -129,8 +131,11 @@ function populateSimplifyGeneTable() {
             },
         };
     });
+    entries.push(...getCustomAnnotationEntries());
     populateGeneAnnotationsTable(entries, { showExonColumn: false, showStarColumn: true });
 }
+
+setTableRefreshFn(populateSimplifyGeneTable);
 
 /**
  * Reposition gene pins using detail chain data for more accurate placement.

@@ -119,6 +119,72 @@ function drawCustomAnnotationOverlays(ctx, opacity, svg = null) {
     }
 }
 
+/**
+ * Draw annotation name badges in screen space.
+ * Call AFTER ctx.restore() so text doesn't scale with zoom.
+ */
+export function drawCustomAnnotationLabels(ctx) {
+    const annotations = getAllAnnotations();
+    if (annotations.length === 0) return;
+
+    const dd = state.detailData;
+    if (!dd) return;
+
+    const opacity = state.detailOpacity;
+    if (opacity <= 0) return;
+
+    const fontSize = 11;
+    const px = 5, py = 2;
+    const badgeH = fontSize + py * 2;
+
+    ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    for (const ann of annotations) {
+        if (!ann.isVisible) continue;
+
+        // Compute centroid of all matching chain polyline vertices
+        let sumX = 0, sumY = 0, count = 0;
+        for (const chain of dd.chains) {
+            const rootId = chain.parentChain || chain.id;
+            if (!ann.chainIds.has(chain.id) && !ann.chainIds.has(rootId)) continue;
+            const polylines = getPolychainPolylines(chain.id);
+            if (!polylines && chain.parentChain) continue;
+            const pls = polylines || [chain.polyline];
+            for (const pl of pls) {
+                if (!pl || pl.length < 2) continue;
+                for (const pt of pl) {
+                    sumX += pt[0];
+                    sumY += pt[1];
+                    count++;
+                }
+            }
+        }
+        if (count === 0) continue;
+
+        // Data-space centroid → screen-space
+        const dx = sumX / count;
+        const dy = sumY / count;
+        const sx = dx * state.zoom + state.panX;
+        const sy = dy * state.zoom + state.panY;
+
+        const tw = ctx.measureText(ann.name).width;
+        const badgeTop = sy - badgeH - 6;
+
+        ctx.globalAlpha = 0.85 * opacity;
+        ctx.fillStyle = 'rgba(40, 32, 10, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(sx - tw / 2 - px, badgeTop, tw + px * 2, badgeH, 3);
+        ctx.fill();
+
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = ann.color;
+        ctx.fillText(ann.name, sx, badgeTop + badgeH);
+    }
+    ctx.globalAlpha = 1;
+}
+
 // Fade range: bubble fades in over this gridSize range below its threshold.
 const BUBBLE_FADE_RANGE = 15;
 

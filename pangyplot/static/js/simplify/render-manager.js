@@ -8,7 +8,7 @@ import eventBus from '@event-bus';
 import { getViewport } from './render/viewport.js';
 import { isDebugMode } from '@app-state';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
-import { drawDetail } from './detail/render/polychain/polychain-render-manager.js';
+import { drawDetail, drawCustomAnnotationLabels } from './detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from './detail/render/force-render-manager.js';
 import { getAlpha } from './detail/engines/force-engine.js';
 import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
@@ -103,6 +103,9 @@ function draw() {
         ctx.strokeRect(sx, sy, sw, sh);
         ctx.setLineDash([]);
     }
+
+    // --- Custom annotation labels (screen coords) ---
+    drawCustomAnnotationLabels(ctx);
 
     // --- Gene labels (screen coords) ---
     if (_debug) _t0 = performance.now();

@@ -103,4 +103,12 @@ export function setUpRenderScaling(forceGraph) {
         eventBus.subscribe("graph:data-replaced", () => {
             setTimeout(() => updateMinZoomFromGraph(forceGraph), 600);
         });
+
+        eventBus.subscribe("graph:bubble-popped", () => {
+            setTimeout(() => updateMinZoomFromGraph(forceGraph), 600);
+        });
+
+        eventBus.subscribe("graph:bubble-unpopped", () => {
+            setTimeout(() => updateMinZoomFromGraph(forceGraph), 600);
+        });
 }
