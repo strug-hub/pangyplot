@@ -6,6 +6,7 @@ import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, computeForceDeltas, linkStrength, linkDistance, chargeMaxDist } from '../engines/force-engine.js';
+import { getChainGaps, getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
@@ -192,9 +193,8 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const headLen = Math.max(3, 6 / state.zoom);
     const lw = Math.max(0.5, 1.5 / state.zoom);
 
-    const pcNodes = nodes.filter(n => n.isPolychainNode && !n.isGhostSpine && n.x != null);
-    const ghostNodes = nodes.filter(n => n.isGhostSpine && n.x != null);
-    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && !n.isGhostSpine && n.x != null);
+    const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
+    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && n.x != null);
     const allVisNodes = [...pcNodes, ...segNodes];
     if (allVisNodes.length === 0) return;
 
@@ -212,27 +212,57 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ghostGuide:      { color: '#88FFFF', label: 'guide' },
     };
 
-    // Draw ghost spine polylines as faint dashed lines
-    if (ghostNodes.length > 0) {
-        const byChain = new Map();
-        for (const n of ghostNodes) {
-            let arr = byChain.get(n.chainId);
-            if (!arr) { arr = []; byChain.set(n.chainId, arr); }
-            arr.push(n);
+    // Draw hidden gap segments as faint dashed lines (guide corridors)
+    {
+        const dd = state.detailData;
+        if (dd) {
+            const gaps = [];
+            for (const chain of dd.chains) {
+                const chainGaps = getChainGaps(chain.id);
+                if (chainGaps.length === 0) continue;
+                const chainNodes = getPolychainNodesForChain(chain.id);
+                if (!chainNodes) continue;
+                for (const g of chainGaps) {
+                    const ln = chainNodes[g.leftNodeIdx];
+                    const rn = chainNodes[g.rightNodeIdx];
+                    if (ln && rn) {
+                        gaps.push({ x1: ln.x, y1: ln.y, x2: rn.x, y2: rn.y });
+                    }
+                }
+            }
+            if (gaps.length > 0) {
+                const SHORT_AXIS_RATIO = 0.4;
+                ctx.lineWidth = Math.max(1, 2 / state.zoom);
+
+                for (const gap of gaps) {
+                    const dx = gap.x2 - gap.x1, dy = gap.y2 - gap.y1;
+                    const gapLen = Math.hypot(dx, dy);
+                    if (gapLen < 1) continue;
+                    const cx = (gap.x1 + gap.x2) / 2, cy = (gap.y1 + gap.y2) / 2;
+                    const angle = Math.atan2(dy, dx);
+                    const a = gapLen / 2 + gapLen * 0.15;
+                    const b = Math.max(gapLen * SHORT_AXIS_RATIO, 10);
+
+                    // Draw dashed chord line
+                    ctx.globalAlpha = 0.4 * opacity;
+                    ctx.strokeStyle = '#88FFFF';
+                    ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
+                    ctx.beginPath();
+                    ctx.moveTo(gap.x1, gap.y1);
+                    ctx.lineTo(gap.x2, gap.y2);
+                    ctx.stroke();
+
+                    // Draw bounding ellipse
+                    ctx.globalAlpha = 0.2 * opacity;
+                    ctx.strokeStyle = '#88FFFF';
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, a, b, angle, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
+            }
         }
-        ctx.globalAlpha = 0.35 * opacity;
-        ctx.strokeStyle = '#88FFFF';
-        ctx.lineWidth = Math.max(1, 2 / state.zoom);
-        ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
-        for (const group of byChain.values()) {
-            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
-            if (group.length < 2) continue;
-            ctx.beginPath();
-            ctx.moveTo(group[0].x, group[0].y);
-            for (let i = 1; i < group.length; i++) ctx.lineTo(group[i].x, group[i].y);
-            ctx.stroke();
-        }
-        ctx.setLineDash([]);
     }
 
     // Compute real force deltas on demand (runs each force once, restores vx/vy)

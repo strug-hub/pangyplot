@@ -4,10 +4,10 @@
 // collapses simplifyViewState.
 
 import { state } from '../../simplify-state.js';
-import { unspliceBubbleNodes, unspliceChainAtBubble, addPoppedNodes } from '../engines/force-engine.js';
+import { unspliceBubbleNodes, unspliceChainAtBubble, addPoppedNodes, removePoppedContent } from '../engines/force-engine.js';
 import simplifyViewState from './simplify-view-state.js';
 import { restoreBubbleToStore, mergeBubbleStores } from './bubble-meta-cache.js';
-import { mergeSubchainsOnUnpop, restoreChain, removeGhostSpine, hasGhostSpine } from './polychain/polychain-adapter.js';
+import { mergeSubchainsOnUnpop, restoreChain, removeGhostSpine, hasGhostSpine, removeGap } from './polychain/polychain-adapter.js';
 import popTree from './pop-tree.js';
 
 /**
@@ -17,13 +17,57 @@ export function unpopLastBubble() {
     const popEntry = popTree.undoLast();
     if (!popEntry) return false;
 
-    // Chain-split pop (bubble circle on polychain)
+    // Anchor-based pop (new architecture)
+    if (popEntry.isAnchorPop) {
+        return unpopAnchor(popEntry);
+    }
+
+    // Legacy chain-split pop
     if (popEntry.isChainSplitPop) {
         return unpopChainSplit(popEntry);
     }
 
     // Original force-node pop
     return unpopForceNode(popEntry);
+}
+
+function unpopAnchor(popEntry) {
+    const {
+        bubbleId,
+        chainId,
+        parentRecord,
+        childIids,
+        sourceSegs,
+        sinkSegs,
+        childBubbles,
+        gapInfo,
+        spliceResult,
+        bubbleMeta,
+    } = popEntry;
+
+    // Remove child nodes and bridge links from force sim
+    removePoppedContent(childIids, spliceResult);
+
+    // Remove gap entry (no anchor nodes to remove — boundaries are existing polychain nodes)
+    removeGap(chainId, gapInfo.gapEntry);
+
+    // Collapse simplify viewState
+    if (parentRecord) {
+        simplifyViewState.collapse(
+            parentRecord,
+            sourceSegs,
+            sinkSegs,
+            [],
+            childBubbles,
+        );
+    }
+
+    // Restore the bubble circle in the meta cache
+    if (bubbleMeta) {
+        restoreBubbleToStore(chainId, bubbleMeta);
+    }
+
+    return true;
 }
 
 function unpopChainSplit(popEntry) {

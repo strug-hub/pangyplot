@@ -286,6 +286,75 @@ export function addPoppedNodes(nodes, links) {
  * Rewires any bridge/inter-chain links that referenced the old head or tail
  * to the corresponding new head or tail.
  */
+/**
+ * Splice a new node into a polychain link: replace linkA→linkB with
+ * linkA→newNode + newNode→linkB. Adds the new node and both new links
+ * to the sim, removes the old link.
+ * Returns { removedLink, newLinks } for undo.
+ */
+export function splicePolychainLink(nodeA, nodeB, newNode, chainId) {
+    if (!sim) initForce();
+
+    const links = getLinks();
+    let removedLink = null;
+    const keptLinks = [];
+    for (const l of links) {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        if (!removedLink && l.isPolychainLink &&
+            ((sIid === nodeA.iid && tIid === nodeB.iid) ||
+             (sIid === nodeB.iid && tIid === nodeA.iid))) {
+            removedLink = l;
+        } else {
+            keptLinks.push(l);
+        }
+    }
+
+    const distA = Math.hypot(newNode.x - nodeA.x, newNode.y - nodeA.y) || 5;
+    const distB = Math.hypot(newNode.x - nodeB.x, newNode.y - nodeB.y) || 5;
+    const lf = nodeA.loopFactor || 0;
+
+    const newLinks = [
+        { source: nodeA, target: newNode, isPolychainLink: true, isKinkLink: false,
+          chainId, length: distA, loopFactor: lf, chainArcLen: 0 },
+        { source: newNode, target: nodeB, isPolychainLink: true, isKinkLink: false,
+          chainId, length: distB, loopFactor: lf, chainArcLen: 0 },
+    ];
+
+    newNode.homeX = newNode.homeX ?? newNode.x;
+    newNode.homeY = newNode.homeY ?? newNode.y;
+
+    syncNodes([...getNodes(), newNode]);
+    syncLinks([...keptLinks, ...newLinks]);
+
+    return { removedLink, newLinks };
+}
+
+/**
+ * Unsplice: remove a node from between two polychain nodes, restore
+ * the original link. Reverse of splicePolychainLink.
+ */
+export function unsplicePolychainLink(anchorNode, removedLink, newLinks) {
+    if (!sim) return;
+
+    const anchorIid = anchorNode.iid;
+    const linkSet = new Set(newLinks);
+
+    const remaining = getNodes().filter(n => n.iid !== anchorIid);
+    const remainingIids = new Set(remaining.map(n => n.iid));
+    const keptLinks = getLinks().filter(l => {
+        if (linkSet.has(l)) return false;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return remainingIids.has(sIid) && remainingIids.has(tIid);
+    });
+
+    if (removedLink) keptLinks.push(removedLink);
+
+    syncNodes(remaining);
+    syncLinks(keptLinks);
+}
+
 export function replacePolychainNodes(chainId, oldNodes, newNodes, newLinks) {
     if (!sim) initForce();
 
@@ -707,51 +776,23 @@ export function findSplitIdx(pcNodes, hitX, hitY) {
 }
 
 /**
- * Insert popped content into the force sim at anchor nodes.
- * Anchors are already inserted into the polychain by insertAnchorsAtPop.
- * This function: adds anchor nodes + links to the sim, finds boundary
- * child nodes, creates bridge links, and adds everything to the sim.
+ * Insert popped content into the force sim.
+ * Creates bridge links from gap boundary polychain nodes to child boundary
+ * nodes, and adds child nodes/links to the sim.
  *
  * @param {string} chainId
- * @param {Object} anchorInfo - from insertAnchorsAtPop: { anchorL, anchorR, leftNode, rightNode }
+ * @param {Object} gapInfo - from createGapAtPop: { leftNode, rightNode, gapEntry }
  * @param {Array} childNodes - deserialized child nodes
  * @param {Array} childLinks - deserialized child links
  * @param {Array} sourceSegs - source boundary segment IDs
  * @param {Array} sinkSegs - sink boundary segment IDs
  * @param {Map} recordMap - id → NodeRecord
- * @returns {{ bridgeLinks, anchorLinks, removedLink }} or null
+ * @returns {{ bridgeLinks }} or null
  */
-export function insertPoppedContent(chainId, anchorInfo, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
+export function insertPoppedContent(chainId, gapInfo, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
     if (!sim) initForce();
 
-    const { anchorL, anchorR, leftNode, rightNode } = anchorInfo;
-
-    // Find and remove the old polychain link between leftNode and rightNode.
-    // Replace with: leftNode → anchorL, anchorL → anchorR (gap), anchorR → rightNode.
-    const links = getLinks();
-    let removedLink = null;
-    const keptLinks = [];
-    for (const l of links) {
-        const sIid = l.source.iid ?? l.source;
-        const tIid = l.target.iid ?? l.target;
-        if (!removedLink && l.isPolychainLink &&
-            ((sIid === leftNode.iid && tIid === rightNode.iid) ||
-             (sIid === rightNode.iid && tIid === leftNode.iid))) {
-            removedLink = l;
-        } else {
-            keptLinks.push(l);
-        }
-    }
-
-    const restLen = removedLink ? removedLink.length / 3 : 5;
-    const anchorLinks = [
-        { source: leftNode, target: anchorL, isPolychainLink: true, isKinkLink: false,
-          chainId, length: restLen, loopFactor: leftNode.loopFactor || 0, chainArcLen: 0 },
-        { source: anchorL, target: anchorR, isPolychainLink: true, isKinkLink: false,
-          isGapLink: true, chainId, length: restLen, loopFactor: 0, chainArcLen: 0 },
-        { source: anchorR, target: rightNode, isPolychainLink: true, isKinkLink: false,
-          chainId, length: restLen, loopFactor: rightNode.loopFactor || 0, chainArcLen: 0 },
-    ];
+    const { leftNode, rightNode } = gapInfo;
 
     // Mark child nodes for spawn damping; preserve homeX/homeY if already
     // set to ODGI layout positions by the caller (popBubbleCircle).
@@ -800,10 +841,10 @@ export function insertPoppedContent(chainId, anchorInfo, childNodes, childLinks,
     let sourceChildNode = null;
     let sinkChildNode = null;
 
-    // Search both new childNodes AND existing sim nodes — boundary segments
-    // shared with a prior pop (consecutive bubbles share boundaries) will
-    // have been deduplicated out of childNodes but are still in the sim.
-    const allSearchNodes = [...childNodes, ...getNodes()];
+    // Only search new childNodes for bridge endpoints — NOT existing sim nodes.
+    // If a boundary seg is already in the sim from a prior pop, it's a shared
+    // interior boundary connected via GFA links and should not get a bridge.
+    const allSearchNodes = childNodes;
 
     for (const [id, record] of recordMap) {
         const plainId = id.startsWith('s') ? id.slice(1) : id;
@@ -843,38 +884,63 @@ export function insertPoppedContent(chainId, anchorInfo, childNodes, childLinks,
         }
     }
 
-    // Create bridge links: anchors → boundary child nodes
+    // Create bridge links: gap boundary polychain nodes → boundary child nodes
     const bridgeLinks = [];
     if (sourceChildNode) {
         bridgeLinks.push({
-            source: anchorL,
+            source: leftNode,
             target: sourceChildNode,
             isBridgeLink: true,
             isKinkLink: false,
             chainId,
-            length: removedLink ? removedLink.length / 2 : 10,
+            length: 10,
         });
     }
     if (sinkChildNode) {
         bridgeLinks.push({
             source: sinkChildNode,
-            target: anchorR,
+            target: rightNode,
             isBridgeLink: true,
             isKinkLink: false,
             chainId,
-            length: removedLink ? removedLink.length / 2 : 10,
+            length: 10,
         });
     }
 
-    const allNodes = [...getNodes(), anchorL, anchorR, ...childNodes];
-    const allLinks = [...keptLinks, ...anchorLinks, ...childLinks, ...bridgeLinks];
+    const allNodes = [...getNodes(), ...childNodes];
+    const allLinks = [...getLinks(), ...childLinks, ...bridgeLinks];
 
     syncNodes(allNodes);
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
     sim.alpha(1).restart();
 
-    return { removedLink, bridgeLinks, anchorLinks };
+    return { bridgeLinks };
+}
+
+/**
+ * Reverse of insertPoppedContent: remove child nodes and bridge links from the sim.
+ */
+export function removePoppedContent(childIids, spliceResult) {
+    if (!sim) return;
+
+    const { bridgeLinks } = spliceResult;
+    const childSet = new Set(childIids);
+    const bridgeSet = new Set(bridgeLinks);
+
+    const remaining = getNodes().filter(n => !childSet.has(n.iid));
+    const remainingIids = new Set(remaining.map(n => n.iid));
+    const keptLinks = getLinks().filter(l => {
+        if (bridgeSet.has(l)) return false;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return remainingIids.has(sIid) && remainingIids.has(tIid);
+    });
+
+    syncNodes(remaining);
+    syncLinks(keptLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(1).restart();
 }
 
 /**

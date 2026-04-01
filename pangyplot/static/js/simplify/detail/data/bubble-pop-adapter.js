@@ -2,14 +2,16 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, insertPoppedContent, findSplitIdx } from '../engines/force-engine.js';
+import { spliceBubbleNodes, insertPoppedContent } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
-import { getPolychainNodesForChain, getSegToPolychainRecord, resamplePolychainLive, insertAnchorsAtPop } from './polychain/polychain-adapter.js';
+import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore } from './bubble-meta-cache.js';
+import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
+import { getChainGaps } from './polychain/polychain-adapter.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -177,11 +179,7 @@ export async function popBubbleCircle(hit) {
     const chr = state.chromosome;
     if (!chr) return false;
 
-    // Ensure the chain has enough polychain nodes for a clean split.
-    // This is unconditional — every split starts from a full node budget.
-    resamplePolychainLive(chainId);
-
-    let pcNodes = getPolychainNodesForChain(chainId);
+    const pcNodes = getPolychainNodesForChain(chainId);
     if (!pcNodes || pcNodes.length < 2) return false;
 
     const url = `/pop?id=${encodeURIComponent(bubbleId)}`
@@ -290,28 +288,54 @@ export async function popBubbleCircle(hit) {
         node.y = hit.y + (node.homeY - layoutCy) * squish;
     }
 
-    // Find split index on the polychain
-    const splitIdx = findSplitIdx(pcNodes, hit.x, hit.y);
+    // --- DEBUG: log pre-pop state ---
+    logPop(bubbleId, chainId, {
+        phase: 'start',
+        t: hit.meta.t,
+        newChildNodes: newChildNodes.length,
+        newChildLinks: newChildLinks.length,
+        sourceSegs: apiData.source_segs,
+        sinkSegs: apiData.sink_segs,
+    });
+    logChainState(chainId, getPolychainNodesForChain(chainId), getChainGaps(chainId));
 
-    // Insert anchor nodes into the polychain at the split point
-    const anchorInfo = insertAnchorsAtPop(chainId, splitIdx, hit.x, hit.y, bubbleId);
-    if (!anchorInfo) return false;
+    // Create gap at the popped bubble's position using neighbor bubbles as boundaries.
+    // Must be called BEFORE removeBubbleFromStore so the bubble is still in the store.
+    const gapInfo = createGapAtPop(chainId, bubbleId);
+    if (!gapInfo) return false;
 
-    // Insert popped content: anchor links, bridge links, child nodes
+    logGap(chainId, gapInfo.gapEntry, 'created');
+
+    // Insert popped content: bridge links + child nodes into force sim
     const spliceResult = insertPoppedContent(
-        chainId, anchorInfo, newChildNodes, newChildLinks,
+        chainId, gapInfo, newChildNodes, newChildLinks,
         apiData.source_segs || [], apiData.sink_segs || [],
         recordMap,
     );
     if (!spliceResult) return false;
 
+    logNodes('childNodes', newChildNodes);
+    logLinks('bridgeLinks', spliceResult.bridgeLinks);
+
     // Track child iids on the gap entry (for undo)
-    anchorInfo.gapEntry.childIids = newChildNodes.map(n => n.iid);
+    gapInfo.gapEntry.childIids = newChildNodes.map(n => n.iid);
+
+    // Assign guide force range to popped child nodes
+    const gap = gapInfo.gapEntry;
+    for (const n of newChildNodes) {
+        n.ghostTStart = gap.tStart;
+        n.ghostTEnd = gap.tEnd;
+        n.ghostRootId = chainId;
+    }
 
     // Remove the popped bubble circle from the meta cache
     const removedMeta = removeBubbleFromStore(chainId, bubbleId);
 
     recordPop('bubble-circle-pop', { id: bubbleId, chain: chainId });
+
+    // --- DEBUG: log post-pop state ---
+    logChainState(chainId, getPolychainNodesForChain(chainId), getChainGaps(chainId));
+    logPop(bubbleId, chainId, { phase: 'done' });
 
     // Determine parent in pop hierarchy
     const parentBubbleId = parentRecord && popTree.has(parentRecord.id)
@@ -327,7 +351,7 @@ export async function popBubbleCircle(hit) {
         sourceSegs: apiData.source_segs || [],
         sinkSegs: apiData.sink_segs || [],
         childBubbles: apiData.child_bubbles || [],
-        anchorInfo,
+        gapInfo,
         spliceResult,
         bubbleMeta: removedMeta,
     });

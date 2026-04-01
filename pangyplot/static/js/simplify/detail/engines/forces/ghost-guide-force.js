@@ -1,111 +1,99 @@
-// Ghost guide force: pulls visible nodes toward their assigned positions
-// on the hidden ghost spine.
+// Guide force: constrains popped segment nodes within a bounding ellipse
+// around their gap corridor on the parent chain.
 //
-// Polychain nodes have ghostT (fixed point on ghost) — pulled to that exact spot.
-// Popped segment nodes have ghostTStart/ghostTEnd (range) — pulled toward
-// nearest point within that range, free to spread but constrained to the corridor.
+// No force inside the ellipse — nodes self-organize freely via link springs.
+// Only pushes inward when a node drifts outside the boundary.
+// Long axis = anchorL→anchorR, short axis = fraction of gap length.
 
-import { getGhostSpine } from '../../data/polychain/polychain-adapter.js';
-import { cumulativeLengths, interpolateAtDist } from '../../data/polychain/polychain-adapter.js';
+import { getChainGaps, getPolychainNodesForChain } from '../../data/polychain/polychain-adapter.js';
 import { pcSettings } from './pc-settings.js';
+
+const SHORT_AXIS_RATIO = 0.4;  // short axis = 40% of gap length
 
 export function ghostGuideForce() {
     let nodes = [];
 
-    // Cache ghost polylines per root to avoid recomputing every tick
-    let _cachedGhosts = new Map(); // rootId → { pl, cumLen, totalLen }
-    let _cacheTickCount = -1;
+    // Cache ellipse params per gap (rebuilt each tick since anchors move)
+    let _ellipses = null;
 
-    function getGhostPolyline(rootId) {
-        const ghostNodes = getGhostSpine(rootId);
-        if (!ghostNodes || ghostNodes.length < 2) return null;
-
-        let cached = _cachedGhosts.get(rootId);
-        if (!cached) {
-            cached = { pl: null, cumLen: null, totalLen: 0 };
-            _cachedGhosts.set(rootId, cached);
+    function buildEllipses() {
+        const map = new Map(); // chainId → [{ cx, cy, ux, uy, vx, vy, a, b }]
+        // Scan all nodes that have guide ranges to find their chainIds
+        const chainIds = new Set();
+        for (const n of nodes) {
+            if (n.ghostRootId) chainIds.add(n.ghostRootId);
         }
-
-        // Rebuild every tick (ghost nodes move under forces)
-        cached.pl = ghostNodes.map(n => [n.x, n.y]);
-        cached.cumLen = cumulativeLengths(cached.pl);
-        cached.totalLen = cached.cumLen[cached.cumLen.length - 1];
-        return cached;
+        for (const chainId of chainIds) {
+            const gaps = getChainGaps(chainId);
+            if (!gaps || gaps.length === 0) continue;
+            const chainNodes = getPolychainNodesForChain(chainId);
+            if (!chainNodes) continue;
+            const ellipses = [];
+            for (const g of gaps) {
+                const ln = chainNodes[g.leftNodeIdx];
+                const rn = chainNodes[g.rightNodeIdx];
+                if (!ln || !rn) continue;
+                const ax = ln.x, ay = ln.y;
+                const bx = rn.x, by = rn.y;
+                const cx = (ax + bx) / 2, cy = (ay + by) / 2;
+                const dx = bx - ax, dy = by - ay;
+                const gapLen = Math.hypot(dx, dy);
+                if (gapLen < 1) continue;
+                // Unit vectors: u = along gap, v = perpendicular
+                const ux = dx / gapLen, uy = dy / gapLen;
+                const vx = -uy, vy = ux;
+                // Semi-axes: a = half gap length (+ padding), b = short axis
+                const a = gapLen / 2 + gapLen * 0.15;
+                const b = Math.max(gapLen * SHORT_AXIS_RATIO, 10);
+                ellipses.push({ cx, cy, ux, uy, vx, vy, a, b, tStart: g.tStart, tEnd: g.tEnd });
+            }
+            if (ellipses.length > 0) map.set(chainId, ellipses);
+        }
+        return map;
     }
 
     function force(alpha) {
         const k = (pcSettings.guideLevel ?? 0.01) * alpha;
         if (k === 0) return;
 
-        // Invalidate cache each tick
-        _cachedGhosts.clear();
+        _ellipses = buildEllipses();
 
         for (const node of nodes) {
-            if (node.isGhostSpine) continue; // ghost is the target, not a follower
+            if (node.isPolychainNode) continue;
+            if (node.ghostTStart == null || node.ghostTEnd == null) continue;
 
-            const rootId = node.ghostRootId;
-            if (!rootId) continue;
+            const chainId = node.ghostRootId;
+            if (!chainId) continue;
 
-            const ghost = getGhostPolyline(rootId);
-            if (!ghost || ghost.totalLen === 0) continue;
+            const ellipses = _ellipses.get(chainId);
+            if (!ellipses) continue;
 
-            let targetX, targetY;
+            // Find the ellipse matching this node's gap range
+            const ellipse = ellipses.find(e => e.tStart === node.ghostTStart && e.tEnd === node.ghostTEnd);
+            if (!ellipse) continue;
 
-            if (node.ghostT != null) {
-                // Polychain node: pull to fixed t position
-                const [tx, ty] = interpolateAtDist(ghost.pl, ghost.cumLen, node.ghostT * ghost.totalLen);
-                targetX = tx;
-                targetY = ty;
-            } else if (node.ghostTStart != null && node.ghostTEnd != null) {
-                // Popped segment node: find nearest point within [tStart, tEnd] range
-                const tStart = node.ghostTStart;
-                const tEnd = node.ghostTEnd;
-                const dStart = tStart * ghost.totalLen;
-                const dEnd = tEnd * ghost.totalLen;
+            const { cx, cy, ux, uy, vx, vy, a, b } = ellipse;
 
-                // Project node onto ghost polyline, clamp to range
-                let bestDist = Infinity;
-                let bestArcDist = dStart;
-                const pl = ghost.pl;
-                const cumLen = ghost.cumLen;
-                for (let i = 0; i < pl.length - 1; i++) {
-                    // Skip segments entirely outside the range
-                    if (cumLen[i + 1] < dStart || cumLen[i] > dEnd) continue;
+            // Transform node position to ellipse-local coords
+            const relX = node.x - cx, relY = node.y - cy;
+            const u = relX * ux + relY * uy;  // along gap axis
+            const v = relX * vx + relY * vy;  // perpendicular
 
-                    const ax = pl[i][0], ay = pl[i][1];
-                    const bx = pl[i + 1][0], by = pl[i + 1][1];
-                    const dx = bx - ax, dy = by - ay;
-                    const lenSq = dx * dx + dy * dy;
-                    let t = 0;
-                    if (lenSq > 0) {
-                        t = Math.max(0, Math.min(1, ((node.x - ax) * dx + (node.y - ay) * dy) / lenSq));
-                    }
-                    // Clamp arc distance to range
-                    let arcDist = cumLen[i] + t * (cumLen[i + 1] - cumLen[i]);
-                    arcDist = Math.max(dStart, Math.min(dEnd, arcDist));
+            // Normalized ellipse distance: (u/a)^2 + (v/b)^2
+            const eu = u / a, ev = v / b;
+            const dist2 = eu * eu + ev * ev;
 
-                    const [px, py] = interpolateAtDist(pl, cumLen, arcDist);
-                    const d = Math.hypot(node.x - px, node.y - py);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        bestArcDist = arcDist;
-                    }
-                }
+            if (dist2 <= 1) continue; // inside ellipse — no force
 
-                const [tx, ty] = interpolateAtDist(ghost.pl, ghost.cumLen, bestArcDist);
-                targetX = tx;
-                targetY = ty;
+            // Outside: push back toward ellipse boundary
+            // Direction: from node toward the nearest point on the ellipse
+            // Approximate: push radially toward center, scaled by overshoot
+            const overshoot = Math.sqrt(dist2) - 1;  // 0 at boundary, grows outside
+            const strength = k * Math.min(overshoot * 3, 1);  // soft ramp, caps at k
 
-                // Softer pull for segments (they need room to spread)
-                node.vx += (targetX - node.x) * k * 0.3;
-                node.vy += (targetY - node.y) * k * 0.3;
-                continue;
-            } else {
-                continue;
-            }
-
-            node.vx += (targetX - node.x) * k;
-            node.vy += (targetY - node.y) * k;
+            // Push toward center (simple radial push)
+            node.vx -= relX * strength;
+            node.vy -= relY * strength;
         }
     }
 

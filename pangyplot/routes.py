@@ -373,3 +373,22 @@ def gfa():
         headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
 
+# ---------------------------------------------------------------
+# Debug log endpoint — writes structured pop/undo events to session files
+# ---------------------------------------------------------------
+_DEBUG_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pop-debug-logs')
+
+@bp.route('/debug-log', methods=["POST"])
+def debug_log():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"ok": False}), 400
+    session_id = data.pop('sessionId', 'unknown')
+    os.makedirs(_DEBUG_LOG_DIR, exist_ok=True)
+    import json, time
+    line = json.dumps({"ts": time.time(), **data})
+    path = os.path.join(_DEBUG_LOG_DIR, f'session-{session_id}.jsonl')
+    with open(path, 'a') as f:
+        f.write(line + '\n')
+    return jsonify({"ok": True})
+
