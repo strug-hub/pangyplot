@@ -30,7 +30,7 @@ export function setupKeyboardShortcuts(canvas) {
             scheduleFrame();
         }
         if (isDebugMode() && e.code === 'KeyU' && !e.repeat) {
-            const modes = ['all', 'charge', 'collide', 'link', 'layout', 'centroid', 'loop', 'smooth', 'balloon', 'parent', 'guide'];
+            const modes = ['all', 'charge', 'segCharge', 'collide', 'link', 'layout', 'centroid', 'loop', 'smooth', 'balloon', 'parent', 'delLink', 'guide', 'anchor', 'spawn'];
             const idx = modes.indexOf(state.forceVectorMode);
             state.forceVectorMode = modes[(idx + 1) % modes.length];
             if (!state.forceVectors) state.forceVectors = true;

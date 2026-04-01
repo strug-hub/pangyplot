@@ -318,12 +318,18 @@ export async function popBubbleCircle(hit) {
     // Track child iids on the gap entry (for undo)
     gapInfo.gapEntry.childIids = newChildNodes.map(n => n.iid);
 
-    // Assign guide force range to popped child nodes
-    const gap = gapInfo.gapEntry;
+    // Assign guide ellipse data to popped child nodes — per-pop, not per-gap.
+    // Store the NEIGHBOR BUBBLE t values so the ellipse endpoints are
+    // interpolated along the live chain each tick, tracking its shape.
+    const store = getBubbleStore(chainId);
+    const bubbles = store ? store.bubbles : [];
+    const popIdx = bubbles.findIndex(b => b.id === bubbleId);
+    const leftT = popIdx > 0 ? bubbles[popIdx - 1].t : 0;
+    const rightT = popIdx < bubbles.length - 1 ? bubbles[popIdx + 1].t : 1;
     for (const n of newChildNodes) {
-        n.ghostTStart = gap.tStart;
-        n.ghostTEnd = gap.tEnd;
-        n.ghostRootId = chainId;
+        n.guideChainId = chainId;
+        n.guideLeftT = leftT;
+        n.guideRightT = rightT;
     }
 
     // Remove the popped bubble circle from the meta cache

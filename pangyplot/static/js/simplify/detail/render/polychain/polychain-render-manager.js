@@ -82,41 +82,36 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
     }
 }
 
-function drawCustomAnnotationOverlays(ctx, opacity, svg = null) {
-    const annotations = getAllAnnotations();
-    if (annotations.length === 0) return;
+const LABEL_FONT_SIZE = 14;
+const LABEL_PX = 6;
+const LABEL_PY = 3;
+const LABEL_BADGE_H = LABEL_FONT_SIZE + LABEL_PY * 2;
+const LABEL_FONT = `600 ${LABEL_FONT_SIZE}px 'SF Mono', Consolas, monospace`;
 
-    const dd = state.detailData;
-    if (!dd) return;
+// Cached badge rects from last draw (screen-space), for hit-testing.
+let labelBadges = [];  // [{ ann, sx, sy, left, top, width, height }]
 
-    const haloWidth = Math.max(4, 10 / state.zoom);
-    if (!svg) {
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.setLineDash([]);
-    }
+export function getAnnotationLabelBadges() { return labelBadges; }
 
-    const byColor = new Map();
-    for (const ann of annotations) {
-        if (!ann.isVisible) continue;
-        for (const chain of dd.chains) {
-            // Match exact chain ID or subchains of an annotated root chain
-            const rootId = chain.parentChain || chain.id;
-            if (!ann.chainIds.has(chain.id) && !ann.chainIds.has(rootId)) continue;
-            const polylines = getPolychainPolylines(chain.id);
-            if (!polylines && chain.parentChain) continue;
-            const pls = polylines || [chain.polyline];
-            for (const pl of pls) {
-                if (!pl || pl.length < 2) continue;
-                if (!byColor.has(ann.color)) byColor.set(ann.color, []);
-                byColor.get(ann.color).push(pl);
+function computeCentroid(ann, dd) {
+    let sumX = 0, sumY = 0, count = 0;
+    for (const chain of dd.chains) {
+        const rootId = chain.parentChain || chain.id;
+        if (!ann.chainIds.has(chain.id) && !ann.chainIds.has(rootId)) continue;
+        const polylines = getPolychainPolylines(chain.id);
+        if (!polylines && chain.parentChain) continue;
+        const pls = polylines || [chain.polyline];
+        for (const pl of pls) {
+            if (!pl || pl.length < 2) continue;
+            for (const pt of pl) {
+                sumX += pt[0];
+                sumY += pt[1];
+                count++;
             }
         }
     }
-
-    for (const [color, polylines] of byColor) {
-        strokePolylines(ctx, polylines, color, haloWidth, opacity, svg);
-    }
+    if (count === 0) return null;
+    return { x: sumX / count, y: sumY / count };
 }
 
 /**
@@ -125,6 +120,7 @@ function drawCustomAnnotationOverlays(ctx, opacity, svg = null) {
  */
 export function drawCustomAnnotationLabels(ctx) {
     const annotations = getAllAnnotations();
+    labelBadges = [];
     if (annotations.length === 0) return;
 
     const dd = state.detailData;
@@ -133,54 +129,39 @@ export function drawCustomAnnotationLabels(ctx) {
     const opacity = state.detailOpacity;
     if (opacity <= 0) return;
 
-    const fontSize = 11;
-    const px = 5, py = 2;
-    const badgeH = fontSize + py * 2;
-
-    ctx.font = `600 ${fontSize}px 'SF Mono', Consolas, monospace`;
+    ctx.font = LABEL_FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
 
     for (const ann of annotations) {
         if (!ann.isVisible) continue;
 
-        // Compute centroid of all matching chain polyline vertices
-        let sumX = 0, sumY = 0, count = 0;
-        for (const chain of dd.chains) {
-            const rootId = chain.parentChain || chain.id;
-            if (!ann.chainIds.has(chain.id) && !ann.chainIds.has(rootId)) continue;
-            const polylines = getPolychainPolylines(chain.id);
-            if (!polylines && chain.parentChain) continue;
-            const pls = polylines || [chain.polyline];
-            for (const pl of pls) {
-                if (!pl || pl.length < 2) continue;
-                for (const pt of pl) {
-                    sumX += pt[0];
-                    sumY += pt[1];
-                    count++;
-                }
-            }
-        }
-        if (count === 0) continue;
+        const centroid = computeCentroid(ann, dd);
+        if (!centroid) continue;
 
-        // Data-space centroid → screen-space
-        const dx = sumX / count;
-        const dy = sumY / count;
+        // Apply drag offset (data-space) then convert to screen
+        const dx = centroid.x + ann.dragOffset.x;
+        const dy = centroid.y + ann.dragOffset.y;
         const sx = dx * state.zoom + state.panX;
         const sy = dy * state.zoom + state.panY;
 
         const tw = ctx.measureText(ann.name).width;
-        const badgeTop = sy - badgeH - 6;
+        const badgeW = tw + LABEL_PX * 2;
+        const badgeLeft = sx - tw / 2 - LABEL_PX;
+        const badgeTop = sy - LABEL_BADGE_H - 6;
+
+        // Cache for hit-testing
+        labelBadges.push({ ann, sx, sy, left: badgeLeft, top: badgeTop, width: badgeW, height: LABEL_BADGE_H });
 
         ctx.globalAlpha = 0.85 * opacity;
         ctx.fillStyle = 'rgba(40, 32, 10, 0.85)';
         ctx.beginPath();
-        ctx.roundRect(sx - tw / 2 - px, badgeTop, tw + px * 2, badgeH, 3);
+        ctx.roundRect(badgeLeft, badgeTop, badgeW, LABEL_BADGE_H, 3);
         ctx.fill();
 
         ctx.globalAlpha = opacity;
         ctx.fillStyle = ann.color;
-        ctx.fillText(ann.name, sx, badgeTop + badgeH);
+        ctx.fillText(ann.name, sx, badgeTop + LABEL_BADGE_H);
     }
     ctx.globalAlpha = 1;
 }
@@ -271,9 +252,6 @@ export function drawDetail(svg = null) {
 
     // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
     drawGeneOverlays(ctx, opacity, baseWidth, svg);
-
-    // 1b. Custom annotation halo outlines (same layer, behind chains)
-    drawCustomAnnotationOverlays(ctx, opacity, svg);
 
     // 2. Chain polylines (grouped by color style)
     const polylinesByColor = getVisibleChainPolylinesByColor(state.detailData.chains);

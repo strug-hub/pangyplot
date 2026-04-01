@@ -176,7 +176,7 @@ export function initForce() {
         .force('smoothing', laplacianSmoothing())
         .force('balloon', balloonInflation())
         .force('parentSide', parentSideForce())
-        .force('delLink', delLinkForce(getLinks))
+        // .force('delLink', delLinkForce(getLinks))  // disabled — causes drift on multi-pop
         .force('ghostGuide', ghostGuideForce())
         .force('centroidAnchor', centroidAnchorForce())
         .force('spawnDamp', spawnDampingForce())
@@ -194,8 +194,9 @@ export function computeForceDeltas() {
     if (nodes.length === 0) return {};
 
     const alpha = 1; // Use full strength for debug visualization
-    const forceNames = ['charge', 'collide', 'link', 'layout',
-        'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide', 'ghostGuide'];
+    const forceNames = ['charge', 'segCharge', 'collide', 'link', 'layout',
+        'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide',
+        'delLink', 'ghostGuide', 'centroidAnchor', 'spawnDamp'];
     const result = {};
 
     for (const name of forceNames) {

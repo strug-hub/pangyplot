@@ -27,9 +27,10 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     if (genePins.length === 0) return;
 
     const inDetail = state.detailPhase !== 'none';
-    const fontSize = 11;
-    const px = 5, py = 2;
-    const badgeH = fontSize + py * 2;  // 15px
+    const fontSize = inDetail ? 14 : 11;
+    const px = inDetail ? 6 : 5;
+    const py = inDetail ? 3 : 2;
+    const badgeH = fontSize + py * 2;
     const stemH = inDetail ? 0 : 16;   // no stem in detail mode
     const gap = 4;                      // space between bracket top and badge bottom
     const labelPad = 6;                 // vertical padding between stacked labels

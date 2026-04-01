@@ -7,10 +7,12 @@ import { scheduleHashUpdate } from '../../engines/navigation/hash-navigation.js'
 import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
 import { scheduleViewportPublish } from '../../ui/viewport-sync.js';
 import { pauseForInteraction, resumeAfterInteraction } from '../force-interaction-gate.js';
+import { isAnnotationBadgeAt } from '../annotation-label-drag-engine.js';
 
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
     canvas.addEventListener('mousedown', e => {
+        if (isAnnotationBadgeAt(e.clientX, e.clientY)) return;
         if (state.hoveredForceNode) return;
         if (state.hoveredChain && state.detailData) return; // handled by drag-engine
         if (e.shiftKey && state.detailData) return; // handled by multi-selection

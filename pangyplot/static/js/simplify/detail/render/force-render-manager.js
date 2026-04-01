@@ -203,6 +203,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     // Map D3 force names → display names + colors
     const forceMap = {
         charge:          { color: '#FF4444', label: 'charge' },
+        segCharge:       { color: '#FF8888', label: 'segCharge' },
         collide:         { color: '#AAAAAA', label: 'collide' },
         link:            { color: '#44AAFF', label: 'link' },
         layout:          { color: '#FFFF00', label: 'layout' },
@@ -211,59 +212,75 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         smoothing:       { color: '#FF6688', label: 'smooth' },
         balloon:         { color: '#FFD700', label: 'balloon' },
         parentSide:      { color: '#44FF44', label: 'parent' },
+        delLink:         { color: '#FF44FF', label: 'delLink' },
         ghostGuide:      { color: '#88FFFF', label: 'guide' },
+        centroidAnchor:  { color: '#44FFAA', label: 'anchor' },
+        spawnDamp:       { color: '#888888', label: 'spawn' },
     };
 
-    // Draw hidden gap segments as faint dashed lines (guide corridors)
+    // Draw per-pop guide ellipses (one per pop, not per merged gap)
     if (mode === 'all' || mode === 'guide') {
-        const dd = state.detailData;
-        if (dd) {
-            const gaps = [];
-            for (const chain of dd.chains) {
-                const chainGaps = getChainGaps(chain.id);
-                if (chainGaps.length === 0) continue;
-                const chainNodes = getPolychainNodesForChain(chain.id);
-                if (!chainNodes) continue;
-                for (const g of chainGaps) {
-                    const ln = chainNodes[g.leftNodeIdx];
-                    const rn = chainNodes[g.rightNodeIdx];
-                    if (ln && rn) {
-                        gaps.push({ x1: ln.x, y1: ln.y, x2: rn.x, y2: rn.y });
-                    }
-                }
-            }
-            if (gaps.length > 0) {
-                const SHORT_AXIS_RATIO = 0.15;
-                ctx.lineWidth = Math.max(1, 2 / state.zoom);
+        // Collect unique ellipses by interpolating guide t values along live chains
+        const seen = new Set();
+        const ellipses = [];
+        for (const n of segNodes) {
+            if (n.guideLeftT == null || n.guideRightT == null) continue;
+            const key = `${n.guideChainId}|${n.guideLeftT}|${n.guideRightT}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const pcN = getPolychainNodesForChain(n.guideChainId);
+            if (!pcN || pcN.length < 2) continue;
+            const pl = pcN.map(nd => [nd.x, nd.y]);
+            const cumLen = [0];
+            for (let i = 1; i < pl.length; i++)
+                cumLen.push(cumLen[i-1] + Math.hypot(pl[i][0]-pl[i-1][0], pl[i][1]-pl[i-1][1]));
+            const totalLen = cumLen[cumLen.length - 1];
+            if (totalLen === 0) continue;
+            const interp = (t) => {
+                const d = t * totalLen;
+                if (d <= 0) return pl[0];
+                if (d >= totalLen) return pl[pl.length - 1];
+                let lo = 0, hi = cumLen.length - 1;
+                while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (cumLen[mid] <= d) lo = mid; else hi = mid; }
+                const segL = cumLen[hi] - cumLen[lo];
+                const tt = segL > 0 ? (d - cumLen[lo]) / segL : 0;
+                return [pl[lo][0] + tt * (pl[hi][0] - pl[lo][0]), pl[lo][1] + tt * (pl[hi][1] - pl[lo][1])];
+            };
+            const [x1, y1] = interp(n.guideLeftT);
+            const [x2, y2] = interp(n.guideRightT);
+            ellipses.push({ x1, y1, x2, y2 });
+        }
+        if (ellipses.length > 0) {
+            const SHORT_AXIS_RATIO = 0.15;
+            ctx.lineWidth = Math.max(1, 2 / state.zoom);
 
-                for (const gap of gaps) {
-                    const dx = gap.x2 - gap.x1, dy = gap.y2 - gap.y1;
-                    const gapLen = Math.hypot(dx, dy);
-                    if (gapLen < 1) continue;
-                    const cx = (gap.x1 + gap.x2) / 2, cy = (gap.y1 + gap.y2) / 2;
-                    const angle = Math.atan2(dy, dx);
-                    const a = gapLen / 2 + gapLen * 0.15;
-                    const b = Math.max(gapLen * SHORT_AXIS_RATIO, 10);
+            for (const gap of ellipses) {
+                const dx = gap.x2 - gap.x1, dy = gap.y2 - gap.y1;
+                const gapLen = Math.hypot(dx, dy);
+                if (gapLen < 1) continue;
+                const cx = (gap.x1 + gap.x2) / 2, cy = (gap.y1 + gap.y2) / 2;
+                const angle = Math.atan2(dy, dx);
+                const a = gapLen / 2 + gapLen * 0.15;
+                const b = Math.max(gapLen * SHORT_AXIS_RATIO, 10);
 
-                    // Draw dashed chord line
-                    ctx.globalAlpha = 0.4 * opacity;
-                    ctx.strokeStyle = '#88FFFF';
-                    ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
-                    ctx.beginPath();
-                    ctx.moveTo(gap.x1, gap.y1);
-                    ctx.lineTo(gap.x2, gap.y2);
-                    ctx.stroke();
+                // Draw dashed chord line
+                ctx.globalAlpha = 0.4 * opacity;
+                ctx.strokeStyle = '#88FFFF';
+                ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
+                ctx.beginPath();
+                ctx.moveTo(gap.x1, gap.y1);
+                ctx.lineTo(gap.x2, gap.y2);
+                ctx.stroke();
 
-                    // Draw bounding ellipse
-                    ctx.globalAlpha = 0.2 * opacity;
-                    ctx.strokeStyle = '#88FFFF';
-                    ctx.setLineDash([]);
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy, a, b, angle, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
+                // Draw bounding ellipse
+                ctx.globalAlpha = 0.2 * opacity;
+                ctx.strokeStyle = '#88FFFF';
                 ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, a, b, angle, 0, Math.PI * 2);
+                ctx.stroke();
             }
+            ctx.setLineDash([]);
         }
     }
 

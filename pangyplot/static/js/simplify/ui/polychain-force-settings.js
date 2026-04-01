@@ -56,6 +56,11 @@ function advancedSliders() {
             min: 0, max: 10, step: 0.1, default: pcSettings.parentSide,
             onChange: (v) => { pcSettings.parentSide = v; applyPcSettings(); }
         },
+        {
+            label: "Guide Strength", icon: "compress",
+            min: 0, max: 0.1, step: 0.005, default: pcSettings.guideLevel,
+            onChange: (v) => { pcSettings.guideLevel = v; applyPcSettings(); }
+        },
     ];
 }
 

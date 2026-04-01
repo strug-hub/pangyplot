@@ -16,6 +16,7 @@ export function createCustomAnnotation(name, chainIds) {
         color: rgbStringToHex(stringToColor(name)),
         isVisible: true,
         chainIds: new Set(chainIds),
+        dragOffset: { x: 0, y: 0 },   // data-space offset from centroid
     };
     annotations.set(id, annotation);
     refreshTable();

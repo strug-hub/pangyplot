@@ -7,6 +7,7 @@ import { setupMultiSelection } from './selection/multi-selection-engine.js';
 import { setupKeyboardShortcuts } from './keyboard-engine.js';
 import { setupContextMenu } from './simplify-context-menu.js';
 import { setupDragEngine } from './drag/drag-engine.js';
+import { setupAnnotationLabelDrag } from './annotation-label-drag-engine.js';
 
 export function setupEngines() {
     const canvas = state.canvas;
@@ -18,6 +19,7 @@ export function setupEngines() {
 
     setupPanZoom(canvas);
     setupHover(canvas);
+    setupAnnotationLabelDrag(canvas);
     setupDragEngine(canvas);
     setupMultiSelection(canvas);
     setupKeyboardShortcuts(canvas);
