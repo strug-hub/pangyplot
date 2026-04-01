@@ -2,13 +2,13 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, spliceChainAtBubble, removeFullyPoppedChain } from '../engines/force-engine.js';
+import { spliceBubbleNodes, spliceChainAtBubble, findSplitIdx, removeFullyPoppedChain } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
-import { getPolychainNodesForChain, splitChainOnPop, getSegToPolychainRecord, removeChainEntirely } from './polychain/polychain-adapter.js';
+import { getPolychainNodesForChain, splitChainOnPop, getSegToPolychainRecord, removeChainEntirely, resamplePolychainLive } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore, getBubbleStore, splitBubbleStore } from './bubble-meta-cache.js';
 
 /**
@@ -177,7 +177,11 @@ export async function popBubbleCircle(hit) {
     const chr = state.chromosome;
     if (!chr) return false;
 
-    const pcNodes = getPolychainNodesForChain(chainId);
+    // Ensure the chain has enough polychain nodes for a clean split.
+    // This is unconditional — every split starts from a full node budget.
+    resamplePolychainLive(chainId);
+
+    let pcNodes = getPolychainNodesForChain(chainId);
     if (!pcNodes || pcNodes.length < 2) return false;
 
     const url = `/pop?id=${encodeURIComponent(bubbleId)}`
@@ -280,9 +284,15 @@ export async function popBubbleCircle(hit) {
         node.y = hit.y + (node.y - layoutCy) * squish;
     }
 
-    // Splice the chain at the bubble circle's rendered position (bridge links + child nodes)
+    // Compute split index and clamp so both sides get >= 2 polychain nodes.
+    // The resample above guarantees pcNodes.length >= 8, so clamping by at
+    // most 1 segment is geometrically negligible.
+    let splitIdx = findSplitIdx(pcNodes, hit.x, hit.y);
+    splitIdx = Math.max(1, Math.min(splitIdx, pcNodes.length - 3));
+
+    // Splice the chain at the clamped split point (bridge links + child nodes)
     const spliceResult = spliceChainAtBubble(
-        chainId, hit.x, hit.y, pcNodes, newChildNodes, newChildLinks,
+        chainId, splitIdx, pcNodes, newChildNodes, newChildLinks,
         apiData.source_segs || [], apiData.sink_segs || [],
         recordMap,
     );
@@ -314,7 +324,8 @@ export async function popBubbleCircle(hit) {
 
     recordPop('bubble-circle-pop', { id: bubbleId, chain: chainId });
 
-    // Check if either subchain is now fully popped → remove it
+    // Remove zero-bubble subchains — their polychain nodes are no longer needed
+    // and removeFullyPoppedChain rewires external links through the bridge map.
     let chainRemoval = null;
     if (splitResult) {
         for (const sub of [splitResult.leftChain, splitResult.rightChain]) {

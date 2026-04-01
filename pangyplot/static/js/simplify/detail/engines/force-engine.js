@@ -239,6 +239,54 @@ export function addPoppedNodes(nodes, links) {
     sim.alpha(1).restart();
 }
 
+/**
+ * Atomically replace a chain's polychain nodes and links in the force sim.
+ * Rewires any bridge/inter-chain links that referenced the old head or tail
+ * to the corresponding new head or tail.
+ */
+export function replacePolychainNodes(chainId, oldNodes, newNodes, newLinks) {
+    if (!sim) initForce();
+
+    const oldIids = new Set(oldNodes.map(n => n.iid));
+    const oldHead = oldNodes[0];
+    const oldTail = oldNodes[oldNodes.length - 1];
+    const newHead = newNodes[0];
+    const newTail = newNodes[newNodes.length - 1];
+
+    // Remove old polychain nodes, keep everything else
+    const keptNodes = getNodes().filter(n => !oldIids.has(n.iid));
+
+    // Remove old polychain links for this chain, rewire external links
+    const keptLinks = [];
+    for (const l of getLinks()) {
+        // Drop old polychain-internal links for this chain
+        if (l.isPolychainLink) {
+            const sIid = l.source.iid ?? l.source;
+            const tIid = l.target.iid ?? l.target;
+            if (oldIids.has(sIid) || oldIids.has(tIid)) continue;
+        }
+
+        // Rewire bridge/inter-chain links from old head/tail to new head/tail
+        const sObj = l.source;
+        const tObj = l.target;
+        if (sObj === oldHead) l.source = newHead;
+        else if (sObj === oldTail) l.source = newTail;
+        if (tObj === oldHead) l.target = newHead;
+        else if (tObj === oldTail) l.target = newTail;
+
+        keptLinks.push(l);
+    }
+
+    for (const n of newNodes) {
+        n.homeX = n.homeX ?? n.x;
+        n.homeY = n.homeY ?? n.y;
+    }
+
+    syncNodes([...keptNodes, ...newNodes]);
+    syncLinks([...keptLinks, ...newLinks]);
+    // No reheat — this is a structural reshape before the pop, not a pop itself
+}
+
 export function removePoppedNodes(chainId) {
     if (!sim) return;
 
@@ -590,14 +638,11 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
  * @param {Map} recordMap - id → NodeRecord from deserializeSubgraph
  * @returns {{ splitIdx, removedLink, bridgeLinks }} for undo, or null on failure
  */
-export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
-    if (!sim) initForce();
-    if (!pcNodes || pcNodes.length < 2) return null;
-
-    // Find the polychain segment nearest to the bubble circle's rendered position.
-    // The bubble was placed on the polychain by updateBubblePositions, so its (x,y)
-    // lies on or very near the polychain. Finding the closest segment gives us the
-    // correct split point regardless of coordinate system.
+/**
+ * Find the polychain segment index nearest to a point.
+ * Returns the index i such that segment pcNodes[i]→pcNodes[i+1] is closest.
+ */
+export function findSplitIdx(pcNodes, hitX, hitY) {
     let bestDist = Infinity;
     let splitIdx = 0;
     for (let i = 0; i < pcNodes.length - 1; i++) {
@@ -616,8 +661,12 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
             splitIdx = i;
         }
     }
-    // Clamp so we always have a node on each side
-    splitIdx = Math.min(splitIdx, pcNodes.length - 2);
+    return Math.min(splitIdx, pcNodes.length - 2);
+}
+
+export function spliceChainAtBubble(chainId, splitIdx, pcNodes, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
+    if (!sim) initForce();
+    if (!pcNodes || pcNodes.length < 2) return null;
 
     const leftNode = pcNodes[splitIdx];
     const rightNode = pcNodes[splitIdx + 1];
@@ -629,7 +678,7 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
     for (const l of links) {
         const sIid = l.source.iid ?? l.source;
         const tIid = l.target.iid ?? l.target;
-        if (!removedLink && l.isPolychainLink && l.chainId === chainId &&
+        if (!removedLink && l.isPolychainLink &&
             ((sIid === leftNode.iid && tIid === rightNode.iid) ||
              (sIid === rightNode.iid && tIid === leftNode.iid))) {
             removedLink = l;
@@ -684,15 +733,20 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
     let sourceChildNode = null;
     let sinkChildNode = null;
 
+    // Search both new childNodes AND existing sim nodes — boundary segments
+    // shared with a prior pop (consecutive bubbles share boundaries) will
+    // have been deduplicated out of childNodes but are still in the sim.
+    const allSearchNodes = [...childNodes, ...getNodes()];
+
     for (const [id, record] of recordMap) {
         const plainId = id.startsWith('s') ? id.slice(1) : id;
         if (sourceSet.has(plainId) && !sourceChildNode) {
-            const kinks = childNodes.filter(n => n.id === id)
+            const kinks = allSearchNodes.filter(n => n.id === id)
                 .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
             if (kinks.length > 0) sourceChildNode = _pickOutsideKink(kinks, id, insideFacingKink, record, leftNode);
         }
         if (sinkSet.has(plainId) && !sinkChildNode) {
-            const kinks = childNodes.filter(n => n.id === id)
+            const kinks = allSearchNodes.filter(n => n.id === id)
                 .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
             if (kinks.length > 0) sinkChildNode = _pickOutsideKink(kinks, id, insideFacingKink, record, rightNode);
         }
@@ -703,7 +757,7 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
     if (!sourceChildNode || !sinkChildNode) {
         for (const [id, record] of recordMap) {
             if (record.type !== 'bubble') continue;
-            const kinks = childNodes.filter(n => n.id === id)
+            const kinks = allSearchNodes.filter(n => n.id === id)
                 .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
             if (kinks.length === 0) continue;
             // Check if this bubble's record owns any source/sink segs

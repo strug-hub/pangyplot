@@ -8,7 +8,7 @@
 
 import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import { getForceNodes, getForceLinks } from '../force-data.js';
-import { addPoppedNodes, removeNodesByChainIds } from '../../engines/force-engine.js';
+import { addPoppedNodes, removeNodesByChainIds, replacePolychainNodes } from '../../engines/force-engine.js';
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { extractSubPolyline } from './polychain-gene-map.js';
@@ -95,6 +95,94 @@ function resamplePolyline(chain) {
     return samples;
 }
 
+// Minimum polychain nodes a chain must have before a pop split.
+// Ensures both sides of any split get >= 2 nodes (with edge clamping).
+const MIN_PRESPLIT_NODES = 8;
+
+/**
+ * Resample a chain's polychain nodes to targetCount by interpolating
+ * along the current live positions.  Used before every pop to ensure
+ * the chain has enough nodes for a clean split.
+ *
+ * No-op if the chain already has >= targetCount nodes.
+ * Replaces old nodes/links in the force sim, rewires external links,
+ * and updates chainPolychainNodes + segToPolychain.
+ */
+export function resamplePolychainLive(chainId, targetCount = MIN_PRESPLIT_NODES) {
+    const oldNodes = chainPolychainNodes.get(chainId);
+    if (!oldNodes || oldNodes.length >= targetCount || oldNodes.length < 2) return;
+
+    // Build polylines from live and home positions
+    const livePl = oldNodes.map(n => [n.x, n.y]);
+    const homePl = oldNodes.map(n => [n.homeX, n.homeY]);
+    const cumLive = cumulativeLengths(livePl);
+    const cumHome = cumulativeLengths(homePl);
+    const totalLive = cumLive[cumLive.length - 1];
+    const totalHome = cumHome[cumHome.length - 1];
+
+    if (totalLive === 0 && totalHome === 0) return;
+
+    const template = oldNodes[0];
+    const newNodes = [];
+    const newLinks = [];
+
+    for (let i = 0; i < targetCount; i++) {
+        const t = i / (targetCount - 1);
+        const [lx, ly] = totalLive > 0
+            ? interpolateAtDist(livePl, cumLive, t * totalLive)
+            : [livePl[0][0], livePl[0][1]];
+        const [hx, hy] = totalHome > 0
+            ? interpolateAtDist(homePl, cumHome, t * totalHome)
+            : [homePl[0][0], homePl[0][1]];
+        newNodes.push({
+            id: `pn_${chainId}_r${i}`,
+            iid: `pn_${chainId}_r${i}`,
+            x: lx, y: ly,
+            homeX: hx, homeY: hy,
+            chainId,
+            isPolychainNode: true,
+            nodeIndex: i,
+            chainNodeCount: targetCount,
+            loopFactor: template.loopFactor || 0,
+            radius: 0,
+            width: 0,
+        });
+    }
+
+    // Sequential polychain links
+    const arcLen = cumulativeLengths(newNodes.map(n => [n.x, n.y]));
+    const totalArc = arcLen[arcLen.length - 1];
+    const uniformLen = totalArc / (targetCount - 1) || 5;
+    for (let i = 0; i < targetCount - 1; i++) {
+        newLinks.push({
+            source: newNodes[i],
+            target: newNodes[i + 1],
+            isPolychainLink: true,
+            isKinkLink: false,
+            chainId,
+            length: uniformLen,
+            loopFactor: template.loopFactor || 0,
+            chainArcLen: totalArc,
+        });
+    }
+
+    // Update segToPolychain: old head/tail → new head/tail
+    const oldHead = oldNodes[0];
+    const oldTail = oldNodes[oldNodes.length - 1];
+    const newHead = newNodes[0];
+    const newTail = newNodes[newNodes.length - 1];
+    for (const [key, pn] of segToPolychain) {
+        if (pn === oldHead) segToPolychain.set(key, newHead);
+        else if (pn === oldTail) segToPolychain.set(key, newTail);
+    }
+
+    // Swap in force sim (rewires bridge/inter-chain links to new head/tail)
+    replacePolychainNodes(chainId, oldNodes, newNodes, newLinks);
+
+    // Update our map
+    chainPolychainNodes.set(chainId, newNodes);
+}
+
 /**
  * Get the live [x,y] positions of a chain's polychain nodes.
  * Used by renderers to draw flexing polylines.
@@ -174,7 +262,9 @@ export function splitChainOnPop(chainId, splitIdx, popBubbleId, poppedSourceSegs
     const rightId = `${rootId}:${counter++}`;
     subchainCounters.set(rootId, counter);
 
-    // Split polychain nodes — just reassign chainIds (nodes are already in the force sim)
+    // Split polychain nodes — just reassign chainIds (nodes are already in the force sim).
+    // Pre-split resampling (in popBubbleCircle) + edge clamping guarantees both
+    // sides always get >= 2 nodes, so no synthetic nodes are needed.
     const leftNodes = nodes.slice(0, splitIdx + 1);
     const rightNodes = nodes.slice(splitIdx + 1);
     for (const n of leftNodes) n.chainId = leftId;
@@ -863,3 +953,5 @@ function makeInterChainLink(source, target, sourceSegId, targetSegId) {
         targetSegId: targetSegId || null,
     };
 }
+
+
