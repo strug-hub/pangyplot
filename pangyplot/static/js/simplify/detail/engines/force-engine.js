@@ -647,12 +647,39 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
 
     // Find boundary child nodes for bridge links.
     // The bridge connects a polychain node (outside the bubble) to the
-    // outside-facing kink of the boundary segment.  Which kink that is
-    // depends on the segment's strand: kink #0 = HEAD at (x1,y1),
-    // kink #N-1 = TAIL at (x2,y2).  Pick the kink whose layout coords
-    // are closer to the polychain node (geometric proximity = outside end).
+    // outside-facing kink of the boundary segment.  Which kink faces
+    // outside depends on the segment's strand.  The core viewer handles
+    // this via fromStrand/toStrand in createLinkElements; the childLinks
+    // already have strand-resolved endpoints, so we inspect them to find
+    // which kink of each boundary record faces inside the bubble, and
+    // pick the opposite end for the bridge.
     const sourceSet = new Set(sourceSegs.map(String));
     const sinkSet = new Set(sinkSegs.map(String));
+
+    // Build map: recordId → kink index that faces INSIDE the bubble.
+    // Inspect inter-record childLinks whose source or target is a boundary seg.
+    const insideFacingKink = new Map();
+    for (const link of childLinks) {
+        if (link.isKinkLink) continue;
+        const sId = link.sourceId;
+        const tId = link.targetId;
+        const sIid = link.sourceIid || (typeof link.source === 'string' ? link.source : null);
+        const tIid = link.targetIid || (typeof link.target === 'string' ? link.target : null);
+        if (sId && !insideFacingKink.has(sId)) {
+            const plain = sId.startsWith('s') ? sId.slice(1) : sId.startsWith('b') ? sId.slice(1) : sId;
+            if (sourceSet.has(plain) || sinkSet.has(plain)) {
+                const idx = sIid ? (parseInt(sIid.split('#')[1]) || 0) : 0;
+                insideFacingKink.set(sId, idx);
+            }
+        }
+        if (tId && !insideFacingKink.has(tId)) {
+            const plain = tId.startsWith('s') ? tId.slice(1) : tId.startsWith('b') ? tId.slice(1) : tId;
+            if (sourceSet.has(plain) || sinkSet.has(plain)) {
+                const idx = tIid ? (parseInt(tIid.split('#')[1]) || 0) : 0;
+                insideFacingKink.set(tId, idx);
+            }
+        }
+    }
 
     let sourceChildNode = null;
     let sinkChildNode = null;
@@ -662,12 +689,12 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
         if (sourceSet.has(plainId) && !sourceChildNode) {
             const kinks = childNodes.filter(n => n.id === id)
                 .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
-            if (kinks.length > 0) sourceChildNode = _pickOutsideKink(kinks, record, leftNode);
+            if (kinks.length > 0) sourceChildNode = _pickOutsideKink(kinks, id, insideFacingKink, record, leftNode);
         }
         if (sinkSet.has(plainId) && !sinkChildNode) {
             const kinks = childNodes.filter(n => n.id === id)
                 .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
-            if (kinks.length > 0) sinkChildNode = _pickOutsideKink(kinks, record, rightNode);
+            if (kinks.length > 0) sinkChildNode = _pickOutsideKink(kinks, id, insideFacingKink, record, rightNode);
         }
     }
 
@@ -687,10 +714,10 @@ export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, ch
                 }
             }
             if (!sourceChildNode && ownedSegs.some(s => sourceSet.has(s))) {
-                sourceChildNode = _pickOutsideKink(kinks, record, leftNode);
+                sourceChildNode = _pickOutsideKink(kinks, id, insideFacingKink, record, leftNode);
             }
             if (!sinkChildNode && ownedSegs.some(s => sinkSet.has(s))) {
-                sinkChildNode = _pickOutsideKink(kinks, record, rightNode);
+                sinkChildNode = _pickOutsideKink(kinks, id, insideFacingKink, record, rightNode);
             }
         }
     }
@@ -761,19 +788,33 @@ export function unspliceChainAtBubble(childIids, removedLink, bridgeLinks) {
 
 /**
  * Pick the outside-facing kink of a boundary segment for a bridge link.
- * Kink #0 (HEAD) is at the record's (x1,y1); kink #N-1 (TAIL) is at (x2,y2).
- * The outside-facing end is the one whose layout coords are closer to the
- * polychain node on the outside.  This handles both + and − strand segments
- * without needing explicit strand info.
+ *
+ * Primary: use the insideFacingKink map (derived from strand-resolved
+ * childLinks) — if the inside-facing kink is #0, the outside is #N-1,
+ * and vice versa.
+ *
+ * Fallback: geometric proximity — the kink whose record layout coords
+ * (x1,y1 = HEAD, x2,y2 = TAIL) are closer to the polychain node.
  */
-function _pickOutsideKink(kinks, record, polychainNode) {
+function _pickOutsideKink(kinks, recordId, insideFacingKink, record, polychainNode) {
     if (kinks.length <= 1) return kinks[0];
-    const c = record.coords;
-    if (!c) return kinks[0]; // no layout coords, fall back to head
-    const px = polychainNode.homeX, py = polychainNode.homeY;
-    const dHead = Math.hypot(px - c.x1, py - c.y1);
-    const dTail = Math.hypot(px - c.x2, py - c.y2);
-    return dHead <= dTail ? kinks[0] : kinks[kinks.length - 1];
+
+    // Primary: strand-based (from childLinks endpoint resolution)
+    const insideIdx = insideFacingKink.get(recordId);
+    if (insideIdx !== undefined) {
+        return insideIdx === 0 ? kinks[kinks.length - 1] : kinks[0];
+    }
+
+    // Fallback: geometric proximity to polychain node
+    const c = record && record.coords;
+    if (c) {
+        const px = polychainNode.homeX, py = polychainNode.homeY;
+        const dHead = Math.hypot(px - c.x1, py - c.y1);
+        const dTail = Math.hypot(px - c.x2, py - c.y2);
+        return dHead <= dTail ? kinks[0] : kinks[kinks.length - 1];
+    }
+
+    return kinks[0];
 }
 
 /**
