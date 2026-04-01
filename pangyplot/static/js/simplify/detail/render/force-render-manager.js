@@ -5,7 +5,7 @@ import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
-import { pcSettings, computeForceDeltas } from '../engines/force-engine.js';
+import { pcSettings, computeForceDeltas, linkStrength, linkDistance } from '../engines/force-engine.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
@@ -266,18 +266,18 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     // Label in screen space — always show all types, arrow on active
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.font = '14px monospace';
+    ctx.font = '16px monospace';
     ctx.globalAlpha = 0.9;
-    const lx = ctx.canvas.width / 2 - 80;
+    const lx = ctx.canvas.width / 2 - 90;
     const entries = Object.entries(forceMap);
-    let y = ctx.canvas.height - 10;
+    let y = ctx.canvas.height - 12;
     // "all" is a virtual mode not in forceMap
     const allModes = [['all', { color: '#FFFFFF', label: 'net' }], ...entries];
     for (const [key, info] of [...allModes].reverse()) {
         const active = key === 'all' ? mode === 'all' : info.label === mode;
         ctx.fillStyle = active ? info.color : `${info.color}66`;
         ctx.fillText(`${active ? '\u25B6 ' : '  '}${info.label}`, lx, y);
-        y -= 16;
+        y -= 19;
     }
     ctx.fillStyle = '#888';
     ctx.fillText('[U] cycle  [Y] toggle', lx, y);
@@ -370,6 +370,28 @@ function drawForceVectors(ctx, nodes, links, opacity) {
             ctx.stroke();
         }
         ctx.globalAlpha = 1;
+    }
+
+    // Annotate link strength + distance
+    if (mode === 'link') {
+        const fontSize = Math.max(3, 8 / state.zoom);
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.globalAlpha = 0.9 * opacity;
+        ctx.fillStyle = '#AAAAAA';
+        for (const l of links) {
+            const s = l.source, t = l.target;
+            if (s.x == null || t.x == null) continue;
+            const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+            const str = linkStrength(l);
+            const dist = linkDistance(l);
+            const sLabel = str < 0.01 ? str.toExponential(0) : str.toPrecision(2);
+            const dLabel = dist < 1 ? dist.toPrecision(2) : Math.round(dist);
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(`s:${sLabel}`, mx, my);
+            ctx.textBaseline = 'top';
+            ctx.fillText(`d:${dLabel}`, mx, my);
+        }
     }
 
     // Draw cached parentPerps + tangent lines on child chain nodes
