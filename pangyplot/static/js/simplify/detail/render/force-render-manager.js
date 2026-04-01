@@ -5,7 +5,7 @@ import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
-import { pcSettings, computeForceDeltas, linkStrength, linkDistance, chargeMaxDist } from '../engines/force-engine.js';
+import { pcSettings, computeForceDeltas, linkStrength, linkDistance, chargeMaxDist, chargeStr } from '../engines/force-engine.js';
 import { getChainGaps, getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
@@ -212,10 +212,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         smoothing:       { color: '#FF6688', label: 'smooth' },
         balloon:         { color: '#FFD700', label: 'balloon' },
         parentSide:      { color: '#44FF44', label: 'parent' },
-        delLink:         { color: '#FF44FF', label: 'delLink' },
         ghostGuide:      { color: '#88FFFF', label: 'guide' },
-        centroidAnchor:  { color: '#44FFAA', label: 'anchor' },
-        spawnDamp:       { color: '#888888', label: 'spawn' },
     };
 
     // Draw full chain polylines as dotted lines (including hidden gap segments)

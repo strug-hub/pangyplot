@@ -60,6 +60,9 @@ const LINK_SOFTEN_MIDPOINT = 100000;
 
 export function linkStrength(d) {
     if (d.isPolychainLink || d.isKinkLink) {
+        // Anchor links: zero strength — guide force positions anchors
+        const s = d.source, t = d.target;
+        if ((s && s.isAnchor) || (t && t.isAnchor)) return 0.5;
         const base = linkStrengthLevels[pcSettings.linkStrengthLevel] ?? 0.1;
         const arc = d.chainArcLen || 0;
         return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
@@ -83,8 +86,9 @@ function chargeStrength(d) {
  * the two groups don't interact with each other.
  */
 function isolatedCharge(filterFn, strengthFn, maxDist) {
+    // Strength returns 0 for non-group nodes so they don't act as charge sources
     const inner = d3.forceManyBody()
-        .strength(strengthFn)
+        .strength(d => filterFn(d) ? strengthFn() : 0)
         .distanceMax(maxDist);
     let allNodes = [];
     let targetNodes = [];
@@ -138,8 +142,16 @@ function spawnDampingForce() {
     return force;
 }
 
+// --- Exported force parameter functions (single source of truth for force + debug UI) ---
+
 export function chargeMaxDist(d) {
-    return pcSettings.chargeMaxDist;
+    if (d.isPolychainNode) return 400;
+    return 400;  // popped segments: same range as polychain
+}
+
+export function chargeStr(d) {
+    if (d.isPolychainNode) return pcSettings.charge;
+    return pcSettings.charge * 0.3;  // popped segments: 30%
 }
 
 function collideRadius(d) {
@@ -162,13 +174,13 @@ export function initForce() {
             .distance(linkDistance)
             .strength(linkStrength))
         .force('charge', isolatedCharge(
-            n => n.isPolychainNode,  // includes ghost spine nodes (isPolychainNode: true)
-            () => pcSettings.charge,
-            400))
+            n => n.isPolychainNode,
+            () => chargeStr({ isPolychainNode: true }),
+            chargeMaxDist({ isPolychainNode: true })))
         .force('segCharge', isolatedCharge(
             n => !n.isPolychainNode && !n.isGhostSpine && !n.isAnchor && n.chainId && n.chainId !== '__junction__',
-            () => pcSettings.charge * 0.3,
-            100))
+            () => chargeStr({ isPolychainNode: false }),
+            chargeMaxDist({ isPolychainNode: false })))
         // .force('collide', d3.forceCollide()
         //     .radius(collideRadius)
         //     .strength(defaults.COLLISION_STRENGTH))
@@ -1033,7 +1045,8 @@ export function registerCustomForce(name, forceFn) {
 export function applyPcSettings() {
     if (!sim) return;
     const charge = sim.force('charge');
-    if (charge) charge.strength(chargeStrength).distanceMax(chargeMaxDist);
+    if (charge) charge.strength(() => chargeStr({ isPolychainNode: true }))
+        .distanceMax(chargeMaxDist({ isPolychainNode: true }));
     const collide = sim.force('collide');
     if (collide) collide.radius(collideRadius);
     const link = sim.force('link');
