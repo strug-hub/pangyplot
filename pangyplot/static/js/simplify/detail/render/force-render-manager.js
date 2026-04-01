@@ -5,7 +5,7 @@ import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
-import { pcSettings, computeForceDeltas, linkStrength, linkDistance } from '../engines/force-engine.js';
+import { pcSettings, computeForceDeltas, linkStrength, linkDistance, chargeMaxDist } from '../engines/force-engine.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
@@ -213,11 +213,13 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     // Compute real force deltas on demand (runs each force once, restores vx/vy)
     const deltas = computeForceDeltas();
 
-    // Draw chain centroids as triangles
+    // Draw chain centroids as triangles (group by root chain ID so split
+    // subchains share one centroid, matching the centroid repulsion force)
     const chains = new Map();
     for (const n of pcNodes) {
-        let g = chains.get(n.chainId);
-        if (!g) { g = { cx: 0, cy: 0, count: 0 }; chains.set(n.chainId, g); }
+        const root = n.chainId.split(':')[0];
+        let g = chains.get(root);
+        if (!g) { g = { cx: 0, cy: 0, count: 0 }; chains.set(root, g); }
         g.cx += n.x; g.cy += n.y; g.count++;
     }
     const triSize = Math.max(3, 8 / state.zoom);
@@ -364,7 +366,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ctx.strokeStyle = '#FF4444';
         ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
         for (const n of allVisNodes) {
-            const r = n.isPolychainNode ? pcSettings.chargeMaxDist : 200;
+            const r = chargeMaxDist(n);
             ctx.beginPath();
             ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
             ctx.stroke();

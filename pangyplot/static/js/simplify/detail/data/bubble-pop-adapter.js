@@ -271,17 +271,23 @@ export async function popBubbleCircle(hit) {
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
 
-    // Child nodes have x,y from ODGI layout (absolute). Translate so the centroid
-    // is at the bubble circle's sim position, then squish toward center so they
-    // start in a tight cluster and expand out via the spawn damping force.
+    // Save ODGI layout positions as homeX/homeY before squishing —
+    // the layout force pulls nodes toward these true layout coordinates.
+    for (const node of newChildNodes) {
+        node.homeX = node.x;
+        node.homeY = node.y;
+    }
+
+    // Squish x,y so nodes start as a tight cluster at the bubble circle's
+    // position and expand out via the spawn damping force.
     let layoutCx = 0, layoutCy = 0;
-    for (const node of newChildNodes) { layoutCx += node.x; layoutCy += node.y; }
+    for (const node of newChildNodes) { layoutCx += node.homeX; layoutCy += node.homeY; }
     layoutCx /= newChildNodes.length;
     layoutCy /= newChildNodes.length;
     const squish = 0.15;  // start at 15% of true spread from center
     for (const node of newChildNodes) {
-        node.x = hit.x + (node.x - layoutCx) * squish;
-        node.y = hit.y + (node.y - layoutCy) * squish;
+        node.x = hit.x + (node.homeX - layoutCx) * squish;
+        node.y = hit.y + (node.homeY - layoutCy) * squish;
     }
 
     // Compute split index and clamp so both sides get >= 2 polychain nodes.

@@ -14,25 +14,28 @@ export function centroidRepulsion() {
         const str = (loopLevels[pcSettings.centroidLevel] ?? 0) * alpha;
         if (str === 0) return;
 
-        // Group polychain nodes by chain and compute centroids
+        // Group all chain-associated nodes by ROOT chain ID and compute centroids.
+        // Subchains (c123:0, c123:2) and popped child nodes (tagged c123 or c123:1)
+        // all share the same root "c123", so they expand together.
         const chains = new Map();
         for (const n of nodes) {
-            if (!n.isPolychainNode) continue;
-            let g = chains.get(n.chainId);
-            if (!g) { g = { nodes: [], cx: 0, cy: 0 }; chains.set(n.chainId, g); }
+            if (!n.chainId || n.chainId === '__junction__') continue;
+            const root = n.chainId.split(':')[0];
+            let g = chains.get(root);
+            if (!g) { g = { nodes: [], cx: 0, cy: 0, loopFactor: 0 }; chains.set(root, g); }
             g.nodes.push(n);
             g.cx += n.x;
             g.cy += n.y;
+            if (n.isPolychainNode && n.loopFactor) g.loopFactor = n.loopFactor;
         }
 
         for (const g of chains.values()) {
             const len = g.nodes.length;
             if (len < 3) continue;
-            const lf = g.nodes[0].loopFactor || 0;
-            if (lf === 0) continue;
+            if (g.loopFactor === 0) continue;
             g.cx /= len;
             g.cy /= len;
-            const s = str * lf;
+            const s = str * g.loopFactor;
 
             for (const n of g.nodes) {
                 const dx = n.x - g.cx;

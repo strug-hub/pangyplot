@@ -75,6 +75,41 @@ function chargeStrength(d) {
 }
 
 /**
+ * Create a pair of isolated many-body forces: one for polychain nodes,
+ * one for popped segment nodes.  Each group repels within itself but
+ * the two groups don't interact with each other.
+ */
+function isolatedCharge(filterFn, strengthFn, maxDist) {
+    const inner = d3.forceManyBody()
+        .strength(strengthFn)
+        .distanceMax(maxDist);
+    let allNodes = [];
+    let targetNodes = [];
+
+    function force(alpha) {
+        // Save velocities for nodes NOT in this group
+        const saved = [];
+        for (const n of allNodes) {
+            if (!filterFn(n)) saved.push({ n, vx: n.vx, vy: n.vy });
+        }
+        inner(alpha);
+        // Restore — force never happened for non-group nodes
+        for (const { n, vx, vy } of saved) {
+            n.vx = vx;
+            n.vy = vy;
+        }
+    }
+
+    force.initialize = function(nodes) {
+        allNodes = nodes;
+        inner.initialize(nodes);
+    };
+    force.strength = function(_) { return _ == null ? inner.strength() : (inner.strength(_), force); };
+    force.distanceMax = function(_) { return _ == null ? inner.distanceMax() : (inner.distanceMax(_), force); };
+    return force;
+}
+
+/**
  * Custom force that dampens velocity on recently spawned nodes.
  * D3's forceManyBody caches strength per node, so we can't ramp charge
  * via the accessor. Instead, we counteract the charge impulse by scaling
@@ -100,8 +135,8 @@ function spawnDampingForce() {
     return force;
 }
 
-function chargeMaxDist(d) {
-    return d.isPolychainNode ? pcSettings.chargeMaxDist : 200;
+export function chargeMaxDist(d) {
+    return pcSettings.chargeMaxDist;
 }
 
 function collideRadius(d) {
@@ -123,9 +158,14 @@ export function initForce() {
         .force('link', d3.forceLink([]).id(d => d.iid)
             .distance(linkDistance)
             .strength(linkStrength))
-        .force('charge', d3.forceManyBody()
-            .strength(chargeStrength)
-            .distanceMax(400))
+        .force('charge', isolatedCharge(
+            n => n.isPolychainNode,
+            () => pcSettings.charge,
+            400))
+        .force('segCharge', isolatedCharge(
+            n => !n.isPolychainNode && n.chainId && n.chainId !== '__junction__',
+            () => pcSettings.charge * 0.3,
+            60))
         // .force('collide', d3.forceCollide()
         //     .radius(collideRadius)
         //     .strength(defaults.COLLISION_STRENGTH))
@@ -687,10 +727,11 @@ export function spliceChainAtBubble(chainId, splitIdx, pcNodes, childNodes, chil
         }
     }
 
-    // Position child nodes near the split point
+    // Mark child nodes for spawn damping; preserve homeX/homeY if already
+    // set to ODGI layout positions by the caller (popBubbleCircle).
     for (const n of childNodes) {
-        n.homeX = n.fx ?? n.x;
-        n.homeY = n.fy ?? n.y;
+        if (n.homeX == null) n.homeX = n.fx ?? n.x;
+        if (n.homeY == null) n.homeY = n.fy ?? n.y;
         n._spawnTick = _tickCount;
     }
 
