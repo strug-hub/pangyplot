@@ -1,21 +1,12 @@
-// Guide force: constrains popped segment nodes within a bounding ellipse
-// around their pop's corridor on the parent chain.
-//
-// Each pop's children store neighbor bubble t values (guideLeftT, guideRightT).
-// Every tick, the ellipse endpoints are interpolated along the live chain
-// polyline, so the corridor tracks the chain's shape as it moves.
-// No force inside the ellipse — nodes self-organize freely.
-// Only pushes inward when a node drifts outside the boundary.
+// Guide force: gently pulls each popped node toward the nearest point
+// on its parent chain's polyline. A soft shape hint that link forces
+// can easily overcome.
 
-import { getPolychainNodesForChain, cumulativeLengths, interpolateAtDist } from '../../data/polychain/polychain-adapter.js';
+import { getPolychainNodesForChain } from '../../data/polychain/polychain-adapter.js';
 import { pcSettings } from './pc-settings.js';
-
-const SHORT_AXIS_RATIO = 0.15;
 
 export function ghostGuideForce() {
     let nodes = [];
-
-    // Cache chain polylines per tick
     let _chainCache = new Map();
 
     function getChainPl(chainId) {
@@ -23,10 +14,7 @@ export function ghostGuideForce() {
         if (cached) return cached;
         const pcNodes = getPolychainNodesForChain(chainId);
         if (!pcNodes || pcNodes.length < 2) return null;
-        const pl = pcNodes.map(n => [n.x, n.y]);
-        const cumLen = cumulativeLengths(pl);
-        const totalLen = cumLen[cumLen.length - 1];
-        cached = { pl, cumLen, totalLen };
+        cached = pcNodes.map(n => [n.x, n.y]);
         _chainCache.set(chainId, cached);
         return cached;
     }
@@ -39,39 +27,35 @@ export function ghostGuideForce() {
 
         for (const node of nodes) {
             if (node.isPolychainNode) continue;
-            if (node.guideLeftT == null || node.guideRightT == null) continue;
+            const chainId = node.ghostRootId;
+            if (!chainId) continue;
 
-            const chain = getChainPl(node.guideChainId);
-            if (!chain || chain.totalLen === 0) continue;
+            const pl = getChainPl(chainId);
+            if (!pl) continue;
 
-            // Interpolate ellipse endpoints along the live chain
-            const [ax, ay] = interpolateAtDist(chain.pl, chain.cumLen, node.guideLeftT * chain.totalLen);
-            const [bx, by] = interpolateAtDist(chain.pl, chain.cumLen, node.guideRightT * chain.totalLen);
+            // Project node onto nearest point on chain polyline
+            let bestDist = Infinity;
+            let bestX = 0, bestY = 0;
+            for (let i = 0; i < pl.length - 1; i++) {
+                const ax = pl[i][0], ay = pl[i][1];
+                const bx = pl[i+1][0], by = pl[i+1][1];
+                const dx = bx - ax, dy = by - ay;
+                const lenSq = dx * dx + dy * dy;
+                let t = 0;
+                if (lenSq > 0) {
+                    t = Math.max(0, Math.min(1, ((node.x - ax) * dx + (node.y - ay) * dy) / lenSq));
+                }
+                const px = ax + t * dx, py = ay + t * dy;
+                const d = Math.hypot(node.x - px, node.y - py);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestX = px;
+                    bestY = py;
+                }
+            }
 
-            const dx = bx - ax, dy = by - ay;
-            const gapLen = Math.hypot(dx, dy);
-            if (gapLen < 1) continue;
-
-            const cx = (ax + bx) / 2, cy = (ay + by) / 2;
-            const ux = dx / gapLen, uy = dy / gapLen;
-            const vx = -uy, vy = ux;
-            const a = gapLen / 2 + gapLen * 0.15;
-            const b = Math.max(gapLen * SHORT_AXIS_RATIO, 10);
-
-            const relX = node.x - cx, relY = node.y - cy;
-            const u = relX * ux + relY * uy;
-            const v = relX * vx + relY * vy;
-
-            const eu = u / a, ev = v / b;
-            const dist2 = eu * eu + ev * ev;
-
-            if (dist2 <= 1) continue;
-
-            const overshoot = Math.sqrt(dist2) - 1;
-            const strength = k * Math.min(overshoot * 3, 1);
-
-            node.vx -= relX * strength;
-            node.vy -= relY * strength;
+            node.vx += (bestX - node.x) * k;
+            node.vy += (bestY - node.y) * k;
         }
     }
 

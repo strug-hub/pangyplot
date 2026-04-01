@@ -8,13 +8,15 @@ import { getAnnotationLabelBadges } from '../detail/render/polychain/polychain-r
 
 let dragging = null;   // { ann, startMouseX, startMouseY, startOffsetX, startOffsetY }
 
-export function isAnnotationDragging() { return dragging !== null; }
 export function isAnnotationBadgeAt(screenX, screenY) { return hitTestBadge(screenX, screenY) !== null; }
 
-function hitTestBadge(screenX, screenY) {
+function hitTestBadge(clientX, clientY) {
+    const rect = state.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     for (const badge of getAnnotationLabelBadges()) {
-        if (screenX >= badge.left && screenX <= badge.left + badge.width &&
-            screenY >= badge.top  && screenY <= badge.top + badge.height) {
+        if (x >= badge.left && x <= badge.left + badge.width &&
+            y >= badge.top  && y <= badge.top + badge.height) {
             return badge.ann;
         }
     }

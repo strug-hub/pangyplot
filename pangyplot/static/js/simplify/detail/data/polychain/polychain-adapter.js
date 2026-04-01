@@ -311,29 +311,6 @@ export function computeGhostT(node, ghostNodes) {
     return bestArcDist / totalLen;
 }
 
-/**
- * Assign ghostT to all polychain nodes in a subchain, and ghostTStart/ghostTEnd
- * range to popped child nodes.
- */
-export function assignGhostTValues(rootId, subchainNodes, childNodes, leftTailGhostT, rightHeadGhostT) {
-    const ghostNodes = getGhostSpine(rootId);
-    if (!ghostNodes) return;
-
-    // Polychain subchain nodes: project each onto ghost
-    for (const n of subchainNodes) {
-        n.ghostT = computeGhostT(n, ghostNodes);
-        n.ghostRootId = rootId;
-    }
-
-    // Popped child nodes: get the range between the two split boundaries
-    const tStart = Math.min(leftTailGhostT, rightHeadGhostT);
-    const tEnd = Math.max(leftTailGhostT, rightHeadGhostT);
-    for (const n of childNodes) {
-        n.ghostTStart = tStart;
-        n.ghostTEnd = tEnd;
-        n.ghostRootId = rootId;
-    }
-}
 
 /**
  * Get the live [x,y] positions of a chain's polychain nodes.

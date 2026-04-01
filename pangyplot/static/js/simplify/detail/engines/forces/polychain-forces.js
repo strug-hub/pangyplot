@@ -14,14 +14,12 @@ export function centroidRepulsion() {
         const str = (loopLevels[pcSettings.centroidLevel] ?? 0) * alpha;
         if (str === 0) return;
 
-        // Group by ROOT chain ID. Only ghost spine nodes and non-split original
-        // chains participate — visible subchains (with ghostT) are guided by the
-        // ghost via the guide force instead.
+        // Group by ROOT chain ID. Only polychain nodes participate —
+        // popped content is guided by the chain projection force instead.
         const chains = new Map();
         for (const n of nodes) {
             if (!n.chainId || n.chainId === '__junction__') continue;
-            if (n.ghostT != null && !n.isGhostSpine) continue; // skip guided subchain nodes
-            if (n.ghostTStart != null) continue; // skip guided segment nodes
+            if (!n.isPolychainNode) continue; // only polychain nodes shape the macro structure
             const root = n.chainId.split(':')[0];
             let g = chains.get(root);
             if (!g) { g = { nodes: [], cx: 0, cy: 0, loopFactor: 0 }; chains.set(root, g); }
@@ -70,7 +68,6 @@ export function loopClosureForce() {
         const chains = new Map();
         for (const n of nodes) {
             if (!n.isPolychainNode) continue;
-            if (n.ghostT != null && !n.isGhostSpine) continue; // ghost handles loop closure
             let g = chains.get(n.chainId);
             if (!g) { g = []; chains.set(n.chainId, g); }
             g.push(n);
@@ -266,7 +263,6 @@ export function balloonInflation() {
         const chains = new Map();
         for (const n of nodes) {
             if (!n.isPolychainNode) continue;
-            if (n.ghostT != null && !n.isGhostSpine) continue;
             let group = chains.get(n.chainId);
             if (!group) { group = []; chains.set(n.chainId, group); }
             group.push(n);

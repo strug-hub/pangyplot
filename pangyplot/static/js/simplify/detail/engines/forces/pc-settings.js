@@ -15,7 +15,7 @@ export const pcSettings = {
     smoothing: 0.005,         // Laplacian smoothing stiffness (0-0.03)
     inflate: 0.005,           // balloon inflation strength (0-0.02)
     parentSide: 1.5,          // push child chains to one side of parent
-    guideLevel: 0.015,        // ellipse guide containment strength
+    guideLevel: 0.015,        // chain projection guide pull strength
 };
 
 export const loopLevels = { 0: 0, 1: 1, 2: 4, 3: 10, 4: 25, 5: 50 };

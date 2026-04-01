@@ -218,69 +218,59 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         spawnDamp:       { color: '#888888', label: 'spawn' },
     };
 
-    // Draw per-pop guide ellipses (one per pop, not per merged gap)
-    if (mode === 'all' || mode === 'guide') {
-        // Collect unique ellipses by interpolating guide t values along live chains
-        const seen = new Set();
-        const ellipses = [];
-        for (const n of segNodes) {
-            if (n.guideLeftT == null || n.guideRightT == null) continue;
-            const key = `${n.guideChainId}|${n.guideLeftT}|${n.guideRightT}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            const pcN = getPolychainNodesForChain(n.guideChainId);
-            if (!pcN || pcN.length < 2) continue;
-            const pl = pcN.map(nd => [nd.x, nd.y]);
-            const cumLen = [0];
-            for (let i = 1; i < pl.length; i++)
-                cumLen.push(cumLen[i-1] + Math.hypot(pl[i][0]-pl[i-1][0], pl[i][1]-pl[i-1][1]));
-            const totalLen = cumLen[cumLen.length - 1];
-            if (totalLen === 0) continue;
-            const interp = (t) => {
-                const d = t * totalLen;
-                if (d <= 0) return pl[0];
-                if (d >= totalLen) return pl[pl.length - 1];
-                let lo = 0, hi = cumLen.length - 1;
-                while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (cumLen[mid] <= d) lo = mid; else hi = mid; }
-                const segL = cumLen[hi] - cumLen[lo];
-                const tt = segL > 0 ? (d - cumLen[lo]) / segL : 0;
-                return [pl[lo][0] + tt * (pl[hi][0] - pl[lo][0]), pl[lo][1] + tt * (pl[hi][1] - pl[lo][1])];
-            };
-            const [x1, y1] = interp(n.guideLeftT);
-            const [x2, y2] = interp(n.guideRightT);
-            ellipses.push({ x1, y1, x2, y2 });
-        }
-        if (ellipses.length > 0) {
-            const SHORT_AXIS_RATIO = 0.15;
+    // Draw full chain polylines as dotted lines (including hidden gap segments)
+    if (mode === 'guide') {
+        const dd = state.detailData;
+        if (dd) {
+            ctx.globalAlpha = 0.3 * opacity;
+            ctx.strokeStyle = '#88FFFF';
             ctx.lineWidth = Math.max(1, 2 / state.zoom);
-
-            for (const gap of ellipses) {
-                const dx = gap.x2 - gap.x1, dy = gap.y2 - gap.y1;
-                const gapLen = Math.hypot(dx, dy);
-                if (gapLen < 1) continue;
-                const cx = (gap.x1 + gap.x2) / 2, cy = (gap.y1 + gap.y2) / 2;
-                const angle = Math.atan2(dy, dx);
-                const a = gapLen / 2 + gapLen * 0.15;
-                const b = Math.max(gapLen * SHORT_AXIS_RATIO, 10);
-
-                // Draw dashed chord line
-                ctx.globalAlpha = 0.4 * opacity;
-                ctx.strokeStyle = '#88FFFF';
-                ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
+            ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
+            for (const chain of dd.chains) {
+                const pcN = getPolychainNodesForChain(chain.id);
+                if (!pcN || pcN.length < 2) continue;
                 ctx.beginPath();
-                ctx.moveTo(gap.x1, gap.y1);
-                ctx.lineTo(gap.x2, gap.y2);
-                ctx.stroke();
-
-                // Draw bounding ellipse
-                ctx.globalAlpha = 0.2 * opacity;
-                ctx.strokeStyle = '#88FFFF';
-                ctx.setLineDash([]);
-                ctx.beginPath();
-                ctx.ellipse(cx, cy, a, b, angle, 0, Math.PI * 2);
+                ctx.moveTo(pcN[0].x, pcN[0].y);
+                for (let i = 1; i < pcN.length; i++) ctx.lineTo(pcN[i].x, pcN[i].y);
                 ctx.stroke();
             }
             ctx.setLineDash([]);
+        }
+    }
+
+    // Draw guide projection lines: each popped node → nearest point on chain
+    if (mode === 'guide') {
+        ctx.globalAlpha = 0.3 * opacity;
+        ctx.strokeStyle = '#88FFFF';
+        ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
+        const chainPlCache = new Map();
+        for (const n of segNodes) {
+            if (!n.ghostRootId) continue;
+            let pl = chainPlCache.get(n.ghostRootId);
+            if (pl === undefined) {
+                const pcN = getPolychainNodesForChain(n.ghostRootId);
+                pl = pcN && pcN.length >= 2 ? pcN.map(nd => [nd.x, nd.y]) : null;
+                chainPlCache.set(n.ghostRootId, pl);
+            }
+            if (!pl) continue;
+
+            // Find nearest point on chain
+            let bestDist = Infinity, bestX = 0, bestY = 0;
+            for (let i = 0; i < pl.length - 1; i++) {
+                const ax = pl[i][0], ay = pl[i][1];
+                const bx = pl[i+1][0], by = pl[i+1][1];
+                const dx = bx - ax, dy = by - ay;
+                const lenSq = dx * dx + dy * dy;
+                let t = 0;
+                if (lenSq > 0) t = Math.max(0, Math.min(1, ((n.x - ax) * dx + (n.y - ay) * dy) / lenSq));
+                const px = ax + t * dx, py = ay + t * dy;
+                const d = Math.hypot(n.x - px, n.y - py);
+                if (d < bestDist) { bestDist = d; bestX = px; bestY = py; }
+            }
+            ctx.beginPath();
+            ctx.moveTo(n.x, n.y);
+            ctx.lineTo(bestX, bestY);
+            ctx.stroke();
         }
     }
 
