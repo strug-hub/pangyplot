@@ -193,7 +193,9 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const lw = Math.max(0.5, 1.5 / state.zoom);
 
     const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
-    if (pcNodes.length === 0) return;
+    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && n.x != null);
+    const allVisNodes = [...pcNodes, ...segNodes];
+    if (allVisNodes.length === 0) return;
 
     // Map D3 force names → display names + colors
     const forceMap = {
@@ -313,7 +315,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     }
 
     if (mode === 'all') {
-        for (const n of pcNodes) {
+        for (const n of allVisNodes) {
             let bestMag = 0, bestColor = '#FFFFFF', totalFx = 0, totalFy = 0;
             for (const [name, info] of Object.entries(forceMap)) {
                 const map = deltas[name];
@@ -332,7 +334,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         const map = forceName ? deltas[forceName] : null;
         const color = Object.values(forceMap).find(f => f.label === mode)?.color || '#FFFFFF';
         if (map) {
-            for (const n of pcNodes) {
+            for (const n of allVisNodes) {
                 const d = map.get(n);
                 if (!d) continue;
                 drawArrow(n.x, n.y, d.fx, d.fy, color);
@@ -361,7 +363,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ctx.globalAlpha = 0.15 * opacity;
         ctx.strokeStyle = '#FF4444';
         ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
-        for (const n of pcNodes) {
+        for (const n of allVisNodes) {
             const r = n.isPolychainNode ? pcSettings.chargeMaxDist : 200;
             ctx.beginPath();
             ctx.arc(n.x, n.y, r, 0, Math.PI * 2);

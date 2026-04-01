@@ -2,13 +2,14 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, spliceChainAtBubble } from '../engines/force-engine.js';
+import { spliceBubbleNodes, spliceChainAtBubble, removeFullyPoppedChain } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
-import { getPolychainNodesForChain } from './polychain/polychain-adapter.js';
-import { removeBubbleFromStore } from './bubble-meta-cache.js';
+import popTree from './pop-tree.js';
+import { getPolychainNodesForChain, splitChainOnPop, getSegToPolychainRecord, removeChainEntirely } from './polychain/polychain-adapter.js';
+import { removeBubbleFromStore, getBubbleStore, splitBubbleStore } from './bubble-meta-cache.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -102,10 +103,15 @@ export async function popBubbleForceNode(bubbleNode) {
         return addedIds.has(l.id); // kink links carry the node's id
     });
 
-    // Position new children near the parent bubble
-    for (const node of newChildNodes) {
-        node.x = bubbleNode.x + (Math.random() - 0.5) * 20;
-        node.y = bubbleNode.y + (Math.random() - 0.5) * 20;
+    // Offset child nodes from absolute ODGI layout to current force-sim position
+    if (newChildNodes.length > 0) {
+        let layoutCx = 0, layoutCy = 0;
+        for (const node of newChildNodes) { layoutCx += node.x; layoutCy += node.y; }
+        layoutCx /= newChildNodes.length;
+        layoutCy /= newChildNodes.length;
+        const dx = bubbleNode.x - layoutCx;
+        const dy = bubbleNode.y - layoutCy;
+        for (const node of newChildNodes) { node.x += dx; node.y += dy; }
     }
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
@@ -128,9 +134,12 @@ export async function popBubbleForceNode(bubbleNode) {
     spliceBubbleNodes(parentIids, newChildNodes, newChildLinks);
     recordPop('bubble-pop', { id: bubbleId, chain: chainId });
 
-    // Track for undo — capture enough state to reverse the pop
-    if (!state._bubblePopStack) state._bubblePopStack = [];
-    state._bubblePopStack.push({
+    // Determine parent in pop hierarchy
+    const parentBubbleId = parentRecord && popTree.has(parentRecord.id)
+        ? parentRecord.id : null;
+
+    // Track for undo via pop tree
+    popTree.register(bubbleId, chainId, parentBubbleId, {
         bubbleId,
         chainId,
         parentRecord: parentRecord,
@@ -160,8 +169,8 @@ export async function popBubbleCircle(hit) {
     if (!hit || !hit.meta) return false;
 
     const bubbleId = hit.meta.id;
-    const chainId = hit.chainId;
-    const t = hit.meta.t;
+    const chainId = hit.chainId;     // could be original or subchain from prior pop
+    const t = hit.meta.t;            // local t within this (sub)chain
     const chr = state.chromosome;
     if (!chr) return false;
 
@@ -203,12 +212,32 @@ export async function popBubbleCircle(hit) {
         }
     }
 
-    // Deserialize subgraph
+    // Build junction record map for cross-chain link resolution
+    const junctionRecordMap = new Map();
+    for (const n of getForceNodes()) {
+        if (n.chainId === '__junction__' && n.record && !junctionRecordMap.has(n.id)) {
+            junctionRecordMap.set(n.id, n.record);
+        }
+    }
+
+    // Deserialize subgraph with enhanced link resolution
     const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(apiData, {
         tag: { chainId },
         linkResolver: (segId) => {
             const plainId = segId.startsWith('s') ? segId.slice(1) : segId;
-            return simplifyViewState.resolve(plainId) || existingRecords.get(segId) || null;
+            // 1. Collapsed bubble ownership
+            const vsRecord = simplifyViewState.resolve(plainId);
+            if (vsRecord) return vsRecord;
+            // 2. Visible force nodes from prior pops
+            const existing = existingRecords.get(segId);
+            if (existing) return existing;
+            // 3. Polychain endpoint nodes on other chains
+            const pcRecord = getSegToPolychainRecord(segId);
+            if (pcRecord) return pcRecord;
+            // 4. Junction force nodes
+            const jRecord = junctionRecordMap.get(segId);
+            if (jRecord) return jRecord;
+            return null;
         },
     });
 
@@ -235,28 +264,75 @@ export async function popBubbleCircle(hit) {
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
 
-    // Position child nodes near the bubble circle
+    // Child nodes have x,y from ODGI layout (absolute). Offset them so they're
+    // positioned relative to where the bubble circle currently is in the force sim,
+    // not where it was in the original layout.
+    // Compute offset: bubble's current sim position vs its layout centroid among children.
+    let layoutCx = 0, layoutCy = 0;
+    for (const node of newChildNodes) { layoutCx += node.x; layoutCy += node.y; }
+    layoutCx /= newChildNodes.length;
+    layoutCy /= newChildNodes.length;
+    const dx = hit.x - layoutCx;
+    const dy = hit.y - layoutCy;
     for (const node of newChildNodes) {
-        node.x = hit.x + (Math.random() - 0.5) * 20;
-        node.y = hit.y + (Math.random() - 0.5) * 20;
+        node.x += dx;
+        node.y += dy;
     }
 
-    // Splice chain at bubble position
+    // Splice the chain at the bubble circle's rendered position (bridge links + child nodes)
     const spliceResult = spliceChainAtBubble(
-        chainId, t, pcNodes, newChildNodes, newChildLinks,
+        chainId, hit.x, hit.y, pcNodes, newChildNodes, newChildLinks,
         apiData.source_segs || [], apiData.sink_segs || [],
         recordMap,
     );
     if (!spliceResult) return false;
 
-    recordPop('bubble-circle-pop', { id: bubbleId, chain: chainId });
-
-    // Remove the bubble circle from the meta cache
+    // Remove the bubble circle from the meta cache (before splitting the store)
     const removedMeta = removeBubbleFromStore(chainId, bubbleId);
 
-    // Push undo entry
-    if (!state._bubblePopStack) state._bubblePopStack = [];
-    state._bubblePopStack.push({
+    // Split chain into two real subchains (updates detailData.chains + polychain nodes)
+    const splitResult = splitChainOnPop(
+        chainId, spliceResult.splitIdx, bubbleId,
+        apiData.source_segs || [], apiData.sink_segs || [],
+    );
+
+    // Split the bubble store using the popped bubble's t value as the partition
+    // boundary. Bubble t values are index-based (not arc-length), so we must
+    // use the same coordinate system — the popped bubble's own t is the natural
+    // split point in bubble-t space.
+    const bubbleTSplit = hit.meta.t;
+    let tSplit = bubbleTSplit;
+    if (splitResult) {
+        const { leftCount, rightCount } = splitBubbleStore(
+            chainId, splitResult.leftChain.id, splitResult.rightChain.id, bubbleTSplit);
+        splitResult.leftChain.nBubbles = leftCount;
+        splitResult.leftChain.size = leftCount;
+        splitResult.rightChain.nBubbles = rightCount;
+        splitResult.rightChain.size = rightCount;
+    }
+
+    recordPop('bubble-circle-pop', { id: bubbleId, chain: chainId });
+
+    // Check if either subchain is now fully popped → remove it
+    let chainRemoval = null;
+    if (splitResult) {
+        for (const sub of [splitResult.leftChain, splitResult.rightChain]) {
+            const store = getBubbleStore(sub.id);
+            if (store && store.bubbles.length === 0) {
+                const removalInfo = removeChainEntirely(sub.id);
+                const rewireInfo = removeFullyPoppedChain(removalInfo.chainIds);
+                if (!chainRemoval) chainRemoval = [];
+                chainRemoval.push({ id: sub.id, ...removalInfo, ...rewireInfo });
+            }
+        }
+    }
+
+    // Determine parent in pop hierarchy
+    const parentBubbleId = parentRecord && popTree.has(parentRecord.id)
+        ? parentRecord.id : null;
+
+    // Track for undo via pop tree
+    popTree.register(bubbleId, chainId, parentBubbleId, {
         isChainSplitPop: true,
         bubbleId,
         chainId,
@@ -267,7 +343,10 @@ export async function popBubbleCircle(hit) {
         childBubbles: apiData.child_bubbles || [],
         removedLink: spliceResult.removedLink,
         bridgeLinks: spliceResult.bridgeLinks,
+        splitResult,
+        tSplit,
         bubbleMeta: removedMeta,
+        chainRemoval,
     });
 
     return true;

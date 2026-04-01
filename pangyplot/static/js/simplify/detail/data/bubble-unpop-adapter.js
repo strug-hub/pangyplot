@@ -1,20 +1,21 @@
 // Adapter: undo a bubble pop in the simplify force simulation.
-// Reads popData from the _bubblePopStack, removes child nodes,
+// Reads popData from the popTree undo stack, removes child nodes,
 // re-adds the parent bubble node with saved external links, and
 // collapses simplifyViewState.
 
 import { state } from '../../simplify-state.js';
-import { unspliceBubbleNodes, unspliceChainAtBubble } from '../engines/force-engine.js';
+import { unspliceBubbleNodes, unspliceChainAtBubble, addPoppedNodes } from '../engines/force-engine.js';
 import simplifyViewState from './simplify-view-state.js';
-import { restoreBubbleToStore } from './bubble-meta-cache.js';
+import { restoreBubbleToStore, mergeBubbleStores } from './bubble-meta-cache.js';
+import { mergeSubchainsOnUnpop, restoreChain } from './polychain/polychain-adapter.js';
+import popTree from './pop-tree.js';
 
 /**
  * Undo the most recent bubble pop. Returns true on success.
  */
 export function unpopLastBubble() {
-    if (!state._bubblePopStack || state._bubblePopStack.length === 0) return false;
-
-    const popEntry = state._bubblePopStack.pop();
+    const popEntry = popTree.undoLast();
+    if (!popEntry) return false;
 
     // Chain-split pop (bubble circle on polychain)
     if (popEntry.isChainSplitPop) {
@@ -36,8 +37,38 @@ function unpopChainSplit(popEntry) {
         childBubbles,
         removedLink,
         bridgeLinks,
+        splitResult,
+        tSplit,
         bubbleMeta,
+        chainRemoval,
     } = popEntry;
+
+    // If any subchains were removed (fully popped), restore them first
+    if (chainRemoval) {
+        for (const removal of chainRemoval) {
+            // Un-rewire external links back to polychain nodes
+            for (const { link, oldSource, oldTarget } of removal.rewiredLinks) {
+                if (oldSource) link.source = oldSource;
+                if (oldTarget) link.target = oldTarget;
+            }
+            restoreChain(removal.id, removal);
+            if (removal.removedNodes.length > 0) {
+                addPoppedNodes(removal.removedNodes, removal.removedBridgeLinks || []);
+            }
+        }
+    }
+
+    // Merge subchain bubble stores back into parent store
+    if (splitResult) {
+        mergeBubbleStores(splitResult.leftChain.id, splitResult.rightChain.id, chainId, tSplit);
+    }
+
+    // Merge the two subchains back into the parent chain
+    if (splitResult) {
+        mergeSubchainsOnUnpop(
+            splitResult.leftChain.id, splitResult.rightChain.id,
+            splitResult.parentChain, splitResult.parentIndex);
+    }
 
     // Remove child nodes and bridge links, restore the polychain link
     unspliceChainAtBubble(childIids, removedLink, bridgeLinks);

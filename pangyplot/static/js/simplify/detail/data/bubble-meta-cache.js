@@ -182,6 +182,76 @@ export function updateBubblePositions(chainId, pl) {
     }
 }
 
+/**
+ * Split a parent chain's bubble store into two subchain stores.
+ * Partitions bubbles by t < tSplit, remaps t values to local [0,1].
+ * @returns {{ leftCount, rightCount }} for updating subchain nBubbles
+ */
+export function splitBubbleStore(parentId, leftId, rightId, tSplit) {
+    const store = stores.get(parentId);
+    if (!store) return { leftCount: 0, rightCount: 0 };
+
+    const leftBubbles = [];
+    const leftPositions = [];
+    const rightBubbles = [];
+    const rightPositions = [];
+
+    for (let i = 0; i < store.bubbles.length; i++) {
+        const b = store.bubbles[i];
+        if (b.t < tSplit || (b.t === tSplit && tSplit > 0.5)) {
+            const remapped = { ...b, t: tSplit > 0 ? b.t / tSplit : 0 };
+            leftBubbles.push(remapped);
+            leftPositions.push({ x: 0, y: 0, meta: remapped });
+        } else {
+            const remapped = { ...b, t: tSplit < 1 ? (b.t - tSplit) / (1 - tSplit) : 1 };
+            rightBubbles.push(remapped);
+            rightPositions.push({ x: 0, y: 0, meta: remapped });
+        }
+    }
+
+    stores.set(leftId, { bubbles: leftBubbles, cumLen: null, totalLen: 0, positions: leftPositions });
+    stores.set(rightId, { bubbles: rightBubbles, cumLen: null, totalLen: 0, positions: rightPositions });
+    stores.delete(parentId);
+
+    return { leftCount: leftBubbles.length, rightCount: rightBubbles.length };
+}
+
+/**
+ * Reverse of splitBubbleStore: merge two subchain stores back into one parent store.
+ */
+export function mergeBubbleStores(leftId, rightId, parentId, tSplit) {
+    const leftStore = stores.get(leftId);
+    const rightStore = stores.get(rightId);
+    const mergedBubbles = [];
+    const mergedPositions = [];
+
+    if (leftStore) {
+        for (let i = 0; i < leftStore.bubbles.length; i++) {
+            const b = leftStore.bubbles[i];
+            const remapped = { ...b, t: b.t * tSplit };
+            mergedBubbles.push(remapped);
+            mergedPositions.push({ x: 0, y: 0, meta: remapped });
+        }
+    }
+    if (rightStore) {
+        for (let i = 0; i < rightStore.bubbles.length; i++) {
+            const b = rightStore.bubbles[i];
+            const remapped = { ...b, t: tSplit + b.t * (1 - tSplit) };
+            mergedBubbles.push(remapped);
+            mergedPositions.push({ x: 0, y: 0, meta: remapped });
+        }
+    }
+
+    // Sort by t to maintain ordering
+    const indices = mergedBubbles.map((_, i) => i).sort((a, b) => mergedBubbles[a].t - mergedBubbles[b].t);
+    const sortedBubbles = indices.map(i => mergedBubbles[i]);
+    const sortedPositions = indices.map(i => mergedPositions[i]);
+
+    stores.set(parentId, { bubbles: sortedBubbles, cumLen: null, totalLen: 0, positions: sortedPositions });
+    stores.delete(leftId);
+    stores.delete(rightId);
+}
+
 // ---------------------------------------------------------------
 // Pop / unpop helpers
 // ---------------------------------------------------------------

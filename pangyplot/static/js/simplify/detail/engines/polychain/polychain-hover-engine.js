@@ -2,7 +2,7 @@
 
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
-import { getPolychainPositions, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
+import { getPolychainPositions, getPolychainPolylines, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
 import { getBubblePositions } from '../../data/bubble-meta-cache.js';
 
 const HIT_RADIUS_PX = 12;
@@ -14,12 +14,16 @@ export function hitTestChains(dataX, dataY) {
     let bestChain = null;
 
     for (const chain of state.detailData.chains) {
-        const pl = getPolychainPositions(chain.id) || chain.polyline;
-        for (let i = 0; i < pl.length - 1; i++) {
-            const d = pointToSegmentDist(dataX, dataY, pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1]);
-            if (d < bestDist) {
-                bestDist = d;
-                bestChain = chain;
+        const polylines = getPolychainPolylines(chain.id);
+        if (!polylines && chain.parentChain) continue;
+        const pls = polylines || [chain.polyline];
+        for (const pl of pls) {
+            for (let i = 0; i < pl.length - 1; i++) {
+                const d = pointToSegmentDist(dataX, dataY, pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1]);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestChain = chain;
+                }
             }
         }
     }
@@ -164,15 +168,17 @@ export function getBubbleCircleTooltip(hit) {
 }
 
 export function getChainTooltip(chain) {
-    // Show ancestry: walk the ancestors array (each has chain + bubble)
-    let label = chain.id;
+    // Show the root chain identity — subchains (c42:0, c42:1) are all
+    // pieces of the same chain, so display the root ID.
+    const rootId = chain.id.split(':')[0];
+    let label = rootId;
     if (chain.ancestors?.length > 0) {
         const parts = [];
         for (const a of chain.ancestors) {
             parts.push(a.chain);
             if (a.bubble) parts.push(a.bubble);
         }
-        parts.push(chain.id);
+        parts.push(rootId);
         label = parts.join(' > ');
     }
 

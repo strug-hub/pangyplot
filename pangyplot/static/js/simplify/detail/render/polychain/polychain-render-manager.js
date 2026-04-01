@@ -3,7 +3,7 @@
 import { state } from '../../../simplify-state.js';
 import { getNodeColor } from '../../../../graph/render/color/color-style.js';
 import { strokePolyline, strokePolylines, fillCircles, strokeRing } from '../detail-painter.js';
-import { getPolychainPositions } from '../../data/polychain/polychain-adapter.js';
+import { getPolychainPositions, getPolychainPolylines } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-data.js';
 import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta, updateBubblePositions } from '../../data/bubble-meta-cache.js';
@@ -12,11 +12,18 @@ function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
-        const live = getPolychainPositions(chain.id);
-        const pl = live || chain.polyline;
+        const polylines = getPolychainPolylines(chain.id);
+        // Only fall back to static polyline for chains that haven't been
+        // processed into polychain nodes yet. Pop-created subchains and
+        // chains whose polychain nodes were removed should not be drawn.
+        if (!polylines) {
+            if (chain.parentChain) continue;  // pop subchain with no live nodes — skip
+            // Original backend chain not yet in polychain layer — use static polyline
+        }
+        const pls = polylines || [chain.polyline];
         const color = getNodeColor(chain);
         if (!byColor.has(color)) byColor.set(color, []);
-        byColor.get(color).push(pl);
+        byColor.get(color).push(...pls);
     }
     return byColor;
 }
@@ -54,14 +61,18 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
         const geneList = overlaps.get(chain.id);
         if (!geneList) continue;
 
-        const pl = getPolychainPositions(chain.id) || chain.polyline;
-        if (!pl || pl.length < 2) continue;
+        const polylines = getPolychainPolylines(chain.id);
+        if (!polylines && chain.parentChain) continue;
+        const pls = polylines || [chain.polyline];
 
         for (const gene of geneList) {
-            const sub = extractSubPolyline(pl, gene.tStart, gene.tEnd);
-            if (!sub || sub.length < 2) continue;
-            if (!byColor.has(gene.color)) byColor.set(gene.color, []);
-            byColor.get(gene.color).push(sub);
+            for (const pl of pls) {
+                if (!pl || pl.length < 2) continue;
+                const sub = extractSubPolyline(pl, gene.tStart, gene.tEnd);
+                if (!sub || sub.length < 2) continue;
+                if (!byColor.has(gene.color)) byColor.set(gene.color, []);
+                byColor.get(gene.color).push(sub);
+            }
         }
     }
 
@@ -86,6 +97,9 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
         if (chain.polyline.length < 2) continue;
 
         if (!hasBubbleMeta(chain.id)) {
+            // Don't fetch from backend for pop-created subchains —
+            // their stores are populated by splitBubbleStore
+            if (chain.parentChain && !getPolychainPositions(chain.id)) continue;
             fetchBubbleMeta(chain.id, chr);
             continue;
         }
@@ -93,7 +107,7 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
         const store = getBubbleStore(chain.id);
         if (!store || store.positions.length === 0) continue;
 
-        // Update positions in-place (one cumLen + interpolation pass)
+        // Update positions in-place from live polychain node positions
         const live = getPolychainPositions(chain.id);
         const pl = live || chain.polyline;
         updateBubblePositions(chain.id, pl);
@@ -192,10 +206,12 @@ export function drawDetail(svg = null) {
 
     // 4. Hover highlight (skip during SVG export)
     if (!svg && state.hoveredChain) {
-        const live = getPolychainPositions(state.hoveredChain.id);
-        const pl = live || state.hoveredChain.polyline;
-        if (pl.length >= 2) {
-            strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
+        const polylines = getPolychainPolylines(state.hoveredChain.id);
+        const pls = polylines || [state.hoveredChain.polyline];
+        for (const pl of pls) {
+            if (pl.length >= 2) {
+                strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
+            }
         }
     }
 

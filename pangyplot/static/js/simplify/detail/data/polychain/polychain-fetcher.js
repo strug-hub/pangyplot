@@ -8,9 +8,10 @@
 import { state } from '../../../simplify-state.js';
 import { colorState } from '../../../../graph/render/color/color-state.js';
 import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
+import popTree from '../pop-tree.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
-import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer } from './polychain-adapter.js';
+import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer, isSplitRootChain } from './polychain-adapter.js';
 import { placeGenesFromDetail } from '@simplify-data/gene-data.js';
 import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
 import { getForceNodes } from '../force-data.js';
@@ -189,7 +190,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
         if (isFirstFetch) {
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
             state.poppedChainIds.clear();
-            state._bubblePopStack = [];
+            popTree.clear();
             clearHistory();
             state.detailData = newData;
             colorState.positionRange = [newData.bpStart, newData.bpEnd];
@@ -197,7 +198,11 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
         } else {
             const existingIds = new Set(state.detailData.chains.map(c => c.id));
             const incomingIds = new Set(newData.chains.map(c => c.id));
-            const newChains = newData.chains.filter(c => !existingIds.has(c.id));
+            // Skip chains already present, chains that have been split by pops,
+            // and backend connectors whose root chain has been split
+            const newChains = newData.chains.filter(c =>
+                !existingIds.has(c.id) && !state.poppedChainIds.has(c.id)
+                && !isSplitRootChain(c.id));
 
             const removedIds = new Set();
             for (const c of state.detailData.chains) {
@@ -279,7 +284,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
 
             state.poppedChainIds.clear();
-            state._bubblePopStack = [];
+            popTree.clear();
 
             clearHistory();
             recordPop('detail-tiles', {
@@ -293,7 +298,9 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             const existingIds = new Set(state.detailData.chains.map(c => c.id));
             const incomingIds = new Set(newData.chains.map(c => c.id));
 
-            const newChains = newData.chains.filter(c => !existingIds.has(c.id));
+            const newChains = newData.chains.filter(c =>
+                !existingIds.has(c.id) && !state.poppedChainIds.has(c.id)
+                && !isSplitRootChain(c.id));
 
             const removedIds = new Set();
             for (const c of state.detailData.chains) {

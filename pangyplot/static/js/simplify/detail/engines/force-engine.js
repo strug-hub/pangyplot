@@ -61,8 +61,38 @@ function linkStrength(d) {
     return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
 }
 
+// Tick counter for spawn damping
+let _tickCount = 0;
+const SPAWN_DAMP_TICKS = 30;
+
 function chargeStrength(d) {
     return pcSettings.charge;
+}
+
+/**
+ * Custom force that dampens velocity on recently spawned nodes.
+ * D3's forceManyBody caches strength per node, so we can't ramp charge
+ * via the accessor. Instead, we counteract the charge impulse by scaling
+ * down vx/vy on young nodes each tick.
+ */
+function spawnDampingForce() {
+    let nodes = [];
+    function force(/* alpha */) {
+        for (const n of nodes) {
+            if (n._spawnTick == null) continue;
+            const age = _tickCount - n._spawnTick;
+            if (age >= SPAWN_DAMP_TICKS) {
+                n._spawnTick = null;
+                continue;
+            }
+            // Scale down velocity: 0 at birth, full at SPAWN_DAMP_TICKS
+            const scale = age / SPAWN_DAMP_TICKS;
+            n.vx *= scale;
+            n.vy *= scale;
+        }
+    }
+    force.initialize = function(n) { nodes = n; };
+    return force;
 }
 
 function chargeMaxDist(d) {
@@ -102,6 +132,7 @@ export function initForce() {
         .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce(getLinks))
         .force('centroidAnchor', centroidAnchorForce())
+        .force('spawnDamp', spawnDampingForce())
         .on('tick', onTick);
     sim.stop();
 }
@@ -149,6 +180,7 @@ export function computeForceDeltas() {
 }
 
 function onTick() {
+    _tickCount++;
     if (state.detailPhase !== 'none' && state.detailPhase !== 'fading-out') {
         scheduleFrame();
     }
@@ -308,6 +340,88 @@ export function removeNodesByChainIds(chainIds) {
     }
 }
 
+/**
+ * Remove a fully-popped chain: rewire external links (junction, inter-chain)
+ * from polychain nodes to the nearest popped boundary node via bridge links,
+ * then remove all polychain nodes, bridge links, and polychain-internal links.
+ *
+ * @param {Set<string>} fragmentIds - all fragment IDs (keys in chainPolychainNodes)
+ * @returns {{ rewiredLinks: Array, removedBridgeLinks: Array }} for undo
+ */
+export function removeFullyPoppedChain(fragmentIds) {
+    if (!sim) return { rewiredLinks: [], removedBridgeLinks: [] };
+
+    const allNodes = getNodes();
+    const allLinks = getLinks();
+
+    // Collect all polychain nodes being removed
+    const pcNodeIids = new Set();
+    for (const n of allNodes) {
+        if (n.isPolychainNode && fragmentIds.has(n.chainId)) {
+            pcNodeIids.add(n.iid);
+        }
+    }
+
+    // Build map: polychain node iid → replacement node (via bridge links)
+    const replacementMap = new Map();
+    for (const l of allLinks) {
+        if (!l.isBridgeLink) continue;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        if (pcNodeIids.has(sIid) && !pcNodeIids.has(tIid)) {
+            replacementMap.set(sIid, l.target);
+        }
+        if (pcNodeIids.has(tIid) && !pcNodeIids.has(sIid)) {
+            replacementMap.set(tIid, l.source);
+        }
+    }
+
+    // Rewire external links from polychain nodes to their replacement
+    const rewiredLinks = [];
+    for (const l of allLinks) {
+        if (l.isBridgeLink || l.isPolychainLink) continue;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        const sReplacement = pcNodeIids.has(sIid) ? replacementMap.get(sIid) : null;
+        const tReplacement = pcNodeIids.has(tIid) ? replacementMap.get(tIid) : null;
+        if (sReplacement || tReplacement) {
+            rewiredLinks.push({
+                link: l,
+                oldSource: sReplacement ? l.source : null,
+                oldTarget: tReplacement ? l.target : null,
+            });
+            if (sReplacement) l.source = sReplacement;
+            if (tReplacement) l.target = tReplacement;
+        }
+    }
+
+    // Collect bridge links for removal
+    const removedBridgeLinks = allLinks.filter(l => {
+        if (!l.isBridgeLink) return false;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return pcNodeIids.has(sIid) || pcNodeIids.has(tIid);
+    });
+    const bridgeSet = new Set(removedBridgeLinks);
+
+    // Remove polychain nodes and their links
+    const remaining = allNodes.filter(n => !pcNodeIids.has(n.iid));
+    const remainingIids = new Set(remaining.map(n => n.iid));
+    const remainingLinks = allLinks.filter(l => {
+        if (bridgeSet.has(l)) return false;
+        if (l.isPolychainLink && fragmentIds.has(l.chainId)) return false;
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return remainingIids.has(sIid) && remainingIids.has(tIid);
+    });
+
+    syncNodes(remaining);
+    syncLinks(remainingLinks);
+    if (remaining.length > 0) sim.alpha(1).restart();
+
+    return { rewiredLinks, removedBridgeLinks };
+}
+
 export function clearForce() {
     if (!sim) return;
     sim.stop();
@@ -354,6 +468,7 @@ export function spliceBubbleNodes(removeIids, childNodes, childLinks) {
     for (const n of childNodes) {
         n.homeX = n.fx ?? n.x;
         n.homeY = n.fy ?? n.y;
+        n._spawnTick = _tickCount;
     }
 
     // Remove parent nodes, add children
@@ -460,7 +575,8 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
  * the two chain halves to the child subgraph's boundary nodes.
  *
  * @param {string} chainId - chain to split
- * @param {number} t - fractional position [0,1] along the polychain
+ * @param {number} hitX - x position of the popped bubble circle
+ * @param {number} hitY - y position of the popped bubble circle
  * @param {Array} pcNodes - polychain nodes for the chain (from getPolychainNodesForChain)
  * @param {Array} childNodes - deserialized child nodes to insert
  * @param {Array} childLinks - deserialized child links (internal connectivity)
@@ -469,25 +585,31 @@ export function unspliceBubbleNodes(removeIids, parentNodes, parentLinks) {
  * @param {Map} recordMap - id → NodeRecord from deserializeSubgraph
  * @returns {{ splitIdx, removedLink, bridgeLinks }} for undo, or null on failure
  */
-export function spliceChainAtBubble(chainId, t, pcNodes, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
+export function spliceChainAtBubble(chainId, hitX, hitY, pcNodes, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
     if (!sim) initForce();
     if (!pcNodes || pcNodes.length < 2) return null;
 
-    // Find the polychain link that spans position t using cumulative arc lengths
-    let cumLen = 0;
-    const cumLens = [0];
-    for (let i = 1; i < pcNodes.length; i++) {
-        cumLen += Math.hypot(pcNodes[i].x - pcNodes[i-1].x, pcNodes[i].y - pcNodes[i-1].y);
-        cumLens.push(cumLen);
-    }
-    const totalLen = cumLens[cumLens.length - 1];
-    const targetDist = t * totalLen;
-
-    // Find split index: the last node before the target distance
+    // Find the polychain segment nearest to the bubble circle's rendered position.
+    // The bubble was placed on the polychain by updateBubblePositions, so its (x,y)
+    // lies on or very near the polychain. Finding the closest segment gives us the
+    // correct split point regardless of coordinate system.
+    let bestDist = Infinity;
     let splitIdx = 0;
-    for (let i = 1; i < pcNodes.length; i++) {
-        if (cumLens[i] > targetDist) break;
-        splitIdx = i;
+    for (let i = 0; i < pcNodes.length - 1; i++) {
+        const ax = pcNodes[i].x, ay = pcNodes[i].y;
+        const bx = pcNodes[i + 1].x, by = pcNodes[i + 1].y;
+        const dx = bx - ax, dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        const d = lenSq === 0
+            ? Math.hypot(hitX - ax, hitY - ay)
+            : (() => {
+                const t = Math.max(0, Math.min(1, ((hitX - ax) * dx + (hitY - ay) * dy) / lenSq));
+                return Math.hypot(hitX - (ax + t * dx), hitY - (ay + t * dy));
+            })();
+        if (d < bestDist) {
+            bestDist = d;
+            splitIdx = i;
+        }
     }
     // Clamp so we always have a node on each side
     splitIdx = Math.min(splitIdx, pcNodes.length - 2);
@@ -515,6 +637,7 @@ export function spliceChainAtBubble(chainId, t, pcNodes, childNodes, childLinks,
     for (const n of childNodes) {
         n.homeX = n.fx ?? n.x;
         n.homeY = n.fy ?? n.y;
+        n._spawnTick = _tickCount;
     }
 
     // Find boundary child nodes for bridge links.

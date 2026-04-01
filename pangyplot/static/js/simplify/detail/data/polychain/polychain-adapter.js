@@ -11,6 +11,7 @@ import { getForceNodes, getForceLinks } from '../force-data.js';
 import { addPoppedNodes, removeNodesByChainIds } from '../../engines/force-engine.js';
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
+import { extractSubPolyline } from './polychain-gene-map.js';
 
 // chainId → [polychain node objects in polyline order]
 const chainPolychainNodes = new Map();
@@ -18,6 +19,15 @@ window.__pcNodes = chainPolychainNodes;  // debug access
 
 // "s{id}" → polychain node (endpoint seg → head or tail node)
 const segToPolychain = new Map();
+
+// Per-root-chain counter for generating unique subchain IDs (c42:0, c42:1, ...)
+const subchainCounters = new Map();
+
+/** Check if a root chain ID has been split by pops (has subchains). */
+export function isSplitRootChain(chainId) {
+    const rootId = chainId.split(':')[0];
+    return subchainCounters.has(rootId);
+}
 
 // Resampling constants
 const MIN_NODES = 2;
@@ -101,6 +111,274 @@ export function getPolychainPositions(chainId) {
  */
 export function getPolychainNodesForChain(chainId) {
     return chainPolychainNodes.get(chainId) || null;
+}
+
+/**
+ * Get live polylines for a chain. Returns array with one [[x,y],...] polyline,
+ * or null if no polychain nodes exist for this chain.
+ */
+export function getPolychainPolylines(chainId) {
+    const nodes = chainPolychainNodes.get(chainId);
+    if (!nodes || nodes.length < 2) return null;
+    return [nodes.map(n => [n.x, n.y])];
+}
+
+/**
+ * Look up a segment ID in segToPolychain and return a record wrapper
+ * suitable for use as a linkResolver result.
+ */
+export function getSegToPolychainRecord(segId) {
+    const pn = segToPolychain.get(segId);
+    if (!pn) return null;
+    return makePolychainRecord(pn);
+}
+
+/**
+ * Split a chain into two subchains after a bubble pop.
+ * Reassigns polychain node chainIds, splits the polyline, creates subchain
+ * objects in state.detailData.chains, and updates segToPolychain mappings.
+ *
+ * @param {string} chainId - chain being split (could be original or a prior subchain)
+ * @param {number} splitIdx - polychain node index from spliceChainAtBubble
+ * @param {string} popBubbleId - the bubble being popped (e.g. "b123")
+ * @param {Array} poppedSourceSegs - source boundary segs from /pop response
+ * @param {Array} poppedSinkSegs - sink boundary segs from /pop response
+ * @returns {{ leftChain, rightChain, parentChain, parentIndex, tSplit }} or null
+ */
+export function splitChainOnPop(chainId, splitIdx, popBubbleId, poppedSourceSegs, poppedSinkSegs) {
+    const nodes = chainPolychainNodes.get(chainId);
+    if (!nodes || splitIdx < 0 || splitIdx >= nodes.length - 1) return null;
+
+    const dd = state.detailData;
+    if (!dd) return null;
+    const parentIndex = dd.chains.findIndex(c => c.id === chainId);
+    if (parentIndex === -1) return null;
+    const parentChain = dd.chains[parentIndex];
+
+    // Compute tSplit from homeX/homeY arc lengths (matches original polyline geometry)
+    let leftLen = 0;
+    for (let i = 1; i <= splitIdx; i++) {
+        leftLen += Math.hypot(nodes[i].homeX - nodes[i-1].homeX, nodes[i].homeY - nodes[i-1].homeY);
+    }
+    let totalLen = leftLen;
+    for (let i = splitIdx + 1; i < nodes.length; i++) {
+        totalLen += Math.hypot(nodes[i].homeX - nodes[i-1].homeX, nodes[i].homeY - nodes[i-1].homeY);
+    }
+    const tSplit = totalLen > 0 ? leftLen / totalLen : 0.5;
+
+    // Generate subchain IDs: c42:0, c42:1, ... (counter per root chain)
+    const rootId = chainId.split(':')[0];
+    if (!subchainCounters.has(rootId)) subchainCounters.set(rootId, 0);
+    let counter = subchainCounters.get(rootId);
+    const leftId = `${rootId}:${counter++}`;
+    const rightId = `${rootId}:${counter++}`;
+    subchainCounters.set(rootId, counter);
+
+    // Split polychain nodes — just reassign chainIds (nodes are already in the force sim)
+    const leftNodes = nodes.slice(0, splitIdx + 1);
+    const rightNodes = nodes.slice(splitIdx + 1);
+    for (const n of leftNodes) n.chainId = leftId;
+    for (const n of rightNodes) n.chainId = rightId;
+
+    chainPolychainNodes.delete(chainId);
+    chainPolychainNodes.set(leftId, leftNodes);
+    chainPolychainNodes.set(rightId, rightNodes);
+
+    // Split the static polyline for the subchain objects
+    const pl = parentChain.polyline;
+    const leftPolyline = extractSubPolyline(pl, 0, tSplit) || [pl[0]];
+    const rightPolyline = extractSubPolyline(pl, tSplit, 1) || [pl[pl.length - 1]];
+
+    // Build subchain objects matching processResponse shape.
+    // Ancestors should reflect the ROOT chain's original ancestry, not intermediate
+    // subchain splits. All subchains of c123 are flat siblings — the split history
+    // is tracked by the pop tree, not the ancestors array.
+    const isSubchain = chainId !== rootId;
+    const rootAncestors = isSubchain
+        ? (parentChain.ancestors || []).filter(a => !a.chain.startsWith(rootId + ':'))
+        : (parentChain.ancestors || []);
+    const ancestors = rootAncestors;
+
+    const leftChain = buildSubchain(leftId, leftPolyline, parentChain, {
+        sourceSegs: parentChain.sourceSegs,
+        sinkSegs: poppedSourceSegs.map(Number),
+        tFraction: tSplit,
+        isLeft: true,
+        ancestors,
+        rootId,
+    });
+    const rightChain = buildSubchain(rightId, rightPolyline, parentChain, {
+        sourceSegs: poppedSinkSegs.map(Number),
+        sinkSegs: parentChain.sinkSegs,
+        tFraction: 1 - tSplit,
+        isLeft: false,
+        ancestors,
+        rootId,
+    });
+
+    // Replace parent in detailData.chains
+    dd.chains.splice(parentIndex, 1, leftChain, rightChain);
+
+    // Update segToPolychain for the new boundary segments
+    const leftTail = leftNodes[leftNodes.length - 1];
+    const rightHead = rightNodes[0];
+    for (const sid of poppedSourceSegs) segToPolychain.set(`s${sid}`, leftTail);
+    for (const sid of poppedSinkSegs) segToPolychain.set(`s${sid}`, rightHead);
+
+    // Track subchain IDs so they survive viewport panning.
+    // Also track the parent chainId so the fetcher doesn't re-add the original
+    // chain from the backend (it's been replaced by subchains).
+    state.poppedChainIds.add(chainId);
+    state.poppedChainIds.add(leftId);
+    state.poppedChainIds.add(rightId);
+
+    return { leftChain, rightChain, parentChain, parentIndex, tSplit };
+}
+
+/**
+ * Reverse a splitChainOnPop: merge two subchains back into the parent chain.
+ */
+export function mergeSubchainsOnUnpop(leftId, rightId, savedParentChain, parentIndex) {
+    const dd = state.detailData;
+    if (!dd) return;
+
+    // Merge polychain nodes back under parent chainId
+    const leftNodes = chainPolychainNodes.get(leftId) || [];
+    const rightNodes = chainPolychainNodes.get(rightId) || [];
+    const merged = [...leftNodes, ...rightNodes];
+    for (const n of merged) n.chainId = savedParentChain.id;
+
+    chainPolychainNodes.delete(leftId);
+    chainPolychainNodes.delete(rightId);
+    chainPolychainNodes.set(savedParentChain.id, merged);
+
+    // Restore parent in detailData.chains — find where the subchains are now
+    const leftIdx = dd.chains.findIndex(c => c.id === leftId);
+    const rightIdx = dd.chains.findIndex(c => c.id === rightId);
+    // Remove both subchains (remove higher index first to preserve positions)
+    const indices = [leftIdx, rightIdx].filter(i => i !== -1).sort((a, b) => b - a);
+    for (const i of indices) dd.chains.splice(i, 1);
+    // Insert parent at the saved index (clamped to current length)
+    const insertAt = Math.min(parentIndex, dd.chains.length);
+    dd.chains.splice(insertAt, 0, savedParentChain);
+
+    // Restore segToPolychain for parent's original endpoint segs
+    if (merged.length > 0) {
+        const head = merged[0];
+        const tail = merged[merged.length - 1];
+        for (const sid of (savedParentChain.sourceSegs || [])) {
+            segToPolychain.set(`s${sid}`, head);
+        }
+        for (const sid of (savedParentChain.sinkSegs || [])) {
+            segToPolychain.set(`s${sid}`, tail);
+        }
+    }
+
+    // Remove subchain IDs from poppedChainIds
+    state.poppedChainIds.delete(leftId);
+    state.poppedChainIds.delete(rightId);
+}
+
+/**
+ * Remove a chain's polychain nodes entirely (when fully popped).
+ * Returns the chain IDs that were removed (for force-engine cleanup).
+ */
+export function removeChainEntirely(chainId) {
+    const nodes = chainPolychainNodes.get(chainId);
+    const removedNodes = nodes ? [...nodes] : [];
+
+    if (nodes) {
+        const nodeSet = new Set(nodes);
+        for (const [key, pn] of segToPolychain) {
+            if (nodeSet.has(pn)) segToPolychain.delete(key);
+        }
+        chainPolychainNodes.delete(chainId);
+    }
+
+    // Remove from detailData.chains
+    const dd = state.detailData;
+    let removedChain = null;
+    let removedIndex = -1;
+    if (dd) {
+        removedIndex = dd.chains.findIndex(c => c.id === chainId);
+        if (removedIndex !== -1) {
+            removedChain = dd.chains.splice(removedIndex, 1)[0];
+        }
+    }
+
+    return { chainIds: new Set([chainId]), removedNodes, removedChain, removedIndex };
+}
+
+/**
+ * Restore a chain that was removed by removeChainEntirely (for undo).
+ */
+export function restoreChain(chainId, removalInfo) {
+    const { removedNodes, removedChain, removedIndex } = removalInfo;
+
+    if (removedNodes.length > 0) {
+        chainPolychainNodes.set(chainId, removedNodes);
+        // Restore segToPolychain
+        const head = removedNodes[0];
+        const tail = removedNodes[removedNodes.length - 1];
+        if (removedChain) {
+            for (const sid of (removedChain.sourceSegs || [])) {
+                segToPolychain.set(`s${sid}`, head);
+            }
+            for (const sid of (removedChain.sinkSegs || [])) {
+                segToPolychain.set(`s${sid}`, tail);
+            }
+        }
+    }
+
+    if (removedChain) {
+        const dd = state.detailData;
+        if (dd) {
+            const insertAt = Math.min(removedIndex, dd.chains.length);
+            dd.chains.splice(insertAt, 0, removedChain);
+        }
+    }
+}
+
+// ---------------------------------------------------------------
+// Subchain builder
+// ---------------------------------------------------------------
+
+function buildSubchain(id, polyline, parent, opts) {
+    const { sourceSegs, sinkSegs, tFraction, isLeft, ancestors, rootId } = opts;
+    return {
+        id,
+        polyline,
+        length: Math.round(parent.length * tFraction),
+        gcCount: Math.round((parent.gcCount || 0) * tFraction),
+        bpSpan: Math.round((parent.bpSpan || parent.length) * tFraction),
+        nBubbles: 0,  // will be updated when bubble store is split
+        type: 'chain',
+        size: 0,
+        isRef: parent.isRef,
+        record: {
+            seqLength: Math.round(parent.length * tFraction),
+            gcCount: Math.round((parent.gcCount || 0) * tFraction),
+            start: parent.record?.start ?? null,
+            end: parent.record?.end ?? null,
+        },
+        subtype: parent.subtype,
+        depth: parent.depth,
+        connector: false,
+        bubbleIds: null,
+        sourceSegs,
+        sinkSegs,
+        bubblePositions: null,
+        bpStart: isLeft ? parent.bpStart : null,
+        bpEnd: isLeft ? null : parent.bpEnd,
+        bpHead: isLeft ? parent.bpHead : null,
+        bpTail: isLeft ? null : parent.bpTail,
+        parentChain: rootId,  // always points to the root chain, not intermediate subchains
+        ancestors,
+        popped: false,
+        graph: null,
+        loopFactor: 0,
+        stepCount: parent.stepCount,
+    };
 }
 
 /**
@@ -385,12 +663,9 @@ export function removeChainsFromPolychainLayer(chainIds) {
     for (const cid of chainIds) {
         const nodes = chainPolychainNodes.get(cid);
         if (nodes) {
-            // Clean up segToPolychain entries pointing to these nodes
             const nodeSet = new Set(nodes);
             for (const [key, pn] of segToPolychain) {
-                if (nodeSet.has(pn)) {
-                    segToPolychain.delete(key);
-                }
+                if (nodeSet.has(pn)) segToPolychain.delete(key);
             }
             chainPolychainNodes.delete(cid);
         }
