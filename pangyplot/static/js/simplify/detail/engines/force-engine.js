@@ -18,6 +18,7 @@ import { centroidRepulsion,
          loopClosureForce, parentSideForce, laplacianSmoothing,
          balloonInflation } from './forces/polychain-forces.js';
 import { combinedLayoutForce, delLinkForce } from './forces/layout-forces.js';
+import { ghostGuideForce } from './forces/ghost-guide-force.js';
 import { centroidAnchorForce, releaseAllChains } from '../../engines/drag/centroid-anchor-force.js';
 
 // ---------------------------------------------------------------
@@ -100,9 +101,9 @@ function isolatedCharge(filterFn, strengthFn, maxDist) {
         }
     }
 
-    force.initialize = function(nodes) {
+    force.initialize = function(nodes, random) {
         allNodes = nodes;
-        inner.initialize(nodes);
+        inner.initialize(nodes, random);
     };
     force.strength = function(_) { return _ == null ? inner.strength() : (inner.strength(_), force); };
     force.distanceMax = function(_) { return _ == null ? inner.distanceMax() : (inner.distanceMax(_), force); };
@@ -159,11 +160,11 @@ export function initForce() {
             .distance(linkDistance)
             .strength(linkStrength))
         .force('charge', isolatedCharge(
-            n => n.isPolychainNode,
+            n => n.isPolychainNode,  // includes ghost spine nodes (isPolychainNode: true)
             () => pcSettings.charge,
             400))
         .force('segCharge', isolatedCharge(
-            n => !n.isPolychainNode && n.chainId && n.chainId !== '__junction__',
+            n => !n.isPolychainNode && !n.isGhostSpine && n.chainId && n.chainId !== '__junction__',
             () => pcSettings.charge * 0.3,
             60))
         // .force('collide', d3.forceCollide()
@@ -176,6 +177,7 @@ export function initForce() {
         .force('balloon', balloonInflation())
         .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce(getLinks))
+        .force('ghostGuide', ghostGuideForce())
         .force('centroidAnchor', centroidAnchorForce())
         .force('spawnDamp', spawnDampingForce())
         .on('tick', onTick);
@@ -193,7 +195,7 @@ export function computeForceDeltas() {
 
     const alpha = 1; // Use full strength for debug visualization
     const forceNames = ['charge', 'collide', 'link', 'layout',
-        'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide'];
+        'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide', 'ghostGuide'];
     const result = {};
 
     for (const name of forceNames) {

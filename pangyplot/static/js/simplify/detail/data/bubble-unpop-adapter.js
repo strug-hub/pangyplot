@@ -7,7 +7,7 @@ import { state } from '../../simplify-state.js';
 import { unspliceBubbleNodes, unspliceChainAtBubble, addPoppedNodes } from '../engines/force-engine.js';
 import simplifyViewState from './simplify-view-state.js';
 import { restoreBubbleToStore, mergeBubbleStores } from './bubble-meta-cache.js';
-import { mergeSubchainsOnUnpop, restoreChain } from './polychain/polychain-adapter.js';
+import { mergeSubchainsOnUnpop, restoreChain, removeGhostSpine, hasGhostSpine } from './polychain/polychain-adapter.js';
 import popTree from './pop-tree.js';
 
 /**
@@ -87,6 +87,13 @@ function unpopChainSplit(popEntry) {
     // Restore the bubble circle in the meta cache
     if (bubbleMeta) {
         restoreBubbleToStore(chainId, bubbleMeta);
+    }
+
+    // If the restored chain is the root (no colon in chainId), the ghost
+    // spine is no longer needed — the original chain is fully restored.
+    const rootId = chainId.split(':')[0];
+    if (chainId === rootId && hasGhostSpine(rootId)) {
+        removeGhostSpine(rootId);
     }
 
     return true;

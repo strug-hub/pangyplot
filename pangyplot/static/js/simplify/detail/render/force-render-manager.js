@@ -84,7 +84,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     let jNodeCount = 0;
 
     for (const node of nodes) {
-        if (node.x == null || node.isPhantom || node.isPolychainNode) continue;
+        if (node.x == null || node.isPhantom || node.isPolychainNode || node.isGhostSpine) continue;
         if (!nodeVisible(node.x, node.y)) continue;
         if (node.chainId === '__junction__') {
             // Hide small junction nodes when zoomed out (all visible at gridSize <= 50)
@@ -192,8 +192,9 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const headLen = Math.max(3, 6 / state.zoom);
     const lw = Math.max(0.5, 1.5 / state.zoom);
 
-    const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
-    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && n.x != null);
+    const pcNodes = nodes.filter(n => n.isPolychainNode && !n.isGhostSpine && n.x != null);
+    const ghostNodes = nodes.filter(n => n.isGhostSpine && n.x != null);
+    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && !n.isGhostSpine && n.x != null);
     const allVisNodes = [...pcNodes, ...segNodes];
     if (allVisNodes.length === 0) return;
 
@@ -208,7 +209,31 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         smoothing:       { color: '#FF6688', label: 'smooth' },
         balloon:         { color: '#FFD700', label: 'balloon' },
         parentSide:      { color: '#44FF44', label: 'parent' },
+        ghostGuide:      { color: '#88FFFF', label: 'guide' },
     };
+
+    // Draw ghost spine polylines as faint dashed lines
+    if (ghostNodes.length > 0) {
+        const byChain = new Map();
+        for (const n of ghostNodes) {
+            let arr = byChain.get(n.chainId);
+            if (!arr) { arr = []; byChain.set(n.chainId, arr); }
+            arr.push(n);
+        }
+        ctx.globalAlpha = 0.35 * opacity;
+        ctx.strokeStyle = '#88FFFF';
+        ctx.lineWidth = Math.max(1, 2 / state.zoom);
+        ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
+        for (const group of byChain.values()) {
+            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
+            if (group.length < 2) continue;
+            ctx.beginPath();
+            ctx.moveTo(group[0].x, group[0].y);
+            for (let i = 1; i < group.length; i++) ctx.lineTo(group[i].x, group[i].y);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+    }
 
     // Compute real force deltas on demand (runs each force once, restores vx/vy)
     const deltas = computeForceDeltas();

@@ -17,16 +17,6 @@ function mainSliders() {
             onChange: (v) => { pcSettings.centroidLevel = v; applyPcSettings(); }
         },
         {
-            label: "Loop Pull", icon: "down-left-and-up-right-to-center",
-            min: 0, max: 5, step: 1, default: pcSettings.loopLevel,
-            onChange: (v) => { pcSettings.loopLevel = v; applyPcSettings(); }
-        },
-        {
-            label: "Link Strength", icon: "link",
-            min: 1, max: 5, step: 1, default: pcSettings.linkStrengthLevel,
-            onChange: (v) => { pcSettings.linkStrengthLevel = v; applyPcSettings(); }
-        },
-        {
             label: "Layout Impulse", icon: "circle-nodes",
             min: 0, max: 5, step: 1, default: pcSettings.layoutLevel,
             onChange: (v) => { pcSettings.layoutLevel = v; applyPcSettings(); }
@@ -46,6 +36,16 @@ function mainSliders() {
 
 function advancedSliders() {
     return [
+        {
+            label: "Loop Pull", icon: "down-left-and-up-right-to-center",
+            min: 0, max: 5, step: 1, default: pcSettings.loopLevel,
+            onChange: (v) => { pcSettings.loopLevel = v; applyPcSettings(); }
+        },
+        {
+            label: "Link Strength", icon: "link",
+            min: 1, max: 5, step: 1, default: pcSettings.linkStrengthLevel,
+            onChange: (v) => { pcSettings.linkStrengthLevel = v; applyPcSettings(); }
+        },
         {
             label: "Collision Radius", icon: "explosion",
             min: 0, max: 30, step: 1, default: pcSettings.collisionRadius,

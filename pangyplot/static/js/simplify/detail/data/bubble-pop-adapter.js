@@ -8,7 +8,7 @@ import { deserializeSubgraph } from '../../../graph/data/records/deserializer/de
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
-import { getPolychainNodesForChain, splitChainOnPop, getSegToPolychainRecord, removeChainEntirely, resamplePolychainLive } from './polychain/polychain-adapter.js';
+import { getPolychainNodesForChain, splitChainOnPop, getSegToPolychainRecord, removeChainEntirely, resamplePolychainLive, getGhostSpine, computeGhostT } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore, getBubbleStore, splitBubbleStore } from './bubble-meta-cache.js';
 
 /**
@@ -326,6 +326,24 @@ export async function popBubbleCircle(hit) {
         splitResult.leftChain.size = leftCount;
         splitResult.rightChain.nBubbles = rightCount;
         splitResult.rightChain.size = rightCount;
+    }
+
+    // Assign ghost guide range to popped child nodes: they fill the corridor
+    // between the left subchain's tail ghostT and the right subchain's head ghostT.
+    const rootId = chainId.split(':')[0];
+    const ghostNodes = getGhostSpine(rootId);
+    if (ghostNodes && splitResult) {
+        const leftTail = getPolychainNodesForChain(splitResult.leftChain.id);
+        const rightHead = getPolychainNodesForChain(splitResult.rightChain.id);
+        const tLeft = leftTail ? (leftTail[leftTail.length - 1].ghostT ?? 0) : 0;
+        const tRight = rightHead ? (rightHead[0].ghostT ?? 1) : 1;
+        const tStart = Math.min(tLeft, tRight);
+        const tEnd = Math.max(tLeft, tRight);
+        for (const n of newChildNodes) {
+            n.ghostTStart = tStart;
+            n.ghostTEnd = tEnd;
+            n.ghostRootId = rootId;
+        }
     }
 
     recordPop('bubble-circle-pop', { id: bubbleId, chain: chainId });

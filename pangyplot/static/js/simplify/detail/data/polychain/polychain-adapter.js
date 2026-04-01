@@ -183,6 +183,148 @@ export function resamplePolychainLive(chainId, targetCount = MIN_PRESPLIT_NODES)
     chainPolychainNodes.set(chainId, newNodes);
 }
 
+// ---------------------------------------------------------------
+// Ghost spine: hidden guide chain for popped subgraphs
+// ---------------------------------------------------------------
+
+const GHOST_SUFFIX = ':__ghost';
+
+/** Check if a ghost spine exists for a root chain. */
+export function hasGhostSpine(rootId) {
+    return chainPolychainNodes.has(rootId + GHOST_SUFFIX);
+}
+
+/** Get the ghost spine node array for a root chain, or null. */
+export function getGhostSpine(rootId) {
+    return chainPolychainNodes.get(rootId + GHOST_SUFFIX) || null;
+}
+
+/**
+ * Convert a chain's existing polychain nodes into a ghost spine.
+ * The nodes stay in the force sim with all their existing links intact —
+ * they just become invisible (isGhostSpine: true) and get re-keyed
+ * under the ghost chain ID.  No cloning, no new links.
+ * No-op if a ghost already exists for this root chain.
+ */
+export function createGhostSpine(chainId) {
+    const rootId = chainId.split(':')[0];
+    const ghostId = rootId + GHOST_SUFFIX;
+    if (chainPolychainNodes.has(ghostId)) return;
+
+    const nodes = chainPolychainNodes.get(chainId);
+    if (!nodes || nodes.length < 2) return;
+
+    // Mark existing nodes as ghost — they stay in the sim
+    for (const n of nodes) {
+        n.isGhostSpine = true;
+        n.ghostRootId = rootId;
+    }
+
+    // Re-key: move from chainId to ghostId in our map
+    chainPolychainNodes.delete(chainId);
+    chainPolychainNodes.set(ghostId, nodes);
+
+    // Update chainId on nodes and their links in the sim
+    const oldChainId = nodes[0].chainId;
+    for (const n of nodes) n.chainId = ghostId;
+    for (const l of getForceLinks()) {
+        if (l.isPolychainLink && l.chainId === oldChainId) {
+            l.chainId = ghostId;
+        }
+    }
+
+    // Update segToPolychain — ghost head/tail remain valid endpoints
+    // (they're the same node objects, just re-flagged)
+}
+
+/**
+ * Remove the ghost spine for a root chain (on full undo).
+ * Restores the ghost nodes to normal visible polychain nodes under
+ * the original root chain ID.
+ */
+export function removeGhostSpine(rootId) {
+    const ghostId = rootId + GHOST_SUFFIX;
+    const ghostNodes = chainPolychainNodes.get(ghostId);
+    if (!ghostNodes) return;
+
+    // Restore nodes to normal polychain
+    for (const n of ghostNodes) {
+        n.isGhostSpine = false;
+        n.chainId = rootId;
+        delete n.ghostRootId;
+        delete n.ghostT;
+    }
+
+    // Re-key back to root chain ID
+    chainPolychainNodes.delete(ghostId);
+    chainPolychainNodes.set(rootId, ghostNodes);
+
+    // Update link chainIds back
+    for (const l of getForceLinks()) {
+        if (l.isPolychainLink && l.chainId === ghostId) {
+            l.chainId = rootId;
+        }
+    }
+}
+
+/**
+ * Compute a node's ghostT (arc-length fraction along the ghost spine).
+ * Projects the node's position onto the ghost polyline and returns 0–1.
+ */
+export function computeGhostT(node, ghostNodes) {
+    if (!ghostNodes || ghostNodes.length < 2) return 0.5;
+
+    const pl = ghostNodes.map(n => [n.x, n.y]);
+    const cumLen = cumulativeLengths(pl);
+    const totalLen = cumLen[cumLen.length - 1];
+    if (totalLen === 0) return 0.5;
+
+    // Find nearest point on ghost polyline
+    let bestDist = Infinity;
+    let bestArcDist = 0;
+    for (let i = 0; i < pl.length - 1; i++) {
+        const ax = pl[i][0], ay = pl[i][1];
+        const bx = pl[i + 1][0], by = pl[i + 1][1];
+        const dx = bx - ax, dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        let t = 0;
+        if (lenSq > 0) {
+            t = Math.max(0, Math.min(1, ((node.x - ax) * dx + (node.y - ay) * dy) / lenSq));
+        }
+        const px = ax + t * dx, py = ay + t * dy;
+        const d = Math.hypot(node.x - px, node.y - py);
+        if (d < bestDist) {
+            bestDist = d;
+            bestArcDist = cumLen[i] + t * (cumLen[i + 1] - cumLen[i]);
+        }
+    }
+    return bestArcDist / totalLen;
+}
+
+/**
+ * Assign ghostT to all polychain nodes in a subchain, and ghostTStart/ghostTEnd
+ * range to popped child nodes.
+ */
+export function assignGhostTValues(rootId, subchainNodes, childNodes, leftTailGhostT, rightHeadGhostT) {
+    const ghostNodes = getGhostSpine(rootId);
+    if (!ghostNodes) return;
+
+    // Polychain subchain nodes: project each onto ghost
+    for (const n of subchainNodes) {
+        n.ghostT = computeGhostT(n, ghostNodes);
+        n.ghostRootId = rootId;
+    }
+
+    // Popped child nodes: get the range between the two split boundaries
+    const tStart = Math.min(leftTailGhostT, rightHeadGhostT);
+    const tEnd = Math.max(leftTailGhostT, rightHeadGhostT);
+    for (const n of childNodes) {
+        n.ghostTStart = tStart;
+        n.ghostTEnd = tEnd;
+        n.ghostRootId = rootId;
+    }
+}
+
 /**
  * Get the live [x,y] positions of a chain's polychain nodes.
  * Used by renderers to draw flexing polylines.
@@ -262,6 +404,12 @@ export function splitChainOnPop(chainId, splitIdx, popBubbleId, poppedSourceSegs
     const rightId = `${rootId}:${counter++}`;
     subchainCounters.set(rootId, counter);
 
+    // Create ghost spine on the first split of a root chain.
+    // The ghost preserves the full chain shape under macro forces.
+    if (!hasGhostSpine(rootId)) {
+        createGhostSpine(chainId);
+    }
+
     // Split polychain nodes — just reassign chainIds (nodes are already in the force sim).
     // Pre-split resampling (in popBubbleCircle) + edge clamping guarantees both
     // sides always get >= 2 nodes, so no synthetic nodes are needed.
@@ -269,6 +417,19 @@ export function splitChainOnPop(chainId, splitIdx, popBubbleId, poppedSourceSegs
     const rightNodes = nodes.slice(splitIdx + 1);
     for (const n of leftNodes) n.chainId = leftId;
     for (const n of rightNodes) n.chainId = rightId;
+
+    // Assign ghostT to each subchain node (arc-length fraction along ghost)
+    const ghostNodes = getGhostSpine(rootId);
+    if (ghostNodes) {
+        for (const n of leftNodes) {
+            n.ghostT = computeGhostT(n, ghostNodes);
+            n.ghostRootId = rootId;
+        }
+        for (const n of rightNodes) {
+            n.ghostT = computeGhostT(n, ghostNodes);
+            n.ghostRootId = rootId;
+        }
+    }
 
     chainPolychainNodes.delete(chainId);
     chainPolychainNodes.set(leftId, leftNodes);
