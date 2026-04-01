@@ -50,11 +50,13 @@ function getLinks() { return sim.force('link').links(); }
 // ---------------------------------------------------------------
 
 export function linkDistance(d) {
-    return d.isPolychainLink ? d.length : d.length * SIMPLIFY_LINK_SCALE;
+    if (d.isPolychainLink) return d.length;
+    if (d.isBridgeLink) return 0;
+    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return 0;
+    return d.length * SIMPLIFY_LINK_SCALE;
 }
 
 const LINK_SOFTEN_MIDPOINT = 100000;
-const POP_LINK_STRENGTH = 0.1;
 
 export function linkStrength(d) {
     if (d.isPolychainLink || d.isKinkLink) {
@@ -62,8 +64,8 @@ export function linkStrength(d) {
         const arc = d.chainArcLen || 0;
         return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
     }
-    if (d.isBridgeLink) return 0.02;  // flexible connection to chain
-    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return POP_LINK_STRENGTH;
+    if (d.isBridgeLink) return 0.1;
+    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return 0.1;
     return 0.01;
 }
 
@@ -164,7 +166,7 @@ export function initForce() {
             () => pcSettings.charge,
             400))
         .force('segCharge', isolatedCharge(
-            n => !n.isPolychainNode && !n.isGhostSpine && n.chainId && n.chainId !== '__junction__',
+            n => !n.isPolychainNode && !n.isGhostSpine && !n.isAnchor && n.chainId && n.chainId !== '__junction__',
             () => pcSettings.charge * 0.3,
             100))
         // .force('collide', d3.forceCollide()

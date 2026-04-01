@@ -85,7 +85,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     let jNodeCount = 0;
 
     for (const node of nodes) {
-        if (node.x == null || node.isPhantom || node.isPolychainNode || node.isGhostSpine) continue;
+        if (node.x == null || node.isPhantom || node.isPolychainNode || node.isGhostSpine || node.isAnchor) continue;
         if (!nodeVisible(node.x, node.y)) continue;
         if (node.chainId === '__junction__') {
             // Hide small junction nodes when zoomed out (all visible at gridSize <= 50)
@@ -194,7 +194,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const lw = Math.max(0.5, 1.5 / state.zoom);
 
     const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
-    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && n.x != null);
+    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && !n.isAnchor && n.x != null);
     const allVisNodes = [...pcNodes, ...segNodes];
     if (allVisNodes.length === 0) return;
 
@@ -229,27 +229,33 @@ function drawForceVectors(ctx, nodes, links, opacity) {
             for (const chain of dd.chains) {
                 const pcN = getPolychainNodesForChain(chain.id);
                 if (!pcN || pcN.length < 2) continue;
+                // Draw only through real polychain nodes, skipping anchors
+                const real = pcN.filter(n => !n.isAnchor);
+                if (real.length < 2) continue;
                 ctx.beginPath();
-                ctx.moveTo(pcN[0].x, pcN[0].y);
-                for (let i = 1; i < pcN.length; i++) ctx.lineTo(pcN[i].x, pcN[i].y);
+                ctx.moveTo(real[0].x, real[0].y);
+                for (let i = 1; i < real.length; i++) ctx.lineTo(real[i].x, real[i].y);
                 ctx.stroke();
             }
             ctx.setLineDash([]);
         }
     }
 
-    // Draw guide projection lines: each popped node → nearest point on chain
+    // Draw guide projection lines: each guided node → nearest point on chain backbone
     if (mode === 'guide') {
         ctx.globalAlpha = 0.3 * opacity;
         ctx.strokeStyle = '#88FFFF';
         ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
         const chainPlCache = new Map();
-        for (const n of segNodes) {
-            if (!n.ghostRootId) continue;
+        // Include both popped segments AND anchor nodes (all guided nodes)
+        const guidedNodes = nodes.filter(n => !n.isPolychainNode && n.ghostRootId && n.x != null);
+        for (const n of guidedNodes) {
             let pl = chainPlCache.get(n.ghostRootId);
             if (pl === undefined) {
                 const pcN = getPolychainNodesForChain(n.ghostRootId);
-                pl = pcN && pcN.length >= 2 ? pcN.map(nd => [nd.x, nd.y]) : null;
+                // Only real backbone nodes, skip anchors
+                const real = pcN ? pcN.filter(nd => !nd.isAnchor) : null;
+                pl = real && real.length >= 2 ? real.map(nd => [nd.x, nd.y]) : null;
                 chainPlCache.set(n.ghostRootId, pl);
             }
             if (!pl) continue;

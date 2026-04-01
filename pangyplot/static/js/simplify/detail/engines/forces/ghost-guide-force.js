@@ -14,7 +14,10 @@ export function ghostGuideForce() {
         if (cached) return cached;
         const pcNodes = getPolychainNodesForChain(chainId);
         if (!pcNodes || pcNodes.length < 2) return null;
-        cached = pcNodes.map(n => [n.x, n.y]);
+        // Only real polychain nodes — skip anchors to avoid feedback loop
+        const real = pcNodes.filter(n => !n.isAnchor);
+        if (real.length < 2) return null;
+        cached = real.map(n => [n.x, n.y]);
         _chainCache.set(chainId, cached);
         return cached;
     }

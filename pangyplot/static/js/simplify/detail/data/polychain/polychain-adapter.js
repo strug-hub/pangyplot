@@ -469,8 +469,9 @@ function ensureAnchor(nodes, chainId, x, y, label, loopFactor) {
         x, y,
         homeX: x, homeY: y,
         chainId,
-        isPolychainNode: true,
+        isPolychainNode: false,  // NOT a polychain force participant
         isAnchor: true,
+        ghostRootId: chainId,   // guide force projects this onto the chain
         nodeIndex: -1,
         chainNodeCount: 0,
         loopFactor,
