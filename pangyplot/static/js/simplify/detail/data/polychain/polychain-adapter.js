@@ -23,6 +23,14 @@ const segToPolychain = new Map();
 // Per-root-chain counter for generating unique subchain IDs (c42:0, c42:1, ...)
 const subchainCounters = new Map();
 
+// chainId → Array<{ anchorL, anchorR, bubbleId, childIids }> — popped gaps
+const chainGaps = new Map();
+
+/** Get gaps for a chain (empty array if none). */
+export function getChainGaps(chainId) {
+    return chainGaps.get(chainId) || [];
+}
+
 /** Check if a root chain ID has been split by pops (has subchains). */
 export function isSplitRootChain(chainId) {
     const rootId = chainId.split(':')[0];
@@ -336,6 +344,59 @@ export function getPolychainPositions(chainId) {
 }
 
 /**
+ * Get the visible segments of a chain as an array of { polyline, tStart, tEnd }.
+ * tStart/tEnd use the FIXED gap t-ranges (computed from home positions at pop
+ * time) so bubbles stay on the correct side of each gap regardless of force sim.
+ * Returns null if no visible segments.
+ */
+export function getVisibleSegments(chainId) {
+    const nodes = chainPolychainNodes.get(chainId);
+    if (!nodes || nodes.length < 2) return null;
+
+    const gaps = chainGaps.get(chainId);
+    if (!gaps || gaps.length === 0) {
+        return [{ polyline: nodes.map(n => [n.x, n.y]), tStart: 0, tEnd: 1 }];
+    }
+
+    // Sort gaps by their fixed tStart
+    const sorted = [...gaps].sort((a, b) => a.tStart - b.tStart);
+
+    // Build gap node-index ranges for polyline splitting
+    const gapIdxRanges = [];
+    for (const g of sorted) {
+        const li = nodes.indexOf(g.anchorL);
+        const ri = nodes.indexOf(g.anchorR);
+        if (li !== -1 && ri !== -1) gapIdxRanges.push({ li, ri, tStart: g.tStart, tEnd: g.tEnd });
+    }
+
+    // Build visible segments between gaps, using fixed t-ranges
+    const segments = [];
+    let segStartIdx = 0;
+    let segTStart = 0;
+    for (const gap of gapIdxRanges) {
+        if (gap.li > segStartIdx) {
+            const pl = [];
+            for (let i = segStartIdx; i <= gap.li; i++) pl.push([nodes[i].x, nodes[i].y]);
+            if (pl.length >= 2) {
+                segments.push({ polyline: pl, tStart: segTStart, tEnd: gap.tStart });
+            }
+        }
+        segStartIdx = gap.ri;
+        segTStart = gap.tEnd;
+    }
+    // Trailing segment
+    if (segStartIdx < nodes.length) {
+        const pl = [];
+        for (let i = segStartIdx; i < nodes.length; i++) pl.push([nodes[i].x, nodes[i].y]);
+        if (pl.length >= 2) {
+            segments.push({ polyline: pl, tStart: segTStart, tEnd: 1 });
+        }
+    }
+
+    return segments.length > 0 ? segments : null;
+}
+
+/**
  * Get the raw polychain node array for a chain (for direct fx/fy manipulation).
  * Returns null if the chain has no polychain nodes.
  */
@@ -350,7 +411,115 @@ export function getPolychainNodesForChain(chainId) {
 export function getPolychainPolylines(chainId) {
     const nodes = chainPolychainNodes.get(chainId);
     if (!nodes || nodes.length < 2) return null;
-    return [nodes.map(n => [n.x, n.y])];
+
+    const gaps = chainGaps.get(chainId);
+    if (!gaps || gaps.length === 0) {
+        return [nodes.map(n => [n.x, n.y])];
+    }
+
+    // Build a set of anchor nodes that form gap boundaries
+    const gapAnchors = new Set();
+    const gapPairs = new Set(); // "iidL|iidR" — the gap link to skip
+    for (const g of gaps) {
+        gapAnchors.add(g.anchorL);
+        gapAnchors.add(g.anchorR);
+        gapPairs.add(`${g.anchorL.iid}|${g.anchorR.iid}`);
+    }
+
+    // Walk the node array and split into segments at gaps
+    const segments = [];
+    let current = [];
+    for (let i = 0; i < nodes.length; i++) {
+        current.push([nodes[i].x, nodes[i].y]);
+        if (i < nodes.length - 1) {
+            const pairKey = `${nodes[i].iid}|${nodes[i + 1].iid}`;
+            if (gapPairs.has(pairKey)) {
+                // End this segment, start a new one after the gap
+                if (current.length >= 2) segments.push(current);
+                current = [];
+            }
+        }
+    }
+    if (current.length >= 2) segments.push(current);
+
+    return segments.length > 0 ? segments : null;
+}
+
+/**
+ * Insert two anchor nodes into a chain's polychain at splitIdx, creating a gap.
+ * The chain's node array becomes: [..., n[splitIdx], anchorL, anchorR, n[splitIdx+1], ...]
+ * with a gap link between anchorL and anchorR (not rendered).
+ *
+ * Returns { anchorL, anchorR, gapEntry } or null on failure.
+ */
+export function insertAnchorsAtPop(chainId, splitIdx, hitX, hitY, bubbleId) {
+    const nodes = chainPolychainNodes.get(chainId);
+    if (!nodes || splitIdx < 0 || splitIdx >= nodes.length - 1) return null;
+
+    const leftNode = nodes[splitIdx];
+    const rightNode = nodes[splitIdx + 1];
+
+    // Interpolate anchor positions at the hit point (between leftNode and rightNode)
+    const MIX = 0.4;  // 40% from each side toward center
+    const anchorL = {
+        id: `anchor_${chainId}_${bubbleId}_L`,
+        iid: `anchor_${chainId}_${bubbleId}_L`,
+        x: leftNode.x + (hitX - leftNode.x) * MIX,
+        y: leftNode.y + (hitY - leftNode.y) * MIX,
+        homeX: leftNode.homeX + (rightNode.homeX - leftNode.homeX) * 0.4,
+        homeY: leftNode.homeY + (rightNode.homeY - leftNode.homeY) * 0.4,
+        chainId,
+        isPolychainNode: true,
+        isAnchor: true,
+        nodeIndex: -1,  // will be fixed below
+        chainNodeCount: 0,
+        loopFactor: leftNode.loopFactor || 0,
+        radius: 0,
+        width: 0,
+    };
+    const anchorR = {
+        id: `anchor_${chainId}_${bubbleId}_R`,
+        iid: `anchor_${chainId}_${bubbleId}_R`,
+        x: rightNode.x + (hitX - rightNode.x) * MIX,
+        y: rightNode.y + (hitY - rightNode.y) * MIX,
+        homeX: leftNode.homeX + (rightNode.homeX - leftNode.homeX) * 0.6,
+        homeY: leftNode.homeY + (rightNode.homeY - leftNode.homeY) * 0.6,
+        chainId,
+        isPolychainNode: true,
+        isAnchor: true,
+        nodeIndex: -1,
+        chainNodeCount: 0,
+        loopFactor: rightNode.loopFactor || 0,
+        radius: 0,
+        width: 0,
+    };
+
+    // Insert anchors into the node array: [..., leftNode, anchorL, anchorR, rightNode, ...]
+    const insertAt = splitIdx + 1;
+    nodes.splice(insertAt, 0, anchorL, anchorR);
+
+    // Fix nodeIndex for all nodes
+    for (let i = 0; i < nodes.length; i++) {
+        nodes[i].nodeIndex = i;
+        nodes[i].chainNodeCount = nodes.length;
+    }
+
+    // Compute gap t-range from HOME positions (stable, not affected by force sim).
+    // This defines where the gap falls in the chain's arc-length space.
+    const homePl = nodes.map(n => [n.homeX, n.homeY]);
+    const homeCumLen = cumulativeLengths(homePl);
+    const homeTotalLen = homeCumLen[homeCumLen.length - 1] || 1;
+    const anchorLIdx = nodes.indexOf(anchorL);
+    const anchorRIdx = nodes.indexOf(anchorR);
+    const gapTStart = homeCumLen[anchorLIdx] / homeTotalLen;
+    const gapTEnd = homeCumLen[anchorRIdx] / homeTotalLen;
+
+    // Track the gap with its fixed t-range
+    const gapEntry = { anchorL, anchorR, bubbleId, childIids: [], tStart: gapTStart, tEnd: gapTEnd };
+    if (!chainGaps.has(chainId)) chainGaps.set(chainId, []);
+    chainGaps.get(chainId).push(gapEntry);
+
+    return { anchorL, anchorR, leftNode, rightNode, gapEntry, insertAt };
 }
 
 /**

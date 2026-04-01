@@ -2,14 +2,14 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, spliceChainAtBubble, findSplitIdx, removeFullyPoppedChain } from '../engines/force-engine.js';
+import { spliceBubbleNodes, insertPoppedContent, findSplitIdx } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
-import { getPolychainNodesForChain, splitChainOnPop, getSegToPolychainRecord, removeChainEntirely, resamplePolychainLive, getGhostSpine, computeGhostT } from './polychain/polychain-adapter.js';
-import { removeBubbleFromStore, getBubbleStore, splitBubbleStore } from './bubble-meta-cache.js';
+import { getPolychainNodesForChain, getSegToPolychainRecord, resamplePolychainLive, insertAnchorsAtPop } from './polychain/polychain-adapter.js';
+import { removeBubbleFromStore } from './bubble-meta-cache.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -290,78 +290,28 @@ export async function popBubbleCircle(hit) {
         node.y = hit.y + (node.homeY - layoutCy) * squish;
     }
 
-    // Compute split index and clamp so both sides get >= 2 polychain nodes.
-    // The resample above guarantees pcNodes.length >= 8, so clamping by at
-    // most 1 segment is geometrically negligible.
-    let splitIdx = findSplitIdx(pcNodes, hit.x, hit.y);
-    splitIdx = Math.max(1, Math.min(splitIdx, pcNodes.length - 3));
+    // Find split index on the polychain
+    const splitIdx = findSplitIdx(pcNodes, hit.x, hit.y);
 
-    // Splice the chain at the clamped split point (bridge links + child nodes)
-    const spliceResult = spliceChainAtBubble(
-        chainId, splitIdx, pcNodes, newChildNodes, newChildLinks,
+    // Insert anchor nodes into the polychain at the split point
+    const anchorInfo = insertAnchorsAtPop(chainId, splitIdx, hit.x, hit.y, bubbleId);
+    if (!anchorInfo) return false;
+
+    // Insert popped content: anchor links, bridge links, child nodes
+    const spliceResult = insertPoppedContent(
+        chainId, anchorInfo, newChildNodes, newChildLinks,
         apiData.source_segs || [], apiData.sink_segs || [],
         recordMap,
     );
     if (!spliceResult) return false;
 
-    // Remove the bubble circle from the meta cache (before splitting the store)
+    // Track child iids on the gap entry (for undo)
+    anchorInfo.gapEntry.childIids = newChildNodes.map(n => n.iid);
+
+    // Remove the popped bubble circle from the meta cache
     const removedMeta = removeBubbleFromStore(chainId, bubbleId);
 
-    // Split chain into two real subchains (updates detailData.chains + polychain nodes)
-    const splitResult = splitChainOnPop(
-        chainId, spliceResult.splitIdx, bubbleId,
-        apiData.source_segs || [], apiData.sink_segs || [],
-    );
-
-    // Split the bubble store using the popped bubble's t value as the partition
-    // boundary. Bubble t values are index-based (not arc-length), so we must
-    // use the same coordinate system — the popped bubble's own t is the natural
-    // split point in bubble-t space.
-    const bubbleTSplit = hit.meta.t;
-    let tSplit = bubbleTSplit;
-    if (splitResult) {
-        const { leftCount, rightCount } = splitBubbleStore(
-            chainId, splitResult.leftChain.id, splitResult.rightChain.id, bubbleTSplit);
-        splitResult.leftChain.nBubbles = leftCount;
-        splitResult.leftChain.size = leftCount;
-        splitResult.rightChain.nBubbles = rightCount;
-        splitResult.rightChain.size = rightCount;
-    }
-
-    // Assign ghost guide range to popped child nodes: they fill the corridor
-    // between the left subchain's tail ghostT and the right subchain's head ghostT.
-    const rootId = chainId.split(':')[0];
-    const ghostNodes = getGhostSpine(rootId);
-    if (ghostNodes && splitResult) {
-        const leftTail = getPolychainNodesForChain(splitResult.leftChain.id);
-        const rightHead = getPolychainNodesForChain(splitResult.rightChain.id);
-        const tLeft = leftTail ? (leftTail[leftTail.length - 1].ghostT ?? 0) : 0;
-        const tRight = rightHead ? (rightHead[0].ghostT ?? 1) : 1;
-        const tStart = Math.min(tLeft, tRight);
-        const tEnd = Math.max(tLeft, tRight);
-        for (const n of newChildNodes) {
-            n.ghostTStart = tStart;
-            n.ghostTEnd = tEnd;
-            n.ghostRootId = rootId;
-        }
-    }
-
     recordPop('bubble-circle-pop', { id: bubbleId, chain: chainId });
-
-    // Remove zero-bubble subchains — their polychain nodes are no longer needed
-    // and removeFullyPoppedChain rewires external links through the bridge map.
-    let chainRemoval = null;
-    if (splitResult) {
-        for (const sub of [splitResult.leftChain, splitResult.rightChain]) {
-            const store = getBubbleStore(sub.id);
-            if (store && store.bubbles.length === 0) {
-                const removalInfo = removeChainEntirely(sub.id);
-                const rewireInfo = removeFullyPoppedChain(removalInfo.chainIds);
-                if (!chainRemoval) chainRemoval = [];
-                chainRemoval.push({ id: sub.id, ...removalInfo, ...rewireInfo });
-            }
-        }
-    }
 
     // Determine parent in pop hierarchy
     const parentBubbleId = parentRecord && popTree.has(parentRecord.id)
@@ -369,7 +319,7 @@ export async function popBubbleCircle(hit) {
 
     // Track for undo via pop tree
     popTree.register(bubbleId, chainId, parentBubbleId, {
-        isChainSplitPop: true,
+        isAnchorPop: true,
         bubbleId,
         chainId,
         parentRecord,
@@ -377,12 +327,9 @@ export async function popBubbleCircle(hit) {
         sourceSegs: apiData.source_segs || [],
         sinkSegs: apiData.sink_segs || [],
         childBubbles: apiData.child_bubbles || [],
-        removedLink: spliceResult.removedLink,
-        bridgeLinks: spliceResult.bridgeLinks,
-        splitResult,
-        tSplit,
+        anchorInfo,
+        spliceResult,
         bubbleMeta: removedMeta,
-        chainRemoval,
     });
 
     return true;

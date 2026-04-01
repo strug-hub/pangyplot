@@ -183,6 +183,72 @@ export function updateBubblePositions(chainId, pl) {
 }
 
 /**
+ * Update bubble positions using visible segments (gap-aware).
+ * Each segment has { polyline, tStart, tEnd } where tStart/tEnd are
+ * arc-length fractions along the full chain.  Each bubble is placed
+ * on the segment that contains its t value, positioned locally within
+ * that segment.  Bubbles in gap regions are hidden (placed offscreen).
+ */
+export function updateBubblePositionsSegmented(chainId, segments) {
+    const store = stores.get(chainId);
+    if (!store || store.positions.length === 0 || !segments || segments.length === 0) return;
+
+    // Precompute cumulative lengths for each segment
+    const segData = segments.map(seg => {
+        const pl = seg.polyline;
+        const n = pl.length;
+        const cumLen = new Float64Array(n);
+        cumLen[0] = 0;
+        for (let i = 1; i < n; i++) {
+            cumLen[i] = cumLen[i - 1] + Math.hypot(pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]);
+        }
+        return { pl, cumLen, totalLen: cumLen[n - 1], tStart: seg.tStart, tEnd: seg.tEnd };
+    });
+
+    for (const pos of store.positions) {
+        const bt = pos.meta.t;  // bubble's t along full chain
+
+        // Find which visible segment contains this bubble
+        let placed = false;
+        for (const sd of segData) {
+            if (bt < sd.tStart || bt > sd.tEnd) continue;
+            if (sd.totalLen === 0) continue;
+
+            // Remap t from [tStart, tEnd] to [0, 1] within this segment
+            const localT = sd.tEnd > sd.tStart ? (bt - sd.tStart) / (sd.tEnd - sd.tStart) : 0.5;
+            const d = localT * sd.totalLen;
+
+            // Interpolate along segment polyline
+            const { pl, cumLen } = sd;
+            const n = pl.length;
+            if (d <= 0) {
+                pos.x = pl[0][0]; pos.y = pl[0][1];
+            } else if (d >= sd.totalLen) {
+                pos.x = pl[n - 1][0]; pos.y = pl[n - 1][1];
+            } else {
+                let lo = 0, hi = n - 1;
+                while (lo < hi - 1) {
+                    const mid = (lo + hi) >> 1;
+                    if (cumLen[mid] <= d) lo = mid; else hi = mid;
+                }
+                const segLen = cumLen[hi] - cumLen[lo];
+                const t = segLen > 0 ? (d - cumLen[lo]) / segLen : 0;
+                pos.x = pl[lo][0] + t * (pl[hi][0] - pl[lo][0]);
+                pos.y = pl[lo][1] + t * (pl[hi][1] - pl[lo][1]);
+            }
+            placed = true;
+            break;
+        }
+
+        // Bubble falls in a gap — hide it offscreen
+        if (!placed) {
+            pos.x = -99999;
+            pos.y = -99999;
+        }
+    }
+}
+
+/**
  * Split a parent chain's bubble store into two subchain stores.
  * Partitions bubbles by t < tSplit, remaps t values to local [0,1].
  * @returns {{ leftCount, rightCount }} for updating subchain nBubbles

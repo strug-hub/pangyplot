@@ -706,14 +706,28 @@ export function findSplitIdx(pcNodes, hitX, hitY) {
     return Math.min(splitIdx, pcNodes.length - 2);
 }
 
-export function spliceChainAtBubble(chainId, splitIdx, pcNodes, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
+/**
+ * Insert popped content into the force sim at anchor nodes.
+ * Anchors are already inserted into the polychain by insertAnchorsAtPop.
+ * This function: adds anchor nodes + links to the sim, finds boundary
+ * child nodes, creates bridge links, and adds everything to the sim.
+ *
+ * @param {string} chainId
+ * @param {Object} anchorInfo - from insertAnchorsAtPop: { anchorL, anchorR, leftNode, rightNode }
+ * @param {Array} childNodes - deserialized child nodes
+ * @param {Array} childLinks - deserialized child links
+ * @param {Array} sourceSegs - source boundary segment IDs
+ * @param {Array} sinkSegs - sink boundary segment IDs
+ * @param {Map} recordMap - id → NodeRecord
+ * @returns {{ bridgeLinks, anchorLinks, removedLink }} or null
+ */
+export function insertPoppedContent(chainId, anchorInfo, childNodes, childLinks, sourceSegs, sinkSegs, recordMap) {
     if (!sim) initForce();
-    if (!pcNodes || pcNodes.length < 2) return null;
 
-    const leftNode = pcNodes[splitIdx];
-    const rightNode = pcNodes[splitIdx + 1];
+    const { anchorL, anchorR, leftNode, rightNode } = anchorInfo;
 
-    // Find and remove the polychain link between leftNode and rightNode
+    // Find and remove the old polychain link between leftNode and rightNode.
+    // Replace with: leftNode → anchorL, anchorL → anchorR (gap), anchorR → rightNode.
     const links = getLinks();
     let removedLink = null;
     const keptLinks = [];
@@ -728,6 +742,16 @@ export function spliceChainAtBubble(chainId, splitIdx, pcNodes, childNodes, chil
             keptLinks.push(l);
         }
     }
+
+    const restLen = removedLink ? removedLink.length / 3 : 5;
+    const anchorLinks = [
+        { source: leftNode, target: anchorL, isPolychainLink: true, isKinkLink: false,
+          chainId, length: restLen, loopFactor: leftNode.loopFactor || 0, chainArcLen: 0 },
+        { source: anchorL, target: anchorR, isPolychainLink: true, isKinkLink: false,
+          isGapLink: true, chainId, length: restLen, loopFactor: 0, chainArcLen: 0 },
+        { source: anchorR, target: rightNode, isPolychainLink: true, isKinkLink: false,
+          chainId, length: restLen, loopFactor: rightNode.loopFactor || 0, chainArcLen: 0 },
+    ];
 
     // Mark child nodes for spawn damping; preserve homeX/homeY if already
     // set to ODGI layout positions by the caller (popBubbleCircle).
@@ -819,40 +843,38 @@ export function spliceChainAtBubble(chainId, splitIdx, pcNodes, childNodes, chil
         }
     }
 
-    // Create bridge links
+    // Create bridge links: anchors → boundary child nodes
     const bridgeLinks = [];
     if (sourceChildNode) {
-        const bridge = {
-            source: leftNode,
+        bridgeLinks.push({
+            source: anchorL,
             target: sourceChildNode,
             isBridgeLink: true,
             isKinkLink: false,
             chainId,
-            length: 10,
-        };
-        bridgeLinks.push(bridge);
+            length: removedLink ? removedLink.length / 2 : 10,
+        });
     }
     if (sinkChildNode) {
-        const bridge = {
+        bridgeLinks.push({
             source: sinkChildNode,
-            target: rightNode,
+            target: anchorR,
             isBridgeLink: true,
             isKinkLink: false,
             chainId,
-            length: 10,
-        };
-        bridgeLinks.push(bridge);
+            length: removedLink ? removedLink.length / 2 : 10,
+        });
     }
 
-    const allNodes = [...getNodes(), ...childNodes];
-    const allLinks = [...keptLinks, ...childLinks, ...bridgeLinks];
+    const allNodes = [...getNodes(), anchorL, anchorR, ...childNodes];
+    const allLinks = [...keptLinks, ...anchorLinks, ...childLinks, ...bridgeLinks];
 
     syncNodes(allNodes);
     syncLinks(allLinks);
     sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
     sim.alpha(1).restart();
 
-    return { splitIdx, removedLink, bridgeLinks };
+    return { removedLink, bridgeLinks, anchorLinks };
 }
 
 /**

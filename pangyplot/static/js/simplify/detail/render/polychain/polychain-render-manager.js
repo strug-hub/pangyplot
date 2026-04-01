@@ -3,10 +3,10 @@
 import { state } from '../../../simplify-state.js';
 import { getNodeColor } from '../../../../graph/render/color/color-style.js';
 import { strokePolyline, strokePolylines, fillCircles, strokeRing } from '../detail-painter.js';
-import { getPolychainPositions, getPolychainPolylines } from '../../data/polychain/polychain-adapter.js';
+import { getPolychainPositions, getPolychainPolylines, getVisibleSegments } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-data.js';
-import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta, updateBubblePositions } from '../../data/bubble-meta-cache.js';
+import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta, updateBubblePositions, updateBubblePositionsSegmented } from '../../data/bubble-meta-cache.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
@@ -107,10 +107,17 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
         const store = getBubbleStore(chain.id);
         if (!store || store.positions.length === 0) continue;
 
-        // Update positions in-place from live polychain node positions
-        const live = getPolychainPositions(chain.id);
-        const pl = live || chain.polyline;
-        updateBubblePositions(chain.id, pl);
+        // Update positions in-place from live polychain node positions.
+        // Use segmented positioning if the chain has gaps (popped bubbles)
+        // so circles stay on the correct side of each gap.
+        const segments = getVisibleSegments(chain.id);
+        if (segments && !(segments.length === 1 && segments[0].tStart === 0 && segments[0].tEnd === 1)) {
+            updateBubblePositionsSegmented(chain.id, segments);
+        } else {
+            const live = getPolychainPositions(chain.id);
+            const pl = live || chain.polyline;
+            updateBubblePositions(chain.id, pl);
+        }
 
         // Build circle render data from updated positions
         if (showCircles) {
