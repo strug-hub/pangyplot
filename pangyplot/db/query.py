@@ -287,6 +287,8 @@ def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
             "bp_start": bp_start,
             "bp_end": bp_end,
             "is_ref": len(b.range_inclusive) > 0,
+            "source_segs": b.source_segments,
+            "sink_segs": b.sink_segments,
         })
 
     return result

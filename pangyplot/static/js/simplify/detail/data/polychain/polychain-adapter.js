@@ -13,6 +13,7 @@ import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { extractSubPolyline } from './polychain-gene-map.js';
 import { getBubbleStore } from '../bubble-meta-cache.js';
+import { logGap } from '../pop-debug-log.js';
 
 // chainId → [polychain node objects in polyline order]
 const chainPolychainNodes = new Map();
@@ -515,7 +516,7 @@ function ensureAnchor(nodes, chainId, x, y, label, loopFactor) {
  *
  * @returns {{ leftNode, rightNode, gapEntry }} or null
  */
-export function createGapAtPop(chainId, bubbleId) {
+export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedSinkSegs = []) {
     const nodes = chainPolychainNodes.get(chainId);
     if (!nodes || nodes.length < 2) return null;
 
@@ -527,8 +528,25 @@ export function createGapAtPop(chainId, bubbleId) {
     const popIdx = bubbles.findIndex(b => b.id === bubbleId);
     if (popIdx === -1) return null;
 
-    const leftNeighborT = popIdx > 0 ? bubbles[popIdx - 1].t : 0;
-    const rightNeighborT = popIdx < bubbles.length - 1 ? bubbles[popIdx + 1].t : 1;
+    const poppedT = bubbles[popIdx].t;
+    const leftNeighbor = popIdx > 0 ? bubbles[popIdx - 1] : null;
+    const rightNeighbor = popIdx < bubbles.length - 1 ? bubbles[popIdx + 1] : null;
+    const leftNeighborT = leftNeighbor ? leftNeighbor.t : 0;
+    const rightNeighborT = rightNeighbor ? rightNeighbor.t : 1;
+
+    // The outer boundary segs of this gap: the POPPED bubble's own source segs
+    // (left edge, connects chain to interior) and sink segs (right edge, connects
+    // interior to chain). Used during absorption to know which bridge links to
+    // preserve (outer boundary) vs remove (interior shared boundary).
+    const outerSourceSegs = poppedSourceSegs;
+    const outerSinkSegs = poppedSinkSegs;
+
+    // Use midpoints between popped bubble and its neighbors for gap t-range.
+    // This ensures neighbor bubble circles land clearly inside visible segments,
+    // not at the exact gap boundary (which causes zero-width segments when
+    // adjacent gaps share a neighbor).
+    const gapTStart = (leftNeighborT + poppedT) / 2;
+    const gapTEnd = (poppedT + rightNeighborT) / 2;
 
     // Get neighbor bubble rendered positions from the positions array
     const positions = store.positions;
@@ -568,8 +586,10 @@ export function createGapAtPop(chainId, bubbleId) {
     const gapEntry = {
         leftNodeIdx, rightNodeIdx, bubbleId,
         childIids: [],
-        tStart: leftNeighborT,
-        tEnd: rightNeighborT,
+        tStart: gapTStart,
+        tEnd: gapTEnd,
+        outerSourceSegs: outerSourceSegs.map(String),  // popped bubble's source segs (left edge)
+        outerSinkSegs: outerSinkSegs.map(String),    // popped bubble's sink segs (right edge)
         anchorL: left.node, anchorR: right.node,
         leftSplice: left.splice, rightSplice: right.splice,
         leftCreated: left.created, rightCreated: right.created,
@@ -577,55 +597,74 @@ export function createGapAtPop(chainId, bubbleId) {
     if (!chainGaps.has(chainId)) chainGaps.set(chainId, []);
     const gaps = chainGaps.get(chainId);
 
-    // Absorb any existing gaps that are now fully contained within the new gap.
-    // Their interior anchors become redundant — remove them from the polychain.
+    // Absorb existing gaps whose t-ranges overlap or are adjacent to the new gap.
+    // Use t-ranges (stable) not node indices (shift after anchor insertion).
+    // Only merge when there's actual t-range overlap — no slack.
     const absorbed = [];
     for (const g of gaps) {
-        if (g.leftNodeIdx >= leftNodeIdx && g.rightNodeIdx <= rightNodeIdx && g !== gapEntry) {
+        if (g === gapEntry) continue;
+        if (g.tStart <= gapEntry.tEnd && g.tEnd >= gapEntry.tStart) {
             absorbed.push(g);
         }
     }
+
+    // Extend the new gap to cover absorbed gaps' ranges
     for (const g of absorbed) {
-        // Identify which of the absorbed gap's anchors are being REPLACED
-        // (not shared with the new gap). Only remove bridge links that
-        // reference these replaced anchors. Bridges to the surviving outer
-        // anchor must be preserved — they connect the outer boundary.
-        const replacedAnchors = new Set();
-        for (const anchor of [g.anchorL, g.anchorR]) {
-            if (anchor !== left.node && anchor !== right.node) {
-                replacedAnchors.add(anchor);
+        logGap(chainId, g, `absorbed by ${bubbleId}`);
+        if (g.tStart < gapEntry.tStart) gapEntry.tStart = g.tStart;
+        if (g.tEnd > gapEntry.tEnd) gapEntry.tEnd = g.tEnd;
+    }
+
+    // Collect ALL anchors and bridge links from absorbed gaps for cleanup
+    const allAbsorbedAnchors = new Set();
+    for (const g of absorbed) {
+        allAbsorbedAnchors.add(g.anchorL);
+        allAbsorbedAnchors.add(g.anchorR);
+    }
+    // Don't remove anchors shared with the new gap
+    allAbsorbedAnchors.delete(left.node);
+    allAbsorbedAnchors.delete(right.node);
+
+    if (absorbed.length > 0) {
+        // Remove ALL bridge links that touch any absorbed anchor
+        const simLinks = getForceLinks();
+        for (let i = simLinks.length - 1; i >= 0; i--) {
+            const l = simLinks[i];
+            if (!l.isBridgeLink) continue;
+            if (allAbsorbedAnchors.has(l.source) || allAbsorbedAnchors.has(l.target)) {
+                simLinks.splice(i, 1);
             }
         }
 
-        if (replacedAnchors.size > 0) {
-            const simLinks = getForceLinks();
-            for (let i = simLinks.length - 1; i >= 0; i--) {
-                const l = simLinks[i];
-                if (!l.isBridgeLink) continue;
-                if (replacedAnchors.has(l.source) || replacedAnchors.has(l.target)) {
-                    simLinks.splice(i, 1);
+        // Remove absorbed anchor nodes from polychain + force sim
+        for (const g of absorbed) {
+            for (const anchor of [g.anchorL, g.anchorR]) {
+                if (anchor === left.node || anchor === right.node) continue;
+                const idx = nodes.indexOf(anchor);
+                if (idx !== -1) {
+                    if (g.leftSplice && anchor === g.anchorL && g.leftCreated) {
+                        unsplicePolychainLink(anchor, g.leftSplice.removedLink, g.leftSplice.newLinks);
+                    }
+                    if (g.rightSplice && anchor === g.anchorR && g.rightCreated) {
+                        unsplicePolychainLink(anchor, g.rightSplice.removedLink, g.rightSplice.newLinks);
+                    }
+                    nodes.splice(idx, 1);
                 }
             }
+            const gi = gaps.indexOf(g);
+            if (gi !== -1) gaps.splice(gi, 1);
         }
 
-        // Remove anchors that aren't shared with the new gap
-        for (const anchor of [g.anchorL, g.anchorR]) {
-            if (anchor === left.node || anchor === right.node) continue; // shared, keep
-
-            const idx = nodes.indexOf(anchor);
-            if (idx !== -1) {
-                if (g.leftSplice && anchor === g.anchorL && g.leftCreated) {
-                    unsplicePolychainLink(anchor, g.leftSplice.removedLink, g.leftSplice.newLinks);
-                }
-                if (g.rightSplice && anchor === g.anchorR && g.rightCreated) {
-                    unsplicePolychainLink(anchor, g.rightSplice.removedLink, g.rightSplice.newLinks);
-                }
-                nodes.splice(idx, 1);
-            }
+        // Merge outer seg sets from all absorbed gaps into the new gap.
+        // rebuildGapBridges (called later) will use these to create the correct bridges.
+        const allSourceSegs = new Set(gapEntry.outerSourceSegs);
+        const allSinkSegs = new Set(gapEntry.outerSinkSegs);
+        for (const g of absorbed) {
+            for (const s of (g.outerSourceSegs || [])) allSourceSegs.add(s);
+            for (const s of (g.outerSinkSegs || [])) allSinkSegs.add(s);
         }
-        // Remove the absorbed gap entry
-        const gi = gaps.indexOf(g);
-        if (gi !== -1) gaps.splice(gi, 1);
+        gapEntry.outerSourceSegs = [...allSourceSegs];
+        gapEntry.outerSinkSegs = [...allSinkSegs];
     }
 
     // Recompute ALL indices after absorption may have changed the array
@@ -647,7 +686,7 @@ export function createGapAtPop(chainId, bubbleId) {
 
     gaps.push(gapEntry);
 
-    return { leftNode: left.node, rightNode: right.node, gapEntry };
+    return { leftNode: left.node, rightNode: right.node, gapEntry, didAbsorb: absorbed.length > 0 };
 }
 
 /**

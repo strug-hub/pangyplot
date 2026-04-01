@@ -2,16 +2,15 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, insertPoppedContent } from '../engines/force-engine.js';
+import { spliceBubbleNodes, insertPoppedContent, rebuildGapBridges } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
-import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop } from './polychain/polychain-adapter.js';
+import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
-import { getChainGaps } from './polychain/polychain-adapter.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -301,21 +300,20 @@ export async function popBubbleCircle(hit) {
 
     // Create gap at the popped bubble's position using neighbor bubbles as boundaries.
     // Must be called BEFORE removeBubbleFromStore so the bubble is still in the store.
-    const gapInfo = createGapAtPop(chainId, bubbleId);
+    // Pass the popped bubble's own source/sink segs for bridge tracking during absorption.
+    const gapInfo = createGapAtPop(chainId, bubbleId, apiData.source_segs || [], apiData.sink_segs || []);
     if (!gapInfo) return false;
 
     logGap(chainId, gapInfo.gapEntry, 'created');
 
-    // Insert popped content: bridge links + child nodes into force sim
-    const spliceResult = insertPoppedContent(
-        chainId, gapInfo, newChildNodes, newChildLinks,
-        apiData.source_segs || [], apiData.sink_segs || [],
-        recordMap,
-    );
-    if (!spliceResult) return false;
+    // Add child nodes + links to the force sim (no bridges yet)
+    insertPoppedContent(chainId, newChildNodes, newChildLinks);
+
+    // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
+    // This is the SAME code path whether or not absorption happened.
+    rebuildGapBridges(chainId, gapInfo.gapEntry);
 
     logNodes('childNodes', newChildNodes);
-    logLinks('bridgeLinks', spliceResult.bridgeLinks);
 
     // Track child iids on the gap entry (for undo)
     gapInfo.gapEntry.childIids = newChildNodes.map(n => n.iid);
@@ -352,7 +350,6 @@ export async function popBubbleCircle(hit) {
         sinkSegs: apiData.sink_segs || [],
         childBubbles: apiData.child_bubbles || [],
         gapInfo,
-        spliceResult,
         bubbleMeta: removedMeta,
     });
 

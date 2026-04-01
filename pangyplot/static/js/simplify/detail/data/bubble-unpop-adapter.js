@@ -41,12 +41,11 @@ function unpopAnchor(popEntry) {
         sinkSegs,
         childBubbles,
         gapInfo,
-        spliceResult,
         bubbleMeta,
     } = popEntry;
 
-    // Remove child nodes and bridge links from force sim
-    removePoppedContent(childIids, spliceResult);
+    // Remove child nodes and all bridge links touching this gap's anchors
+    removePoppedContent(childIids, gapInfo.gapEntry);
 
     // Remove gap entry (no anchor nodes to remove — boundaries are existing polychain nodes)
     removeGap(chainId, gapInfo.gapEntry);

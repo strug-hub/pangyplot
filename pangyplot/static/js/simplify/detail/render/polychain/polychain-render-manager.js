@@ -7,6 +7,7 @@ import { getPolychainPositions, getPolychainPolylines, getVisibleSegments } from
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-data.js';
 import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta, updateBubblePositions, updateBubblePositionsSegmented } from '../../data/bubble-meta-cache.js';
+import { getAllAnnotations } from '@simplify-data/custom-annotation-data.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
@@ -72,6 +73,43 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
                 if (!sub || sub.length < 2) continue;
                 if (!byColor.has(gene.color)) byColor.set(gene.color, []);
                 byColor.get(gene.color).push(sub);
+            }
+        }
+    }
+
+    for (const [color, polylines] of byColor) {
+        strokePolylines(ctx, polylines, color, haloWidth, opacity, svg);
+    }
+}
+
+function drawCustomAnnotationOverlays(ctx, opacity, svg = null) {
+    const annotations = getAllAnnotations();
+    if (annotations.length === 0) return;
+
+    const dd = state.detailData;
+    if (!dd) return;
+
+    const haloWidth = Math.max(4, 10 / state.zoom);
+    if (!svg) {
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.setLineDash([]);
+    }
+
+    const byColor = new Map();
+    for (const ann of annotations) {
+        if (!ann.isVisible) continue;
+        for (const chain of dd.chains) {
+            // Match exact chain ID or subchains of an annotated root chain
+            const rootId = chain.parentChain || chain.id;
+            if (!ann.chainIds.has(chain.id) && !ann.chainIds.has(rootId)) continue;
+            const polylines = getPolychainPolylines(chain.id);
+            if (!polylines && chain.parentChain) continue;
+            const pls = polylines || [chain.polyline];
+            for (const pl of pls) {
+                if (!pl || pl.length < 2) continue;
+                if (!byColor.has(ann.color)) byColor.set(ann.color, []);
+                byColor.get(ann.color).push(pl);
             }
         }
     }
@@ -167,6 +205,9 @@ export function drawDetail(svg = null) {
 
     // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
     drawGeneOverlays(ctx, opacity, baseWidth, svg);
+
+    // 1b. Custom annotation halo outlines (same layer, behind chains)
+    drawCustomAnnotationOverlays(ctx, opacity, svg);
 
     // 2. Chain polylines (grouped by color style)
     const polylinesByColor = getVisibleChainPolylinesByColor(state.detailData.chains);

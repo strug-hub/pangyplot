@@ -37,6 +37,8 @@ export function logGap(chainId, gapEntry, label) {
         anchorR: gapEntry.anchorR?.iid,
         leftCreated: gapEntry.leftCreated,
         rightCreated: gapEntry.rightCreated,
+        outerSourceSegs: gapEntry.outerSourceSegs,
+        outerSinkSegs: gapEntry.outerSinkSegs,
     });
 }
 
@@ -61,10 +63,17 @@ export function logLinks(label, links) {
         items: links.slice(0, 30).map(l => ({
             source: l.source?.iid ?? l.source,
             target: l.target?.iid ?? l.target,
+            sourceId: l.source?.id ?? null,
+            targetId: l.target?.id ?? null,
+            sourceIsAnchor: !!l.source?.isAnchor,
+            targetIsAnchor: !!l.target?.isAnchor,
             isBridgeLink: !!l.isBridgeLink,
             isPolychainLink: !!l.isPolychainLink,
             isGapLink: !!l.isGapLink,
             length: l.length != null ? Math.round(l.length) : null,
+            // For bridge links: which GFA segs drove this connection
+            gfaSourceSeg: l.isBridgeLink ? (l.source?.id || '').replace(/^s/, '') : undefined,
+            gfaTargetSeg: l.isBridgeLink ? (l.target?.id || '').replace(/^s/, '') : undefined,
         })),
     });
 }

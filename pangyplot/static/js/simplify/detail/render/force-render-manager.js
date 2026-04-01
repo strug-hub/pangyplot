@@ -198,6 +198,8 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const allVisNodes = [...pcNodes, ...segNodes];
     if (allVisNodes.length === 0) return;
 
+    const mode = state.forceVectorMode || 'all';
+
     // Map D3 force names → display names + colors
     const forceMap = {
         charge:          { color: '#FF4444', label: 'charge' },
@@ -213,7 +215,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     };
 
     // Draw hidden gap segments as faint dashed lines (guide corridors)
-    {
+    if (mode === 'all' || mode === 'guide') {
         const dd = state.detailData;
         if (dd) {
             const gaps = [];
@@ -318,7 +320,6 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         ctx.fillRect(n.x - dotS / 2, n.y - dotS / 2, dotS, dotS);
     }
 
-    const mode = state.forceVectorMode || 'all';
 
     // Label in screen space — always show all types, arrow on active
     ctx.save();
