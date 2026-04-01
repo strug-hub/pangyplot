@@ -233,7 +233,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
                 }
             }
             if (gaps.length > 0) {
-                const SHORT_AXIS_RATIO = 0.4;
+                const SHORT_AXIS_RATIO = 0.15;
                 ctx.lineWidth = Math.max(1, 2 / state.zoom);
 
                 for (const gap of gaps) {
@@ -432,7 +432,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
 
     // Annotate link strength + distance
     if (mode === 'link') {
-        const fontSize = Math.max(3, 8 / state.zoom);
+        const fontSize = Math.max(6, 16 / state.zoom);
         ctx.font = `${fontSize}px monospace`;
         ctx.textAlign = 'center';
         ctx.globalAlpha = 0.9 * opacity;

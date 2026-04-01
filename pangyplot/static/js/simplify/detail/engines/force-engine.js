@@ -62,7 +62,7 @@ export function linkStrength(d) {
         const arc = d.chainArcLen || 0;
         return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
     }
-    if (d.isBridgeLink) return POP_LINK_STRENGTH;
+    if (d.isBridgeLink) return 0.02;  // flexible connection to chain
     if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return POP_LINK_STRENGTH;
     return 0.01;
 }
@@ -166,7 +166,7 @@ export function initForce() {
         .force('segCharge', isolatedCharge(
             n => !n.isPolychainNode && !n.isGhostSpine && n.chainId && n.chainId !== '__junction__',
             () => pcSettings.charge * 0.3,
-            60))
+            100))
         // .force('collide', d3.forceCollide()
         //     .radius(collideRadius)
         //     .strength(defaults.COLLISION_STRENGTH))

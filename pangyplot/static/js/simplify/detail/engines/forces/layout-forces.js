@@ -17,8 +17,11 @@ export function combinedLayoutForce() {
         if (k === 0) return;
         for (const node of nodes) {
             if (node.homeX == null) continue;
-            node.vx += (node.homeX - node.x) * k;
-            node.vy += (node.homeY - node.y) * k;
+            // Popped content gets 30% layout pull — enough to suggest position
+            // but not fight self-organization within the compartment.
+            const nk = node.isPolychainNode ? k : k * 0.3;
+            node.vx += (node.homeX - node.x) * nk;
+            node.vy += (node.homeY - node.y) * nk;
         }
     }
 

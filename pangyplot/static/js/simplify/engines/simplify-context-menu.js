@@ -7,6 +7,8 @@ import { flipChain } from '../detail/data/polychain/polychain-adapter.js';
 import { reheatSimulation } from '../detail/engines/force-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { exportViewportGfa } from './selection/selection-popup.js';
+import { popAllBubblesOnChain } from '../detail/data/bubble-pop-adapter.js';
+import { createCustomAnnotation } from '@simplify-data/custom-annotation-data.js';
 
 let menuElement = null;
 
@@ -60,6 +62,21 @@ function showMenu(x, y) {
                 reheatSimulation();
                 scheduleFrame();
             }
+        });
+        addRow(menu, 'expand', 'Pop All Bubbles', () => {
+            popAllBubblesOnChain(chain.id);
+            scheduleFrame();
+        });
+        addRow(menu, 'tag', 'Add Custom Annotation', () => {
+            const name = prompt('Annotation name:');
+            if (!name || !name.trim()) return;
+            const chainIds = new Set();
+            if (state.selectedChains.size > 0) {
+                for (const c of state.selectedChains.keys()) chainIds.add(c.id);
+            } else {
+                chainIds.add(chain.id);
+            }
+            createCustomAnnotation(name.trim(), chainIds);
         });
     }
 

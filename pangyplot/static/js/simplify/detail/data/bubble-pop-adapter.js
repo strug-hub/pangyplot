@@ -9,7 +9,7 @@ import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
 import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
-import { removeBubbleFromStore } from './bubble-meta-cache.js';
+import { removeBubbleFromStore, getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
 
 /**
@@ -354,4 +354,33 @@ export async function popBubbleCircle(hit) {
     });
 
     return true;
+}
+
+/**
+ * Pop all bubble circles on a chain sequentially.
+ * Each bubble is popped as if the user Ctrl+clicked it.
+ */
+export async function popAllBubblesOnChain(chainId) {
+    const store = getBubbleStore(chainId);
+    if (!store || store.bubbles.length === 0) return;
+
+    // Snapshot bubble IDs — the store mutates as we pop
+    const bubbleIds = store.bubbles.map(b => b.id);
+
+    for (let i = 0; i < bubbleIds.length; i++) {
+        // Re-fetch positions each iteration (they shift after each pop)
+        const currentPositions = getBubblePositions(chainId);
+        const currentStore = getBubbleStore(chainId);
+        if (!currentStore || !currentPositions) break;
+
+        // Find this bubble in the current store (may have shifted index)
+        const idx = currentStore.bubbles.findIndex(b => b.id === bubbleIds[i]);
+        if (idx === -1) continue;  // already popped or removed
+
+        const pos = currentPositions[idx];
+        if (!pos) continue;
+
+        const hit = { x: pos.x, y: pos.y, meta: pos.meta, chainId };
+        await popBubbleCircle(hit);
+    }
 }

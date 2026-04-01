@@ -8,7 +8,7 @@
 import { getChainGaps, getPolychainNodesForChain } from '../../data/polychain/polychain-adapter.js';
 import { pcSettings } from './pc-settings.js';
 
-const SHORT_AXIS_RATIO = 0.4;  // short axis = 40% of gap length
+const SHORT_AXIS_RATIO = 0.15;  // short axis = 15% of gap length (narrow corridor)
 
 export function ghostGuideForce() {
     let nodes = [];
