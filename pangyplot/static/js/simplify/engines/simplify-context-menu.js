@@ -6,6 +6,7 @@ import { state } from '../simplify-state.js';
 import { flipChain } from '../detail/data/polychain/polychain-adapter.js';
 import { reheatSimulation } from '../detail/engines/force-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
+import { exportViewportGfa } from './selection/selection-popup.js';
 
 let menuElement = null;
 
@@ -66,6 +67,9 @@ function showMenu(x, y) {
     addCategoryLabel(menu, 'Export:');
     addRow(menu, 'download', 'Download PNG', exportSimplifyToPng);
     addRow(menu, 'download', 'Download SVG', exportSimplifyToSvg);
+    if (state.detailData) {
+        addRow(menu, 'file-export', 'Download GFA', exportViewportGfa);
+    }
 
     menu.style.display = 'block';
     menu.style.left = `${x}px`;

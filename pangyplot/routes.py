@@ -351,34 +351,25 @@ def path_order():
     return jsonify(order)
 
 
-@bp.route('/gfa', methods=["GET"])
+@bp.route('/gfa', methods=["POST"])
 def gfa():
-    genome = request.args.get("genome")
-    chromosome = request.args.get("chromosome")
-    start = request.args.get("start")
-    end = request.args.get("end")
+    data = request.get_json(silent=True) or {}
+    genome = data.get("genome")
+    chromosome = data.get("chromosome")
+    bubble_ids = data.get("bubble_ids", [])
 
-    ''''
-    nodes, links = [], [] #get_segments_in_range(genome, chromosome, start, end)
-    gfa_lines = [] # [gfaer.get_gfa_header()]
+    if not genome or not chromosome or not bubble_ids:
+        return jsonify({"error": "Missing genome, chromosome, or bubble_ids"}), 400
 
-    for node in nodes:
-        gfa_lines.append(gfaer.get_s_line(node))
+    try:
+        gen = query.generate_gfa(current_app, genome, chromosome, bubble_ids)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
 
-    for link in links:
-        gfa_lines.append(gfaer.get_l_line(link))
-
-    node_ids = {n["id"] for n in nodes}
-    collection = nodes[0]["collection"] if nodes else None
-    paths = query_paths(node_ids, collection)
-
-    for path in paths:
-        gfa_lines.append(gfaer.get_p_line(path))
-        
-    gfa_text = "\n".join(gfa_lines)
-    '''
-    response = make_response("") #gfa_text
-    response.headers['Content-Type'] = 'text/plain'
-    response.headers['Content-Disposition'] = 'attachment; filename=graph.gfa'
-    return response
+    filename = f"{chromosome}_export.gfa"
+    return Response(
+        gen,
+        mimetype='text/plain',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 

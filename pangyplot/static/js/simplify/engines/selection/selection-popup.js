@@ -18,6 +18,7 @@ function ensurePopup() {
     popupEl.innerHTML = `
         <div class="sp-info"></div>
         <button class="sp-button">Open Bubble View</button>
+        <button class="sp-button sp-gfa-button">Export GFA</button>
     `;
     popupEl.style.cssText = `
         position: fixed;
@@ -51,6 +52,15 @@ function ensurePopup() {
     btn.addEventListener('mouseenter', () => { btn.style.background = '#3a7de9'; });
     btn.addEventListener('mouseleave', () => { btn.style.background = '#2a6dd9'; });
     btn.addEventListener('click', switchToCoreViewer);
+
+    const gfaBtn = popupEl.querySelector('.sp-gfa-button');
+    gfaBtn.style.cssText = btn.style.cssText;
+    gfaBtn.style.background = '#2a8d47';
+    gfaBtn.style.marginTop = '4px';
+    gfaBtn.addEventListener('mouseenter', () => { gfaBtn.style.background = '#3a9d57'; });
+    gfaBtn.addEventListener('mouseleave', () => { gfaBtn.style.background = '#2a8d47'; });
+    gfaBtn.addEventListener('click', exportGfa);
+
     document.body.appendChild(popupEl);
 
     // Click outside → dismiss
@@ -96,6 +106,60 @@ function ensureBackButton() {
     const container = document.getElementById('canvas-container');
     container.appendChild(backBtn);
     return backBtn;
+}
+
+function getSelectedBubbleIds() {
+    const ids = [];
+    for (const [chain, clip] of state.selectedChains) {
+        if (!chain.bubbleIds || !chain.bubblePositions) continue;
+        for (let i = 0; i < chain.bubbleIds.length; i++) {
+            const t = chain.bubblePositions[i];
+            if (t >= clip.tStart && t <= clip.tEnd) {
+                ids.push(chain.bubbleIds[i]);
+            }
+        }
+    }
+    return ids;
+}
+
+async function downloadGfa(bubbleIds) {
+    if (bubbleIds.length === 0) return;
+
+    const resp = await fetch('/gfa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            genome: state.GENOME,
+            chromosome: state.chromosome,
+            bubble_ids: bubbleIds,
+        }),
+    });
+    if (!resp.ok) return;
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const cd = resp.headers.get('Content-Disposition') || '';
+    a.download = cd.match(/filename=(.+)/)?.[1] || 'export.gfa';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function exportGfa() {
+    hideSelectionPopup();
+    downloadGfa(getSelectedBubbleIds());
+}
+
+export async function exportViewportGfa() {
+    if (!state.detailData) return;
+    const ids = [];
+    for (const chain of state.detailData.chains) {
+        if (chain.bubbleIds) ids.push(...chain.bubbleIds);
+    }
+    downloadGfa(ids);
 }
 
 function getSelectionBpRange() {

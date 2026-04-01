@@ -292,6 +292,76 @@ def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
     return result
 
 
+def generate_gfa(indexes, genome, chrom, bubble_ids):
+    """Build GFA 1.0 lines for the subgraph defined by a list of bubble IDs.
+
+    Resolves bubbles → segments (recursive via get_descendant_ids),
+    fetches full Segment objects with sequences, discovers links, and
+    extracts P-lines from haplotype paths.
+
+    All data is fetched eagerly (requires app context), then yields
+    formatted lines so Flask can stream the response.
+    """
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    gfaidx = indexes.gfa_index.get(chrom, None)
+
+    if stepidx is None or bubbleidx is None or gfaidx is None:
+        raise ValueError(
+            f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
+
+    # 1. Resolve bubble IDs → segment IDs
+    seg_ids = set()
+    for bid in bubble_ids:
+        bubble = bubbleidx[bid]
+        seg_ids.update(bubbleidx.get_descendant_ids(bubble))
+
+    if not seg_ids:
+        return iter([])
+
+    # 2. Fetch segments (with sequences) and links — eager, needs app context
+    segments, raw_links = gfaidx.get_subgraph(seg_ids, stepidx)
+
+    # 3. Filter + deduplicate links
+    seen_links = set()
+    links = []
+    for link in raw_links:
+        if link.from_id not in seg_ids or link.to_id not in seg_ids:
+            continue
+        key = (link.from_id, link.from_strand, link.to_id, link.to_strand)
+        if key not in seen_links:
+            seen_links.add(key)
+            links.append(link)
+
+    # 4. Collect P-line data from haplotype paths — eager, reads JSON files
+    p_lines = []
+    for sample in gfaidx.get_samples():
+        for path in gfaidx.get_paths(sample):
+            current_run = []
+            for seg_id, strand in path:
+                if seg_id in seg_ids:
+                    current_run.append(f"{seg_id}{strand}")
+                else:
+                    if current_run:
+                        name = f"{path.sample}#{path.hap or '0'}#{path.contig}"
+                        p_lines.append(f"P\t{name}\t{','.join(current_run)}\t*\n")
+                        current_run = []
+            if current_run:
+                name = f"{path.sample}#{path.hap or '0'}#{path.contig}"
+                p_lines.append(f"P\t{name}\t{','.join(current_run)}\t*\n")
+
+    # 5. Yield formatted GFA lines (no app context needed from here)
+    def _lines():
+        yield "H\tVN:Z:1.0\n"
+        for seg in segments:
+            yield f"S\t{seg.id}\t{seg.seq or '*'}\n"
+        for link in links:
+            yield f"L\t{link.from_id}\t{link.from_strand}\t{link.to_id}\t{link.to_strand}\t0M\n"
+        yield from p_lines
+
+    return _lines()
+
+
 CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level
 
 
