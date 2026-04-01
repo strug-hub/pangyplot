@@ -103,15 +103,18 @@ export async function popBubbleForceNode(bubbleNode) {
         return addedIds.has(l.id); // kink links carry the node's id
     });
 
-    // Offset child nodes from absolute ODGI layout to current force-sim position
+    // Squish child nodes toward the bubble's sim position so they start
+    // as a tight cluster and expand out via spawn damping.
     if (newChildNodes.length > 0) {
         let layoutCx = 0, layoutCy = 0;
         for (const node of newChildNodes) { layoutCx += node.x; layoutCy += node.y; }
         layoutCx /= newChildNodes.length;
         layoutCy /= newChildNodes.length;
-        const dx = bubbleNode.x - layoutCx;
-        const dy = bubbleNode.y - layoutCy;
-        for (const node of newChildNodes) { node.x += dx; node.y += dy; }
+        const squish = 0.15;
+        for (const node of newChildNodes) {
+            node.x = bubbleNode.x + (node.x - layoutCx) * squish;
+            node.y = bubbleNode.y + (node.y - layoutCy) * squish;
+        }
     }
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
@@ -264,19 +267,17 @@ export async function popBubbleCircle(hit) {
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
 
-    // Child nodes have x,y from ODGI layout (absolute). Offset them so they're
-    // positioned relative to where the bubble circle currently is in the force sim,
-    // not where it was in the original layout.
-    // Compute offset: bubble's current sim position vs its layout centroid among children.
+    // Child nodes have x,y from ODGI layout (absolute). Translate so the centroid
+    // is at the bubble circle's sim position, then squish toward center so they
+    // start in a tight cluster and expand out via the spawn damping force.
     let layoutCx = 0, layoutCy = 0;
     for (const node of newChildNodes) { layoutCx += node.x; layoutCy += node.y; }
     layoutCx /= newChildNodes.length;
     layoutCy /= newChildNodes.length;
-    const dx = hit.x - layoutCx;
-    const dy = hit.y - layoutCy;
+    const squish = 0.15;  // start at 15% of true spread from center
     for (const node of newChildNodes) {
-        node.x += dx;
-        node.y += dy;
+        node.x = hit.x + (node.x - layoutCx) * squish;
+        node.y = hit.y + (node.y - layoutCy) * squish;
     }
 
     // Splice the chain at the bubble circle's rendered position (bridge links + child nodes)

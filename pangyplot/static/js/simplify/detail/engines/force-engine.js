@@ -63,7 +63,7 @@ function linkStrength(d) {
 
 // Tick counter for spawn damping
 let _tickCount = 0;
-const SPAWN_DAMP_TICKS = 30;
+const SPAWN_DAMP_TICKS = 18;
 
 function chargeStrength(d) {
     return pcSettings.charge;
