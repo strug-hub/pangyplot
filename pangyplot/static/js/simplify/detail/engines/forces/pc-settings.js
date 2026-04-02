@@ -16,6 +16,7 @@ export const pcSettings = {
     inflate: 0.005,           // balloon inflation strength (0-0.02)
     parentSide: 1.5,          // push child chains to one side of parent
     guideLevel: 0.015,        // chain projection guide pull strength
+    delLinkStrength: 2,       // deletion link perpendicular push
 };
 
 export const loopLevels = { 0: 0, 1: 1, 2: 4, 3: 10, 4: 25, 5: 50 };

@@ -61,6 +61,11 @@ function advancedSliders() {
             min: 0, max: 0.1, step: 0.005, default: pcSettings.guideLevel,
             onChange: (v) => { pcSettings.guideLevel = v; applyPcSettings(); }
         },
+        {
+            label: "Deletion Push", icon: "arrows-left-right",
+            min: 0, max: 10, step: 0.1, default: pcSettings.delLinkStrength,
+            onChange: (v) => { pcSettings.delLinkStrength = v; applyPcSettings(); }
+        },
     ];
 }
 

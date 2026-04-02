@@ -43,18 +43,15 @@ export function combinedLayoutForce() {
  */
 export function delLinkForce(getLinks) {
     let nodes = [];
-    let strength = 2;
-
     function force(alpha) {
+        const strength = pcSettings.delLinkStrength ?? 2;
         const delLinks = getLinks().filter(l => l.isDel);
         for (const link of delLinks) {
             if (!link.bubbleId) continue;
             const s = link.source, t = link.target;
-            // Self-link (b->b on same bubble): inside = intermediate kinks only
-            // Cross-node link (parent deletion): inside = all chain siblings
-            const isSelfLink = s.id === t.id;
+            // Find nodes from the SAME popped bubble, excluding the source/sink endpoints
             const inside = nodes.filter(n =>
-                (isSelfLink ? n.id === s.id : n.chainId === s.chainId) &&
+                n.popBubbleId === link.bubbleId &&
                 n.iid !== s.iid && n.iid !== t.iid &&
                 n !== s && n !== t
             );
@@ -81,6 +78,5 @@ export function delLinkForce(getLinks) {
     }
 
     force.initialize = function(simNodes) { nodes = simNodes; };
-    force.strength = function(_) { return arguments.length ? (strength = +_, force) : strength; };
     return force;
 }

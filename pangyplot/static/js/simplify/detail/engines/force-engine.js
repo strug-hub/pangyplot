@@ -51,8 +51,8 @@ function getLinks() { return sim.force('link').links(); }
 
 export function linkDistance(d) {
     if (d.isPolychainLink) return d.length;
-    if (d.isBridgeLink) return 0;
-    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return 0;
+    if (d.isBridgeLink) return 10;
+    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return 10;
     return d.length * SIMPLIFY_LINK_SCALE;
 }
 
@@ -146,12 +146,12 @@ function spawnDampingForce() {
 
 export function chargeMaxDist(d) {
     if (d.isPolychainNode) return 400;
-    return 400;  // popped segments: same range as polychain
+    return 200;  // popped segments
 }
 
 export function chargeStr(d) {
     if (d.isPolychainNode) return pcSettings.charge;
-    return pcSettings.charge * 0.3;  // popped segments: 30%
+    return -100;  // popped segments
 }
 
 function collideRadius(d) {
@@ -190,7 +190,7 @@ export function initForce() {
         .force('smoothing', laplacianSmoothing())
         .force('balloon', balloonInflation())
         .force('parentSide', parentSideForce())
-        // .force('delLink', delLinkForce(getLinks))  // disabled — causes drift on multi-pop
+        .force('delLink', delLinkForce(getLinks))
         .force('ghostGuide', ghostGuideForce())
         .force('centroidAnchor', centroidAnchorForce())
         .force('spawnDamp', spawnDampingForce())

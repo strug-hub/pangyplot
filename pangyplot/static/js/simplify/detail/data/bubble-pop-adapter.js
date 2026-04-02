@@ -318,9 +318,9 @@ export async function popBubbleCircle(hit) {
     // Track child iids on the gap entry (for undo)
     gapInfo.gapEntry.childIids = newChildNodes.map(n => n.iid);
 
-    // ghostRootId tells the guide force which chain to project onto.
-    // That's all it needs — the force finds the nearest point each tick.
+    // ghostRootId: guide force chain projection. popBubbleId: deletion force matching.
     for (const n of newChildNodes) {
+        n.popBubbleId = bubbleId;
         n.ghostRootId = chainId;
     }
 
