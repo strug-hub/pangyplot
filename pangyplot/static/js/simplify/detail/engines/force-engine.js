@@ -68,7 +68,7 @@ export function linkStrength(d) {
         return base / (1 + (arc / LINK_SOFTEN_MIDPOINT) * (arc / LINK_SOFTEN_MIDPOINT));
     }
     if (d.isBridgeLink) return 0.1;
-    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return 0.1;
+    if (d.class === 'link' && d.chainId && d.chainId !== '__junction__') return 0.5;
     return 0.01;
 }
 
@@ -146,12 +146,12 @@ function spawnDampingForce() {
 
 export function chargeMaxDist(d) {
     if (d.isPolychainNode) return 400;
-    return 200;  // popped segments
+    return 100;  // popped segments
 }
 
 export function chargeStr(d) {
     if (d.isPolychainNode) return pcSettings.charge;
-    return -100;  // popped segments
+    return -20;  // popped segments
 }
 
 function collideRadius(d) {
