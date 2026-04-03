@@ -3,7 +3,6 @@
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { hitTestChains, chainsInRect, hitTestBubbleCircles } from '../../detail/engines/polychain/polychain-hover-engine.js';
-import { popBubbleCircle } from '../../detail/data/bubble-pop-adapter.js';
 import { popBubbleCircleV2 } from '../../detail/model/pop-handler.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
