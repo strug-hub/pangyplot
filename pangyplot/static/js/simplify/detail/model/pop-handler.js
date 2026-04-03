@@ -147,7 +147,10 @@ export async function popBubbleCircleV2(hit) {
 
         const fromEntry = resolveSeg(fromSegId);
         const toEntry = resolveSeg(toSegId);
-        if (!fromEntry || !toEntry) continue;
+        if (!fromEntry || !toEntry) {
+            console.warn(`[pop-handler] GFA link unresolved: ${fromSegId}${fromEntry ? '✓' : '✗'} → ${toSegId}${toEntry ? '✓' : '✗'}`);
+            continue;
+        }
 
         const fromNode = fromEntry.node;
         const toNode = toEntry.node;
