@@ -14,6 +14,7 @@ import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-l
 import { registerSeg, resolveSegAsRecord } from './seg-registry.js';
 import { getContainer } from '../model/model-manager.js';
 import { createObjectsFromPop, markDeletionLinks } from '../model/polychain-factory.js';
+import { popBubbleCircleV2 } from '../model/pop-handler.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -367,20 +368,6 @@ export async function popBubbleCircle(hit) {
         bubbleMeta: removedMeta,
     });
 
-    // --- Shadow: update SimObject model (keeps model in sync during migration) ---
-    try {
-        const container = getContainer(chainId);
-        if (container) {
-            const sourceSegsStr = (apiData.source_segs || []).map(s => `s${s}`);
-            const sinkSegsStr = (apiData.sink_segs || []).map(s => `s${s}`);
-            container.splitAtBubble(bubbleId, t, 0.02, sourceSegsStr, sinkSegsStr);
-            console.log(`[sim-model] shadow split for ${bubbleId} on ${chainId}, ` +
-                `containers: ${container.segments.length} segments, ${container.renderMasks.length} masks`);
-        }
-    } catch (e) {
-        console.warn('[sim-model] shadow split failed (non-fatal):', e.message);
-    }
-
     return true;
 }
 
@@ -409,6 +396,6 @@ export async function popAllBubblesOnChain(chainId) {
         if (!pos) continue;
 
         const hit = { x: pos.x, y: pos.y, meta: pos.meta, chainId };
-        await popBubbleCircle(hit);
+        await popBubbleCircleV2(hit);
     }
 }
