@@ -107,7 +107,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     let jNodeCount = 0;
 
     for (const node of nodes) {
-        if (node.x == null || node.isPhantom || node.isPolychainNode || node.isGhostSpine || node.isAnchor) continue;
+        if (node.x == null || node.isPhantom || node.isPolychainNode || node.isGhostSpine || node.isAnchor || node.isBoundarySeg) continue;
         if (!nodeVisible(node.x, node.y)) continue;
         if (node.chainId === '__junction__') {
             // Hide small junction nodes when zoomed out (all visible at gridSize <= 50)
@@ -216,7 +216,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     const lw = Math.max(0.5, 1.5 / state.zoom);
 
     const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
-    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && !n.isAnchor && n.x != null);
+    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && !n.isAnchor && !n.isBoundarySeg && n.x != null);
     const allVisNodes = [...pcNodes, ...segNodes];
     if (allVisNodes.length === 0) return;
 

@@ -237,18 +237,20 @@ export async function popBubbleCircle(hit) {
         );
     }
 
-    // Exclude source/sink boundary segments — they're represented by anchors.
-    // Only interior segments become visible child nodes. When a neighbor bubble
-    // is popped later, the shared boundary seg gets revealed as a real node.
+    // Mark source/sink boundary seg nodes as hidden — they're represented
+    // visually by anchors but stay in the sim for GFA link connectivity.
     const boundarySegIds = new Set([
         ...(apiData.source_segs || []).map(s => `s${s}`),
         ...(apiData.sink_segs || []).map(s => `s${s}`),
     ]);
 
-    // Deduplicate nodes already in sim AND filter out boundary segs
+    // Deduplicate nodes already in sim
     const existingNodeIds = new Set(getForceNodes().map(n => n.id));
-    const newChildNodes = childNodes.filter(n =>
-        !existingNodeIds.has(n.id) && !boundarySegIds.has(n.id));
+    const newChildNodes = childNodes.filter(n => !existingNodeIds.has(n.id));
+    // Mark boundary seg nodes as hidden (exist for physics, not rendered)
+    for (const n of newChildNodes) {
+        if (boundarySegIds.has(n.id)) n.isBoundarySeg = true;
+    }
     const addedIds = new Set(newChildNodes.map(n => n.id));
     const newChildLinks = childLinks.filter(l => {
         if (!l.isKinkLink) return true;
@@ -296,9 +298,26 @@ export async function popBubbleCircle(hit) {
 
     logGap(chainId, gapInfo.gapEntry, 'created');
 
-    // Register each popped child node's seg ID in the unified registry.
-    // This overrides anchor entries for shared segs (more detailed wins).
+    // Pin boundary seg nodes to their anchor's position and fix them there.
+    // They exist for GFA link connectivity but are visually represented by anchors.
+    const sourceSegSet = new Set((apiData.source_segs || []).map(s => `s${s}`));
+    const sinkSegSet = new Set((apiData.sink_segs || []).map(s => `s${s}`));
     for (const n of newChildNodes) {
+        if (!n.isBoundarySeg) continue;
+        const anchor = sourceSegSet.has(n.id) ? gapInfo.leftNode
+                     : sinkSegSet.has(n.id) ? gapInfo.rightNode
+                     : null;
+        if (anchor) {
+            n.x = anchor.x; n.y = anchor.y;
+            n.fx = anchor.x; n.fy = anchor.y;  // pin to anchor
+            n.homeX = anchor.x; n.homeY = anchor.y;
+        }
+    }
+
+    // Register each popped child node's seg ID in the unified registry.
+    // Boundary segs stay registered to anchors (don't override).
+    for (const n of newChildNodes) {
+        if (n.isBoundarySeg) continue;  // anchors keep their registration
         const segId = n.id ? n.id.replace(/^s/, '') : null;
         if (segId) registerSeg(segId, n);
     }
