@@ -129,6 +129,29 @@ export async function popBubbleCircleV2(hit) {
         if (n.id) registerSeg(n.id, n);
     }
 
+    // Register child bubble INTERIOR segs → bubble's head kink node.
+    // GFA links reference segs inside collapsed child bubbles. Those segs
+    // aren't materialized — they're hidden inside the bubble. Map them to
+    // the bubble's kink node so links attach to the bubble instead.
+    for (const obj of childObjects) {
+        if (obj.interior?.insideSegs) {
+            for (const segId of obj.interior.insideSegs) {
+                registerSeg(segId, obj.headNode);
+            }
+        }
+        // Also register source/sink segs of child bubbles
+        for (const segId of obj.ends.head) registerSeg(segId, obj.headNode);
+        for (const segId of obj.ends.tail) registerSeg(segId, obj.tailNode);
+    }
+
+    // --- Debug: what's registered ---
+    console.log(`[pop-handler] pop ${bubbleId}:`,
+        `boundary=[${[...boundaryIds]}]`,
+        `childNodes=[${newChildNodes.map(n => n.id)}]`,
+        `gapAnchors=[${gapInfo.gapEntry?.anchorL?.trackSegIds || ''},${gapInfo.gapEntry?.anchorR?.trackSegIds || ''}]`,
+        `apiLinks=${(apiData.links || []).length}`
+    );
+
     // --- Resolve GFA links through old seg-registry ---
     // Anchors registered by createGapAtPop, child nodes registered above.
 
@@ -148,7 +171,8 @@ export async function popBubbleCircleV2(hit) {
         const fromEntry = resolveSeg(fromSegId);
         const toEntry = resolveSeg(toSegId);
         if (!fromEntry || !toEntry) {
-            console.warn(`[pop-handler] GFA link unresolved: ${fromSegId}${fromEntry ? '✓' : '✗'} → ${toSegId}${toEntry ? '✓' : '✗'}`);
+            const inBoundary = id => boundaryIds.has(id) ? '(boundary)' : '(interior)';
+            console.warn(`[pop-handler] GFA link unresolved: ${fromSegId}${fromEntry ? '✓' : '✗'}${inBoundary(fromSegId)} → ${toSegId}${toEntry ? '✓' : '✗'}${inBoundary(toSegId)}`);
             continue;
         }
 
