@@ -10,11 +10,11 @@ export function deserializeLinks(rawLinks) {
 
     for (const rawLink of rawLinks) {
         // Raw links are always s→s: source/target are "sN" strings
-        const srcSegId = rawLink.source.slice(1); // strip "s" prefix
-        const tgtSegId = rawLink.target.slice(1);
+        const srcSegId = String(rawLink.source);
+        const tgtSegId = String(rawLink.target);
 
-        const sourceRecord = viewState.resolve(srcSegId) || recordsManager.getNode("s" + srcSegId);
-        const targetRecord = viewState.resolve(tgtSegId) || recordsManager.getNode("s" + tgtSegId);
+        const sourceRecord = viewState.resolve(srcSegId) || recordsManager.getNode(srcSegId);
+        const targetRecord = viewState.resolve(tgtSegId) || recordsManager.getNode(tgtSegId);
 
         if (!sourceRecord || !targetRecord) continue;
         if (sourceRecord === targetRecord) continue;

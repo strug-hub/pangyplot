@@ -461,7 +461,7 @@ function ensureAnchor(nodes, chainId, x, y, label, loopFactor, trackSegIds = [])
     const existing = findExistingAnchor(nodes, x, y);
     if (existing) {
         // Register additional seg IDs on the existing anchor
-        if (trackSegIds.length > 0) registerSegs(trackSegIds.map(String), existing);
+        if (trackSegIds.length > 0) registerSegs(trackSegIds, existing);
         return { node: existing, splice: null, created: false };
     }
 
@@ -488,8 +488,8 @@ function ensureAnchor(nodes, chainId, x, y, label, loopFactor, trackSegIds = [])
         nodes[splitIdx], nodes[splitIdx + 1], anchor, chainId);
     nodes.splice(splitIdx + 1, 0, anchor);
 
-    // Register this anchor's seg IDs in the unified registry
-    if (trackSegIds.length > 0) registerSegs(trackSegIds.map(String), anchor);
+    // Register this anchor's seg IDs in the unified registry (ensurePrefix handles format)
+    if (trackSegIds.length > 0) registerSegs(trackSegIds, anchor);
 
     return { node: anchor, splice, created: true };
 }
@@ -894,10 +894,10 @@ export function mergeSubchainsOnUnpop(leftId, rightId, savedParentChain, parentI
         const head = merged[0];
         const tail = merged[merged.length - 1];
         for (const sid of (savedParentChain.sourceSegs || [])) {
-            segToPolychain.set(`s${sid}`, head);
+            segToPolychain.set(sid, head);
         }
         for (const sid of (savedParentChain.sinkSegs || [])) {
-            segToPolychain.set(`s${sid}`, tail);
+            segToPolychain.set(sid, tail);
         }
     }
 
@@ -949,10 +949,10 @@ export function restoreChain(chainId, removalInfo) {
         const tail = removedNodes[removedNodes.length - 1];
         if (removedChain) {
             for (const sid of (removedChain.sourceSegs || [])) {
-                segToPolychain.set(`s${sid}`, head);
+                segToPolychain.set(sid, head);
             }
             for (const sid of (removedChain.sinkSegs || [])) {
-                segToPolychain.set(`s${sid}`, tail);
+                segToPolychain.set(sid, tail);
             }
         }
     }
@@ -1054,7 +1054,6 @@ export function initPolychainLayer() {
     const seenSharedPairs = new Set();
     for (const chain of dd.chains) {
         for (const sid of (chain.sinkSegs || [])) {
-            const key = `s${sid}`;
             const sinkNode = chainPolychainNodes.get(chain.id);
             if (!sinkNode || sinkNode.length === 0) continue;
             const tail = sinkNode[sinkNode.length - 1];
@@ -1068,7 +1067,7 @@ export function initPolychainLayer() {
                 const pairKey = `${tail.iid}↔${otherHead.iid}`;
                 if (seenSharedPairs.has(pairKey)) continue;
                 seenSharedPairs.add(pairKey);
-                allLinks.push(makeInterChainLink(tail, otherHead, String(sid), String(sid)));
+                allLinks.push(makeInterChainLink(tail, otherHead, sid, sid));
             }
         }
     }
@@ -1177,8 +1176,7 @@ function processJunctionGraph(dd, allNodes, allLinks) {
 
         // Register junction nodes in the segment registry
         for (const node of jNodes) {
-            const segId = node.id ? node.id.replace(/^s/, '') : null;
-            if (segId) registerSegs([segId], node);
+            if (node.id) registerSegs([node.id], node);
         }
 
         allNodes.push(...jNodes);
@@ -1203,11 +1201,11 @@ function processJunctionGraph(dd, allNodes, allLinks) {
                 link.isInterChain = true;
                 link.chainId = null;
                 if (sPolychain) {
-                    link.sourceSegId = sId.replace(/^s/, '');
+                    link.sourceSegId = sId;
                     link.sourceStrand = rawLink.from_strand || null;
                 }
                 if (tPolychain) {
-                    link.targetSegId = tId.replace(/^s/, '');
+                    link.targetSegId = tId;
                     link.targetStrand = rawLink.to_strand || null;
                 }
             }
@@ -1224,7 +1222,7 @@ function processJunctionGraph(dd, allNodes, allLinks) {
                 const pnA = segToPolychain.get(segA);
                 const pnB = segToPolychain.get(segB);
                 if (pnA && pnB && pnA !== pnB) {
-                    allLinks.push(makeInterChainLink(pnA, pnB, String(jl.segs[0]), String(jl.segs[1])));
+                    allLinks.push(makeInterChainLink(pnA, pnB, `s${jl.segs[0]}`, `s${jl.segs[1]}`));
                 }
             }
         }
@@ -1235,7 +1233,7 @@ function processJunctionGraph(dd, allNodes, allLinks) {
             const pnA = segToPolychain.get(`s${jl.segs[0]}`);
             const pnB = segToPolychain.get(`s${jl.segs[1]}`);
             if (pnA && pnB && pnA !== pnB) {
-                allLinks.push(makeInterChainLink(pnA, pnB, String(jl.segs[0]), String(jl.segs[1])));
+                allLinks.push(makeInterChainLink(pnA, pnB, `s${jl.segs[0]}`, `s${jl.segs[1]}`));
             }
         }
     }
@@ -1275,7 +1273,7 @@ export function addChainsToPolychainLayer(newChains, dd) {
                 const pairKey = `${tail.iid}↔${otherHead.iid}`;
                 if (seenSharedPairs.has(pairKey)) continue;
                 seenSharedPairs.add(pairKey);
-                allLinks.push(makeInterChainLink(tail, otherHead, String(sid), String(sid)));
+                allLinks.push(makeInterChainLink(tail, otherHead, sid, sid));
             }
         }
     }
@@ -1463,15 +1461,15 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
     const head = nodes[0];
     const tail = nodes[nodes.length - 1];
     for (const sid of (chain.sourceSegs || [])) {
-        segToPolychain.set(`s${sid}`, head);
+        segToPolychain.set(sid, head);
     }
     for (const sid of (chain.sinkSegs || [])) {
-        segToPolychain.set(`s${sid}`, tail);
+        segToPolychain.set(sid, tail);
     }
 
-    // Register in unified segment registry
-    registerSegs((chain.sourceSegs || []).map(String), head);
-    registerSegs((chain.sinkSegs || []).map(String), tail);
+    // Register in unified segment registry (ensurePrefix handles s-prefixing)
+    registerSegs(chain.sourceSegs || [], head);
+    registerSegs(chain.sinkSegs || [], tail);
 }
 
 /**

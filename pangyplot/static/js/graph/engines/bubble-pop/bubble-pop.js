@@ -48,8 +48,7 @@ async function drain(forceGraph) {
         // they must not appear as standalone orphan nodes in D3.
         const visibleNodeRecords = nodeRecords.filter(r => {
           if (r.type !== 'segment') return true;
-          const segId = r.id.slice(1); // strip 's' prefix
-          return viewState.resolve(segId) === null;
+          return viewState.resolve(r.id) === null;
         });
 
         const { nodes, links } = recordsManager.extractElementsFromRecords({ nodes: visibleNodeRecords, links: linkRecords });

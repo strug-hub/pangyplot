@@ -54,8 +54,8 @@ function processResponse(apiResponse) {
             depth: chain.depth || 0,
             connector: chain.connector || false,
             bubbleIds: chain.bubble_ids || null,
-            sourceSegs: chain.source_segs,
-            sinkSegs: chain.sink_segs,
+            sourceSegs: (chain.source_segs || []).map(s => `s${s}`),
+            sinkSegs: (chain.sink_segs || []).map(s => `s${s}`),
             bubblePositions: chain.bubble_t || null,
             bpStart: chain.bp_start ?? null,
             bpEnd: chain.bp_end ?? null,
@@ -111,8 +111,8 @@ function buildDataFromCache(minX, maxX, layoutToBp) {
             depth: chain.depth || 0,
             connector: chain.connector || false,
             bubbleIds: chain.bubble_ids || null,
-            sourceSegs: chain.source_segs,
-            sinkSegs: chain.sink_segs,
+            sourceSegs: (chain.source_segs || []).map(s => `s${s}`),
+            sinkSegs: (chain.sink_segs || []).map(s => `s${s}`),
             bubblePositions: chain.bubble_t || null,
             bpStart: chain.bp_start ?? null,
             bpEnd: chain.bp_end ?? null,
@@ -135,8 +135,8 @@ function buildDataFromCache(minX, maxX, layoutToBp) {
     // Build resolvable set for link filtering
     const resolvableIds = new Set([...nodeIdSet]);
     for (const c of chains) {
-        for (const sid of (c.sourceSegs || [])) resolvableIds.add(`s${sid}`);
-        for (const sid of (c.sinkSegs || [])) resolvableIds.add(`s${sid}`);
+        for (const sid of (c.sourceSegs || [])) resolvableIds.add(sid);
+        for (const sid of (c.sinkSegs || [])) resolvableIds.add(sid);
     }
     const juncGraphLinks = getJunctionLinksForNodes(resolvableIds);
 

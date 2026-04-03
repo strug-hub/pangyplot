@@ -830,7 +830,8 @@ function _pickOutsideKink(kinks, recordId, insideFacingKink, record, polychainNo
  */
 function resolveSegToKink(segId, strand, allNodes) {
     const record = simplifyViewState.resolve(segId);
-    const targetId = record ? record.id : `s${segId}`;
+    const sId = String(segId).startsWith('s') ? segId : `s${segId}`;
+    const targetId = record ? record.id : sId;
 
     const kinks = allNodes
         .filter(n => n.id === targetId)

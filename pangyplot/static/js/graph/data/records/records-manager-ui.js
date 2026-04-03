@@ -225,7 +225,7 @@ export function installRecordsInspector({ onHighlightNode } = {}) {
         <tbody>
           ${rows.map(([segId, record]) => `
             <tr>
-              <td>s${segId}</td>
+              <td>${segId}</td>
               <td><button class="ri-id-btn" data-act="filter" data-id="${record.id}">${record.id}</button></td>
               <td class="${record.type === 'bubble' ? 'ri-type-bubble' : 'ri-type-segment'}">${record.type}</td>
             </tr>

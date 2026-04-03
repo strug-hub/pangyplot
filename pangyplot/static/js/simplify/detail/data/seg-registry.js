@@ -10,16 +10,23 @@
 // All links are GFA seg→seg connections. Resolution through this registry
 // determines which force nodes they connect.
 
-// segId (string, no prefix) → { node, kinkIdx }
+// Keys use s-prefixed format ("s137642") matching the frontend standard.
+// segId (string, s-prefixed) → { node, kinkIdx }
 // kinkIdx: which kink of the node to connect to (for strand resolution)
 const registry = new Map();
+
+/** Ensure a seg ID has the "s" prefix. */
+function ensurePrefix(id) {
+    const s = String(id);
+    return s.startsWith('s') ? s : `s${s}`;
+}
 
 /**
  * Register a segment ID as represented by a given force node.
  * Later registrations override earlier ones (more detailed wins).
  */
 export function registerSeg(segId, node, kinkIdx = 0) {
-    registry.set(String(segId), { node, kinkIdx });
+    registry.set(ensurePrefix(segId), { node, kinkIdx });
 }
 
 /**
@@ -27,7 +34,7 @@ export function registerSeg(segId, node, kinkIdx = 0) {
  */
 export function registerSegs(segIds, node, kinkIdx = 0) {
     for (const segId of segIds) {
-        registry.set(String(segId), { node, kinkIdx });
+        registry.set(ensurePrefix(segId), { node, kinkIdx });
     }
 }
 
@@ -35,7 +42,7 @@ export function registerSegs(segIds, node, kinkIdx = 0) {
  * Unregister a segment ID.
  */
 export function unregisterSeg(segId) {
-    registry.delete(String(segId));
+    registry.delete(ensurePrefix(segId));
 }
 
 /**
@@ -43,7 +50,7 @@ export function unregisterSeg(segId) {
  * Returns { node, kinkIdx } or null.
  */
 export function resolveSeg(segId) {
-    return registry.get(String(segId)) || null;
+    return registry.get(ensurePrefix(segId)) || null;
 }
 
 /**
@@ -51,7 +58,7 @@ export function resolveSeg(segId) {
  * linkResolver result in deserializeSubgraph. Returns null if not found.
  */
 export function resolveSegAsRecord(segId) {
-    const entry = registry.get(String(segId));
+    const entry = registry.get(ensurePrefix(segId));
     if (!entry) return null;
     const node = entry.node;
     // If the node already has a record (e.g., from a prior pop), use it
@@ -73,8 +80,8 @@ export function resolveSegAsRecord(segId) {
  * Returns true if both endpoints resolved, false if either is missing.
  */
 export function resolveLink(link) {
-    const src = registry.get(String(link.sourceSeg));
-    const tgt = registry.get(String(link.targetSeg));
+    const src = registry.get(ensurePrefix(link.sourceSeg));
+    const tgt = registry.get(ensurePrefix(link.targetSeg));
     if (!src || !tgt) return false;
     // Only update if the registry entries are actual node objects (not strings)
     if (src.node && typeof src.node === 'object' && src.node.iid) link.source = src.node;

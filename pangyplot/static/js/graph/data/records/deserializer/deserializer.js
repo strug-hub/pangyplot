@@ -94,11 +94,11 @@ export function deserializePopResponse(rawPop, bubbleId) {
     );
 
     // Mark deletion links: direct source→sink links that bypass bubble content
-    const sourceSet = new Set((rawPop.source_segs || []).map(String));
-    const sinkSet = new Set((rawPop.sink_segs || []).map(String));
+    const sourceSet = new Set((rawPop.source_segs || []).map(s => `s${s}`));
+    const sinkSet = new Set((rawPop.sink_segs || []).map(s => `s${s}`));
     for (const rawLink of rawPop.links) {
-        const srcSeg = rawLink.source.slice(1);
-        const tgtSeg = rawLink.target.slice(1);
+        const srcSeg = String(rawLink.source);
+        const tgtSeg = String(rawLink.target);
         if ((sourceSet.has(srcSeg) && sinkSet.has(tgtSeg)) ||
             (sinkSet.has(srcSeg) && sourceSet.has(tgtSeg))) {
             rawLink.is_deletion = true;

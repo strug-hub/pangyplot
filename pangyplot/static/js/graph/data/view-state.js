@@ -1,6 +1,16 @@
 // viewState maps segment IDs to the NodeRecord that visually represents them.
 // If a segment's bubble is collapsed, it maps to that bubble's BubbleRecord.
 // If resolve() returns null, the segment is visible as its own segment node.
+//
+// Keys use s-prefixed format ("s137642") matching the frontend standard.
+// All inputs are normalized via _key() so callers can pass any format
+// (integer, bare string, or s-prefixed string).
+
+/** Normalize any seg ID to s-prefixed string. */
+function _key(id) {
+    const s = String(id);
+    return s.startsWith('s') ? s : `s${s}`;
+}
 
 class ViewState {
     constructor() {
@@ -17,13 +27,13 @@ class ViewState {
     // source_segs win over sink_segs for shared boundary segments (last write wins).
     registerBubble(bubbleRecord, sourceSegs, sinkSegs, insideSegs = []) {
         for (const segId of insideSegs) {
-            this.segmentToNode.set(String(segId), bubbleRecord);
+            this.segmentToNode.set(_key(segId), bubbleRecord);
         }
         for (const segId of sinkSegs) {
-            this.segmentToNode.set(String(segId), bubbleRecord);
+            this.segmentToNode.set(_key(segId), bubbleRecord);
         }
         for (const segId of sourceSegs) {
-            this.segmentToNode.set(String(segId), bubbleRecord);
+            this.segmentToNode.set(_key(segId), bubbleRecord);
         }
     }
 
@@ -51,25 +61,25 @@ class ViewState {
     // sourceSegs/sinkSegs: the bubble's boundary segment IDs
     // insideSegs: the bubble's inside segment IDs
     // childBubbles: array of {id, source_segs, sink_segs, inside_segs} to unmap
-    // excludeSegIds: Set of plain seg ID strings to leave untouched (shared with popped sibling)
+    // excludeSegIds: Set of seg IDs to leave untouched (shared with popped sibling)
     collapse(bubbleRecord, sourceSegs, sinkSegs, insideSegs, childBubbles, excludeSegIds = new Set()) {
         // Remove all child bubble segment mappings, skipping excluded segs
         for (const child of childBubbles) {
             for (const segId of [...(child.source_segs || []), ...(child.sink_segs || []), ...(child.inside_segs || [])]) {
-                if (!excludeSegIds.has(String(segId)))
-                    this.segmentToNode.delete(String(segId));
+                if (!excludeSegIds.has(_key(segId)))
+                    this.segmentToNode.delete(_key(segId));
             }
         }
         // Re-register this bubble's segments, skipping excluded segs
-        const keep = (segs) => segs.filter(s => !excludeSegIds.has(String(s)));
+        const keep = (segs) => segs.filter(s => !excludeSegIds.has(_key(s)));
         this.registerBubble(bubbleRecord, keep(sourceSegs), keep(sinkSegs), keep(insideSegs));
     }
 
     // Returns the NodeRecord that visually represents this segment,
     // or null if the segment is visible as itself.
-    // segId should be a plain integer or string (without "s" prefix).
+    // Accepts any format: integer, bare string, or s-prefixed string.
     resolve(segId) {
-        return this.segmentToNode.get(String(segId)) || null;
+        return this.segmentToNode.get(_key(segId)) || null;
     }
 }
 

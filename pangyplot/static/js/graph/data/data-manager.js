@@ -29,11 +29,11 @@ export function unpopBubble(bubbleId, forceGraph) {
     const sibRecord = recordsManager.getNode("b" + sibId);
     if (!sibRecord || !sibRecord.popData) continue; // sibling not popped
     const sibBoundary = new Set(
-      [...sibRecord.sourceSegs, ...sibRecord.sinkSegs].map(String)
+      [...sibRecord.sourceSegs, ...sibRecord.sinkSegs]
     );
     for (const segId of [...bubbleRecord.sourceSegs, ...bubbleRecord.sinkSegs]) {
-      if (sibBoundary.has(String(segId)))
-        exposedBoundarySegIds.add(String(segId));
+      if (sibBoundary.has(segId))
+        exposedBoundarySegIds.add(segId);
     }
   }
 
@@ -41,7 +41,7 @@ export function unpopBubble(bubbleId, forceGraph) {
   // but skip boundary segments still needed by a popped sibling.
   const descendantIds = collectAllDescendantIds(bubbleRecord);
   for (const id of descendantIds) {
-    if (id.startsWith("s") && exposedBoundarySegIds.has(id.slice(1))) continue;
+    if (exposedBoundarySegIds.has(id)) continue;
     forceGraph.removeNodeById(id);
   }
 

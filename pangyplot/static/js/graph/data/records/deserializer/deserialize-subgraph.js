@@ -83,9 +83,9 @@ export function deserializeSubgraph(apiData, options = {}) {
         const els = createLinkElements(linkRecord);
         for (const link of els.links) {
             link.isKinkLink = false;
-            // Tag with GFA seg IDs for synonymous link matching
-            link.sourceSeg = sId.replace(/^s/, '');
-            link.targetSeg = tId.replace(/^s/, '');
+            // Tag with GFA seg IDs (s-prefixed, frontend standard)
+            link.sourceSeg = sId;
+            link.targetSeg = tId;
             Object.assign(link, tag);
             allLinks.push(link);
         }

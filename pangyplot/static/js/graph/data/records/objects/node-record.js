@@ -27,8 +27,8 @@ export class BubbleRecord extends NodeRecord {
         this.chainStep = rawBubble.chain_step;
         this.size = rawBubble.size;
         this.siblings = rawBubble.siblings || [null, null];
-        this.sourceSegs = rawBubble.source_segs || [];
-        this.sinkSegs = rawBubble.sink_segs || [];
+        this.sourceSegs = (rawBubble.source_segs || []).map(s => `s${s}`);
+        this.sinkSegs = (rawBubble.sink_segs || []).map(s => `s${s}`);
         this.popData = null;
     }
 }

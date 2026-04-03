@@ -11,7 +11,7 @@ import popTree from './pop-tree.js';
 import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore, getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
-import { registerSeg, resolveAllLinks, resolveSegAsRecord } from './seg-registry.js';
+import { registerSeg, resolveSegAsRecord } from './seg-registry.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -41,11 +41,11 @@ export async function popBubbleForceNode(bubbleNode) {
     }
 
     // Mark deletion links: source→sink bypasses
-    const sourceSet = new Set((apiData.source_segs || []).map(String));
-    const sinkSet = new Set((apiData.sink_segs || []).map(String));
+    const sourceSet = new Set((apiData.source_segs || []).map(s => `s${s}`));
+    const sinkSet = new Set((apiData.sink_segs || []).map(s => `s${s}`));
     for (const rawLink of (apiData.links || [])) {
-        const src = rawLink.source.slice(1);   // strip "s" prefix
-        const tgt = rawLink.target.slice(1);
+        const src = String(rawLink.source);
+        const tgt = String(rawLink.target);
         if ((sourceSet.has(src) && sinkSet.has(tgt)) ||
             (sinkSet.has(src) && sourceSet.has(tgt))) {
             rawLink.is_deletion = true;
@@ -67,11 +67,9 @@ export async function popBubbleForceNode(bubbleNode) {
     const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(apiData, {
         tag: { chainId },
         linkResolver: (segId) => {
-            // Strip "s" prefix for viewState lookup
-            const plainId = segId.startsWith('s') ? segId.slice(1) : segId;
             // First: segment owned by a collapsed bubble
             // Second: segment visible as itself from a prior pop
-            return simplifyViewState.resolve(plainId) || existingRecords.get(segId) || null;
+            return simplifyViewState.resolve(segId) || existingRecords.get(segId) || null;
         },
     });
 
@@ -197,11 +195,11 @@ export async function popBubbleCircle(hit) {
     }
 
     // Mark deletion links (source→sink bypasses)
-    const sourceSet = new Set((apiData.source_segs || []).map(String));
-    const sinkSet = new Set((apiData.sink_segs || []).map(String));
+    const sourceSet = new Set((apiData.source_segs || []).map(s => `s${s}`));
+    const sinkSet = new Set((apiData.sink_segs || []).map(s => `s${s}`));
     for (const rawLink of (apiData.links || [])) {
-        const src = rawLink.source.slice(1);
-        const tgt = rawLink.target.slice(1);
+        const src = String(rawLink.source);
+        const tgt = String(rawLink.target);
         if ((sourceSet.has(src) && sinkSet.has(tgt)) ||
             (sinkSet.has(src) && sourceSet.has(tgt))) {
             rawLink.is_deletion = true;
@@ -209,19 +207,37 @@ export async function popBubbleCircle(hit) {
         }
     }
 
-    // Deserialize subgraph. The linkResolver resolves external segments
-    // through: (1) viewState for collapsed bubbles, (2) the unified
-    // segment registry for everything else (chain endpoints, junctions,
-    // anchors, prior pops).
-    const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(apiData, {
+    // --- Create gap BEFORE deserialization so anchors are registered in the
+    // seg registry and the linkResolver can resolve source/sink segs to them. ---
+    logChainState(chainId, getPolychainNodesForChain(chainId), getChainGaps(chainId));
+    const gapInfo = createGapAtPop(chainId, bubbleId, apiData.source_segs || [], apiData.sink_segs || []);
+    if (!gapInfo) return false;
+    logGap(chainId, gapInfo.gapEntry, 'created');
+
+    // Filter out boundary seg nodes (source/sink) from the API data.
+    // They are NOT added to the graph — anchors represent them.
+    // GFA links referencing these segs will fall through to the linkResolver
+    // which resolves them to anchors via the seg registry.
+    const boundarySegIds = new Set([
+        ...(apiData.source_segs || []).map(s => `s${s}`),
+        ...(apiData.sink_segs || []).map(s => `s${s}`),
+    ]);
+    const interiorApiData = {
+        ...apiData,
+        nodes: apiData.nodes.filter(n => !boundarySegIds.has(String(n.id))),
+    };
+
+    // Deserialize subgraph (interior nodes only). The linkResolver resolves
+    // boundary seg references to anchors via the registry, and collapsed
+    // bubble ownership via viewState.
+    const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(interiorApiData, {
         tag: { chainId },
         linkResolver: (segId) => {
-            const plainId = segId.startsWith('s') ? segId.slice(1) : segId;
             // 1. Collapsed bubble ownership
-            const vsRecord = simplifyViewState.resolve(plainId);
+            const vsRecord = simplifyViewState.resolve(segId);
             if (vsRecord) return vsRecord;
-            // 2. Unified segment registry (chain endpoints, junctions, anchors, prior pops)
-            return resolveSegAsRecord(plainId);
+            // 2. Unified segment registry
+            return resolveSegAsRecord(segId);
         },
     });
 
@@ -237,20 +253,9 @@ export async function popBubbleCircle(hit) {
         );
     }
 
-    // Mark source/sink boundary seg nodes as hidden — they're represented
-    // visually by anchors but stay in the sim for GFA link connectivity.
-    const boundarySegIds = new Set([
-        ...(apiData.source_segs || []).map(s => `s${s}`),
-        ...(apiData.sink_segs || []).map(s => `s${s}`),
-    ]);
-
     // Deduplicate nodes already in sim
     const existingNodeIds = new Set(getForceNodes().map(n => n.id));
     const newChildNodes = childNodes.filter(n => !existingNodeIds.has(n.id));
-    // Mark boundary seg nodes as hidden (exist for physics, not rendered)
-    for (const n of newChildNodes) {
-        if (boundarySegIds.has(n.id)) n.isBoundarySeg = true;
-    }
     const addedIds = new Set(newChildNodes.map(n => n.id));
     const newChildLinks = childLinks.filter(l => {
         if (!l.isKinkLink) return true;
@@ -278,7 +283,7 @@ export async function popBubbleCircle(hit) {
         node.y = hit.y + (node.homeY - layoutCy) * squish;
     }
 
-    // --- DEBUG: log pre-pop state ---
+    // --- DEBUG ---
     logLinks('childLinks', newChildLinks);
     logPop(bubbleId, chainId, {
         phase: 'start',
@@ -288,62 +293,20 @@ export async function popBubbleCircle(hit) {
         sourceSegs: apiData.source_segs,
         sinkSegs: apiData.sink_segs,
     });
-    logChainState(chainId, getPolychainNodesForChain(chainId), getChainGaps(chainId));
 
-    // Create gap at the popped bubble's position using neighbor bubbles as boundaries.
-    // Must be called BEFORE removeBubbleFromStore so the bubble is still in the store.
-    // Pass the popped bubble's own source/sink segs for bridge tracking during absorption.
-    const gapInfo = createGapAtPop(chainId, bubbleId, apiData.source_segs || [], apiData.sink_segs || []);
-    if (!gapInfo) return false;
-
-    logGap(chainId, gapInfo.gapEntry, 'created');
-
-    // Pin boundary seg nodes to their anchor's position and fix them there.
-    // They exist for GFA link connectivity but are visually represented by anchors.
-    const sourceSegSet = new Set((apiData.source_segs || []).map(s => `s${s}`));
-    const sinkSegSet = new Set((apiData.sink_segs || []).map(s => `s${s}`));
+    // Register each interior child node's seg ID in the unified registry.
     for (const n of newChildNodes) {
-        if (!n.isBoundarySeg) continue;
-        const anchor = sourceSegSet.has(n.id) ? gapInfo.leftNode
-                     : sinkSegSet.has(n.id) ? gapInfo.rightNode
-                     : null;
-        if (anchor) {
-            n.x = anchor.x; n.y = anchor.y;
-            n.fx = anchor.x; n.fy = anchor.y;  // pin to anchor
-            n.homeX = anchor.x; n.homeY = anchor.y;
-        }
-    }
-
-    // Register each popped child node's seg ID in the unified registry.
-    // Boundary segs stay registered to anchors (don't override).
-    for (const n of newChildNodes) {
-        if (n.isBoundarySeg) continue;  // anchors keep their registration
-        const segId = n.id ? n.id.replace(/^s/, '') : null;
-        if (segId) registerSeg(segId, n);
+        if (n.id) registerSeg(n.id, n);
     }
 
     // Add child nodes + links to the force sim
     insertPoppedContent(chainId, newChildNodes, newChildLinks);
 
-    // TODO: resolveAllLinks disabled while debugging — boundary seg nodes
-    // in the sim provide GFA link connectivity naturally via D3 resolution.
-    // resolveAllLinks(getForceLinks());
-
-    // Log links touching this gap's anchors (auto-resolved, no explicit bridges)
+    // Log links touching this gap's anchors
     const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);
     const anchorLinks = getForceLinks().filter(l =>
         gapAnchors.some(a => l.source === a || l.target === a));
     logLinks('anchor-resolved-links', anchorLinks);
-
-    // Log all non-kink links involving child nodes (to spot spurious connections)
-    const childIidSet = new Set(newChildNodes.map(n => n.iid));
-    const childGfaLinks = getForceLinks().filter(l => {
-        if (l.isKinkLink || l.isBridgeLink || l.isPolychainLink) return false;
-        const s = l.source?.iid ?? l.source;
-        const t = l.target?.iid ?? l.target;
-        return childIidSet.has(s) || childIidSet.has(t);
-    });
-    logLinks('childGfaLinks', childGfaLinks);
 
     logNodes('childNodes', newChildNodes);
 

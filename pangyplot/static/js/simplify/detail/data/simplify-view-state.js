@@ -29,10 +29,10 @@ export function unregisterChains(chainIds, chains) {
     for (const chain of chains) {
         if (!chainIds.has(chain.id)) continue;
         for (const sid of (chain.sourceSegs || [])) {
-            simplifyViewState.segmentToNode.delete(String(sid));
+            simplifyViewState.segmentToNode.delete(sid);
         }
         for (const sid of (chain.sinkSegs || [])) {
-            simplifyViewState.segmentToNode.delete(String(sid));
+            simplifyViewState.segmentToNode.delete(sid);
         }
     }
 }
