@@ -325,11 +325,9 @@ export async function popBubbleCircle(hit) {
     // Add child nodes + links to the force sim
     insertPoppedContent(chainId, newChildNodes, newChildLinks);
 
-    // Re-resolve all links through the segment registry. This auto-rewires
-    // existing inter-chain/junction links to point to anchors (which
-    // registered the boundary seg IDs), effectively creating the bridge
-    // connections. No explicit bridge link creation needed.
-    resolveAllLinks(getForceLinks());
+    // TODO: resolveAllLinks disabled while debugging — boundary seg nodes
+    // in the sim provide GFA link connectivity naturally via D3 resolution.
+    // resolveAllLinks(getForceLinks());
 
     // Log links touching this gap's anchors (auto-resolved, no explicit bridges)
     const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);

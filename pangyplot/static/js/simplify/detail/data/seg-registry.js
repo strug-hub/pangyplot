@@ -76,10 +76,9 @@ export function resolveLink(link) {
     const src = registry.get(String(link.sourceSeg));
     const tgt = registry.get(String(link.targetSeg));
     if (!src || !tgt) return false;
-    // For multi-kink segments, pick the correct kink node
-    // (stored kinkIdx from registration, or find by iid)
-    link.source = src.node;
-    link.target = tgt.node;
+    // Only update if the registry entries are actual node objects (not strings)
+    if (src.node && typeof src.node === 'object' && src.node.iid) link.source = src.node;
+    if (tgt.node && typeof tgt.node === 'object' && tgt.node.iid) link.target = tgt.node;
     return true;
 }
 
