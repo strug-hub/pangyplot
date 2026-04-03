@@ -12,8 +12,8 @@
  */
 
 import { state } from '../../../simplify-state.js';
-import { insertPoppedContent } from '../../engines/force-engine.js';
-import { getForceNodes } from '../force-data.js';
+import { spliceBubbleNodes, insertPoppedContent } from '../../engines/force-engine.js';
+import { getForceNodes, getForceLinks } from '../force-data.js';
 import { recordPop } from '../../../../utils/pop-history.js';
 import popTree from '../pop-tree.js';
 import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from '../polychain/polychain-adapter.js';
@@ -226,6 +226,157 @@ export async function popBubbleCircleV2(hit) {
 
     console.log(`[pop-handler] v2 pop ${bubbleId}: ${childObjects.length} objects, ` +
         `${newChildNodes.length} nodes, ${allNewLinks.length} links (${gfaLinks.length} GFA)`);
+
+    return true;
+}
+
+/**
+ * Pop a bubble force node (already visible in the sim as a BubbleObject or kink node).
+ * Removes the parent bubble, creates child SimObjects, splices into sim.
+ *
+ * @param {object} bubbleNode — force node with .id, .type, .chainId, .x, .y
+ * @returns {Promise<boolean>}
+ */
+export async function popBubbleForceNodeV2(bubbleNode) {
+    if (!bubbleNode || bubbleNode.type !== 'bubble') return false;
+
+    const bubbleId = bubbleNode.id;
+    const chainId = bubbleNode.chainId;
+    const chr = state.chromosome;
+    if (!chr) return false;
+
+    // --- Fetch /pop ---
+    const url = `/pop?id=${encodeURIComponent(bubbleId)}`
+        + `&genome=${encodeURIComponent(state.GENOME)}`
+        + `&chromosome=${encodeURIComponent(chr)}`;
+
+    let apiData;
+    try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        apiData = await resp.json();
+    } catch (e) {
+        console.warn('[pop-handler] fetch failed:', e);
+        return false;
+    }
+
+    markDeletionLinks(apiData, bubbleId);
+
+    // --- Create child SimObjects ---
+    const childObjects = [];
+    for (const node of (apiData.nodes || [])) {
+        if (node.type === 'segment') {
+            childObjects.push(SegmentObject.fromApiNode(node, chainId));
+        } else if (node.type === 'bubble') {
+            childObjects.push(BubbleObject.fromApiNode(node, chainId));
+        }
+    }
+
+    const allChildNodes = [];
+    const allChildLinks = [];
+    for (const obj of childObjects) {
+        allChildNodes.push(...obj.physicsNodes);
+        allChildLinks.push(...obj.physicsLinks);
+    }
+
+    // Deduplicate
+    const existingNodeIds = new Set(getForceNodes().map(n => n.id));
+    const newChildNodes = allChildNodes.filter(n => !existingNodeIds.has(n.id));
+    const addedIds = new Set(newChildNodes.map(n => n.id));
+    const newChildLinks = allChildLinks.filter(l => {
+        if (!l.isKinkLink) return true;
+        return addedIds.has(l.id);
+    });
+
+    if (newChildNodes.length === 0) return false;
+
+    // Register child ends in model registry
+    for (const obj of childObjects) {
+        modelRegistry.registerAll(obj.ends.head, obj);
+        modelRegistry.registerAll(obj.ends.tail, obj);
+    }
+
+    // Resolve GFA links
+    const gfaLinks = [];
+    for (const rawLink of (apiData.links || [])) {
+        const resolved = resolveApiLink(rawLink);
+        if (!resolved) continue;
+        gfaLinks.push({
+            isNode: false, isLink: true, class: 'link',
+            iid: `${resolved.fromNode.iid}${rawLink.from_strand || '+'}${resolved.toNode.iid}${rawLink.to_strand || '+'}`,
+            source: resolved.fromNode.iid,
+            target: resolved.toNode.iid,
+            sourceIid: resolved.fromNode.iid,
+            targetIid: resolved.toNode.iid,
+            sourceId: String(rawLink.source),
+            targetId: String(rawLink.target),
+            type: 'link',
+            isDel: resolved.isDeletion,
+            isKinkLink: false, isRef: false, isDrawn: true,
+            length: resolved.isDeletion ? 20 : 10,
+            width: 1,
+            contained: rawLink.contained || [],
+            frequency: rawLink.frequency || 0,
+            haplotype: rawLink.haplotype || null,
+            bubbleId: resolved.isDeletion ? bubbleId : null,
+        });
+    }
+
+    // Squish toward parent position
+    if (newChildNodes.length > 0) {
+        let cx = 0, cy = 0;
+        for (const n of newChildNodes) { cx += n.x; cy += n.y; }
+        cx /= newChildNodes.length; cy /= newChildNodes.length;
+        const squish = 0.15;
+        for (const n of newChildNodes) {
+            n.homeX = n.x; n.homeY = n.y;
+            n.x = bubbleNode.x + (n.homeX - cx) * squish;
+            n.y = bubbleNode.y + (n.homeY - cy) * squish;
+        }
+    }
+
+    // Register in old seg-registry for compat
+    for (const n of newChildNodes) {
+        if (n.id) registerSeg(n.id, n);
+    }
+
+    // Collect parent iids for removal
+    const parentIids = new Set();
+    for (const n of getForceNodes()) {
+        if (n.id === bubbleId) parentIids.add(n.iid);
+    }
+
+    // Save external links for undo
+    const externalLinks = getForceLinks().filter(l => {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return parentIids.has(sIid) || parentIids.has(tIid);
+    }).map(l => ({ ...l }));
+
+    // Atomic splice: remove parent, add children
+    const allNewLinks = [...newChildLinks, ...gfaLinks];
+    spliceBubbleNodes(parentIids, newChildNodes, allNewLinks);
+
+    recordPop('bubble-force-pop-v2', { id: bubbleId, chain: chainId });
+
+    // Track for undo
+    popTree.register(bubbleId, chainId, null, {
+        bubbleId,
+        chainId,
+        isV2: true,
+        parentKinks: bubbleNode.kinks || 1,
+        parentNode: { ...bubbleNode },
+        childIids: newChildNodes.map(n => n.iid),
+        childObjectIds: childObjects.map(o => o.id),
+        childLinks: newChildLinks,
+        externalLinks,
+        sourceSegs: apiData.source_segs || [],
+        sinkSegs: apiData.sink_segs || [],
+        childBubbles: apiData.child_bubbles || [],
+    });
+
+    console.log(`[pop-handler] v2 force-pop ${bubbleId}: ${childObjects.length} objects, ` +
+        `${newChildNodes.length} nodes, ${allNewLinks.length} links`);
 
     return true;
 }
