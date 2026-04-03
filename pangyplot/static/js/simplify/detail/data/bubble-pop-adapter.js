@@ -237,9 +237,18 @@ export async function popBubbleCircle(hit) {
         );
     }
 
-    // Deduplicate nodes already in sim
+    // Exclude source/sink boundary segments — they're represented by anchors.
+    // Only interior segments become visible child nodes. When a neighbor bubble
+    // is popped later, the shared boundary seg gets revealed as a real node.
+    const boundarySegIds = new Set([
+        ...(apiData.source_segs || []).map(s => `s${s}`),
+        ...(apiData.sink_segs || []).map(s => `s${s}`),
+    ]);
+
+    // Deduplicate nodes already in sim AND filter out boundary segs
     const existingNodeIds = new Set(getForceNodes().map(n => n.id));
-    const newChildNodes = childNodes.filter(n => !existingNodeIds.has(n.id));
+    const newChildNodes = childNodes.filter(n =>
+        !existingNodeIds.has(n.id) && !boundarySegIds.has(n.id));
     const addedIds = new Set(newChildNodes.map(n => n.id));
     const newChildLinks = childLinks.filter(l => {
         if (!l.isKinkLink) return true;
