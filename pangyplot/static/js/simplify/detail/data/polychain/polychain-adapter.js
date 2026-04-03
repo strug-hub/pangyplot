@@ -39,6 +39,20 @@ export function isSplitRootChain(chainId) {
     return subchainCounters.has(rootId);
 }
 
+/** Remove a segment ID from the segToPolychain map. */
+export function removeSegFromPolychain(segId) {
+    segToPolychain.delete(segId);
+}
+
+/** Get all segToPolychain entries for a given chain ID. Returns [segId, node] pairs. */
+export function segToPolychainEntries(chainId) {
+    const result = [];
+    for (const [key, node] of segToPolychain) {
+        if (node.chainId === chainId) result.push([key, node]);
+    }
+    return result;
+}
+
 // Resampling constants
 const MIN_NODES = 2;
 
@@ -531,16 +545,16 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
     const leftPos = popIdx > 0 ? positions[popIdx - 1] : null;
     const rightPos = popIdx < positions.length - 1 ? positions[popIdx + 1] : null;
 
-    const leftX = leftPos ? leftPos.x : nodes[0].x;
-    const leftY = leftPos ? leftPos.y : nodes[0].y;
-    const rightX = rightPos ? rightPos.x : nodes[nodes.length - 1].x;
-    const rightY = rightPos ? rightPos.y : nodes[nodes.length - 1].y;
-
     const loopFactor = nodes[0].loopFactor || 0;
 
-    // Create or reuse anchors (left first so array indices stay valid for right)
-    const left = ensureAnchor(nodes, chainId, leftX, leftY, `${bubbleId}_L`, loopFactor);
-    const right = ensureAnchor(nodes, chainId, rightX, rightY, `${bubbleId}_R`, loopFactor);
+    // Only create anchors where there's a neighbor. At chain edges, the popped
+    // content's own boundary handles external connectivity — no anchor needed.
+    const left = leftPos
+        ? ensureAnchor(nodes, chainId, leftPos.x, leftPos.y, `${bubbleId}_L`, loopFactor)
+        : null;
+    const right = rightPos
+        ? ensureAnchor(nodes, chainId, rightPos.x, rightPos.y, `${bubbleId}_R`, loopFactor)
+        : null;
 
     // Fix nodeIndex for all nodes
     for (let i = 0; i < nodes.length; i++) {
@@ -552,14 +566,14 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
     const existingGaps = chainGaps.get(chainId);
     if (existingGaps) {
         for (const g of existingGaps) {
-            g.leftNodeIdx = nodes.indexOf(g.anchorL);
-            g.rightNodeIdx = nodes.indexOf(g.anchorR);
+            g.leftNodeIdx = g.anchorL ? nodes.indexOf(g.anchorL) : 0;
+            g.rightNodeIdx = g.anchorR ? nodes.indexOf(g.anchorR) : nodes.length - 1;
         }
     }
 
-    // Gap spans between the two anchors
-    const leftNodeIdx = nodes.indexOf(left.node);
-    const rightNodeIdx = nodes.indexOf(right.node);
+    // Gap spans between anchors. At chain edges (null anchor), extend to endpoint.
+    const leftNodeIdx = left ? nodes.indexOf(left.node) : 0;
+    const rightNodeIdx = right ? nodes.indexOf(right.node) : nodes.length - 1;
 
     const gapEntry = {
         leftNodeIdx, rightNodeIdx, bubbleId,
@@ -568,9 +582,9 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
         tEnd: gapTEnd,
         outerSourceSegs: outerSourceSegs.map(String),  // popped bubble's source segs (left edge)
         outerSinkSegs: outerSinkSegs.map(String),    // popped bubble's sink segs (right edge)
-        anchorL: left.node, anchorR: right.node,
-        leftSplice: left.splice, rightSplice: right.splice,
-        leftCreated: left.created, rightCreated: right.created,
+        anchorL: left ? left.node : null, anchorR: right ? right.node : null,
+        leftSplice: left ? left.splice : null, rightSplice: right ? right.splice : null,
+        leftCreated: left ? left.created : false, rightCreated: right ? right.created : false,
     };
     if (!chainGaps.has(chainId)) chainGaps.set(chainId, []);
     const gaps = chainGaps.get(chainId);
@@ -593,15 +607,16 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
         if (g.tEnd > gapEntry.tEnd) gapEntry.tEnd = g.tEnd;
     }
 
-    // Collect ALL anchors and bridge links from absorbed gaps for cleanup
+    // Collect ALL anchors from absorbed gaps for cleanup
     const allAbsorbedAnchors = new Set();
     for (const g of absorbed) {
-        allAbsorbedAnchors.add(g.anchorL);
-        allAbsorbedAnchors.add(g.anchorR);
+        if (g.anchorL) allAbsorbedAnchors.add(g.anchorL);
+        if (g.anchorR) allAbsorbedAnchors.add(g.anchorR);
     }
     // Don't remove anchors shared with the new gap
-    allAbsorbedAnchors.delete(left.node);
-    allAbsorbedAnchors.delete(right.node);
+    if (left) allAbsorbedAnchors.delete(left.node);
+    if (right) allAbsorbedAnchors.delete(right.node);
+    allAbsorbedAnchors.delete(null);
 
     if (absorbed.length > 0) {
         // Remove ALL bridge links that touch any absorbed anchor
@@ -617,7 +632,8 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
         // Remove absorbed anchor nodes from polychain + force sim
         for (const g of absorbed) {
             for (const anchor of [g.anchorL, g.anchorR]) {
-                if (anchor === left.node || anchor === right.node) continue;
+                if (!anchor) continue;
+                if ((left && anchor === left.node) || (right && anchor === right.node)) continue;
                 const idx = nodes.indexOf(anchor);
                 if (idx !== -1) {
                     if (g.leftSplice && anchor === g.anchorL && g.leftCreated) {
@@ -652,19 +668,19 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
             nodes[i].chainNodeCount = nodes.length;
         }
         // Recompute the new gap's indices
-        gapEntry.leftNodeIdx = nodes.indexOf(left.node);
-        gapEntry.rightNodeIdx = nodes.indexOf(right.node);
+        gapEntry.leftNodeIdx = left ? nodes.indexOf(left.node) : 0;
+        gapEntry.rightNodeIdx = right ? nodes.indexOf(right.node) : nodes.length - 1;
         // Recompute ALL surviving gaps' indices (they shifted too)
         for (const g of gaps) {
             if (g === gapEntry) continue;
-            g.leftNodeIdx = nodes.indexOf(g.anchorL);
-            g.rightNodeIdx = nodes.indexOf(g.anchorR);
+            g.leftNodeIdx = g.anchorL ? nodes.indexOf(g.anchorL) : 0;
+            g.rightNodeIdx = g.anchorR ? nodes.indexOf(g.anchorR) : nodes.length - 1;
         }
     }
 
     gaps.push(gapEntry);
 
-    return { leftNode: left.node, rightNode: right.node, gapEntry, didAbsorb: absorbed.length > 0 };
+    return { leftNode: left ? left.node : null, rightNode: right ? right.node : null, gapEntry, didAbsorb: absorbed.length > 0 };
 }
 
 /**

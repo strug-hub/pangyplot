@@ -844,8 +844,8 @@ export function rebuildGapBridges(chainId, gapEntry) {
     for (let i = links.length - 1; i >= 0; i--) {
         const l = links[i];
         if (!l.isBridgeLink) continue;
-        if (l.source === anchorL || l.target === anchorL ||
-            l.source === anchorR || l.target === anchorR) {
+        if ((anchorL && (l.source === anchorL || l.target === anchorL)) ||
+            (anchorR && (l.source === anchorR || l.target === anchorR))) {
             links.splice(i, 1);
         }
     }
@@ -884,7 +884,7 @@ export function rebuildGapBridges(chainId, gapEntry) {
     // Step 4: Find kink nodes and create exactly 2 bridges
     const allNodes = getNodes();
 
-    if (outerSource.length > 0) {
+    if (anchorL && outerSource.length > 0) {
         const segId = outerSource[0];
         const kinks = allNodes.filter(n => n.id === `s${segId}`)
             .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
@@ -897,7 +897,7 @@ export function rebuildGapBridges(chainId, gapEntry) {
         }
     }
 
-    if (outerSink.length > 0) {
+    if (anchorR && outerSink.length > 0) {
         const segId = outerSink[0];
         const kinks = allNodes.filter(n => n.id === `s${segId}`)
             .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
@@ -928,8 +928,9 @@ export function removePoppedContent(childIids, gapEntry) {
     const remainingIids = new Set(remaining.map(n => n.iid));
     const keptLinks = getLinks().filter(l => {
         // Remove bridge links touching this gap's anchors
-        if (l.isBridgeLink && (l.source === anchorL || l.target === anchorL ||
-                               l.source === anchorR || l.target === anchorR)) {
+        if (l.isBridgeLink && (
+            (anchorL && (l.source === anchorL || l.target === anchorL)) ||
+            (anchorR && (l.source === anchorR || l.target === anchorR)))) {
             return false;
         }
         // Remove links to removed child nodes

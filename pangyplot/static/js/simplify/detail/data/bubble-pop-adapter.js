@@ -288,6 +288,7 @@ export async function popBubbleCircle(hit) {
     }
 
     // --- DEBUG: log pre-pop state ---
+    logLinks('childLinks', newChildLinks);
     logPop(bubbleId, chainId, {
         phase: 'start',
         t: hit.meta.t,
@@ -310,8 +311,65 @@ export async function popBubbleCircle(hit) {
     insertPoppedContent(chainId, newChildNodes, newChildLinks);
 
     // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
-    // This is the SAME code path whether or not absorption happened.
     rebuildGapBridges(chainId, gapInfo.gapEntry);
+
+    // --- Synonymous link dedup ---
+    // The same GFA connection can exist at multiple abstraction levels:
+    //   chain-level (inter-chain link with sourceSegId/targetSegId)
+    //   junction-level (junction link with seg IDs)
+    //   segment-level (GFA child link between seg kinks)
+    // After popping reveals segment-level detail, remove the higher-level
+    // link if a segment-level link now represents the same connection.
+    {
+        const simLinks = getForceLinks();
+        const childIidSet = new Set(newChildNodes.map(n => n.iid));
+
+        // Collect segment pairs represented by new child GFA links
+        const childPairs = new Set();
+        for (const l of simLinks) {
+            if (l.isKinkLink || l.isBridgeLink || l.isPolychainLink) continue;
+            const sIid = l.source?.iid ?? l.source;
+            const tIid = l.target?.iid ?? l.target;
+            if (!childIidSet.has(sIid) && !childIidSet.has(tIid)) continue;
+            const sId = (l.source?.id || '').replace(/^s/, '');
+            const tId = (l.target?.id || '').replace(/^s/, '');
+            if (sId && tId) {
+                childPairs.add(`${sId}|${tId}`);
+                childPairs.add(`${tId}|${sId}`);
+            }
+        }
+
+        // Remove higher-level links (inter-chain, junction) that are now
+        // synonymous with a child segment link
+        if (childPairs.size > 0) {
+            for (let i = simLinks.length - 1; i >= 0; i--) {
+                const l = simLinks[i];
+                if (l.isBridgeLink || l.isKinkLink) continue;
+                if (!l.isInterChain && !l.isPolychainLink) continue;
+                const sId = l.sourceSegId || (l.source?.id || '').replace(/^s/, '');
+                const tId = l.targetSegId || (l.target?.id || '').replace(/^s/, '');
+                if (sId && tId && childPairs.has(`${sId}|${tId}`)) {
+                    simLinks.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    // Log all bridge links currently touching this gap's anchors
+    const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);
+    const allBridges = getForceLinks().filter(l => l.isBridgeLink &&
+        gapAnchors.some(a => l.source === a || l.target === a));
+    logLinks('bridgeLinks-after-rebuild', allBridges);
+
+    // Log all non-kink links involving child nodes (to spot spurious connections)
+    const childIidSet = new Set(newChildNodes.map(n => n.iid));
+    const childGfaLinks = getForceLinks().filter(l => {
+        if (l.isKinkLink || l.isBridgeLink || l.isPolychainLink) return false;
+        const s = l.source?.iid ?? l.source;
+        const t = l.target?.iid ?? l.target;
+        return childIidSet.has(s) || childIidSet.has(t);
+    });
+    logLinks('childGfaLinks', childGfaLinks);
 
     logNodes('childNodes', newChildNodes);
 
