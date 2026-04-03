@@ -19,7 +19,7 @@ import popTree from '../data/pop-tree.js';
 import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from '../data/polychain/polychain-adapter.js';
 import { removeBubbleFromStore } from '../data/bubble-meta-cache.js';
 import { logPop, logNodes, logLinks, logChainState } from '../data/pop-debug-log.js';
-import { registerSeg } from '../data/seg-registry.js';
+import { registerSeg, resolveSeg } from '../data/seg-registry.js';
 
 import { getContainer } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
@@ -76,7 +76,7 @@ export async function popBubbleCircleV2(hit) {
     const gapInfo = createGapAtPop(chainId, bubbleId, apiData.source_segs || [], apiData.sink_segs || []);
     if (!gapInfo) return false;
 
-    // --- Split model container (new system, in parallel) ---
+    // --- Split model container (tracks state only; anchors stay in model layer) ---
     const container = getContainer(chainId);
     if (container) {
         try {
@@ -123,8 +123,12 @@ export async function popBubbleCircleV2(hit) {
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
 
-    // --- Resolve GFA links through model registry ---
-    // Register child object ends in the model registry
+    // --- Resolve GFA links through old seg-registry ---
+    // The old system's createGapAtPop already registered anchors and endpoint
+    // nodes in the old seg-registry. Child kink nodes are registered below.
+    // We use the old registry because those are the nodes actually in the D3 sim.
+
+    // Register child object ends in model registry (for model state tracking)
     for (const obj of childObjects) {
         modelRegistry.registerAll(obj.ends.head, obj);
         modelRegistry.registerAll(obj.ends.tail, obj);
@@ -132,31 +136,43 @@ export async function popBubbleCircleV2(hit) {
 
     const gfaLinks = [];
     for (const rawLink of (apiData.links || [])) {
-        const resolved = resolveApiLink(rawLink);
-        if (!resolved) continue;
+        const fromSegId = String(rawLink.source).startsWith('s')
+            ? String(rawLink.source) : `s${rawLink.source}`;
+        const toSegId = String(rawLink.target).startsWith('s')
+            ? String(rawLink.target) : `s${rawLink.target}`;
+
+        const fromEntry = resolveSeg(fromSegId);
+        const toEntry = resolveSeg(toSegId);
+        if (!fromEntry || !toEntry) continue;
+
+        const fromNode = fromEntry.node;
+        const toNode = toEntry.node;
+        if (!fromNode?.iid || !toNode?.iid) continue;
+
+        const isDel = (boundaryIds.has(fromSegId) && boundaryIds.has(toSegId));
 
         gfaLinks.push({
             isNode: false,
             isLink: true,
             class: 'link',
-            iid: `${resolved.fromNode.iid}${rawLink.from_strand || '+'}${resolved.toNode.iid}${rawLink.to_strand || '+'}`,
-            source: resolved.fromNode.iid,
-            target: resolved.toNode.iid,
-            sourceIid: resolved.fromNode.iid,
-            targetIid: resolved.toNode.iid,
-            sourceId: String(rawLink.source),
-            targetId: String(rawLink.target),
+            iid: `${fromNode.iid}${rawLink.from_strand || '+'}${toNode.iid}${rawLink.to_strand || '+'}`,
+            source: fromNode.iid,
+            target: toNode.iid,
+            sourceIid: fromNode.iid,
+            targetIid: toNode.iid,
+            sourceId: fromSegId,
+            targetId: toSegId,
             type: 'link',
-            isDel: resolved.isDeletion,
+            isDel,
             isKinkLink: false,
             isRef: false,
             isDrawn: true,
-            length: resolved.isDeletion ? 20 : 10,
+            length: isDel ? 20 : 10,
             width: 1,
             contained: rawLink.contained || [],
             frequency: rawLink.frequency || 0,
             haplotype: rawLink.haplotype || null,
-            bubbleId: resolved.isDeletion ? bubbleId : null,
+            bubbleId: isDel ? bubbleId : null,
         });
     }
 
