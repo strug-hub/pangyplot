@@ -11,7 +11,7 @@ import popTree from './pop-tree.js';
 import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore, getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
-import { registerSeg } from './seg-registry.js';
+import { registerSeg, resolveAllLinks } from './seg-registry.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -320,6 +320,11 @@ export async function popBubbleCircle(hit) {
 
     // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
     rebuildGapBridges(chainId, gapInfo.gapEntry);
+
+    // Re-resolve all links through the segment registry. Links with
+    // sourceSeg/targetSeg get their endpoints updated to the current
+    // visual node for each segment (anchor, popped kink, chain endpoint).
+    resolveAllLinks(getForceLinks());
 
     // Log all bridge links currently touching this gap's anchors
     const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);

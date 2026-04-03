@@ -1498,6 +1498,8 @@ function makeInterChainLink(source, target, sourceSegId, targetSegId) {
         length: 10,
         sourceSegId: sourceSegId || null,
         targetSegId: targetSegId || null,
+        sourceSeg: sourceSegId || null,  // unified field for registry resolution
+        targetSeg: targetSegId || null,
     };
 }
 
