@@ -9,6 +9,8 @@ import simplifyViewState from './simplify-view-state.js';
 import { restoreBubbleToStore, mergeBubbleStores } from './bubble-meta-cache.js';
 import { mergeSubchainsOnUnpop, restoreChain, removeGhostSpine, hasGhostSpine, removeGap } from './polychain/polychain-adapter.js';
 import popTree from './pop-tree.js';
+import { getContainer } from '../model/model-manager.js';
+import * as modelRegistry from '../model/segment-registry.js';
 
 /**
  * Undo the most recent bubble pop. Returns true on success.
@@ -42,6 +44,7 @@ function unpopAnchor(popEntry) {
         childBubbles,
         gapInfo,
         bubbleMeta,
+        childObjectIds,
     } = popEntry;
 
     // Remove child nodes and their links from the sim
@@ -50,7 +53,27 @@ function unpopAnchor(popEntry) {
     // Remove gap entry (no anchor nodes to remove — boundaries are existing polychain nodes)
     removeGap(chainId, gapInfo.gapEntry);
 
-    // Collapse simplify viewState
+    // Unregister child objects from model registry (V2 path)
+    if (childObjectIds) {
+        for (const objId of childObjectIds) {
+            // Unregister ends — the object is going back inside the bubble
+            const normalized = String(objId).startsWith('s') || String(objId).startsWith('b')
+                ? objId : `s${objId}`;
+            modelRegistry.unregister(normalized);
+        }
+    }
+
+    // Merge container segments back (V2 path)
+    const container = getContainer(chainId);
+    if (container) {
+        try {
+            container.mergeAtBubble(bubbleId);
+        } catch (e) {
+            console.warn('[unpop] container merge failed:', e.message);
+        }
+    }
+
+    // Collapse simplify viewState (old path — skipped if parentRecord is null from V2)
     if (parentRecord) {
         simplifyViewState.collapse(
             parentRecord,
