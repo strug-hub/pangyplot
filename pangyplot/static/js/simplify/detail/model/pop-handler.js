@@ -125,23 +125,27 @@ export async function popBubbleCircleV2(hit) {
 
     // --- Register child nodes in old seg-registry BEFORE link resolution ---
     // GFA links reference these seg IDs — they must be in the registry first.
+    // SKIP boundary segs — anchors (or absorbed replacements) handle those.
     for (const n of newChildNodes) {
-        if (n.id) registerSeg(n.id, n);
+        if (n.id && !boundaryIds.has(n.id)) registerSeg(n.id, n);
     }
 
-    // Register child bubble INTERIOR segs → bubble's head kink node.
-    // GFA links reference segs inside collapsed child bubbles. Those segs
-    // aren't materialized — they're hidden inside the bubble. Map them to
+    // Register child bubble interior + source/sink segs → bubble's kink nodes.
+    // GFA links reference segs inside collapsed child bubbles. Map them to
     // the bubble's kink node so links attach to the bubble instead.
+    // SKIP boundary segs — those belong to the gap anchors, not child objects.
     for (const obj of childObjects) {
         if (obj.interior?.insideSegs) {
             for (const segId of obj.interior.insideSegs) {
-                registerSeg(segId, obj.headNode);
+                if (!boundaryIds.has(segId)) registerSeg(segId, obj.headNode);
             }
         }
-        // Also register source/sink segs of child bubbles
-        for (const segId of obj.ends.head) registerSeg(segId, obj.headNode);
-        for (const segId of obj.ends.tail) registerSeg(segId, obj.tailNode);
+        for (const segId of obj.ends.head) {
+            if (!boundaryIds.has(segId)) registerSeg(segId, obj.headNode);
+        }
+        for (const segId of obj.ends.tail) {
+            if (!boundaryIds.has(segId)) registerSeg(segId, obj.tailNode);
+        }
     }
 
     // --- Debug: what's registered ---
