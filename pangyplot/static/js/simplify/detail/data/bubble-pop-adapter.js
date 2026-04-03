@@ -342,12 +342,16 @@ export async function popBubbleCircle(hit) {
         }
 
         // Remove higher-level links (inter-chain, junction, polychain endpoint)
-        // that are synonymous with a child GFA link
+        // that are synonymous with a child GFA link. Skip the child links themselves.
         if (childPairs.size > 0) {
             for (let i = simLinks.length - 1; i >= 0; i--) {
                 const l = simLinks[i];
                 if (l.isBridgeLink || l.isKinkLink) continue;
-                // Check links that carry seg IDs: inter-chain, junction-tagged, or any with sourceSeg
+                // Skip child links from this pop — they're the ones we KEEP
+                const sIid = l.source?.iid ?? l.source;
+                const tIid = l.target?.iid ?? l.target;
+                if (childIidSet.has(sIid) || childIidSet.has(tIid)) continue;
+                // Check remaining links for matching seg pairs
                 const sId = l.sourceSegId || l.sourceSeg || null;
                 const tId = l.targetSegId || l.targetSeg || null;
                 if (!sId || !tId) continue;
