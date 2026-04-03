@@ -12,7 +12,7 @@
  */
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, insertPoppedContent } from '../engines/force-engine.js';
+import { spliceBubbleNodes, insertPoppedContent, absorbPhantom } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from '../data/pop-tree.js';
@@ -21,7 +21,7 @@ import { removeBubbleFromStore } from '../data/bubble-meta-cache.js';
 import { logPop, logNodes, logLinks, logChainState } from '../data/pop-debug-log.js';
 import { registerSeg, resolveSeg } from '../data/seg-registry.js';
 
-import { getContainer } from './model-manager.js';
+import { getContainer, addObject } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
 import { BubbleObject } from './bubble-object.js';
 import { markDeletionLinks, resolveApiLink } from './polychain-factory.js';
@@ -72,8 +72,11 @@ export async function popBubbleCircleV2(hit) {
     const boundaryIds = new Set([...sourceSegs, ...sinkSegs]);
 
     // --- Create gap (still uses old system for polychain visual management) ---
+    // Pass s-prefixed seg IDs so trackSegIds on anchors are consistent
     logChainState(chainId, pcNodes, getChainGaps(chainId));
-    const gapInfo = createGapAtPop(chainId, bubbleId, apiData.source_segs || [], apiData.sink_segs || []);
+    const gapInfo = createGapAtPop(chainId, bubbleId,
+        (apiData.source_segs || []).map(s => `s${s}`),
+        (apiData.sink_segs || []).map(s => `s${s}`));
     if (!gapInfo) return false;
 
     // --- Split model container (tracks state only; anchors stay in model layer) ---
@@ -94,13 +97,18 @@ export async function popBubbleCircleV2(hit) {
 
     const interiorNodes = (apiData.nodes || []).filter(n => !skipIds.has(String(n.id)));
 
-    // Create SimObjects
+    // Create SimObjects and register in the model store
     const childObjects = [];
     for (const node of interiorNodes) {
+        let obj;
         if (node.type === 'segment') {
-            childObjects.push(SegmentObject.fromApiNode(node, chainId));
+            obj = SegmentObject.fromApiNode(node, chainId);
         } else if (node.type === 'bubble') {
-            childObjects.push(BubbleObject.fromApiNode(node, chainId));
+            obj = BubbleObject.fromApiNode(node, chainId);
+        }
+        if (obj) {
+            childObjects.push(obj);
+            addObject(obj);
         }
     }
 
@@ -125,26 +133,32 @@ export async function popBubbleCircleV2(hit) {
 
     // --- Register child nodes in old seg-registry BEFORE link resolution ---
     // GFA links reference these seg IDs — they must be in the registry first.
-    // SKIP boundary segs — anchors (or absorbed replacements) handle those.
+    //
+    // Boundary segs that are NOT shared → handled by anchors, don't register.
+    // Boundary segs that ARE shared → materialized as real nodes (absorbed
+    // anchor replaced), register them so links can find them.
+    const sharedSet = new Set(sharedSegs);
+    const anchorBoundary = new Set([...boundaryIds].filter(id => !sharedSet.has(id)));
+
     for (const n of newChildNodes) {
-        if (n.id && !boundaryIds.has(n.id)) registerSeg(n.id, n);
+        if (n.id && !anchorBoundary.has(n.id)) registerSeg(n.id, n);
     }
 
     // Register child bubble interior + source/sink segs → bubble's kink nodes.
     // GFA links reference segs inside collapsed child bubbles. Map them to
     // the bubble's kink node so links attach to the bubble instead.
-    // SKIP boundary segs — those belong to the gap anchors, not child objects.
+    // SKIP anchor-boundary segs — those belong to the gap anchors.
     for (const obj of childObjects) {
         if (obj.interior?.insideSegs) {
             for (const segId of obj.interior.insideSegs) {
-                if (!boundaryIds.has(segId)) registerSeg(segId, obj.headNode);
+                if (!anchorBoundary.has(segId)) registerSeg(segId, obj.headNode);
             }
         }
         for (const segId of obj.ends.head) {
-            if (!boundaryIds.has(segId)) registerSeg(segId, obj.headNode);
+            if (!anchorBoundary.has(segId)) registerSeg(segId, obj.headNode);
         }
         for (const segId of obj.ends.tail) {
-            if (!boundaryIds.has(segId)) registerSeg(segId, obj.tailNode);
+            if (!anchorBoundary.has(segId)) registerSeg(segId, obj.tailNode);
         }
     }
 
@@ -240,6 +254,21 @@ export async function popBubbleCircleV2(hit) {
 
     insertPoppedContent(chainId, newChildNodes, allNewLinks);
 
+    // Rewire absorbed anchors → materialized shared seg nodes.
+    // When both neighbors of a boundary seg are popped, the old anchor is
+    // replaced by the real segment node. absorbPhantom rewires all existing
+    // links from the anchor to the replacement node and removes the anchor.
+    const { absorbedAnchors } = gapInfo;
+    for (const anchor of (absorbedAnchors || [])) {
+        const trackIds = (anchor.trackSegIds || []).map(s =>
+            String(s).startsWith('s') ? String(s) : `s${s}`);
+        const replacement = newChildNodes.find(n => trackIds.includes(n.id));
+        if (replacement) {
+            absorbPhantom(anchor.iid, replacement);
+            registerSeg(replacement.id, replacement);
+        }
+    }
+
     // Tag nodes for forces
     for (const n of newChildNodes) {
         n.popBubbleId = bubbleId;
@@ -309,13 +338,18 @@ export async function popBubbleForceNodeV2(bubbleNode) {
 
     markDeletionLinks(apiData, bubbleId);
 
-    // --- Create child SimObjects ---
+    // --- Create child SimObjects and register in the model store ---
     const childObjects = [];
     for (const node of (apiData.nodes || [])) {
+        let obj;
         if (node.type === 'segment') {
-            childObjects.push(SegmentObject.fromApiNode(node, chainId));
+            obj = SegmentObject.fromApiNode(node, chainId);
         } else if (node.type === 'bubble') {
-            childObjects.push(BubbleObject.fromApiNode(node, chainId));
+            obj = BubbleObject.fromApiNode(node, chainId);
+        }
+        if (obj) {
+            childObjects.push(obj);
+            addObject(obj);
         }
     }
 

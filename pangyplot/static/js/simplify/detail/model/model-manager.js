@@ -16,12 +16,12 @@ import * as registry from './segment-registry.js';
 // All active PolychainContainers, keyed by root chain ID
 const containers = new Map();
 
-// All active loose SimObjects (segments, bubbles from pops), keyed by object ID
-const looseObjects = new Map();
+// All active SimObjects (PolychainSegments, SegmentObjects, BubbleObjects), keyed by ID
+const objects = new Map();
 
 // Debug access
 window.__simContainers = () => containers;
-window.__simObjects = () => looseObjects;
+window.__simObjects = () => objects;
 window.__simRegistry = registry;
 
 // --- Initialization ---
@@ -40,6 +40,10 @@ export function initModel(detailData) {
         const container = createContainerFromChain(chain);
         if (container) {
             containers.set(container.id, container);
+            // Register the initial PolychainSegment
+            for (const seg of container.segments) {
+                objects.set(seg.id, seg);
+            }
         }
     }
 }
@@ -50,9 +54,29 @@ export function initModel(detailData) {
 export function clearModel() {
     for (const c of containers.values()) c.destroy();
     containers.clear();
-    for (const obj of looseObjects.values()) obj.destroy(registry);
-    looseObjects.clear();
+    objects.clear();
     registry.clear();
+}
+
+// --- Object store ---
+
+/** Add a SimObject to the store. */
+export function addObject(obj) {
+    objects.set(obj.id, obj);
+}
+
+/** Remove a SimObject from the store and destroy it. */
+export function removeObject(id) {
+    const obj = objects.get(id);
+    if (obj) {
+        obj.destroy(registry);
+        objects.delete(id);
+    }
+}
+
+/** Get a SimObject by ID. */
+export function getObject(id) {
+    return objects.get(id) ?? null;
 }
 
 // --- Per-frame update ---
@@ -107,10 +131,14 @@ export function popBubbleOnChain(opts) {
     // Create child SimObjects from the pop response
     const { segments, bubbles } = createObjectsFromPop(apiData, rootId, spawnPos);
 
-    // Track loose objects
+    // Track all new SimObjects
     for (const obj of [...segments, ...bubbles]) {
-        looseObjects.set(obj.id, obj);
+        objects.set(obj.id, obj);
     }
+    // Track split segments (remove old, add new)
+    objects.delete(splitResult.removedSegment.id);
+    objects.set(splitResult.leftSegment.id, splitResult.leftSegment);
+    objects.set(splitResult.rightSegment.id, splitResult.rightSegment);
 
     // Collect physics nodes/links to add to sim
     const addNodes = [];
@@ -174,16 +202,20 @@ export function unpopBubbleOnChain(opts) {
     // Collect nodes to remove (child objects' physics nodes)
     const removeNodes = [];
     for (const objId of (childObjectIds || [])) {
-        const obj = looseObjects.get(objId);
+        const obj = objects.get(objId);
         if (obj) {
             removeNodes.push(...obj.physicsNodes.map(n => n.iid));
             obj.destroy(registry);
-            looseObjects.delete(objId);
+            objects.delete(objId);
         }
     }
 
     // Merge the container's segments back
     const mergeResult = container.mergeAtBubble(bubbleId);
+
+    // Update object store: remove split segments, add merged
+    for (const seg of mergeResult.removedSegments) objects.delete(seg.id);
+    objects.set(mergeResult.mergedSegment.id, mergeResult.mergedSegment);
 
     // Remove old split segment anchors, add merged segment anchors
     const removeAnchorIids = [];
@@ -213,14 +245,9 @@ export function getAllContainers() {
     return containers;
 }
 
-/** Get a loose SimObject by ID. */
-export function getObject(objectId) {
-    return looseObjects.get(objectId) ?? null;
-}
-
-/** Get all loose objects. */
+/** Get all SimObjects. */
 export function getAllObjects() {
-    return looseObjects;
+    return objects;
 }
 
 /** Get all physics nodes from all containers (spine + anchors). */
@@ -251,7 +278,7 @@ export function getAllRenderables() {
             specs.push(...seg.getRenderables());
         }
     }
-    for (const obj of looseObjects.values()) {
+    for (const obj of objects.values()) {
         specs.push(...obj.getRenderables());
     }
     return specs;
