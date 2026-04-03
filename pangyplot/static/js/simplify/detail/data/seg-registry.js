@@ -47,6 +47,27 @@ export function resolveSeg(segId) {
 }
 
 /**
+ * Resolve a segment ID to a NodeRecord-like wrapper for use as a
+ * linkResolver result in deserializeSubgraph. Returns null if not found.
+ */
+export function resolveSegAsRecord(segId) {
+    const entry = registry.get(String(segId));
+    if (!entry) return null;
+    const node = entry.node;
+    // If the node already has a record (e.g., from a prior pop), use it
+    if (node.record) return node.record;
+    // Otherwise wrap as a minimal record (like makePolychainRecord)
+    return {
+        id: node.id,
+        type: node.isAnchor ? 'anchor' : 'polychain',
+        ranges: [],
+        elements: {
+            nodes: [{ head: () => node.iid, tail: () => node.iid }],
+        },
+    };
+}
+
+/**
  * Resolve a GFA link's source and target through the registry.
  * Sets link.source and link.target to the current visual nodes.
  * Returns true if both endpoints resolved, false if either is missing.

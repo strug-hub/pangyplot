@@ -8,10 +8,10 @@ import { deserializeSubgraph } from '../../../graph/data/records/deserializer/de
 import simplifyViewState from './simplify-view-state.js';
 import { recordPop } from '../../../utils/pop-history.js';
 import popTree from './pop-tree.js';
-import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
+import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore, getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
-import { registerSeg, resolveAllLinks } from './seg-registry.js';
+import { registerSeg, resolveAllLinks, resolveSegAsRecord } from './seg-registry.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -209,23 +209,10 @@ export async function popBubbleCircle(hit) {
         }
     }
 
-    // Build existing records for fallback resolution
-    const existingRecords = new Map();
-    for (const n of getForceNodes()) {
-        if (n.record && !existingRecords.has(n.id) && n.chainId !== '__junction__') {
-            existingRecords.set(n.id, n.record);
-        }
-    }
-
-    // Build junction record map for cross-chain link resolution
-    const junctionRecordMap = new Map();
-    for (const n of getForceNodes()) {
-        if (n.chainId === '__junction__' && n.record && !junctionRecordMap.has(n.id)) {
-            junctionRecordMap.set(n.id, n.record);
-        }
-    }
-
-    // Deserialize subgraph with enhanced link resolution
+    // Deserialize subgraph. The linkResolver resolves external segments
+    // through: (1) viewState for collapsed bubbles, (2) the unified
+    // segment registry for everything else (chain endpoints, junctions,
+    // anchors, prior pops).
     const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(apiData, {
         tag: { chainId },
         linkResolver: (segId) => {
@@ -233,16 +220,8 @@ export async function popBubbleCircle(hit) {
             // 1. Collapsed bubble ownership
             const vsRecord = simplifyViewState.resolve(plainId);
             if (vsRecord) return vsRecord;
-            // 2. Visible force nodes from prior pops
-            const existing = existingRecords.get(segId);
-            if (existing) return existing;
-            // 3. Polychain endpoint nodes on other chains
-            const pcRecord = getSegToPolychainRecord(segId);
-            if (pcRecord) return pcRecord;
-            // 4. Junction force nodes
-            const jRecord = junctionRecordMap.get(segId);
-            if (jRecord) return jRecord;
-            return null;
+            // 2. Unified segment registry (chain endpoints, junctions, anchors, prior pops)
+            return resolveSegAsRecord(plainId);
         },
     });
 
