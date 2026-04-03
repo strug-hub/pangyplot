@@ -49,11 +49,33 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const delSegs = [];
     const genePins = getGenePins();
 
+    // Build set of polychain backbone nodes inside gaps (invisible).
+    // Links TO these nodes exist for physics but should not be drawn.
+    const hiddenBackboneNodes = new Set();
+    {
+        const dd = state.detailData;
+        if (dd) {
+            for (const chain of dd.chains) {
+                const gaps = getChainGaps(chain.id);
+                if (gaps.length === 0) continue;
+                const pcN = getPolychainNodesForChain(chain.id);
+                if (!pcN) continue;
+                for (const g of gaps) {
+                    for (let i = g.leftNodeIdx; i <= g.rightNodeIdx; i++) {
+                        if (pcN[i] && !pcN[i].isAnchor) hiddenBackboneNodes.add(pcN[i]);
+                    }
+                }
+            }
+        }
+    }
+
     for (const link of links) {
         if (link.isPolychainLink) continue;  // rendered as polyline by polychain-render-manager
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
         if (!linkVisible(s, t)) continue;
+        // Skip drawing links to hidden backbone nodes (physics-only)
+        if (hiddenBackboneNodes.has(s) || hiddenBackboneNodes.has(t)) continue;
         const seg = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
 
         if (link.isDel) {

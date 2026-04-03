@@ -321,47 +321,6 @@ export async function popBubbleCircle(hit) {
     // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
     rebuildGapBridges(chainId, gapInfo.gapEntry);
 
-    // --- Synonymous link dedup ---
-    // Every GFA link now carries sourceSeg/targetSeg (the GFA segment IDs).
-    // If a new child link connects the same seg pair as an existing
-    // inter-chain/polychain/junction link, remove the higher-level one.
-    {
-        const simLinks = getForceLinks();
-        const childIidSet = new Set(newChildNodes.map(n => n.iid));
-
-        // Collect segment pairs from new child GFA links (using tagged seg IDs)
-        const childPairs = new Set();
-        for (const l of simLinks) {
-            if (l.isKinkLink || l.isBridgeLink || l.isPolychainLink) continue;
-            if (!l.sourceSeg || !l.targetSeg) continue;
-            const sIid = l.source?.iid ?? l.source;
-            const tIid = l.target?.iid ?? l.target;
-            if (!childIidSet.has(sIid) && !childIidSet.has(tIid)) continue;
-            childPairs.add(`${l.sourceSeg}|${l.targetSeg}`);
-            childPairs.add(`${l.targetSeg}|${l.sourceSeg}`);
-        }
-
-        // Remove higher-level links (inter-chain, junction, polychain endpoint)
-        // that are synonymous with a child GFA link. Skip the child links themselves.
-        if (childPairs.size > 0) {
-            for (let i = simLinks.length - 1; i >= 0; i--) {
-                const l = simLinks[i];
-                if (l.isBridgeLink || l.isKinkLink) continue;
-                // Skip child links from this pop — they're the ones we KEEP
-                const sIid = l.source?.iid ?? l.source;
-                const tIid = l.target?.iid ?? l.target;
-                if (childIidSet.has(sIid) || childIidSet.has(tIid)) continue;
-                // Check remaining links for matching seg pairs
-                const sId = l.sourceSegId || l.sourceSeg || null;
-                const tId = l.targetSegId || l.targetSeg || null;
-                if (!sId || !tId) continue;
-                if (childPairs.has(`${sId}|${tId}`)) {
-                    simLinks.splice(i, 1);
-                }
-            }
-        }
-    }
-
     // Log all bridge links currently touching this gap's anchors
     const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);
     const allBridges = getForceLinks().filter(l => l.isBridgeLink &&
