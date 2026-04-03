@@ -321,40 +321,37 @@ export async function popBubbleCircle(hit) {
     // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
     rebuildGapBridges(chainId, gapInfo.gapEntry);
 
-    // --- Synonymous link dedup + re-resolution via segment registry ---
-    // The registry now knows where each seg is represented. Re-resolve all
-    // links that carry seg IDs: update their endpoints to the current node,
-    // and remove duplicates where a child GFA link replaces a chain-level link.
+    // --- Synonymous link dedup ---
+    // Every GFA link now carries sourceSeg/targetSeg (the GFA segment IDs).
+    // If a new child link connects the same seg pair as an existing
+    // inter-chain/polychain/junction link, remove the higher-level one.
     {
         const simLinks = getForceLinks();
         const childIidSet = new Set(newChildNodes.map(n => n.iid));
 
-        // Collect segment pairs represented by new child GFA links
+        // Collect segment pairs from new child GFA links (using tagged seg IDs)
         const childPairs = new Set();
         for (const l of simLinks) {
             if (l.isKinkLink || l.isBridgeLink || l.isPolychainLink) continue;
+            if (!l.sourceSeg || !l.targetSeg) continue;
             const sIid = l.source?.iid ?? l.source;
             const tIid = l.target?.iid ?? l.target;
             if (!childIidSet.has(sIid) && !childIidSet.has(tIid)) continue;
-            const sId = (l.source?.id || '').replace(/^s/, '');
-            const tId = (l.target?.id || '').replace(/^s/, '');
-            if (sId && tId) {
-                childPairs.add(`${sId}|${tId}`);
-                childPairs.add(`${tId}|${sId}`);
-            }
+            childPairs.add(`${l.sourceSeg}|${l.targetSeg}`);
+            childPairs.add(`${l.targetSeg}|${l.sourceSeg}`);
         }
 
-        // Remove higher-level links that are synonymous with child GFA links,
-        // AND re-resolve remaining inter-chain/junction links through the registry
-        // (their endpoints may have changed if a shared seg was just revealed).
+        // Remove higher-level links (inter-chain, junction, polychain endpoint)
+        // that are synonymous with a child GFA link
         if (childPairs.size > 0) {
             for (let i = simLinks.length - 1; i >= 0; i--) {
                 const l = simLinks[i];
                 if (l.isBridgeLink || l.isKinkLink) continue;
-                if (!l.isInterChain && !l.isPolychainLink) continue;
-                const sId = l.sourceSegId || (l.source?.id || '').replace(/^s/, '');
-                const tId = l.targetSegId || (l.target?.id || '').replace(/^s/, '');
-                if (sId && tId && childPairs.has(`${sId}|${tId}`)) {
+                // Check links that carry seg IDs: inter-chain, junction-tagged, or any with sourceSeg
+                const sId = l.sourceSegId || l.sourceSeg || null;
+                const tId = l.targetSegId || l.targetSeg || null;
+                if (!sId || !tId) continue;
+                if (childPairs.has(`${sId}|${tId}`)) {
                     simLinks.splice(i, 1);
                 }
             }
