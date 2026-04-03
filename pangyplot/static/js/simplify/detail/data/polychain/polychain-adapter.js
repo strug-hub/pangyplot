@@ -14,6 +14,7 @@ import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { extractSubPolyline } from './polychain-gene-map.js';
 import { getBubbleStore } from '../bubble-meta-cache.js';
 import { logGap } from '../pop-debug-log.js';
+import { registerSegs } from '../seg-registry.js';
 
 // chainId → [polychain node objects in polyline order]
 const chainPolychainNodes = new Map();
@@ -469,10 +470,12 @@ function findExistingAnchor(nodes, x, y) {
  * enough, reuse it. Otherwise create a new one and splice into the polychain.
  * Returns { node, splice, created }.
  */
-function ensureAnchor(nodes, chainId, x, y, label, loopFactor) {
+function ensureAnchor(nodes, chainId, x, y, label, loopFactor, trackSegIds = []) {
     // Check if an existing anchor from a prior gap is at this position
     const existing = findExistingAnchor(nodes, x, y);
     if (existing) {
+        // Register additional seg IDs on the existing anchor
+        if (trackSegIds.length > 0) registerSegs(trackSegIds.map(String), existing);
         return { node: existing, splice: null, created: false };
     }
 
@@ -483,6 +486,7 @@ function ensureAnchor(nodes, chainId, x, y, label, loopFactor) {
         x, y,
         homeX: x, homeY: y,
         chainId,
+        trackSegIds,  // which GFA segs this anchor represents
         isPolychainNode: false,  // NOT a polychain force participant
         isAnchor: true,
         ghostRootId: chainId,   // guide force projects this onto the chain
@@ -497,6 +501,9 @@ function ensureAnchor(nodes, chainId, x, y, label, loopFactor) {
     const splice = splicePolychainLink(
         nodes[splitIdx], nodes[splitIdx + 1], anchor, chainId);
     nodes.splice(splitIdx + 1, 0, anchor);
+
+    // Register this anchor's seg IDs in the unified registry
+    if (trackSegIds.length > 0) registerSegs(trackSegIds.map(String), anchor);
 
     return { node: anchor, splice, created: true };
 }
@@ -549,11 +556,14 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
 
     // Only create anchors where there's a neighbor. At chain edges, the popped
     // content's own boundary handles external connectivity — no anchor needed.
+    // Each anchor tracks the seg IDs it represents for the unified registry.
     const left = leftPos
-        ? ensureAnchor(nodes, chainId, leftPos.x, leftPos.y, `${bubbleId}_L`, loopFactor)
+        ? ensureAnchor(nodes, chainId, leftPos.x, leftPos.y, `${bubbleId}_L`, loopFactor,
+                        poppedSourceSegs.map(String))
         : null;
     const right = rightPos
-        ? ensureAnchor(nodes, chainId, rightPos.x, rightPos.y, `${bubbleId}_R`, loopFactor)
+        ? ensureAnchor(nodes, chainId, rightPos.x, rightPos.y, `${bubbleId}_R`, loopFactor,
+                        poppedSinkSegs.map(String))
         : null;
 
     // Fix nodeIndex for all nodes
@@ -1179,6 +1189,12 @@ function processJunctionGraph(dd, allNodes, allLinks) {
             }
         }
 
+        // Register junction nodes in the segment registry
+        for (const node of jNodes) {
+            const segId = node.id ? node.id.replace(/^s/, '') : null;
+            if (segId) registerSegs([segId], node);
+        }
+
         allNodes.push(...jNodes);
 
         // Tag inter-chain links with seg IDs (for future rewiring if needed)
@@ -1466,6 +1482,10 @@ function createPolychainForChain(chain, allNodes, allLinks, dd) {
     for (const sid of (chain.sinkSegs || [])) {
         segToPolychain.set(`s${sid}`, tail);
     }
+
+    // Register in unified segment registry
+    registerSegs((chain.sourceSegs || []).map(String), head);
+    registerSegs((chain.sinkSegs || []).map(String), tail);
 }
 
 /**

@@ -11,6 +11,7 @@ import popTree from './pop-tree.js';
 import { getPolychainNodesForChain, getSegToPolychainRecord, createGapAtPop, getChainGaps } from './polychain/polychain-adapter.js';
 import { removeBubbleFromStore, getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
+import { registerSeg } from './seg-registry.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -306,6 +307,13 @@ export async function popBubbleCircle(hit) {
     if (!gapInfo) return false;
 
     logGap(chainId, gapInfo.gapEntry, 'created');
+
+    // Register each popped child node's seg ID in the unified registry.
+    // This overrides anchor entries for shared segs (more detailed wins).
+    for (const n of newChildNodes) {
+        const segId = n.id ? n.id.replace(/^s/, '') : null;
+        if (segId) registerSeg(segId, n);
+    }
 
     // Add child nodes + links to the force sim (no bridges yet)
     insertPoppedContent(chainId, newChildNodes, newChildLinks);
