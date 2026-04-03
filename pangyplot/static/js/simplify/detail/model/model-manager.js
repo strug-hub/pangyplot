@@ -19,6 +19,11 @@ const containers = new Map();
 // All active loose SimObjects (segments, bubbles from pops), keyed by object ID
 const looseObjects = new Map();
 
+// Debug access
+window.__simContainers = () => containers;
+window.__simObjects = () => looseObjects;
+window.__simRegistry = registry;
+
 // --- Initialization ---
 
 /**

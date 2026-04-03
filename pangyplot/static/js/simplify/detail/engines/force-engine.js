@@ -20,6 +20,7 @@ import { centroidRepulsion,
 import { combinedLayoutForce, delLinkForce } from './forces/layout-forces.js';
 import { ghostGuideForce } from './forces/ghost-guide-force.js';
 import { centroidAnchorForce, releaseAllChains } from '../../engines/drag/centroid-anchor-force.js';
+import { updateAnchors as updateModelAnchors } from '../model/model-manager.js';
 
 // ---------------------------------------------------------------
 // Simulation state
@@ -243,6 +244,7 @@ export function computeForceDeltas() {
 
 function onTick() {
     _tickCount++;
+    updateModelAnchors();  // snap SimObject anchors to spine positions
     if (state.detailPhase !== 'none' && state.detailPhase !== 'fading-out') {
         scheduleFrame();
     }
