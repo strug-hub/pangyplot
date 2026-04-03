@@ -13,6 +13,7 @@ import { setupUiBridge } from './ui/ui-bridge.js';
 import { setupPolychainForceSettings } from './ui/polychain-force-settings.js';
 import { setupDebugScatterplot } from './ui/debug-scatterplot.js';
 import { publishViewportCoordinates } from './ui/viewport-sync.js';
+import { setupNodeSearch } from './engines/node-search-engine.js';
 
 async function init() {
     // Determine initial chromosome from URL hash, fall back to chrY
@@ -46,5 +47,6 @@ async function init() {
 setupUiBridge();
 setupPolychainForceSettings();
 setupDebugScatterplot();
+setupNodeSearch();
 setupEngines();
 init();

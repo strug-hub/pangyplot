@@ -15,6 +15,8 @@ import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
 import { getLevelMeta } from '@simplify-data/chromosome-data.js';
+import { getSearchHighlights } from './engines/node-search-engine.js';
+import { strokeRing } from './detail/render/detail-painter.js';
 // import { renderDragInfluenceCircle } from './engines/drag/drag-influence-render.js';
 
 // ---------------------------------------------------------------
@@ -84,6 +86,16 @@ function draw() {
         drawDetail();
         drawForceGraph(state.ctx, Math.max(1.5, 3 / state.zoom), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
         if (_debug) timings.push(['detail', performance.now() - _t0]);
+    }
+
+    // --- Search highlight rings (data-space) ---
+    const searchHits = getSearchHighlights();
+    if (searchHits.length > 0) {
+        const lw = Math.max(2 / state.zoom, 0.5);
+        for (const hit of searchHits) {
+            const r = Math.max(15 / state.zoom, hit.radius + 5 / state.zoom);
+            strokeRing(ctx, hit.x, hit.y, r, '#FF9800', lw, 0.85);
+        }
     }
 
     ctx.restore();

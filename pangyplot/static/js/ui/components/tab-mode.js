@@ -7,7 +7,6 @@ import { switchTab } from './tab-set.js';
 
 const CORE_ONLY_TABS = [
     'path-selector',
-    'search-tab',
     'tool-tab',
 ];
 
