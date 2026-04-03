@@ -2,7 +2,7 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, insertPoppedContent } from '../engines/force-engine.js';
+import { spliceBubbleNodes, insertPoppedContent, absorbPhantom } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
@@ -12,6 +12,8 @@ import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from './polyc
 import { removeBubbleFromStore, getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
 import { logPop, logGap, logNodes, logLinks, logChainState } from './pop-debug-log.js';
 import { registerSeg, resolveSegAsRecord } from './seg-registry.js';
+import { getContainer } from '../model/model-manager.js';
+import { createObjectsFromPop, markDeletionLinks } from '../model/polychain-factory.js';
 
 /**
  * Pop a bubble force node: fetch its subgraph, remove the parent,
@@ -216,20 +218,23 @@ export async function popBubbleCircle(hit) {
 
     // Filter out boundary seg nodes (source/sink) from the API data.
     // They are NOT added to the graph — anchors represent them.
-    // GFA links referencing these segs will fall through to the linkResolver
-    // which resolves them to anchors via the seg registry.
+    // EXCEPTION: shared segs (both neighbor bubbles popped) ARE included
+    // so they materialize as real nodes replacing the absorbed anchor.
+    const { sharedSegs, absorbedAnchors } = gapInfo;
     const boundarySegIds = new Set([
         ...(apiData.source_segs || []).map(s => `s${s}`),
         ...(apiData.sink_segs || []).map(s => `s${s}`),
     ]);
+    // Shared segs pass through the filter — they should be deserialized
+    for (const seg of sharedSegs) boundarySegIds.delete(seg);
     const interiorApiData = {
         ...apiData,
         nodes: apiData.nodes.filter(n => !boundarySegIds.has(String(n.id))),
     };
 
-    // Deserialize subgraph (interior nodes only). The linkResolver resolves
-    // boundary seg references to anchors via the registry, and collapsed
-    // bubble ownership via viewState.
+    // Deserialize subgraph (interior + shared segs). The linkResolver resolves
+    // remaining boundary seg references to anchors via the registry, and
+    // collapsed bubble ownership via viewState.
     const { nodes: childNodes, links: childLinks, recordMap } = deserializeSubgraph(interiorApiData, {
         tag: { chainId },
         linkResolver: (segId) => {
@@ -302,6 +307,22 @@ export async function popBubbleCircle(hit) {
     // Add child nodes + links to the force sim
     insertPoppedContent(chainId, newChildNodes, newChildLinks);
 
+    // Rewire absorbed anchors → shared seg nodes. When both neighbors of a
+    // boundary seg are popped, the anchor is replaced by the real segment node.
+    // absorbPhantom rewires all existing links from the anchor to the replacement
+    // node and removes the anchor from the sim.
+    for (const anchor of absorbedAnchors) {
+        // Find the shared seg node that replaces this anchor.
+        // The anchor's trackSegIds tell us which seg it represented.
+        const trackIds = (anchor.trackSegIds || []).map(s =>
+            String(s).startsWith('s') ? String(s) : `s${s}`);
+        const replacement = newChildNodes.find(n => trackIds.includes(n.id));
+        if (replacement) {
+            absorbPhantom(anchor.iid, replacement);
+            registerSeg(replacement.id, replacement);
+        }
+    }
+
     // Log links touching this gap's anchors
     const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);
     const anchorLinks = getForceLinks().filter(l =>
@@ -345,6 +366,20 @@ export async function popBubbleCircle(hit) {
         gapInfo,
         bubbleMeta: removedMeta,
     });
+
+    // --- Shadow: update SimObject model (keeps model in sync during migration) ---
+    try {
+        const container = getContainer(chainId);
+        if (container) {
+            const sourceSegsStr = (apiData.source_segs || []).map(s => `s${s}`);
+            const sinkSegsStr = (apiData.sink_segs || []).map(s => `s${s}`);
+            container.splitAtBubble(bubbleId, t, 0.02, sourceSegsStr, sinkSegsStr);
+            console.log(`[sim-model] shadow split for ${bubbleId} on ${chainId}, ` +
+                `containers: ${container.segments.length} segments, ${container.renderMasks.length} masks`);
+        }
+    } catch (e) {
+        console.warn('[sim-model] shadow split failed (non-fatal):', e.message);
+    }
 
     return true;
 }
