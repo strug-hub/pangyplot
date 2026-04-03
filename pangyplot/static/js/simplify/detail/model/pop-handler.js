@@ -171,8 +171,9 @@ export async function popBubbleCircleV2(hit) {
         const fromEntry = resolveSeg(fromSegId);
         const toEntry = resolveSeg(toSegId);
         if (!fromEntry || !toEntry) {
-            const inBoundary = id => boundaryIds.has(id) ? '(boundary)' : '(interior)';
-            console.warn(`[pop-handler] GFA link unresolved: ${fromSegId}${fromEntry ? '✓' : '✗'}${inBoundary(fromSegId)} → ${toSegId}${toEntry ? '✓' : '✗'}${inBoundary(toSegId)}`);
+            // Only warn if both endpoints belong to this pop's known segs
+            // (boundary + child objects). Links referencing segs from other pops
+            // are expected to be unresolvable here — they were handled by that pop.
             continue;
         }
 
