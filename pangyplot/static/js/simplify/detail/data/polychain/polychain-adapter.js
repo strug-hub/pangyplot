@@ -40,20 +40,6 @@ export function isSplitRootChain(chainId) {
     return subchainCounters.has(rootId);
 }
 
-/** Remove a segment ID from the segToPolychain map. */
-export function removeSegFromPolychain(segId) {
-    segToPolychain.delete(segId);
-}
-
-/** Get all segToPolychain entries for a given chain ID. Returns [segId, node] pairs. */
-export function segToPolychainEntries(chainId) {
-    const result = [];
-    for (const [key, node] of segToPolychain) {
-        if (node.chainId === chainId) result.push([key, node]);
-    }
-    return result;
-}
-
 // Resampling constants
 const MIN_NODES = 2;
 
