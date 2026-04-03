@@ -2,8 +2,10 @@
 
 ## Current State (2026-04-03)
 
-The new SimObject model layer is **live and active** alongside the old system.
-Pop/unpop uses the new V2 handler. Rendering still uses the old force node iteration.
+The new SimObject model layer is **live and the primary pop path**.
+Old `popBubbleCircle` and `popBubbleForceNode` removed (bubble-pop-adapter
+now delegates entirely to V2 handlers). Rendering still uses old force node
+iteration but works with SimObject kink nodes via compat fields.
 
 ### What's Done
 
