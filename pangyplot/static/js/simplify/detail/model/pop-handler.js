@@ -123,10 +123,14 @@ export async function popBubbleCircleV2(hit) {
 
     if (newChildNodes.length === 0 && newChildLinks.length === 0) return false;
 
+    // --- Register child nodes in old seg-registry BEFORE link resolution ---
+    // GFA links reference these seg IDs — they must be in the registry first.
+    for (const n of newChildNodes) {
+        if (n.id) registerSeg(n.id, n);
+    }
+
     // --- Resolve GFA links through old seg-registry ---
-    // The old system's createGapAtPop already registered anchors and endpoint
-    // nodes in the old seg-registry. Child kink nodes are registered below.
-    // We use the old registry because those are the nodes actually in the D3 sim.
+    // Anchors registered by createGapAtPop, child nodes registered above.
 
     // Register child object ends in model registry (for model state tracking)
     for (const obj of childObjects) {
@@ -193,11 +197,6 @@ export async function popBubbleCircleV2(hit) {
     for (const node of newChildNodes) {
         node.x = hit.x + (node.homeX - layoutCx) * squish;
         node.y = hit.y + (node.homeY - layoutCy) * squish;
-    }
-
-    // --- Register in old seg-registry (for old link resolver compat) ---
-    for (const n of newChildNodes) {
-        if (n.id) registerSeg(n.id, n);
     }
 
     // --- Insert into force sim ---
