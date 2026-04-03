@@ -11,15 +11,15 @@
  * is NOT used. The PolychainContainer handles splits internally.
  */
 
-import { state } from '../../../simplify-state.js';
-import { spliceBubbleNodes, insertPoppedContent } from '../../engines/force-engine.js';
-import { getForceNodes, getForceLinks } from '../force-data.js';
-import { recordPop } from '../../../../utils/pop-history.js';
-import popTree from '../pop-tree.js';
-import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from '../polychain/polychain-adapter.js';
-import { removeBubbleFromStore } from '../bubble-meta-cache.js';
-import { logPop, logNodes, logLinks, logChainState } from '../pop-debug-log.js';
-import { registerSeg } from '../seg-registry.js';
+import { state } from '../../simplify-state.js';
+import { spliceBubbleNodes, insertPoppedContent } from '../engines/force-engine.js';
+import { getForceNodes, getForceLinks } from '../data/force-data.js';
+import { recordPop } from '../../../utils/pop-history.js';
+import popTree from '../data/pop-tree.js';
+import { getPolychainNodesForChain, createGapAtPop, getChainGaps } from '../data/polychain/polychain-adapter.js';
+import { removeBubbleFromStore } from '../data/bubble-meta-cache.js';
+import { logPop, logNodes, logLinks, logChainState } from '../data/pop-debug-log.js';
+import { registerSeg } from '../data/seg-registry.js';
 
 import { getContainer } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
