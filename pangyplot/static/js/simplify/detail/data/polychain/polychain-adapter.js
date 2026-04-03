@@ -646,7 +646,7 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
         }
 
         // Merge outer seg sets from all absorbed gaps into the new gap.
-        // rebuildGapBridges (called later) will use these to create the correct bridges.
+        // Merged outer segs used by resolveAllLinks for registry-based resolution.
         const allSourceSegs = new Set(gapEntry.outerSourceSegs);
         const allSinkSegs = new Set(gapEntry.outerSinkSegs);
         for (const g of absorbed) {

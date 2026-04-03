@@ -733,8 +733,8 @@ export function insertPoppedContent(chainId, childNodes, childLinks) {
         n._spawnTick = _tickCount;
     }
 
-    // Just add child nodes and links to the sim. No bridges — those are
-    // always created by rebuildGapBridges after everything else is done.
+    // Add child nodes and links to the sim. Registry-based resolveAllLinks
+    // handles rewiring existing links to the correct endpoints.
     const allNodes = [...getNodes(), ...childNodes];
     const allLinks = [...getLinks(), ...childLinks];
 
@@ -745,113 +745,16 @@ export function insertPoppedContent(chainId, childNodes, childLinks) {
 }
 
 /**
- * Rebuild exactly 2 bridge links for a gap: left anchor → outermost source seg,
- * outermost sink seg → right anchor. Clears any existing bridges first.
- *
- * Uses segment IDs from the gap's outerSourceSegs/outerSinkSegs to find the
- * correct kink nodes in the force sim. The outermost segs are determined by
- * filtering: source segs NOT in any sink set (and vice versa).
+ * Reverse of insertPoppedContent: remove child nodes and any links
+ * whose endpoints are no longer in the sim.
  */
-export function rebuildGapBridges(chainId, gapEntry) {
-    if (!sim) return;
-
-    const { anchorL, anchorR } = gapEntry;
-
-    // Step 1: Remove ALL existing bridge links touching this gap's anchors
-    const links = getLinks();
-    for (let i = links.length - 1; i >= 0; i--) {
-        const l = links[i];
-        if (!l.isBridgeLink) continue;
-        if ((anchorL && (l.source === anchorL || l.target === anchorL)) ||
-            (anchorR && (l.source === anchorR || l.target === anchorR))) {
-            links.splice(i, 1);
-        }
-    }
-
-    // Step 2: Determine outermost source/sink from gap's stored seg sets
-    const sourceSegs = gapEntry.outerSourceSegs || [];
-    const sinkSegs = gapEntry.outerSinkSegs || [];
-    const sourceSet = new Set(sourceSegs);
-    const sinkSet = new Set(sinkSegs);
-
-    // Outermost = not also on the other side (not interior shared)
-    const outerSource = sourceSegs.filter(s => !sinkSet.has(s));
-    const outerSink = sinkSegs.filter(s => !sourceSet.has(s));
-
-    // Step 3: Build insideFacingKink map from the sim's existing GFA links.
-    // The deserialized links already have strand-resolved endpoints — inspect
-    // them to find which kink of each boundary segment faces inside the bubble.
-    const outerSegIds = new Set([...outerSource.map(s => `s${s}`), ...outerSink.map(s => `s${s}`)]);
-    const insideFacingKink = new Map();
-    for (const l of links) {
-        if (l.isKinkLink || l.isBridgeLink || l.isPolychainLink) continue;
-        const sId = l.sourceId || (l.source?.id ?? null);
-        const tId = l.targetId || (l.target?.id ?? null);
-        const sIid = l.sourceIid || (typeof l.source === 'string' ? l.source : l.source?.iid);
-        const tIid = l.targetIid || (typeof l.target === 'string' ? l.target : l.target?.iid);
-        if (sId && outerSegIds.has(sId) && !insideFacingKink.has(sId)) {
-            const idx = sIid ? (parseInt(String(sIid).split('#')[1]) || 0) : 0;
-            insideFacingKink.set(sId, idx);
-        }
-        if (tId && outerSegIds.has(tId) && !insideFacingKink.has(tId)) {
-            const idx = tIid ? (parseInt(String(tIid).split('#')[1]) || 0) : 0;
-            insideFacingKink.set(tId, idx);
-        }
-    }
-
-    // Step 4: Find kink nodes and create exactly 2 bridges
-    const allNodes = getNodes();
-
-    if (anchorL && outerSource.length > 0) {
-        const segId = outerSource[0];
-        const kinks = allNodes.filter(n => n.id === `s${segId}`)
-            .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
-        if (kinks.length > 0) {
-            const kink = _pickOutsideKink(kinks, `s${segId}`, insideFacingKink, null, anchorL);
-            links.push({
-                source: anchorL, target: kink,
-                isBridgeLink: true, isKinkLink: false, chainId, length: 10,
-            });
-        }
-    }
-
-    if (anchorR && outerSink.length > 0) {
-        const segId = outerSink[0];
-        const kinks = allNodes.filter(n => n.id === `s${segId}`)
-            .sort((a, b) => (parseInt(a.iid.split('#')[1]) || 0) - (parseInt(b.iid.split('#')[1]) || 0));
-        if (kinks.length > 0) {
-            const kink = _pickOutsideKink(kinks, `s${segId}`, insideFacingKink, null, anchorR);
-            links.push({
-                source: kink, target: anchorR,
-                isBridgeLink: true, isKinkLink: false, chainId, length: 10,
-            });
-        }
-    }
-
-    // Re-sync links (nodes unchanged)
-    syncLinks(links);
-}
-
-/**
- * Reverse of insertPoppedContent + rebuildGapBridges:
- * remove child nodes and all bridge links touching the gap's anchors.
- */
-export function removePoppedContent(childIids, gapEntry) {
+export function removePoppedContent(childIids) {
     if (!sim) return;
 
     const childSet = new Set(childIids);
-    const { anchorL, anchorR } = gapEntry;
-
     const remaining = getNodes().filter(n => !childSet.has(n.iid));
     const remainingIids = new Set(remaining.map(n => n.iid));
     const keptLinks = getLinks().filter(l => {
-        // Remove bridge links touching this gap's anchors
-        if (l.isBridgeLink && (
-            (anchorL && (l.source === anchorL || l.target === anchorL)) ||
-            (anchorR && (l.source === anchorR || l.target === anchorR)))) {
-            return false;
-        }
-        // Remove links to removed child nodes
         const sIid = l.source.iid ?? l.source;
         const tIid = l.target.iid ?? l.target;
         return remainingIids.has(sIid) && remainingIids.has(tIid);

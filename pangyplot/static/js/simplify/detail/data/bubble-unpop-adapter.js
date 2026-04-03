@@ -44,8 +44,8 @@ function unpopAnchor(popEntry) {
         bubbleMeta,
     } = popEntry;
 
-    // Remove child nodes and all bridge links touching this gap's anchors
-    removePoppedContent(childIids, gapInfo.gapEntry);
+    // Remove child nodes and their links from the sim
+    removePoppedContent(childIids);
 
     // Remove gap entry (no anchor nodes to remove — boundaries are existing polychain nodes)
     removeGap(chainId, gapInfo.gapEntry);

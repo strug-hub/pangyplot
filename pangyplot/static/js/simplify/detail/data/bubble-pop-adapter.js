@@ -2,7 +2,7 @@
 // deserialize the response, and splice child nodes/links into the sim.
 
 import { state } from '../../simplify-state.js';
-import { spliceBubbleNodes, insertPoppedContent, rebuildGapBridges } from '../engines/force-engine.js';
+import { spliceBubbleNodes, insertPoppedContent } from '../engines/force-engine.js';
 import { getForceNodes, getForceLinks } from './force-data.js';
 import { deserializeSubgraph } from '../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import simplifyViewState from './simplify-view-state.js';
@@ -315,22 +315,20 @@ export async function popBubbleCircle(hit) {
         if (segId) registerSeg(segId, n);
     }
 
-    // Add child nodes + links to the force sim (no bridges yet)
+    // Add child nodes + links to the force sim
     insertPoppedContent(chainId, newChildNodes, newChildLinks);
 
-    // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
-    rebuildGapBridges(chainId, gapInfo.gapEntry);
-
-    // Re-resolve all links through the segment registry. Links with
-    // sourceSeg/targetSeg get their endpoints updated to the current
-    // visual node for each segment (anchor, popped kink, chain endpoint).
+    // Re-resolve all links through the segment registry. This auto-rewires
+    // existing inter-chain/junction links to point to anchors (which
+    // registered the boundary seg IDs), effectively creating the bridge
+    // connections. No explicit bridge link creation needed.
     resolveAllLinks(getForceLinks());
 
-    // Log all bridge links currently touching this gap's anchors
+    // Log links touching this gap's anchors (auto-resolved, no explicit bridges)
     const gapAnchors = [gapInfo.gapEntry.anchorL, gapInfo.gapEntry.anchorR].filter(Boolean);
-    const allBridges = getForceLinks().filter(l => l.isBridgeLink &&
+    const anchorLinks = getForceLinks().filter(l =>
         gapAnchors.some(a => l.source === a || l.target === a));
-    logLinks('bridgeLinks-after-rebuild', allBridges);
+    logLinks('anchor-resolved-links', anchorLinks);
 
     // Log all non-kink links involving child nodes (to spot spurious connections)
     const childIidSet = new Set(newChildNodes.map(n => n.iid));
