@@ -321,13 +321,10 @@ export async function popBubbleCircle(hit) {
     // Rebuild exactly 2 bridge links for the gap using GFA segment evidence.
     rebuildGapBridges(chainId, gapInfo.gapEntry);
 
-    // --- Synonymous link dedup ---
-    // The same GFA connection can exist at multiple abstraction levels:
-    //   chain-level (inter-chain link with sourceSegId/targetSegId)
-    //   junction-level (junction link with seg IDs)
-    //   segment-level (GFA child link between seg kinks)
-    // After popping reveals segment-level detail, remove the higher-level
-    // link if a segment-level link now represents the same connection.
+    // --- Synonymous link dedup + re-resolution via segment registry ---
+    // The registry now knows where each seg is represented. Re-resolve all
+    // links that carry seg IDs: update their endpoints to the current node,
+    // and remove duplicates where a child GFA link replaces a chain-level link.
     {
         const simLinks = getForceLinks();
         const childIidSet = new Set(newChildNodes.map(n => n.iid));
@@ -347,8 +344,9 @@ export async function popBubbleCircle(hit) {
             }
         }
 
-        // Remove higher-level links (inter-chain, junction) that are now
-        // synonymous with a child segment link
+        // Remove higher-level links that are synonymous with child GFA links,
+        // AND re-resolve remaining inter-chain/junction links through the registry
+        // (their endpoints may have changed if a shared seg was just revealed).
         if (childPairs.size > 0) {
             for (let i = simLinks.length - 1; i >= 0; i--) {
                 const l = simLinks[i];
