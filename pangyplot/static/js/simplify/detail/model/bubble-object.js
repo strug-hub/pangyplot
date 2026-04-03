@@ -62,6 +62,18 @@ export class BubbleObject extends SimObject {
         this.siblings = opts.siblings ?? [null, null];
         this.record = opts.record ?? null;
 
+        // Record-like object for color/rendering compat
+        this._recordCompat = this.record ?? {
+            id: this.id,
+            type: 'bubble',
+            seqLength: this.seqLength,
+            gcCount: this.gcCount,
+            nCount: this.nCount,
+            ranges: this.ranges,
+            start: this.ranges.length > 0 ? this.ranges[0][0] : null,
+            end: this.ranges.length > 0 ? this.ranges[this.ranges.length - 1][1] : null,
+        };
+
         this._buildKinks();
     }
 
@@ -73,13 +85,17 @@ export class BubbleObject extends SimObject {
 
         for (let i = 0; i < kinkCount; i++) {
             const { x, y } = getKinkCoordinates(this.coords, kinkCount, i);
+            const id = this.id;
+            const kc = kinkCount;
             nodes.push({
-                id: this.id,
-                iid: `${this.id}#${i}`,
+                id,
+                iid: `${id}#${i}`,
                 idx: i,
                 simObject: this,
                 class: 'node',
                 type: 'bubble',
+                head: () => `${id}#0`,
+                tail: () => `${id}#${kc - 1}`,
                 x, y,
                 homeX: x,
                 homeY: y,
@@ -90,9 +106,10 @@ export class BubbleObject extends SimObject {
                 isVisible: true,
                 isDrawn: true,
                 width: 5,
-                // compat fields
-                record: this.record,
+                // compat fields for renderer/color system
+                record: this._recordCompat,
                 seqLength: this.seqLength,
+                size: this.size,
             });
         }
 
