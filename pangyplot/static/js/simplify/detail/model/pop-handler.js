@@ -1,19 +1,19 @@
 /**
  * pop-handler.js — SimObject-based bubble pop for the simplify viewer.
  *
- * Step 2: Destructive chain split only.
- * Container splits, segments get created/destroyed, anchors swap in sim.
- * Child nodes and GFA link resolution come in step 3.
+ * Container splits, child SimObjects created, GFA links resolved.
+ * Only ends are registered. Interior segs are invisible to the link system.
  */
 
 import { state } from '../../simplify-state.js';
 import { insertPoppedContent, removePoppedContent } from '../engines/force-engine.js';
 import { getForceNodes } from '../data/force-data.js';
 import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
-import { registerSeg } from '../data/seg-registry.js';
+import { registerSeg, resolveSeg } from '../data/seg-registry.js';
 
 import { getContainer, addObject, removeObject } from './model-manager.js';
-import { markDeletionLinks } from './polychain-factory.js';
+import { SegmentObject } from './segment-object.js';
+import { BubbleObject } from './bubble-object.js';
 
 /**
  * Pop a bubble circle on a polychain.
@@ -93,9 +93,102 @@ export async function popBubbleCircleV2(hit) {
     if (leftSegment) addObject(leftSegment);
     if (rightSegment) addObject(rightSegment);
 
-    console.log(`[pop-handler] split ${bubbleId} on ${chainId}: ` +
+    // --- Step 3: Create child SimObjects ---
+    const boundaryIds = new Set([...sourceSegs, ...sinkSegs]);
+
+    // Filter out boundary seg nodes (anchors represent them)
+    const interiorApiNodes = (apiData.nodes || []).filter(n =>
+        !boundaryIds.has(String(n.id)));
+
+    const childObjects = [];
+    for (const node of interiorApiNodes) {
+        let obj;
+        if (node.type === 'segment') {
+            obj = SegmentObject.fromApiNode(node, chainId);
+        } else if (node.type === 'bubble') {
+            obj = BubbleObject.fromApiNode(node, chainId);
+        }
+        if (obj) {
+            childObjects.push(obj);
+            addObject(obj);
+        }
+    }
+
+    // Register each object's ends only in seg-registry
+    for (const obj of childObjects) {
+        for (const segId of obj.ends.head) registerSeg(segId, obj.headNode);
+        for (const segId of obj.ends.tail) registerSeg(segId, obj.tailNode);
+    }
+
+    // Collect kink nodes + kink links from child objects
+    const childNodes = [];
+    const childKinkLinks = [];
+    for (const obj of childObjects) {
+        childNodes.push(...obj.physicsNodes);
+        childKinkLinks.push(...obj.physicsLinks);
+    }
+
+    // --- Resolve GFA links ---
+    // Both endpoints must be registered ends. Skip if either is missing.
+    const gfaLinks = [];
+    for (const rawLink of (apiData.links || [])) {
+        const fromSegId = String(rawLink.source).startsWith('s')
+            ? String(rawLink.source) : `s${rawLink.source}`;
+        const toSegId = String(rawLink.target).startsWith('s')
+            ? String(rawLink.target) : `s${rawLink.target}`;
+
+        const fromEntry = resolveSeg(fromSegId);
+        const toEntry = resolveSeg(toSegId);
+        if (!fromEntry || !toEntry) continue;
+
+        const fromNode = fromEntry.node;
+        const toNode = toEntry.node;
+        if (!fromNode?.iid || !toNode?.iid) continue;
+
+        gfaLinks.push({
+            isNode: false, isLink: true, class: 'link',
+            iid: `${fromNode.iid}${rawLink.from_strand || '+'}${toNode.iid}${rawLink.to_strand || '+'}`,
+            source: fromNode.iid, target: toNode.iid,
+            sourceIid: fromNode.iid, targetIid: toNode.iid,
+            sourceId: fromSegId, targetId: toSegId,
+            type: 'link',
+            isDel: boundaryIds.has(fromSegId) && boundaryIds.has(toSegId),
+            isKinkLink: false, isRef: false, isDrawn: true,
+            length: 10, width: 1,
+            contained: rawLink.contained || [],
+            frequency: rawLink.frequency || 0,
+            haplotype: rawLink.haplotype || null,
+        });
+    }
+
+    // --- Position: squish child nodes to bubble circle position ---
+    if (childNodes.length > 0) {
+        let cx = 0, cy = 0;
+        for (const n of childNodes) { cx += n.x; cy += n.y; }
+        cx /= childNodes.length; cy /= childNodes.length;
+        const squish = 0.15;
+        for (const n of childNodes) {
+            n.homeX = n.x; n.homeY = n.y;
+            n.x = hit.x + (n.homeX - cx) * squish;
+            n.y = hit.y + (n.homeY - cy) * squish;
+        }
+    }
+
+    // --- Add child nodes + links to D3 sim ---
+    const allNewLinks = [...childKinkLinks, ...gfaLinks];
+    if (childNodes.length > 0) {
+        insertPoppedContent(chainId, childNodes, allNewLinks);
+    }
+
+    // Tag child nodes for forces
+    for (const n of childNodes) {
+        n.popBubbleId = bubbleId;
+        n.ghostRootId = chainId;
+    }
+
+    console.log(`[pop-handler] pop ${bubbleId} on ${chainId}: ` +
         `left=${!!leftSegment} right=${!!rightSegment}, ` +
-        `segments=${container.segments.length}, anchors=${newAnchors.length}`);
+        `${childObjects.length} objects, ${childNodes.length} nodes, ${gfaLinks.length} GFA links`);
 
     return true;
 }
