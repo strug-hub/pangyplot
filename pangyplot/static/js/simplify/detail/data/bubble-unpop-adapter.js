@@ -22,12 +22,16 @@ export function unpopLastBubble() {
         addedObjects,
     } = popEntry;
 
-    // 1. Save links that will be destroyed (any link touching a removed node)
+    // 1. Save links where ONE end is being removed but the OTHER survives.
+    //    These are cross-pop links (e.g. b16540's children → anchor → b16539's children).
+    //    Links where BOTH ends are removed are internal to this pop and don't need restoring.
     const removeIidSet = new Set((addedNodes || []).map(n => n.iid));
-    const destroyedLinks = getForceLinks().filter(l => {
+    const crossLinks = getForceLinks().filter(l => {
         const sIid = l.source?.iid ?? l.source;
         const tIid = l.target?.iid ?? l.target;
-        return removeIidSet.has(sIid) || removeIidSet.has(tIid);
+        const sRemoved = removeIidSet.has(sIid);
+        const tRemoved = removeIidSet.has(tIid);
+        return (sRemoved && !tRemoved) || (!sRemoved && tRemoved);
     });
 
     // Remove all nodes that were added during this pop + their links
@@ -90,7 +94,7 @@ export function unpopLastBubble() {
     // 4. Re-resolve destroyed links through the updated registry.
     //    The registry now points to the restored segment's anchors.
     const restoredLinks = [];
-    for (const link of destroyedLinks) {
+    for (const link of crossLinks) {
         const fromSegId = link.sourceId;
         const toSegId = link.targetId;
         if (!fromSegId || !toSegId) continue;
