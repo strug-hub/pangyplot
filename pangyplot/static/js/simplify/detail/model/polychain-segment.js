@@ -124,16 +124,58 @@ export class PolychainSegment extends SimObject {
     }
 
     /**
-     * Get bubble circle positions for unpopped bubbles in this segment's range.
-     * @returns {Array<{id, x, y, t, ...}>}
+     * Get bubble circles for unpopped bubbles in this segment's range.
+     * Combines: position from container, metadata from bubble-meta-cache,
+     * threshold + color object computed at render time.
+     *
+     * @returns {Array<{id, x, y, t, threshold, colorObj, meta}>}
      */
-    getBubbleCircles() {
+    /**
+     * @param {object} [metaStore] — bubble-meta-cache store for this chain
+     *   (pass getBubbleStore(chainId) from the caller)
+     */
+    getBubbleCircles(metaStore) {
         if (!this.container) return [];
         const bubbles = this.container.bubblesInRange(this.tRange.start, this.tRange.end);
-        return bubbles.map(b => {
+        if (bubbles.length === 0) return [];
+
+        // Build metadata lookup from the cache store
+        const metaById = new Map();
+        if (metaStore?.bubbles) {
+            for (const b of metaStore.bubbles) metaById.set(b.id, b);
+        }
+
+        const result = bubbles.map(b => {
             const pos = this.container.positionAt(b.t);
-            return { ...b, x: pos.x, y: pos.y };
+            const meta = metaById.get(b.id) || null;
+            const length = meta?.length ?? 0;
+
+            // Threshold: compute from bubble length (same formula as bubble-meta-cache)
+            const LOG50 = Math.log10(50);
+            const RANGE_INV = 1 / (Math.log10(100050) - LOG50);
+            const threshold = length <= 0 ? 20
+                : Math.min(400, 20 + (Math.log10(length + 50) - LOG50) * RANGE_INV * 380);
+
+            // Color object: built from metadata for getNodeColor()
+            const colorObj = {
+                type: 'bubble',
+                size: meta?.size ?? 0,
+                isRef: meta?.is_ref ?? false,
+                record: {
+                    seqLength: length,
+                    gcCount: meta?.gc_count ?? 0,
+                    start: meta?.bp_start ?? null,
+                    end: meta?.bp_end ?? null,
+                },
+            };
+
+            return {
+                id: b.id, x: pos.x, y: pos.y, t: b.t,
+                threshold, colorObj, meta,
+            };
         });
+        this._lastBubbleCircles = result;
+        return result;
     }
 
     /**

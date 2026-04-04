@@ -195,29 +195,30 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
 
-        // --- New model path: segments produce bubble circles directly ---
-        const container = getContainer(chain.id);
-        if (container && container.bubbles.length > 0 && showCircles) {
-            for (const seg of container.segments) {
-                for (const b of seg.getBubbleCircles()) {
-                    const thresh = b.threshold ?? 50;
-                    if (gridSize > thresh) continue;
-                    const fade = Math.min(1, (thresh - gridSize) / BUBBLE_FADE_RANGE);
-                    const color = getNodeColor(b._colorObj ?? b);
-                    if (!byColor.has(color)) byColor.set(color, []);
-                    byColor.get(color).push({ x: b.x, y: b.y, r, alpha: fade });
-                }
-            }
-            continue;  // skip old system for this chain
-        }
-
-        // --- Old system fallback ---
+        // Ensure metadata is fetched (async, cached after first fetch)
         if (!hasBubbleMeta(chain.id)) {
             if (chain.parentChain && !getPolychainPositions(chain.id)) continue;
             fetchBubbleMeta(chain.id, chr);
             continue;
         }
 
+        // New model path: segments compute positions + metadata at render time
+        const container = getContainer(chain.id);
+        if (container && showCircles) {
+            const metaStore = getBubbleStore(chain.id);
+            for (const seg of container.segments) {
+                for (const b of seg.getBubbleCircles(metaStore)) {
+                    if (gridSize > b.threshold) continue;
+                    const fade = Math.min(1, (b.threshold - gridSize) / BUBBLE_FADE_RANGE);
+                    const color = getNodeColor(b.colorObj);
+                    if (!byColor.has(color)) byColor.set(color, []);
+                    byColor.get(color).push({ x: b.x, y: b.y, r, alpha: fade });
+                }
+            }
+            continue;
+        }
+
+        // Old system fallback (chains without containers)
         const store = getBubbleStore(chain.id);
         if (!store || store.positions.length === 0) continue;
 

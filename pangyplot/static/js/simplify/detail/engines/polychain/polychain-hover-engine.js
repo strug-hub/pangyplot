@@ -4,6 +4,7 @@ import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { getPolychainPositions, getPolychainPolylines, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
 import { getBubblePositions } from '../../data/bubble-meta-cache.js';
+import { getContainer } from '../../model/model-manager.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -137,10 +138,28 @@ export function hitTestBubbleCircles(dataX, dataY) {
     let best = null;
 
     for (const chain of state.detailData.chains) {
+        // New model: read cached bubble circles from last render
+        const container = getContainer(chain.id);
+        if (container) {
+            for (const seg of container.segments) {
+                const circles = seg._lastBubbleCircles;
+                if (!circles) continue;
+                for (const b of circles) {
+                    if (gridSize > (b.threshold || 20)) continue;
+                    const d = Math.hypot(dataX - b.x, dataY - b.y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        best = { x: b.x, y: b.y, meta: b.meta, chainId: chain.id, bubbleId: b.id, t: b.t };
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Old system fallback
         const positions = getBubblePositions(chain.id);
         if (!positions || positions.length === 0) continue;
         for (const { x, y, meta } of positions) {
-            // Skip bubbles not yet visible at current zoom
             if (gridSize > (meta.threshold || 20)) continue;
             const d = Math.hypot(dataX - x, dataY - y);
             if (d < bestDist) {
