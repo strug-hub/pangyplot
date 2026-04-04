@@ -1,10 +1,10 @@
 // Undo a bubble pop: exact reverse using saved objects.
 
 import { removePoppedContent, insertPoppedContent } from '../engines/force-engine.js';
-import { getForceNodes } from './force-data.js';
+import { getForceNodes, getForceLinks } from './force-data.js';
 import popTree from './pop-tree.js';
 import { getContainer, addObject, removeObject } from '../model/model-manager.js';
-import { registerSeg } from './seg-registry.js';
+import { registerSeg, resolveEndForLink } from './seg-registry.js';
 
 /**
  * Undo the most recent bubble pop. Returns true on success.
@@ -22,10 +22,17 @@ export function unpopLastBubble() {
         addedObjects,
     } = popEntry;
 
-    // 1. Remove everything that was added during pop
-    const removeIids = (addedNodes || []).map(n => n.iid);
-    if (removeIids.length > 0) {
-        removePoppedContent(removeIids);
+    // 1. Save links that will be destroyed (any link touching a removed node)
+    const removeIidSet = new Set((addedNodes || []).map(n => n.iid));
+    const destroyedLinks = getForceLinks().filter(l => {
+        const sIid = l.source?.iid ?? l.source;
+        const tIid = l.target?.iid ?? l.target;
+        return removeIidSet.has(sIid) || removeIidSet.has(tIid);
+    });
+
+    // Remove all nodes that were added during this pop + their links
+    if (removeIidSet.size > 0) {
+        removePoppedContent([...removeIidSet]);
     }
 
     // Remove added objects from model store
@@ -78,6 +85,30 @@ export function unpopLastBubble() {
         }
     }
 
-    console.log(`[unpop] undid ${bubbleId} on ${chainId}`);
+    // 4. Re-resolve destroyed links through the updated registry.
+    //    The registry now points to the restored segment's anchors.
+    const restoredLinks = [];
+    for (const link of destroyedLinks) {
+        const fromSegId = link.sourceId;
+        const toSegId = link.targetId;
+        if (!fromSegId || !toSegId) continue;
+
+        const fromNode = resolveEndForLink(fromSegId, link);
+        const toNode = resolveEndForLink(toSegId, link);
+        if (!fromNode?.iid || !toNode?.iid) continue;
+
+        // Update the link's endpoints to the resolved nodes
+        link.source = fromNode.iid;
+        link.target = toNode.iid;
+        link.sourceIid = fromNode.iid;
+        link.targetIid = toNode.iid;
+        restoredLinks.push(link);
+    }
+
+    if (restoredLinks.length > 0) {
+        insertPoppedContent(chainId, [], restoredLinks);
+    }
+
+    console.log(`[unpop] undid ${bubbleId} on ${chainId}, re-resolved ${restoredLinks.length} links`);
     return true;
 }
