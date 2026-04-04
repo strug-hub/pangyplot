@@ -38,15 +38,10 @@ export function unpopLastBubble() {
     // 2. Restore the container: undo the split
     const container = getContainer(chainId);
     if (container) {
-        console.log(`[unpop] before filter: ${container.segments.length} segments, addedObjects has ${(addedObjects||[]).length} items`);
-        console.log(`[unpop] segment ids: [${container.segments.map(s => s.id)}]`);
-        console.log(`[unpop] addedObject ids: [${(addedObjects||[]).map(o => o.id)}]`);
         // Remove the split segments from container
         container.segments = container.segments.filter(
             s => !(addedObjects || []).includes(s)
         );
-        console.log(`[unpop] after filter: ${container.segments.length} segments`);
-        console.log(`[unpop] poppedRanges before: [${container.poppedRanges.map(pr => pr.bubbleId)}], removing: ${bubbleId}`);
 
         // Remove from poppedRanges
         const prIdx = container.poppedRanges.findIndex(pr => pr.bubbleId === bubbleId);
@@ -122,10 +117,5 @@ export function unpopLastBubble() {
         insertPoppedContent(chainId, [], recreatedLinks);
     }
 
-    console.log(`[unpop] undid ${bubbleId} on ${chainId}, recreated ${recreatedLinks.length} links`);
-    if (container) {
-        console.log(`[unpop] final state: ${container.segments.length} segments, ${container.poppedRanges.length} poppedRanges`);
-        container.segments.forEach(s => console.log(`  seg ${s.id} [${s.tRange.start.toFixed(3)},${s.tRange.end.toFixed(3)}]`));
-    }
     return true;
 }

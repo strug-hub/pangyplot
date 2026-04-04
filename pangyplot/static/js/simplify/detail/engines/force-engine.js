@@ -434,6 +434,48 @@ export function removePoppedNodes(chainId) {
 }
 
 /**
+ * Add child nodes + links to the running simulation.
+ */
+export function insertPoppedContent(chainId, childNodes, childLinks) {
+    if (!sim) initForce();
+
+    for (const n of childNodes) {
+        if (n.homeX == null) n.homeX = n.fx ?? n.x;
+        if (n.homeY == null) n.homeY = n.fy ?? n.y;
+        n._spawnTick = _tickCount;
+    }
+
+    const allNodes = [...getNodes(), ...childNodes];
+    const allLinks = [...getLinks(), ...childLinks];
+
+    syncNodes(allNodes);
+    syncLinks(allLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(1).restart();
+}
+
+/**
+ * Remove nodes by iid and any links touching them.
+ */
+export function removePoppedContent(childIids) {
+    if (!sim) return;
+
+    const childSet = new Set(childIids);
+    const remaining = getNodes().filter(n => !childSet.has(n.iid));
+    const remainingIids = new Set(remaining.map(n => n.iid));
+    const keptLinks = getLinks().filter(l => {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return remainingIids.has(sIid) && remainingIids.has(tIid);
+    });
+
+    syncNodes(remaining);
+    syncLinks(keptLinks);
+    sim.force('layout').strengthLevel(defaults.LAYOUT_LEVEL);
+    sim.alpha(1).restart();
+}
+
+/**
  * Remove all nodes (and their links) whose chainId is in the given set.
  */
 export function removeNodesByChainIds(chainIds) {

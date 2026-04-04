@@ -95,51 +95,11 @@ function resamplePolyline(chain) {
 // Ensures both sides of any split get >= 2 nodes (with edge clamping).
 const MIN_PRESPLIT_NODES = 8;
 
-/**
- * Resample a chain's polychain nodes to targetCount by interpolating
- * along the current live positions.  Used before every pop to ensure
- * the chain has enough nodes for a clean split.
+/** Get polychain nodes for a chain, or null. */
 export function getPolychainNodesForChain(chainId) {
     return chainPolychainNodes.get(chainId) || null;
 }
 
-/**
- * Get live polylines for a chain. Returns array with one [[x,y],...] polyline,
- * or null if no polychain nodes exist for this chain.
- */
-export function getPolychainPolylines(chainId) {
-    const nodes = chainPolychainNodes.get(chainId);
-    if (!nodes || nodes.length < 2) return null;
-
-    const gaps = chainGaps.get(chainId);
-    if (!gaps || gaps.length === 0) {
-        return [nodes.map(n => [n.x, n.y])];
-    }
-
-    // Build set of gap index ranges, sorted by leftNodeIdx
-    const sorted = [...gaps].sort((a, b) => a.leftNodeIdx - b.leftNodeIdx);
-
-    // Walk the node array, splitting at gap boundaries
-    const segments = [];
-    let segStart = 0;
-    for (const g of sorted) {
-        // Visible segment from segStart to gap's left boundary (inclusive)
-        if (g.leftNodeIdx >= segStart) {
-            const pl = [];
-            for (let i = segStart; i <= g.leftNodeIdx; i++) pl.push([nodes[i].x, nodes[i].y]);
-            if (pl.length >= 2) segments.push(pl);
-        }
-        segStart = g.rightNodeIdx;
-    }
-    // Trailing visible segment
-    if (segStart < nodes.length) {
-        const pl = [];
-        for (let i = segStart; i < nodes.length; i++) pl.push([nodes[i].x, nodes[i].y]);
-        if (pl.length >= 2) segments.push(pl);
-    }
-
-    return segments.length > 0 ? segments : null;
-}
 /**
  * Flip a chain: reverse polychain node positions so head↔tail swap visually.
  * Node array order, nodeIndex, links, and segToPolychain are unchanged.
