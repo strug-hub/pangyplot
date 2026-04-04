@@ -139,15 +139,29 @@ export class PolychainSegment extends SimObject {
         const bubbles = this.container.bubblesInRange(this.tRange.start, this.tRange.end);
         if (bubbles.length === 0) return [];
 
-        // Build metadata lookup from the cache store
+        // Build metadata lookup from the cache store.
+        // Match by ID first, fall back to matching by closest t-position
+        // (container may have placeholder IDs when bubble_ids wasn't available).
         const metaById = new Map();
+        const metaByT = [];
         if (metaStore?.bubbles) {
-            for (const b of metaStore.bubbles) metaById.set(b.id, b);
+            for (const b of metaStore.bubbles) {
+                metaById.set(b.id, b);
+                metaByT.push(b);
+            }
         }
 
         const result = bubbles.map(b => {
             const pos = this.container.positionAt(b.t);
-            const meta = metaById.get(b.id) || null;
+            // Try ID match, then closest t-position match
+            let meta = metaById.get(b.id) || null;
+            if (!meta && metaByT.length > 0) {
+                let bestDist = Infinity;
+                for (const m of metaByT) {
+                    const d = Math.abs((m.t ?? 0) - b.t);
+                    if (d < bestDist) { bestDist = d; meta = m; }
+                }
+            }
             const length = meta?.length ?? 0;
 
             // Threshold: compute from bubble length (same formula as bubble-meta-cache)
