@@ -234,11 +234,6 @@ export async function popBubbleCircleV2(hit) {
         }
     }
 
-    if (childNodes.length > 0) {
-        const bp = container.positionAt(t);
-        console.log(`[pop-handler] spawn: bubblePos=(${bp.x.toFixed(0)},${bp.y.toFixed(0)}) first child=(${childNodes[0].x.toFixed(0)},${childNodes[0].y.toFixed(0)}) homeX=${childNodes[0].homeX.toFixed(0)}`);
-    }
-
     // --- Add child nodes + links to D3 sim ---
     const allNewLinks = [...childKinkLinks, ...gfaLinks];
     if (childNodes.length > 0) {

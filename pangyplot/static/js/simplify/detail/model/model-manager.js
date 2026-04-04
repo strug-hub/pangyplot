@@ -36,9 +36,7 @@ window.__simRegistry = registry;
 export function initModel(detailData) {
     clearModel();
 
-    console.log(`[model] initModel: ${(detailData.chains || []).length} chains`);
     for (const chain of (detailData.chains || [])) {
-        console.log(`[model] chain ${chain.id}: bubbleIds=${(chain.bubbleIds||[]).length}, bubblePositions=${(chain.bubblePositions||[]).length}, keys=${Object.keys(chain).filter(k=>k.includes('ubble')).join(',')}`);
         const container = createContainerFromChain(chain);
         if (container) {
             containers.set(container.id, container);

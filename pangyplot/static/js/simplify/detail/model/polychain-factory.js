@@ -119,7 +119,6 @@ export function createContainerFromChain(chain) {
         bubbles.push({ id, t: bubblePositions[i] });
     }
 
-    console.log(`[factory] creating container ${chainId}: ${bubbles.length} bubbles, ${existingNodes.length} spine nodes`);
     return new PolychainContainer({
         id: chainId,
         spineNodes: existingNodes,

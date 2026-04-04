@@ -4,7 +4,7 @@
 
 import { state } from '../../simplify-state.js';
 import { popBubbleCircleV2, popBubbleForceNodeV2 } from '../model/pop-handler.js';
-import { getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
+import { getBubbleStore } from './bubble-meta-cache.js';
 import { getContainer } from '../model/model-manager.js';
 
 // Re-export V2 handlers under original names for any remaining importers
