@@ -3,10 +3,9 @@
 import { state } from '../../../simplify-state.js';
 import { getNodeColor } from '../../../../graph/render/color/color-style.js';
 import { strokePolyline, strokePolylines, fillCircles, strokeRing } from '../detail-painter.js';
-import { getPolychainPositions, getPolychainPolylines, getVisibleSegments } from '../../data/polychain/polychain-adapter.js';
 import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-data.js';
-import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta, updateBubblePositions, updateBubblePositionsSegmented } from '../../data/bubble-meta-cache.js';
+import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta } from '../../data/bubble-meta-cache.js';
 import { getAllAnnotations } from '@simplify-data/custom-annotation-data.js';
 import { getContainer } from '../../model/model-manager.js';
 
@@ -15,27 +14,15 @@ function getVisibleChainPolylinesByColor(chains) {
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
 
-        // Try the new model first — segments produce their own polylines
         const container = getContainer(chain.id);
-        let pls = null;
-        if (container) {
-            pls = [];
-            for (const seg of container.segments) {
-                const pl = seg.getPolyline();
-                if (pl.length >= 2) pls.push(pl);
-            }
-            // No segments = everything popped — draw nothing
-            if (pls.length === 0) continue;
-        }
+        if (!container) continue;
 
-        // Fall back to old system (chains without containers)
-        if (!pls) {
-            const polylines = getPolychainPolylines(chain.id);
-            if (!polylines) {
-                if (chain.parentChain) continue;
-            }
-            pls = polylines || [chain.polyline];
+        const pls = [];
+        for (const seg of container.segments) {
+            const pl = seg.getPolyline();
+            if (pl.length >= 2) pls.push(pl);
         }
+        if (pls.length === 0) continue;
 
         const color = getNodeColor(chain);
         if (!byColor.has(color)) byColor.set(color, []);
@@ -48,8 +35,10 @@ function getSelectedPolylines() {
     const polylines = [];
     for (const [chain, clip] of state.selectedChains) {
         if (chain.polyline.length < 2) continue;
-        const live = getPolychainPositions(chain.id);
-        const pl = live || chain.polyline;
+        const container = getContainer(chain.id);
+        const pl = container?.spineNodes?.length >= 2
+            ? container.spineNodes.map(n => [n.x, n.y])
+            : chain.polyline;
         const sub = extractSubPolyline(pl, clip.tStart, clip.tEnd);
         if (sub && sub.length >= 2) polylines.push(sub);
     }
@@ -77,9 +66,10 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
         const geneList = overlaps.get(chain.id);
         if (!geneList) continue;
 
-        const polylines = getPolychainPolylines(chain.id);
-        if (!polylines && chain.parentChain) continue;
-        const pls = polylines || [chain.polyline];
+        const container = getContainer(chain.id);
+        if (!container) continue;
+        const pls = container.segments.map(s => s.getPolyline()).filter(pl => pl.length >= 2);
+        if (pls.length === 0) continue;
 
         for (const gene of geneList) {
             for (const pl of pls) {
@@ -113,9 +103,9 @@ function computeCentroid(ann, dd) {
     for (const chain of dd.chains) {
         const rootId = chain.parentChain || chain.id;
         if (!ann.chainIds.has(chain.id) && !ann.chainIds.has(rootId)) continue;
-        const polylines = getPolychainPolylines(chain.id);
-        if (!polylines && chain.parentChain) continue;
-        const pls = polylines || [chain.polyline];
+        const container = getContainer(chain.id);
+        if (!container) continue;
+        const pls = container.segments.map(s => s.getPolyline()).filter(pl => pl.length >= 2);
         for (const pl of pls) {
             if (!pl || pl.length < 2) continue;
             for (const pt of pl) {
@@ -196,50 +186,25 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
 
+        const container = getContainer(chain.id);
+        if (!container) continue;
+
         // Ensure metadata is fetched (async, cached after first fetch)
         if (!hasBubbleMeta(chain.id)) {
-            if (chain.parentChain && !getPolychainPositions(chain.id)) continue;
             fetchBubbleMeta(chain.id, chr);
             continue;
         }
 
-        // New model path: segments compute positions + metadata at render time
-        const container = getContainer(chain.id);
-        if (container && showCircles) {
-            const metaStore = getBubbleStore(chain.id);
-            for (const seg of container.segments) {
-                for (const b of seg.getBubbleCircles(metaStore)) {
-                    if (gridSize > b.threshold) continue;
-                    const fade = Math.min(1, (b.threshold - gridSize) / BUBBLE_FADE_RANGE);
-                    const color = getNodeColor(b.colorObj);
-                    if (!byColor.has(color)) byColor.set(color, []);
-                    byColor.get(color).push({ x: b.x, y: b.y, r, alpha: fade });
-                }
-            }
-            continue;
-        }
+        if (!showCircles) continue;
 
-        // Old system fallback (chains without containers)
-        const store = getBubbleStore(chain.id);
-        if (!store || store.positions.length === 0) continue;
-
-        const segments = getVisibleSegments(chain.id);
-        if (segments && !(segments.length === 1 && segments[0].tStart === 0 && segments[0].tEnd === 1)) {
-            updateBubblePositionsSegmented(chain.id, segments);
-        } else {
-            const live = getPolychainPositions(chain.id);
-            const pl = live || chain.polyline;
-            updateBubblePositions(chain.id, pl);
-        }
-
-        if (showCircles) {
-            for (const pos of store.positions) {
-                const thresh = pos.meta.threshold;
-                if (gridSize > thresh) continue;
-                const fade = Math.min(1, (thresh - gridSize) / BUBBLE_FADE_RANGE);
-                const color = getNodeColor(pos.meta._colorObj);
+        const metaStore = getBubbleStore(chain.id);
+        for (const seg of container.segments) {
+            for (const b of seg.getBubbleCircles(metaStore)) {
+                if (gridSize > b.threshold) continue;
+                const fade = Math.min(1, (b.threshold - gridSize) / BUBBLE_FADE_RANGE);
+                const color = getNodeColor(b.colorObj);
                 if (!byColor.has(color)) byColor.set(color, []);
-                byColor.get(color).push({ x: pos.x, y: pos.y, r, alpha: fade });
+                byColor.get(color).push({ x: b.x, y: b.y, r, alpha: fade });
             }
         }
     }
@@ -325,18 +290,13 @@ export function drawDetail(svg = null) {
 
     // 4. Hover highlight (skip during SVG export)
     if (!svg && state.hoveredChain) {
-        let pls = null;
         const hoverContainer = getContainer(state.hoveredChain.id);
         if (hoverContainer) {
-            pls = hoverContainer.segments.map(s => s.getPolyline()).filter(pl => pl.length >= 2);
-        }
-        if (!pls || pls.length === 0) {
-            const polylines = getPolychainPolylines(state.hoveredChain.id);
-            pls = polylines || [state.hoveredChain.polyline];
-        }
-        for (const pl of pls) {
-            if (pl.length >= 2) {
-                strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
+            for (const seg of hoverContainer.segments) {
+                const pl = seg.getPolyline();
+                if (pl.length >= 2) {
+                    strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
+                }
             }
         }
     }
