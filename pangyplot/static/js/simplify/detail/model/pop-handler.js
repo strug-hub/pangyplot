@@ -279,9 +279,6 @@ export async function popBubbleCircleV2(hit) {
         ],
     });
 
-    console.log(`[pop-handler] pop ${bubbleId} on ${chainId}: ` +
-        `left=${!!leftSegment} right=${!!rightSegment}, ` +
-        `${childObjects.length} objects, ${childNodes.length} nodes, ${gfaLinks.length} GFA links`);
 
     return true;
 }
