@@ -3,7 +3,7 @@
 import { state } from '../../simplify-state.js';
 import { getGenePins, isGeneVisible, isGeneStarred } from '@simplify-data/gene-data.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
-import { getPolychainPositions } from '../../detail/data/polychain/polychain-adapter.js';
+import { getContainer } from '../../detail/model/model-manager.js';
 import { drawGeneLabelSvg } from '../../render/simplify-svg-utils.js';
 import { clearPolylineCache } from './gene-polyline-overlay.js';
 
@@ -43,7 +43,10 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     if (inDetail && state.detailData) {
         chainScreenSegs = [];
         for (const chain of state.detailData.chains) {
-            const pl = getPolychainPositions(chain.id) || chain.polyline;
+            const container = getContainer(chain.id);
+            const pl = container?.spineNodes?.length >= 2
+                ? container.spineNodes.map(n => [n.x, n.y])
+                : chain.polyline;
             if (!pl || pl.length < 2) continue;
             for (let i = 0; i < pl.length - 1; i++) {
                 chainScreenSegs.push({
