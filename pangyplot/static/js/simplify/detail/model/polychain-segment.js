@@ -250,9 +250,10 @@ export class PolychainSegment extends SimObject {
 
         if (hasLeft) {
             // New inner tailAnchor for left segment (at gap boundary)
+            const tailPos = this.container.positionAt(leftEnd);
             const innerTailAnchor = _createAnchorNode(
                 `anchor_${this.parentId}_${_anchorIdCounter++}_T`,
-                0, 0  // positioned by updateAnchors on next frame
+                tailPos.x, tailPos.y
             );
             innerTailAnchor.simObject = null; // set below
 
@@ -277,9 +278,10 @@ export class PolychainSegment extends SimObject {
 
         if (hasRight) {
             // New inner headAnchor for right segment (at gap boundary)
+            const headPos = this.container.positionAt(rightStart);
             const innerHeadAnchor = _createAnchorNode(
                 `anchor_${this.parentId}_${_anchorIdCounter++}_H`,
-                0, 0  // positioned by updateAnchors on next frame
+                headPos.x, headPos.y
             );
             innerHeadAnchor.simObject = null; // set below
 
