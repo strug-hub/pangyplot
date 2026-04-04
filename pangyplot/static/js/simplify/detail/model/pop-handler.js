@@ -111,12 +111,17 @@ export async function popBubbleCircleV2(hit) {
         // Add kink nodes to sim (will be positioned + linked in GFA resolution below)
         insertPoppedContent(chainId, obj.physicsNodes, obj.physicsLinks);
 
-        // Tag for forces — position at the anchor's location (no squish needed,
-        // boundary segs are single points at the gap edge)
+        // Position at the old anchor's live location, not ODGI layout
+        const anchorPos = oldAnchor
+            ? { x: oldAnchor.x, y: oldAnchor.y }
+            : container.positionAt(t);
         for (const n of obj.physicsNodes) {
             n.popBubbleId = bubbleId;
             n.ghostRootId = chainId;
-            n.homeX = n.x; n.homeY = n.y;
+            n.x = anchorPos.x;
+            n.y = anchorPos.y;
+            n.homeX = anchorPos.x;
+            n.homeY = anchorPos.y;
         }
     }
 
@@ -192,27 +197,26 @@ export async function popBubbleCircleV2(hit) {
         });
     }
 
-    // --- Position: center children between the two inner anchors ---
+    // --- Position: center children where the bubble circle was ---
+    // homeX/homeY set to spawn position so layout force keeps them here,
+    // not at ODGI coordinates which may be far from the live chain.
     if (childNodes.length > 0) {
-        // Midpoint between the gap's inner anchors
-        const leftAnchor = leftSegment?.tailAnchor;
-        const rightAnchor = rightSegment?.headAnchor;
-        const spawnX = leftAnchor && rightAnchor
-            ? (leftAnchor.x + rightAnchor.x) / 2
-            : (leftAnchor?.x ?? rightAnchor?.x ?? hit.x);
-        const spawnY = leftAnchor && rightAnchor
-            ? (leftAnchor.y + rightAnchor.y) / 2
-            : (leftAnchor?.y ?? rightAnchor?.y ?? hit.y);
-
+        const bubblePos = container.positionAt(t);
         let cx = 0, cy = 0;
         for (const n of childNodes) { cx += n.x; cy += n.y; }
         cx /= childNodes.length; cy /= childNodes.length;
         const squish = 0.15;
         for (const n of childNodes) {
-            n.homeX = n.x; n.homeY = n.y;
-            n.x = spawnX + (n.homeX - cx) * squish;
-            n.y = spawnY + (n.homeY - cy) * squish;
+            n.x = bubblePos.x + (n.x - cx) * squish;
+            n.y = bubblePos.y + (n.y - cy) * squish;
+            n.homeX = n.x;
+            n.homeY = n.y;
         }
+    }
+
+    if (childNodes.length > 0) {
+        const bp = container.positionAt(t);
+        console.log(`[pop-handler] spawn: bubblePos=(${bp.x.toFixed(0)},${bp.y.toFixed(0)}) first child=(${childNodes[0].x.toFixed(0)},${childNodes[0].y.toFixed(0)}) homeX=${childNodes[0].homeX.toFixed(0)}`);
     }
 
     // --- Add child nodes + links to D3 sim ---
