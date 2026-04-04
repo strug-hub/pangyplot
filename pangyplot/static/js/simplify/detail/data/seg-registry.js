@@ -1,40 +1,31 @@
-// Segment Registry: unified map from GFA segment IDs to their current
-// visual representation in the force sim.
+// Segment Registry: maps GFA segment IDs to SimObjects.
 //
-// Every GFA segment is represented by exactly one force node at any time:
-//   - Chain head/tail polychain node (when not popped)
-//   - Anchor node (when neighbor bubble is popped)
-//   - Actual segment kink node (when the segment itself is popped/revealed)
-//   - Junction force node
-//
-// All links are GFA seg→seg connections. Resolution through this registry
-// determines which force nodes they connect.
+// Stores only ENDS — the exposed boundary of each SimObject.
+// When a link needs to resolve, the registry returns the SimObject,
+// which is then asked resolveEnd(link) to get the correct d3 node
+// (strand-aware for kinked segments).
 
-// Keys use s-prefixed format ("s137642") matching the frontend standard.
-// segId (string, s-prefixed) → { node, kinkIdx }
-// kinkIdx: which kink of the node to connect to (for strand resolution)
+// segId (s-prefixed) → SimObject
 const registry = new Map();
 
-/** Ensure a seg ID has the "s" prefix. */
 function ensurePrefix(id) {
     const s = String(id);
     return s.startsWith('s') ? s : `s${s}`;
 }
 
 /**
- * Register a segment ID as represented by a given force node.
- * Later registrations override earlier ones (more detailed wins).
+ * Register a segment ID as an end of a SimObject.
  */
-export function registerSeg(segId, node, kinkIdx = 0) {
-    registry.set(ensurePrefix(segId), { node, kinkIdx });
+export function registerSeg(segId, obj) {
+    registry.set(ensurePrefix(segId), obj);
 }
 
 /**
- * Register multiple segment IDs to the same node.
+ * Register multiple segment IDs to the same SimObject.
  */
-export function registerSegs(segIds, node, kinkIdx = 0) {
+export function registerSegs(segIds, obj) {
     for (const segId of segIds) {
-        registry.set(ensurePrefix(segId), { node, kinkIdx });
+        registry.set(ensurePrefix(segId), obj);
     }
 }
 
@@ -46,64 +37,27 @@ export function unregisterSeg(segId) {
 }
 
 /**
- * Look up the current visual node for a segment ID.
- * Returns { node, kinkIdx } or null.
+ * Look up which SimObject owns this segment as an end.
+ * Returns the SimObject or null.
  */
 export function resolveSeg(segId) {
     return registry.get(ensurePrefix(segId)) || null;
 }
 
 /**
- * Resolve a segment ID to a NodeRecord-like wrapper for use as a
- * linkResolver result in deserializeSubgraph. Returns null if not found.
+ * Resolve a GFA link endpoint to a d3 force node.
+ * Looks up the SimObject for the segId, then calls resolveEnd(link).
  */
-export function resolveSegAsRecord(segId) {
-    const entry = registry.get(ensurePrefix(segId));
-    if (!entry) return null;
-    const node = entry.node;
-    // If the node already has a record (e.g., from a prior pop), use it
-    if (node.record) return node.record;
-    // Otherwise wrap as a minimal record (like makePolychainRecord)
-    return {
-        id: node.id,
-        type: node.isAnchor ? 'anchor' : 'polychain',
-        ranges: [],
-        elements: {
-            nodes: [{ head: () => node.iid, tail: () => node.iid }],
-        },
-    };
+export function resolveEndForLink(segId, link) {
+    const obj = registry.get(ensurePrefix(segId));
+    if (!obj) return null;
+    if (typeof obj.resolveEnd === 'function') return obj.resolveEnd(link);
+    // Legacy fallback: obj is a raw d3 node (from old polychain-adapter registrations)
+    return obj.node ?? obj;
 }
 
 /**
- * Resolve a GFA link's source and target through the registry.
- * Sets link.source and link.target to the current visual nodes.
- * Returns true if both endpoints resolved, false if either is missing.
- */
-export function resolveLink(link) {
-    const src = registry.get(ensurePrefix(link.sourceSeg));
-    const tgt = registry.get(ensurePrefix(link.targetSeg));
-    if (!src || !tgt) return false;
-    // Only update if the registry entries are actual node objects (not strings)
-    if (src.node && typeof src.node === 'object' && src.node.iid) link.source = src.node;
-    if (tgt.node && typeof tgt.node === 'object' && tgt.node.iid) link.target = tgt.node;
-    return true;
-}
-
-/**
- * Re-resolve all links in a list. Removes links where either endpoint
- * can't be resolved (the segment isn't currently represented).
- */
-export function resolveAllLinks(links) {
-    for (let i = links.length - 1; i >= 0; i--) {
-        if (links[i].sourceSeg == null || links[i].targetSeg == null) continue;
-        if (!resolveLink(links[i])) {
-            links.splice(i, 1);
-        }
-    }
-}
-
-/**
- * Clear the entire registry (e.g., on viewport change).
+ * Clear the entire registry.
  */
 export function clearRegistry() {
     registry.clear();

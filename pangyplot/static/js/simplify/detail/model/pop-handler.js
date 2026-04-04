@@ -9,7 +9,7 @@ import { state } from '../../simplify-state.js';
 import { insertPoppedContent, removePoppedContent } from '../engines/force-engine.js';
 import { getForceNodes } from '../data/force-data.js';
 import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
-import { registerSeg, resolveSeg } from '../data/seg-registry.js';
+import { registerSeg, resolveEndForLink } from '../data/seg-registry.js';
 
 import { getContainer, addObject, removeObject } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
@@ -65,14 +65,14 @@ export async function popBubbleCircleV2(hit) {
         insertPoppedContent(chainId, newAnchors, []);
     }
 
-    // --- Register all segment anchor segs in seg-registry ---
+    // --- Register segment ends in seg-registry (SimObjects, not raw nodes) ---
     if (leftSegment) {
-        for (const segId of leftSegment.ends.head) registerSeg(segId, leftSegment.headAnchor);
-        for (const segId of leftSegment.ends.tail) registerSeg(segId, leftSegment.tailAnchor);
+        for (const segId of leftSegment.ends.head) registerSeg(segId, leftSegment);
+        for (const segId of leftSegment.ends.tail) registerSeg(segId, leftSegment);
     }
     if (rightSegment) {
-        for (const segId of rightSegment.ends.head) registerSeg(segId, rightSegment.headAnchor);
-        for (const segId of rightSegment.ends.tail) registerSeg(segId, rightSegment.tailAnchor);
+        for (const segId of rightSegment.ends.head) registerSeg(segId, rightSegment);
+        for (const segId of rightSegment.ends.tail) registerSeg(segId, rightSegment);
     }
 
     // --- Update model store ---
@@ -95,9 +95,9 @@ export async function popBubbleCircleV2(hit) {
         const obj = SegmentObject.fromApiNode(apiNode, chainId);
         addObject(obj);
 
-        // Register ends (overwrites old anchor registration)
-        for (const sid of obj.ends.head) registerSeg(sid, obj.headNode);
-        for (const sid of obj.ends.tail) registerSeg(sid, obj.tailNode);
+        // Register SimObject ends (overwrites old anchor registration)
+        for (const sid of obj.ends.head) registerSeg(sid, obj);
+        for (const sid of obj.ends.tail) registerSeg(sid, obj);
 
         // Remove the old anchor that tracked this seg + any links to it
         // The anchor is on the removedSegment (it wasn't reused since hasLeft/hasRight was false)
@@ -142,10 +142,10 @@ export async function popBubbleCircleV2(hit) {
         }
     }
 
-    // Register each object's ends only in seg-registry
+    // Register each object's ends in seg-registry (SimObjects, not raw nodes)
     for (const obj of childObjects) {
-        for (const segId of obj.ends.head) registerSeg(segId, obj.headNode);
-        for (const segId of obj.ends.tail) registerSeg(segId, obj.tailNode);
+        for (const segId of obj.ends.head) registerSeg(segId, obj);
+        for (const segId of obj.ends.tail) registerSeg(segId, obj);
     }
 
     // Collect kink nodes + kink links from child objects
@@ -157,7 +157,8 @@ export async function popBubbleCircleV2(hit) {
     }
 
     // --- Resolve GFA links ---
-    // Both endpoints must be registered ends. Skip if either is missing.
+    // Both endpoints must be registered ends. The SimObject resolves
+    // the correct d3 node (strand-aware for kinked segments).
     const gfaLinks = [];
     for (const rawLink of (apiData.links || [])) {
         const fromSegId = String(rawLink.source).startsWith('s')
@@ -165,12 +166,15 @@ export async function popBubbleCircleV2(hit) {
         const toSegId = String(rawLink.target).startsWith('s')
             ? String(rawLink.target) : `s${rawLink.target}`;
 
-        const fromEntry = resolveSeg(fromSegId);
-        const toEntry = resolveSeg(toSegId);
-        if (!fromEntry || !toEntry) continue;
+        // Build link-like object for resolveEnd
+        const linkForResolve = {
+            source: fromSegId, target: toSegId,
+            fromStrand: rawLink.from_strand || '+',
+            toStrand: rawLink.to_strand || '+',
+        };
 
-        const fromNode = fromEntry.node;
-        const toNode = toEntry.node;
+        const fromNode = resolveEndForLink(fromSegId, linkForResolve);
+        const toNode = resolveEndForLink(toSegId, linkForResolve);
         if (!fromNode?.iid || !toNode?.iid) continue;
 
         gfaLinks.push({
