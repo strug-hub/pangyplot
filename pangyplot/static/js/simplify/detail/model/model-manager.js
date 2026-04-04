@@ -82,11 +82,14 @@ export function getObject(id) {
 // --- Per-frame update ---
 
 /**
- * Update all container anchors. Call each frame (force tick or pre-render).
+ * Update all segment anchors. Each segment pulls its positions from
+ * its container's live spine. Call each frame (force tick).
  */
 export function updateAnchors() {
     for (const c of containers.values()) {
-        c.updateAnchors();
+        for (const seg of c.segments) {
+            seg.updateAnchors();
+        }
     }
 }
 
