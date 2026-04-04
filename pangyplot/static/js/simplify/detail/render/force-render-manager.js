@@ -51,7 +51,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const genePins = getGenePins();
 
     for (const link of links) {
-        if (link.isPolychainLink) continue;  // rendered as polyline by polychain-render-manager
+        if (link.isPolychainLink || link.isSpineLink) continue;  // spine infrastructure, not drawn
         const s = link.source, t = link.target;
         if (s.x == null || t.x == null) continue;
         if (!linkVisible(s, t)) continue;

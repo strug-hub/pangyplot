@@ -9,7 +9,7 @@ import { state } from '../../simplify-state.js';
 import { insertPoppedContent, removePoppedContent } from '../engines/force-engine.js';
 import { getForceLinks } from '../data/force-data.js';
 
-import { register as registerSeg, resolveForLink } from './segment-registry.js';
+import { register as registerSeg, resolve as resolveObj, resolveForLink } from './segment-registry.js';
 
 import { getContainer, addObject, removeObject } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
@@ -204,7 +204,7 @@ export async function popBubbleCircleV2(hit) {
             sourceId: fromSegId, targetId: toSegId,
             type: 'link',
             chainId,
-            isDel: boundaryIds.has(fromSegId) && boundaryIds.has(toSegId),
+            isDel: resolveObj(fromSegId) != null && resolveObj(fromSegId) === resolveObj(toSegId),
             isKinkLink: false, isRef: false, isDrawn: true,
             length: linkLen, width: 1,
             contained: rawLink.contained || [],
