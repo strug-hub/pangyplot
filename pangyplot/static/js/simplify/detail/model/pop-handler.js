@@ -235,19 +235,35 @@ export async function popBubbleCircleV2(hit) {
         n.ghostRootId = chainId;
     }
 
-    // --- Save undo data ---
-    const allNodeIids = [
-        ...childNodes.map(n => n.iid),
-        ...materializedObjects.flatMap(o => o.physicsNodes.map(n => n.iid)),
-    ];
+    // --- Save undo data: actual objects, not just IDs ---
+    // Collect anchors that were removed during materialization
+    const removedAnchors = [];
+    for (const segId of materializedSegIds) {
+        const anchor = materializeHead.includes(segId)
+            ? removedSegment.headAnchor
+            : removedSegment.tailAnchor;
+        if (anchor) removedAnchors.push(anchor);
+    }
+
     popTree.register(bubbleId, chainId, null, {
         bubbleId,
         chainId,
-        t,
-        childObjectIds: childObjects.map(o => o.id),
-        materializedObjectIds: materializedObjects.map(o => o.id),
-        allNodeIids,
-        innerAnchorIids: newAnchors.map(n => n.iid),
+        // Removed from sim — restore on undo
+        removedSegment,        // the old PolychainSegment before split
+        removedAnchors,        // anchors removed during materialization
+
+        // Added to sim — remove on undo
+        addedNodes: [
+            ...newAnchors,
+            ...childNodes,
+            ...materializedObjects.flatMap(o => o.physicsNodes),
+        ],
+        addedObjects: [
+            ...(leftSegment ? [leftSegment] : []),
+            ...(rightSegment ? [rightSegment] : []),
+            ...childObjects,
+            ...materializedObjects,
+        ],
     });
 
     console.log(`[pop-handler] pop ${bubbleId} on ${chainId}: ` +

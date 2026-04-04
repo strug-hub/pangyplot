@@ -1,6 +1,7 @@
-// Undo a bubble pop: removes child nodes, merges container segments back.
+// Undo a bubble pop: exact reverse using saved objects.
 
-import { removePoppedContent } from '../engines/force-engine.js';
+import { removePoppedContent, insertPoppedContent } from '../engines/force-engine.js';
+import { getForceNodes } from './force-data.js';
 import popTree from './pop-tree.js';
 import { getContainer, addObject, removeObject } from '../model/model-manager.js';
 import { registerSeg } from './seg-registry.js';
@@ -15,43 +16,65 @@ export function unpopLastBubble() {
     const {
         bubbleId,
         chainId,
-        childObjectIds,
-        materializedObjectIds,
-        allNodeIids,
-        innerAnchorIids,
+        removedSegment,
+        removedAnchors,
+        addedNodes,
+        addedObjects,
     } = popEntry;
 
-    // 1. Remove all child nodes + materialized segs + their links from sim
-    const removeIids = [...(allNodeIids || []), ...(innerAnchorIids || [])];
+    // 1. Remove everything that was added during pop
+    const removeIids = (addedNodes || []).map(n => n.iid);
     if (removeIids.length > 0) {
         removePoppedContent(removeIids);
     }
 
-    // 2. Remove child objects from model store
-    for (const objId of (childObjectIds || [])) {
-        removeObject(objId);
-    }
-    for (const objId of (materializedObjectIds || [])) {
-        removeObject(objId);
+    // Remove added objects from model store
+    for (const obj of (addedObjects || [])) {
+        removeObject(obj.id);
     }
 
-    // 3. Merge container segments back
+    // 2. Restore the container: undo the split
     const container = getContainer(chainId);
     if (container) {
-        try {
-            const mergeResult = container.mergeAtBubble(bubbleId);
-            // Add merged segment to model store, remove old split segments
-            if (mergeResult) {
-                for (const seg of mergeResult.removedSegments) removeObject(seg.id);
-                addObject(mergeResult.mergedSegment);
+        // Remove the split segments from container
+        container.segments = container.segments.filter(
+            s => !(addedObjects || []).includes(s)
+        );
 
-                // Re-register merged segment ends
-                const merged = mergeResult.mergedSegment;
-                for (const segId of merged.ends.head) registerSeg(segId, merged);
-                for (const segId of merged.ends.tail) registerSeg(segId, merged);
+        // Remove from poppedRanges
+        const prIdx = container.poppedRanges.findIndex(pr => pr.bubbleId === bubbleId);
+        if (prIdx !== -1) container.poppedRanges.splice(prIdx, 1);
+
+        // Restore the old segment
+        if (removedSegment) {
+            container.segments.push(removedSegment);
+            // Sort segments by tRange start
+            container.segments.sort((a, b) => a.tRange.start - b.tRange.start);
+
+            // Add to model store
+            addObject(removedSegment);
+
+            // Re-register the restored segment's ends
+            for (const segId of removedSegment.ends.head) registerSeg(segId, removedSegment);
+            for (const segId of removedSegment.ends.tail) registerSeg(segId, removedSegment);
+
+            // Re-add restored segment's anchors to sim (if not already there)
+            const existingIids = new Set(getForceNodes().map(n => n.iid));
+            const anchorsToAdd = removedSegment.physicsNodes.filter(
+                n => !existingIids.has(n.iid)
+            );
+            if (anchorsToAdd.length > 0) {
+                insertPoppedContent(chainId, anchorsToAdd, []);
             }
-        } catch (e) {
-            console.warn('[unpop] container merge failed:', e.message);
+        }
+    }
+
+    // 3. Re-add anchors that were removed during materialization
+    if (removedAnchors && removedAnchors.length > 0) {
+        const existingIids = new Set(getForceNodes().map(n => n.iid));
+        const toAdd = removedAnchors.filter(n => !existingIids.has(n.iid));
+        if (toAdd.length > 0) {
+            insertPoppedContent(chainId, toAdd, []);
         }
     }
 
