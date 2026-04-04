@@ -104,13 +104,23 @@ export function createContainerFromChain(chain) {
         String(s).startsWith('s') ? String(s) : `s${s}`
     );
 
+    // Build bubble metadata from chain data
+    // bubbleIds = ["b123", "b124", ...], bubblePositions = [0.0, 0.1, ...]
+    const bubbleIds = chain.bubbleIds || [];
+    const bubblePositions = chain.bubblePositions || [];
+    const bubbles = [];
+    for (let i = 0; i < bubbleIds.length && i < bubblePositions.length; i++) {
+        const id = String(bubbleIds[i]).startsWith('b') ? String(bubbleIds[i]) : `b${bubbleIds[i]}`;
+        bubbles.push({ id, t: bubblePositions[i] });
+    }
+
     return new PolychainContainer({
         id: chainId,
         spineNodes: existingNodes,  // SAME objects as in D3 sim
         spineLinks: existingLinks,  // SAME objects as in D3 sim
         headSegs,
         tailSegs,
-        bubbles: [],
+        bubbles,
     });
 }
 

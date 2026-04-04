@@ -284,20 +284,20 @@ describe('PolychainContainer', () => {
 
     describe('splitAtBubble', () => {
         it('splits into two segments', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(c.segments).toHaveLength(2);
         });
 
         it('left covers [0, 0.45] and right covers [0.55, 1]', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(c.segments[0].tRange.end).toBeCloseTo(0.45);
             expect(c.segments[1].tRange.start).toBeCloseTo(0.55);
         });
 
         it('preserves outer ends, assigns inner ends', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(c.segments[0].ends.head).toEqual(['s10']);
             expect(c.segments[0].ends.tail).toEqual(['s30']);
@@ -306,20 +306,20 @@ describe('PolychainContainer', () => {
         });
 
         it('marks bubble as popped', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(c.poppedBubbles.has('b7')).toBe(true);
         });
 
         it('registers new segment ends in registry', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(registry.resolve('s30')).toBe(c.segments[0]);
             expect(registry.resolve('s31')).toBe(c.segments[1]);
         });
 
         it('creates new anchor nodes for split segments', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(c.segments[0].physicsNodes).toHaveLength(2);
             expect(c.segments[1].physicsNodes).toHaveLength(2);
@@ -328,7 +328,7 @@ describe('PolychainContainer', () => {
 
     describe('mergeAtBubble', () => {
         it('merges two segments back into one', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             const result = c.mergeAtBubble('b7');
             expect(c.segments).toHaveLength(1);
@@ -336,7 +336,7 @@ describe('PolychainContainer', () => {
         });
 
         it('restores original tRange', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             c.mergeAtBubble('b7');
             expect(c.segments[0].tRange.start).toBeCloseTo(0);
@@ -344,7 +344,7 @@ describe('PolychainContainer', () => {
         });
 
         it('restores original ends', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             c.mergeAtBubble('b7');
             expect(c.segments[0].ends.head).toEqual(['s10']);
@@ -352,7 +352,7 @@ describe('PolychainContainer', () => {
         });
 
         it('unmarks bubble as popped', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             c.mergeAtBubble('b7');
             expect(c.poppedBubbles.has('b7')).toBe(false);
@@ -362,7 +362,7 @@ describe('PolychainContainer', () => {
     describe('multiple splits', () => {
         it('handles two non-adjacent splits', () => {
             const c = makeContainer({
-                bubbles: [{ id: 'b7', t: 0.3 }, { id: 'b8', t: 0.7 }],
+                bubbles: [{ id: 'b0', t: 0.1 }, { id: 'b7', t: 0.3 }, { id: 'b5', t: 0.5 }, { id: 'b8', t: 0.7 }, { id: 'b9', t: 0.9 }],
             });
             c.splitAtBubble('b7', 0.3, 0.05, ['s30'], ['s31']);
             c.splitAtBubble('b8', 0.7, 0.05, ['s40'], ['s41']);
@@ -371,7 +371,7 @@ describe('PolychainContainer', () => {
 
         it('merges in reverse order', () => {
             const c = makeContainer({
-                bubbles: [{ id: 'b7', t: 0.3 }, { id: 'b8', t: 0.7 }],
+                bubbles: [{ id: 'b0', t: 0.1 }, { id: 'b7', t: 0.3 }, { id: 'b5', t: 0.5 }, { id: 'b8', t: 0.7 }, { id: 'b9', t: 0.9 }],
             });
             c.splitAtBubble('b7', 0.3, 0.05, ['s30'], ['s31']);
             c.splitAtBubble('b8', 0.7, 0.05, ['s40'], ['s41']);
@@ -385,9 +385,10 @@ describe('PolychainContainer', () => {
     describe('segment rendering pulls from container', () => {
         it('segment getPolyline returns polyline after split', () => {
             const c = makeContainer({
-                bubbles: [{ id: 'b7', t: 0.5 }],
+                bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }],
             });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
+            expect(c.segments).toHaveLength(2);
             const leftPl = c.segments[0].getPolyline();
             const rightPl = c.segments[1].getPolyline();
             expect(leftPl.length).toBeGreaterThanOrEqual(2);
@@ -421,7 +422,7 @@ describe('PolychainContainer', () => {
         });
 
         it('returns 4 anchors after one split', () => {
-            const c = makeContainer({ bubbles: [{ id: 'b7', t: 0.5 }] });
+            const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             expect(c.getAllAnchorNodes()).toHaveLength(4);
         });

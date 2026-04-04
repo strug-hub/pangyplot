@@ -160,6 +160,19 @@ export class PolychainContainer {
      * @param {string[]} sinkSegs   — sink segs of the popped bubble
      * @returns {{ leftSegment, rightSegment, removedSegment }}
      */
+    /**
+     * Split a segment at a popped bubble.
+     *
+     * If one side of the split is empty (no unpopped bubbles in that tRange),
+     * that side does NOT become a PolychainSegment. Instead, its boundary seg
+     * should be materialized as a SegmentObject by the caller. The return value
+     * indicates which sides have segments and which have materializedSegs.
+     *
+     * @returns {{ leftSegment, rightSegment, removedSegment, materializeHead, materializeTail }}
+     *   leftSegment/rightSegment: PolychainSegment or null if that side is empty
+     *   materializeHead: string[] — source segs to materialize (if left side empty)
+     *   materializeTail: string[] — sink segs to materialize (if right side empty)
+     */
     splitAtBubble(bubbleId, tPosition, tWidth, sourceSegs, sinkSegs) {
         this.poppedBubbles.add(bubbleId);
 
@@ -178,39 +191,62 @@ export class PolychainContainer {
         registry.unregisterAll(oldSeg.ends.head);
         registry.unregisterAll(oldSeg.ends.tail);
 
-        // Create left segment: [oldStart, tStart]
-        const leftSeg = new PolychainSegment({
-            id: `${this.id}:${this.segments.length}`,
-            containerId: this.id,
-            headSegs: oldSeg.ends.head,
-            tailSegs: sourceSegs.map(String),
-            tRange: { start: oldSeg.tRange.start, end: tStart },
-            container: this,
-        });
+        // Check if each side would have any unpopped bubbles
+        const leftBubbles = this.bubblesInRange(oldSeg.tRange.start, tStart);
+        const rightBubbles = this.bubblesInRange(tEnd, oldSeg.tRange.end);
 
-        // Create right segment: [tEnd, oldEnd]
-        const rightSeg = new PolychainSegment({
-            id: `${this.id}:${this.segments.length + 1}`,
-            containerId: this.id,
-            headSegs: sinkSegs.map(String),
-            tailSegs: oldSeg.ends.tail,
-            tRange: { start: tEnd, end: oldSeg.tRange.end },
-            container: this,
-        });
+        const result = {
+            leftSegment: null,
+            rightSegment: null,
+            removedSegment: oldSeg,
+            materializeHead: [],   // source segs to add as SegmentObjects
+            materializeTail: [],   // sink segs to add as SegmentObjects
+        };
 
-        // Replace old segment
-        this.segments.splice(segIdx, 1, leftSeg, rightSeg);
+        const newSegments = [];
 
-        // Register new ends
-        registry.registerAll(leftSeg.ends.head, leftSeg);
-        registry.registerAll(leftSeg.ends.tail, leftSeg);
-        registry.registerAll(rightSeg.ends.head, rightSeg);
-        registry.registerAll(rightSeg.ends.tail, rightSeg);
+        // Left side
+        if (leftBubbles.length > 0) {
+            const leftSeg = new PolychainSegment({
+                id: `${this.id}:${this.segments.length}`,
+                containerId: this.id,
+                headSegs: oldSeg.ends.head,
+                tailSegs: sourceSegs.map(String),
+                tRange: { start: oldSeg.tRange.start, end: tStart },
+                container: this,
+            });
+            result.leftSegment = leftSeg;
+            newSegments.push(leftSeg);
+            registry.registerAll(leftSeg.ends.head, leftSeg);
+            registry.registerAll(leftSeg.ends.tail, leftSeg);
+        } else {
+            // Empty left side — materialize source segs instead
+            result.materializeHead = sourceSegs.map(String);
+        }
 
-        // Old segment's anchors should be removed from sim by caller
-        const removedSegment = oldSeg;
+        // Right side
+        if (rightBubbles.length > 0) {
+            const rightSeg = new PolychainSegment({
+                id: `${this.id}:${this.segments.length + 1}`,
+                containerId: this.id,
+                headSegs: sinkSegs.map(String),
+                tailSegs: oldSeg.ends.tail,
+                tRange: { start: tEnd, end: oldSeg.tRange.end },
+                container: this,
+            });
+            result.rightSegment = rightSeg;
+            newSegments.push(rightSeg);
+            registry.registerAll(rightSeg.ends.head, rightSeg);
+            registry.registerAll(rightSeg.ends.tail, rightSeg);
+        } else {
+            // Empty right side — materialize sink segs instead
+            result.materializeTail = sinkSegs.map(String);
+        }
 
-        return { leftSegment: leftSeg, rightSegment: rightSeg, removedSegment };
+        // Replace old segment with new ones
+        this.segments.splice(segIdx, 1, ...newSegments);
+
+        return result;
     }
 
     /**

@@ -68,16 +68,27 @@ export async function popBubbleCircleV2(hit) {
     }
 
     const splitResult = container.splitAtBubble(bubbleId, t, 0.02, sourceSegs, sinkSegs);
-    const { leftSegment, rightSegment, removedSegment } = splitResult;
+    const { leftSegment, rightSegment, removedSegment, materializeHead, materializeTail } = splitResult;
 
     // Register new segment anchor segs in old seg-registry
-    for (const segId of leftSegment.ends.head) registerSeg(segId, leftSegment.headAnchor);
-    for (const segId of leftSegment.ends.tail) registerSeg(segId, leftSegment.tailAnchor);
-    for (const segId of rightSegment.ends.head) registerSeg(segId, rightSegment.headAnchor);
-    for (const segId of rightSegment.ends.tail) registerSeg(segId, rightSegment.tailAnchor);
+    if (leftSegment) {
+        for (const segId of leftSegment.ends.head) registerSeg(segId, leftSegment.headAnchor);
+        for (const segId of leftSegment.ends.tail) registerSeg(segId, leftSegment.tailAnchor);
+    }
+    if (rightSegment) {
+        for (const segId of rightSegment.ends.head) registerSeg(segId, rightSegment.headAnchor);
+        for (const segId of rightSegment.ends.tail) registerSeg(segId, rightSegment.tailAnchor);
+    }
 
-    // --- Create child SimObjects (skip boundary segs — anchors represent them) ---
-    const interiorNodes = (apiData.nodes || []).filter(n => !boundaryIds.has(String(n.id)));
+    // Boundary segs that are represented by anchors (not materialized)
+    const anchoredBoundary = new Set(boundaryIds);
+    for (const segId of materializeHead) anchoredBoundary.delete(segId);
+    for (const segId of materializeTail) anchoredBoundary.delete(segId);
+
+    // --- Create child SimObjects ---
+    // Skip boundary segs that are represented by anchors.
+    // Boundary segs marked for materialization (empty split side) pass through.
+    const interiorNodes = (apiData.nodes || []).filter(n => !anchoredBoundary.has(String(n.id)));
 
     const childObjects = [];
     for (const node of interiorNodes) {
@@ -101,10 +112,10 @@ export async function popBubbleCircleV2(hit) {
         allChildLinks.push(...obj.physicsLinks);
     }
 
-    // Add anchor nodes from the new segments
+    // Add anchor nodes from new segments (only those that were created)
     const anchorNodes = [
-        ...leftSegment.physicsNodes,
-        ...rightSegment.physicsNodes,
+        ...(leftSegment ? leftSegment.physicsNodes : []),
+        ...(rightSegment ? rightSegment.physicsNodes : []),
     ];
 
     // Combine: anchors + child kink nodes
@@ -122,8 +133,10 @@ export async function popBubbleCircleV2(hit) {
     if (newNodes.length === 0) return false;
 
     // --- Register child kink nodes in old seg-registry ---
+    // Skip anchored boundary segs (they're on segment anchors).
+    // Materialized boundary segs ARE registered (they're real nodes now).
     for (const n of newNodes) {
-        if (n.id && !n.isAnchor && !boundaryIds.has(n.id)) {
+        if (n.id && !n.isAnchor && !anchoredBoundary.has(n.id)) {
             registerSeg(n.id, n);
         }
     }
@@ -132,14 +145,14 @@ export async function popBubbleCircleV2(hit) {
     for (const obj of childObjects) {
         if (obj.interior?.insideSegs) {
             for (const segId of obj.interior.insideSegs) {
-                if (!boundaryIds.has(segId)) registerSeg(segId, obj.headNode);
+                if (!anchoredBoundary.has(segId)) registerSeg(segId, obj.headNode);
             }
         }
         for (const segId of obj.ends.head) {
-            if (!boundaryIds.has(segId)) registerSeg(segId, obj.headNode);
+            if (!anchoredBoundary.has(segId)) registerSeg(segId, obj.headNode);
         }
         for (const segId of obj.ends.tail) {
-            if (!boundaryIds.has(segId)) registerSeg(segId, obj.tailNode);
+            if (!anchoredBoundary.has(segId)) registerSeg(segId, obj.tailNode);
         }
     }
 
