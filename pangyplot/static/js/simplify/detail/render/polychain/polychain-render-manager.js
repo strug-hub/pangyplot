@@ -8,20 +8,34 @@ import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/p
 import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-data.js';
 import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta, updateBubblePositions, updateBubblePositionsSegmented } from '../../data/bubble-meta-cache.js';
 import { getAllAnnotations } from '@simplify-data/custom-annotation-data.js';
+import { getContainer } from '../../model/model-manager.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
-        const polylines = getPolychainPolylines(chain.id);
-        // Only fall back to static polyline for chains that haven't been
-        // processed into polychain nodes yet. Pop-created subchains and
-        // chains whose polychain nodes were removed should not be drawn.
-        if (!polylines) {
-            if (chain.parentChain) continue;  // pop subchain with no live nodes — skip
-            // Original backend chain not yet in polychain layer — use static polyline
+
+        // Try the new model first — segments produce their own polylines
+        const container = getContainer(chain.id);
+        let pls = null;
+        if (container) {
+            pls = [];
+            for (const seg of container.segments) {
+                const pl = seg.getPolyline();
+                if (pl.length >= 2) pls.push(pl);
+            }
+            if (pls.length === 0) pls = null;
         }
-        const pls = polylines || [chain.polyline];
+
+        // Fall back to old system
+        if (!pls) {
+            const polylines = getPolychainPolylines(chain.id);
+            if (!polylines) {
+                if (chain.parentChain) continue;
+            }
+            pls = polylines || [chain.polyline];
+        }
+
         const color = getNodeColor(chain);
         if (!byColor.has(color)) byColor.set(color, []);
         byColor.get(color).push(...pls);
@@ -181,9 +195,24 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
     for (const chain of chains) {
         if (chain.polyline.length < 2) continue;
 
+        // --- New model path: segments produce bubble circles directly ---
+        const container = getContainer(chain.id);
+        if (container && container.bubbles.length > 0 && showCircles) {
+            for (const seg of container.segments) {
+                for (const b of seg.getBubbleCircles()) {
+                    const thresh = b.threshold ?? 50;
+                    if (gridSize > thresh) continue;
+                    const fade = Math.min(1, (thresh - gridSize) / BUBBLE_FADE_RANGE);
+                    const color = getNodeColor(b._colorObj ?? b);
+                    if (!byColor.has(color)) byColor.set(color, []);
+                    byColor.get(color).push({ x: b.x, y: b.y, r, alpha: fade });
+                }
+            }
+            continue;  // skip old system for this chain
+        }
+
+        // --- Old system fallback ---
         if (!hasBubbleMeta(chain.id)) {
-            // Don't fetch from backend for pop-created subchains —
-            // their stores are populated by splitBubbleStore
             if (chain.parentChain && !getPolychainPositions(chain.id)) continue;
             fetchBubbleMeta(chain.id, chr);
             continue;
@@ -192,9 +221,6 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
         const store = getBubbleStore(chain.id);
         if (!store || store.positions.length === 0) continue;
 
-        // Update positions in-place from live polychain node positions.
-        // Use segmented positioning if the chain has gaps (popped bubbles)
-        // so circles stay on the correct side of each gap.
         const segments = getVisibleSegments(chain.id);
         if (segments && !(segments.length === 1 && segments[0].tStart === 0 && segments[0].tEnd === 1)) {
             updateBubblePositionsSegmented(chain.id, segments);
@@ -204,7 +230,6 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
             updateBubblePositions(chain.id, pl);
         }
 
-        // Build circle render data from updated positions
         if (showCircles) {
             for (const pos of store.positions) {
                 const thresh = pos.meta.threshold;
@@ -298,8 +323,15 @@ export function drawDetail(svg = null) {
 
     // 4. Hover highlight (skip during SVG export)
     if (!svg && state.hoveredChain) {
-        const polylines = getPolychainPolylines(state.hoveredChain.id);
-        const pls = polylines || [state.hoveredChain.polyline];
+        let pls = null;
+        const hoverContainer = getContainer(state.hoveredChain.id);
+        if (hoverContainer) {
+            pls = hoverContainer.segments.map(s => s.getPolyline()).filter(pl => pl.length >= 2);
+        }
+        if (!pls || pls.length === 0) {
+            const polylines = getPolychainPolylines(state.hoveredChain.id);
+            pls = polylines || [state.hoveredChain.polyline];
+        }
         for (const pl of pls) {
             if (pl.length >= 2) {
                 strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
