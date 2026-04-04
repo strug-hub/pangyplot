@@ -10,7 +10,6 @@ export function drawChromosomeCytoband(data) {
                     .append("svg")
                     .attr("id", "cytoband-chromosome-canvas")
                     .attr("width", "100%")
-                    .attr("height", "auto")
                     .attr("viewBox", viewBoxValue);
 
         return svg;

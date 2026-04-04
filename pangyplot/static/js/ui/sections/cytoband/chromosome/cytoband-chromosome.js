@@ -8,7 +8,6 @@ const cached_data = {};
 
 export function setupChromosomeCytoband() {
     eventBus.subscribe("ui:coordinates-changed", function (data) {
-        console.log('[cytoband-chromosome] received ui:coordinates-changed:', data.chromosome, data.start, data.end, 'source:', data.source);
         if (data.source === "cytoband-chromosome") return;
             fetchAndDrawChromosomeData(data.chromosome, data.start, data.end);
         }
@@ -16,7 +15,6 @@ export function setupChromosomeCytoband() {
 }
 
 export function fetchAndDrawChromosomeData(chromosome, start, end) {
-  console.log('[cytoband-chromosome] fetchAndDraw:', chromosome, 'cached:', chromosome in cached_data);
   if (chromosome in cached_data) {
     updateChromosomeCytoband(cached_data[chromosome], chromosome, start, end);
     return Promise.resolve();
@@ -42,7 +40,6 @@ export function fetchAndDrawChromosomeData(chromosome, start, end) {
 }
 
 function updateChromosomeCytoband(chromData, chromosome, start, end) {
-  console.log('[cytoband-chromosome] updateChromosomeCytoband:', chromosome, 'hasData:', !!chromData);
   const canvasContainer = document.getElementById("cytoband-chromosome-canvas-container");
   const missingInfo = document.getElementById("cytoband-chromosome-no-info");
 
