@@ -80,10 +80,51 @@ export async function popBubbleCircleV2(hit) {
     if (leftSegment) addObject(leftSegment);
     if (rightSegment) addObject(rightSegment);
 
+    // --- Materialize boundary segs where a side is empty ---
+    // When a split side has no bubbles, the boundary seg becomes a real
+    // SegmentObject replacing the anchor. Remove old anchor + its links,
+    // the new kink node takes over in the registry.
+    const { materializeHead, materializeTail } = splitResult;
+    const materializedSegIds = new Set([...materializeHead, ...materializeTail]);
+
+    for (const segId of materializedSegIds) {
+        // Find the API node for this boundary seg
+        const apiNode = (apiData.nodes || []).find(n => String(n.id) === segId);
+        if (!apiNode) continue;
+
+        const obj = SegmentObject.fromApiNode(apiNode, chainId);
+        addObject(obj);
+
+        // Register ends (overwrites old anchor registration)
+        for (const sid of obj.ends.head) registerSeg(sid, obj.headNode);
+        for (const sid of obj.ends.tail) registerSeg(sid, obj.tailNode);
+
+        // Remove the old anchor that tracked this seg + any links to it
+        // The anchor is on the removedSegment (it wasn't reused since hasLeft/hasRight was false)
+        const oldAnchor = materializeHead.includes(segId)
+            ? removedSegment.headAnchor
+            : removedSegment.tailAnchor;
+        if (oldAnchor) {
+            removePoppedContent([oldAnchor.iid]);
+        }
+
+        // Add kink nodes to sim (will be positioned + linked in GFA resolution below)
+        insertPoppedContent(chainId, obj.physicsNodes, obj.physicsLinks);
+
+        // Tag for forces
+        for (const n of obj.physicsNodes) {
+            n.popBubbleId = bubbleId;
+            n.ghostRootId = chainId;
+            n.homeX = n.x; n.homeY = n.y;
+            n.x = hit.x + (n.homeX - n.x) * 0.15;
+            n.y = hit.y + (n.homeY - n.y) * 0.15;
+        }
+    }
+
     // --- Step 3: Create child SimObjects ---
     const boundaryIds = new Set([...sourceSegs, ...sinkSegs]);
 
-    // Filter out boundary seg nodes (anchors represent them)
+    // Filter out boundary seg nodes — anchors or materialized objects handle them
     const interiorApiNodes = (apiData.nodes || []).filter(n =>
         !boundaryIds.has(String(n.id)));
 
