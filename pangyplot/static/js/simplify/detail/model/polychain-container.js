@@ -178,45 +178,52 @@ export class PolychainContainer {
      *   materializeHead: string[] — source segs to materialize (if left side empty)
      *   materializeTail: string[] — sink segs to materialize (if right side empty)
      */
-    splitAtBubble(bubbleId, tPosition, tWidth, sourceSegs, sinkSegs) {
-        const tStart = tPosition - tWidth / 2;
-        const tEnd = tPosition + tWidth / 2;
-        this.poppedRanges.push({ tStart, tEnd, bubbleId });
-
+    splitAtBubble(bubbleId, tPosition, sourceSegs, sinkSegs) {
         // Find which segment covers this t
         const segIdx = this.segments.findIndex(
             s => s.tRange.start <= tPosition && s.tRange.end >= tPosition
         );
         if (segIdx === -1) throw new Error(`No segment covers t=${tPosition}`);
-
         const oldSeg = this.segments[segIdx];
+
+        // Mark as popped — bubblesInRange will now exclude this bubble
+        this.poppedRanges.push({ tStart: tPosition, tEnd: tPosition, bubbleId });
+
+        // Find neighbor bubbles (nearest unpopped on each side)
+        // These define where the split segments end — anchors land on neighbor positions
+        const leftBubbles = this.bubblesInRange(oldSeg.tRange.start, tPosition);
+        const rightBubbles = this.bubblesInRange(tPosition, oldSeg.tRange.end);
+
+        const leftNeighbor = leftBubbles.length > 0 ? leftBubbles[leftBubbles.length - 1] : null;
+        const rightNeighbor = rightBubbles.length > 0 ? rightBubbles[0] : null;
+
+        // Segment boundaries land on neighbor bubble t-positions
+        // so anchors coincide with where the neighbor circles are drawn
+        const leftEnd = leftNeighbor ? leftNeighbor.t : tPosition;
+        const rightStart = rightNeighbor ? rightNeighbor.t : tPosition;
 
         // Unregister old segment's ends
         registry.unregisterAll(oldSeg.ends.head);
         registry.unregisterAll(oldSeg.ends.tail);
 
-        // Check if each side would have any unpopped bubbles
-        const leftBubbles = this.bubblesInRange(oldSeg.tRange.start, tStart);
-        const rightBubbles = this.bubblesInRange(tEnd, oldSeg.tRange.end);
-
         const result = {
             leftSegment: null,
             rightSegment: null,
             removedSegment: oldSeg,
-            materializeHead: [],   // source segs to add as SegmentObjects
-            materializeTail: [],   // sink segs to add as SegmentObjects
+            materializeHead: [],
+            materializeTail: [],
         };
 
         const newSegments = [];
 
-        // Left side
+        // Left side — only create if there are unpopped bubbles
         if (leftBubbles.length > 0) {
             const leftSeg = new PolychainSegment({
                 id: `${this.id}:${this.segments.length}`,
                 containerId: this.id,
                 headSegs: oldSeg.ends.head,
                 tailSegs: sourceSegs.map(String),
-                tRange: { start: oldSeg.tRange.start, end: tStart },
+                tRange: { start: oldSeg.tRange.start, end: leftEnd },
                 container: this,
             });
             result.leftSegment = leftSeg;
@@ -224,18 +231,17 @@ export class PolychainContainer {
             registry.registerAll(leftSeg.ends.head, leftSeg);
             registry.registerAll(leftSeg.ends.tail, leftSeg);
         } else {
-            // Empty left side — materialize source segs instead
             result.materializeHead = sourceSegs.map(String);
         }
 
-        // Right side
+        // Right side — only create if there are unpopped bubbles
         if (rightBubbles.length > 0) {
             const rightSeg = new PolychainSegment({
                 id: `${this.id}:${this.segments.length + 1}`,
                 containerId: this.id,
                 headSegs: sinkSegs.map(String),
                 tailSegs: oldSeg.ends.tail,
-                tRange: { start: tEnd, end: oldSeg.tRange.end },
+                tRange: { start: rightStart, end: oldSeg.tRange.end },
                 container: this,
             });
             result.rightSegment = rightSeg;
@@ -243,7 +249,6 @@ export class PolychainContainer {
             registry.registerAll(rightSeg.ends.head, rightSeg);
             registry.registerAll(rightSeg.ends.tail, rightSeg);
         } else {
-            // Empty right side — materialize sink segs instead
             result.materializeTail = sinkSegs.map(String);
         }
 
