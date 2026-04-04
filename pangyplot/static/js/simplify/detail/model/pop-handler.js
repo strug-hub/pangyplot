@@ -192,16 +192,26 @@ export async function popBubbleCircleV2(hit) {
         });
     }
 
-    // --- Position: squish child nodes to bubble circle position ---
+    // --- Position: center children between the two inner anchors ---
     if (childNodes.length > 0) {
+        // Midpoint between the gap's inner anchors
+        const leftAnchor = leftSegment?.tailAnchor;
+        const rightAnchor = rightSegment?.headAnchor;
+        const spawnX = leftAnchor && rightAnchor
+            ? (leftAnchor.x + rightAnchor.x) / 2
+            : (leftAnchor?.x ?? rightAnchor?.x ?? hit.x);
+        const spawnY = leftAnchor && rightAnchor
+            ? (leftAnchor.y + rightAnchor.y) / 2
+            : (leftAnchor?.y ?? rightAnchor?.y ?? hit.y);
+
         let cx = 0, cy = 0;
         for (const n of childNodes) { cx += n.x; cy += n.y; }
         cx /= childNodes.length; cy /= childNodes.length;
         const squish = 0.15;
         for (const n of childNodes) {
             n.homeX = n.x; n.homeY = n.y;
-            n.x = hit.x + (n.homeX - cx) * squish;
-            n.y = hit.y + (n.homeY - cy) * squish;
+            n.x = spawnX + (n.homeX - cx) * squish;
+            n.y = spawnY + (n.homeY - cy) * squish;
         }
     }
 
