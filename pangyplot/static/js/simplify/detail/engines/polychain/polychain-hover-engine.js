@@ -2,11 +2,31 @@
 
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
-import { getPolychainPositions, getPolychainPolylines, cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
-import { getBubblePositions } from '../../data/bubble-meta-cache.js';
+import { cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
 import { getContainer } from '../../model/model-manager.js';
 
 const HIT_RADIUS_PX = 12;
+
+/**
+ * Get the live polyline for a chain from the container's segments.
+ * Returns a flat [[x,y],...] array (concatenated from all segments).
+ */
+function getChainPolyline(chainId, chain) {
+    const container = getContainer(chainId);
+    if (container) {
+        const points = [];
+        for (const seg of container.segments) {
+            const pl = seg.getPolyline();
+            for (const p of pl) points.push(p);
+        }
+        if (points.length >= 2) return points;
+    }
+    // Fallback: spine nodes directly
+    if (container?.spineNodes?.length >= 2) {
+        return container.spineNodes.map(n => [n.x, n.y]);
+    }
+    return chain?.polyline || [];
+}
 
 export function hitTestChains(dataX, dataY) {
     if (!state.detailData || state.detailOpacity < 0.5) return null;
@@ -15,16 +35,13 @@ export function hitTestChains(dataX, dataY) {
     let bestChain = null;
 
     for (const chain of state.detailData.chains) {
-        const polylines = getPolychainPolylines(chain.id);
-        if (!polylines && chain.parentChain) continue;
-        const pls = polylines || [chain.polyline];
-        for (const pl of pls) {
-            for (let i = 0; i < pl.length - 1; i++) {
-                const d = pointToSegmentDist(dataX, dataY, pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1]);
-                if (d < bestDist) {
-                    bestDist = d;
-                    bestChain = chain;
-                }
+        const pl = getChainPolyline(chain.id, chain);
+        if (pl.length < 2) continue;
+        for (let i = 0; i < pl.length - 1; i++) {
+            const d = pointToSegmentDist(dataX, dataY, pl[i][0], pl[i][1], pl[i+1][0], pl[i+1][1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestChain = chain;
             }
         }
     }
@@ -35,8 +52,8 @@ export function chainsInRect(minX, minY, maxX, maxY) {
     if (!state.detailData) return [];
     const result = [];
     for (const chain of state.detailData.chains) {
-        const pl = getPolychainPositions(chain.id) || chain.polyline;
-        if (!pl || pl.length < 2) continue;
+        const pl = getChainPolyline(chain.id, chain);
+        if (pl.length < 2) continue;
 
         // Quick AABB rejection
         let plMinX = Infinity, plMaxX = -Infinity;
@@ -58,7 +75,6 @@ export function chainsInRect(minX, minY, maxX, maxY) {
         // Walk each segment, clip to rect, track min/max arc-length inside rect
         let arcMin = Infinity, arcMax = -Infinity;
         for (let i = 0; i < pl.length - 1; i++) {
-            // Check if vertex itself is inside rect
             const vx = pl[i][0], vy = pl[i][1];
             if (vx >= minX && vx <= maxX && vy >= minY && vy <= maxY) {
                 const d = cumLen[i];
@@ -77,7 +93,6 @@ export function chainsInRect(minX, minY, maxX, maxY) {
             if (d0 < arcMin) arcMin = d0;
             if (d1 > arcMax) arcMax = d1;
         }
-        // Check last vertex
         const lx = pl[pl.length - 1][0], ly = pl[pl.length - 1][1];
         if (lx >= minX && lx <= maxX && ly >= minY && ly <= maxY) {
             const d = cumLen[pl.length - 1];
@@ -96,10 +111,6 @@ export function chainsInRect(minX, minY, maxX, maxY) {
     return result;
 }
 
-/**
- * Clip a line segment to an axis-aligned rect using parametric clipping.
- * Returns { tMin, tMax } (segment-local t ∈ [0,1]) or null if no intersection.
- */
 function clipSegmentToRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
     const dx = bx - ax, dy = by - ay;
 
@@ -127,8 +138,7 @@ function clipSegmentToRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
 
 /**
  * Hit-test all bubble circles across all visible chains.
- * Uses precomputed positions from the render pass (stored in bubble-meta-cache).
- * Returns { x, y, meta, chainId } or null.
+ * Reads cached positions from last render pass on each segment.
  */
 export function hitTestBubbleCircles(dataX, dataY) {
     if (!state.detailData || state.detailOpacity < 0.5) return null;
@@ -138,33 +148,18 @@ export function hitTestBubbleCircles(dataX, dataY) {
     let best = null;
 
     for (const chain of state.detailData.chains) {
-        // New model: read cached bubble circles from last render
         const container = getContainer(chain.id);
-        if (container) {
-            for (const seg of container.segments) {
-                const circles = seg._lastBubbleCircles;
-                if (!circles) continue;
-                for (const b of circles) {
-                    if (gridSize > (b.threshold || 20)) continue;
-                    const d = Math.hypot(dataX - b.x, dataY - b.y);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        best = { x: b.x, y: b.y, meta: b.meta, chainId: chain.id, bubbleId: b.id, t: b.t };
-                    }
+        if (!container) continue;
+        for (const seg of container.segments) {
+            const circles = seg._lastBubbleCircles;
+            if (!circles) continue;
+            for (const b of circles) {
+                if (gridSize > (b.threshold || 20)) continue;
+                const d = Math.hypot(dataX - b.x, dataY - b.y);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = { x: b.x, y: b.y, meta: b.meta, chainId: chain.id, bubbleId: b.id, t: b.t };
                 }
-            }
-            continue;
-        }
-
-        // Old system fallback
-        const positions = getBubblePositions(chain.id);
-        if (!positions || positions.length === 0) continue;
-        for (const { x, y, meta } of positions) {
-            if (gridSize > (meta.threshold || 20)) continue;
-            const d = Math.hypot(dataX - x, dataY - y);
-            if (d < bestDist) {
-                bestDist = d;
-                best = { x, y, meta, chainId: chain.id };
             }
         }
     }
@@ -173,9 +168,9 @@ export function hitTestBubbleCircles(dataX, dataY) {
 
 export function getBubbleCircleTooltip(hit) {
     const meta = hit.meta;
+    if (!meta) return { bubble: hit.bubbleId || '?', chain: hit.chainId };
     const gcPct = meta.length > 0
         ? ((meta.gc_count / meta.length) * 100).toFixed(1) + '%' : '?';
-    // Trim connector suffix (e.g. "c42:5-10" → "c42")
     const chainLabel = hit.chainId.split(':')[0];
     return {
         bubble: meta.id,
@@ -187,8 +182,6 @@ export function getBubbleCircleTooltip(hit) {
 }
 
 export function getChainTooltip(chain) {
-    // Show the root chain identity — subchains (c42:0, c42:1) are all
-    // pieces of the same chain, so display the root ID.
     const rootId = chain.id.split(':')[0];
     let label = rootId;
     if (chain.ancestors?.length > 0) {
@@ -201,6 +194,9 @@ export function getChainTooltip(chain) {
         label = parts.join(' > ');
     }
 
+    const container = getContainer(chain.id);
+    const nodeCount = container?.spineNodes?.length ?? chain.polyline?.length ?? 0;
+
     const gcPct = chain.length > 0 ? ((chain.gcCount / chain.length) * 100).toFixed(1) + '%' : '?';
     return {
         chain: label,
@@ -209,7 +205,7 @@ export function getChainTooltip(chain) {
         gc: gcPct,
         steps: chain.stepCount,
         bubbles: chain.nBubbles,
-        polyline: (getPolychainPositions(chain.id) || chain.polyline).length,
+        polyline: nodeCount,
         loop: chain.loopFactor != null ? chain.loopFactor.toFixed(2) : '?',
         depth: chain.depth,
     };
