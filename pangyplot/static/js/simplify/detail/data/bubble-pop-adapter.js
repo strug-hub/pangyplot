@@ -5,6 +5,7 @@
 import { state } from '../../simplify-state.js';
 import { popBubbleCircleV2, popBubbleForceNodeV2 } from '../model/pop-handler.js';
 import { getBubbleStore, getBubblePositions } from './bubble-meta-cache.js';
+import { getContainer } from '../model/model-manager.js';
 
 // Re-export V2 handlers under original names for any remaining importers
 export { popBubbleCircleV2 as popBubbleCircle } from '../model/pop-handler.js';
@@ -15,26 +16,32 @@ export { popBubbleForceNodeV2 as popBubbleForceNode } from '../model/pop-handler
  * Each bubble is popped as if the user Ctrl+clicked it.
  */
 export async function popAllBubblesOnChain(chainId) {
-    const store = getBubbleStore(chainId);
-    if (!store || store.bubbles.length === 0) return;
+    const container = getContainer(chainId);
+    if (!container || container.bubbles.length === 0) return;
 
-    // Snapshot bubble IDs — the store mutates as we pop
-    const bubbleIds = store.bubbles.map(b => b.id);
+    // Snapshot bubble IDs from the container
+    const bubbleIds = container.bubbles.map(b => b.id);
+    const metaStore = getBubbleStore(chainId);
 
-    for (let i = 0; i < bubbleIds.length; i++) {
-        // Re-fetch positions each iteration (they shift after each pop)
-        const currentPositions = getBubblePositions(chainId);
-        const currentStore = getBubbleStore(chainId);
-        if (!currentStore || !currentPositions) break;
+    for (const bubbleId of bubbleIds) {
+        // Skip already-popped bubbles
+        if (container.poppedRanges.some(pr => pr.bubbleId === bubbleId)) continue;
 
-        // Find this bubble in the current store (may have shifted index)
-        const idx = currentStore.bubbles.findIndex(b => b.id === bubbleIds[i]);
-        if (idx === -1) continue;  // already popped or removed
+        // Find bubble in container to get its t
+        const bubble = container.bubbles.find(b => b.id === bubbleId);
+        if (!bubble) continue;
 
-        const pos = currentPositions[idx];
-        if (!pos) continue;
+        // Get position from container
+        const pos = container.positionAt(bubble.t);
 
-        const hit = { x: pos.x, y: pos.y, meta: pos.meta, chainId };
+        // Build meta from cache (match by t if ID doesn't match)
+        let meta = null;
+        if (metaStore?.bubbles) {
+            meta = metaStore.bubbles.find(b => b.id === bubbleId)
+                || metaStore.bubbles.find(b => Math.abs(b.t - bubble.t) < 0.001);
+        }
+
+        const hit = { x: pos.x, y: pos.y, meta: meta || { id: bubbleId, t: bubble.t }, chainId };
         await popBubbleCircleV2(hit);
     }
 }

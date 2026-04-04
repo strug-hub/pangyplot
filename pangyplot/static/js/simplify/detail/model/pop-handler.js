@@ -111,13 +111,12 @@ export async function popBubbleCircleV2(hit) {
         // Add kink nodes to sim (will be positioned + linked in GFA resolution below)
         insertPoppedContent(chainId, obj.physicsNodes, obj.physicsLinks);
 
-        // Tag for forces
+        // Tag for forces — position at the anchor's location (no squish needed,
+        // boundary segs are single points at the gap edge)
         for (const n of obj.physicsNodes) {
             n.popBubbleId = bubbleId;
             n.ghostRootId = chainId;
             n.homeX = n.x; n.homeY = n.y;
-            n.x = hit.x + (n.homeX - n.x) * 0.15;
-            n.y = hit.y + (n.homeY - n.y) * 0.15;
         }
     }
 
