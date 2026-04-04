@@ -105,7 +105,13 @@ export function initPolychainLayer() {
     // Phase C: Resolve shared-segment links through registry
     resolveSharedSegmentLinks(dd, allLinks);
 
-    // Phase D: Add everything to D3 sim
+    // Phase D: Create invisible spine-level copies of inter-chain links.
+    // Visible links attach to anchors (pinned) for the model layer.
+    // Invisible copies attach to spine head/tail nodes (free) so link forces
+    // can pull chains — same physics as before the SimObject refactor.
+    _addSpinePhysicsLinks(allLinks);
+
+    // Phase E: Add everything to D3 sim
     if (allNodes.length > 0) {
         addPoppedNodes(allNodes, allLinks);
     }
@@ -118,6 +124,19 @@ export function initPolychainLayer() {
 function _ensurePrefix(id) {
     const s = String(id);
     return s.startsWith('s') ? s : `s${s}`;
+}
+
+/**
+ * For a segId that belongs to a chain, return the spine head or tail node.
+ * Returns null if the seg doesn't belong to any chain.
+ */
+function _spineNodeForSeg(segId) {
+    const obj = registry.resolve(segId);
+    if (!obj || !obj.container) return null;
+    const c = obj.container;
+    if (c.headSegs.includes(segId)) return c.spineNodes[0];
+    if (c.tailSegs.includes(segId)) return c.spineNodes[c.spineNodes.length - 1];
+    return null;
 }
 
 /**
@@ -294,6 +313,56 @@ function resolveSharedSegmentLinks(dd, allLinks) {
 }
 
 /**
+ * Create invisible spine-level copies of inter-chain and junction GFA links.
+ *
+ * Visible links connect to anchors/kink nodes (for the model layer).
+ * But anchors are pinned — link forces can't pull the chain through them.
+ * Invisible copies connect to spine head/tail nodes (free-moving) so the
+ * physics matches the old system where junction links shaped chain loops.
+ *
+ * These are never removed — they live as long as the spine, just like
+ * spine links between consecutive nodes.
+ */
+function _addSpinePhysicsLinks(allLinks) {
+    const spineLinks = [];
+    // Scan links that were just added (GFA links + inter-chain links)
+    for (const link of allLinks) {
+        if (link.isPolychainLink || link.isSpineLink) continue;  // skip spine infrastructure
+        if (link.isKinkLink) continue;  // skip within-segment kink links
+
+        // Find spine node equivalents for each endpoint
+        const srcSegId = link.sourceId || link.sourceSegId;
+        const tgtSegId = link.targetId || link.targetSegId;
+        if (!srcSegId || !tgtSegId) continue;
+
+        const srcSpine = _spineNodeForSeg(srcSegId);
+        const tgtSpine = _spineNodeForSeg(tgtSegId);
+        // Need at least one spine endpoint (the other may be a junction kink node)
+        if (!srcSpine && !tgtSpine) continue;
+
+        const src = srcSpine || link.source;
+        const tgt = tgtSpine || link.target;
+        if (src === tgt) continue;
+        // Both are strings (iids) at this point if from _makeGfaLink — resolve to objects
+        const srcRef = typeof src === 'object' ? src : (srcSpine || link.source);
+        const tgtRef = typeof tgt === 'object' ? tgt : (tgtSpine || link.target);
+
+        spineLinks.push({
+            source: srcRef,
+            target: tgtRef,
+            isSpineLink: true,
+            isPolychainLink: false,
+            isKinkLink: false,
+            isDrawn: false,
+            isVisible: false,
+            chainId: null,
+            length: link.length || 10,
+        });
+    }
+    allLinks.push(...spineLinks);
+}
+
+/**
  * Add containers for newly added chains (incremental on pan).
  */
 export function addChainsToPolychainLayer(newChains, dd) {
@@ -348,6 +417,9 @@ export function addChainsToPolychainLayer(newChains, dd) {
             }
         }
     }
+
+    // Invisible spine-level copies for physics
+    _addSpinePhysicsLinks(allLinks);
 
     if (allNodes.length > 0 || allLinks.length > 0) {
         addPoppedNodes(allNodes, allLinks);
