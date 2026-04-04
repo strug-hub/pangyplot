@@ -44,8 +44,8 @@ export class PolychainContainer {
         /** All bubbles on this chain with their t-positions. */
         this.bubbles = opts.bubbles || [];
 
-        /** Bubble IDs that have been popped. */
-        this.poppedBubbles = new Set();
+        /** Popped t-ranges: [{tStart, tEnd, bubbleId}] */
+        this.poppedRanges = [];
 
         /** @type {PolychainSegment[]} */
         this.segments = [];
@@ -142,9 +142,14 @@ export class PolychainContainer {
      * @returns {Array} — subset of this.bubbles
      */
     bubblesInRange(tStart, tEnd) {
-        return this.bubbles.filter(b =>
-            b.t >= tStart && b.t <= tEnd && !this.poppedBubbles.has(b.id)
-        );
+        return this.bubbles.filter(b => {
+            if (b.t < tStart || b.t > tEnd) return false;
+            // Exclude bubbles within any popped range
+            for (const pr of this.poppedRanges) {
+                if (b.t >= pr.tStart && b.t <= pr.tEnd) return false;
+            }
+            return true;
+        });
     }
 
     // ---------------------------------------------------------------
@@ -174,10 +179,9 @@ export class PolychainContainer {
      *   materializeTail: string[] — sink segs to materialize (if right side empty)
      */
     splitAtBubble(bubbleId, tPosition, tWidth, sourceSegs, sinkSegs) {
-        this.poppedBubbles.add(bubbleId);
-
         const tStart = tPosition - tWidth / 2;
         const tEnd = tPosition + tWidth / 2;
+        this.poppedRanges.push({ tStart, tEnd, bubbleId });
 
         // Find which segment covers this t
         const segIdx = this.segments.findIndex(
@@ -255,20 +259,22 @@ export class PolychainContainer {
      * @returns {{ mergedSegment, removedSegments }}
      */
     mergeAtBubble(bubbleId) {
-        this.poppedBubbles.delete(bubbleId);
+        // Remove from popped ranges
+        const prIdx = this.poppedRanges.findIndex(pr => pr.bubbleId === bubbleId);
+        const poppedRange = prIdx !== -1 ? this.poppedRanges[prIdx] : null;
+        if (prIdx !== -1) this.poppedRanges.splice(prIdx, 1);
 
-        // Find the two segments adjacent to the popped bubble's t-range
-        // by looking for segments whose tRange endpoints meet at the gap
-        const bubble = this.bubbles.find(b => b.id === bubbleId);
-        if (!bubble) throw new Error(`Unknown bubble ${bubbleId}`);
+        // Find the t-position of the popped bubble
+        const tPos = poppedRange ? (poppedRange.tStart + poppedRange.tEnd) / 2 : null;
+        if (tPos == null) throw new Error(`No popped range for bubble ${bubbleId}`);
 
         // Find segments where one's end and another's start bracket the bubble
         let leftSeg = null, rightSeg = null;
         for (const s of this.segments) {
-            if (s.tRange.end <= bubble.t && (!leftSeg || s.tRange.end > leftSeg.tRange.end)) {
+            if (s.tRange.end <= tPos && (!leftSeg || s.tRange.end > leftSeg.tRange.end)) {
                 leftSeg = s;
             }
-            if (s.tRange.start >= bubble.t && (!rightSeg || s.tRange.start < rightSeg.tRange.start)) {
+            if (s.tRange.start >= tPos && (!rightSeg || s.tRange.start < rightSeg.tRange.start)) {
                 rightSeg = s;
             }
         }
@@ -326,7 +332,7 @@ export class PolychainContainer {
         this.segments = [];
         this.spineNodes = [];
         this.spineLinks = [];
-        this.poppedBubbles.clear();
+        this.poppedRanges = [];
     }
 
     _createInitialSegment() {

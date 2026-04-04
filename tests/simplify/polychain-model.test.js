@@ -159,7 +159,7 @@ describe('PolychainSegment', () => {
                     { id: 'b2', t: 0.75 },
                 ],
             });
-            c.poppedBubbles.add('b1');
+            c.poppedRanges.push({ tStart: 0.24, tEnd: 0.26, bubbleId: 'b1' });
             const circles = c.segments[0].getBubbleCircles();
             expect(circles).toHaveLength(1);
             expect(circles[0].id).toBe('b2');
@@ -277,7 +277,7 @@ describe('PolychainContainer', () => {
             const c = makeContainer({
                 bubbles: [{ id: 'b1', t: 0.5 }],
             });
-            c.poppedBubbles.add('b1');
+            c.poppedRanges.push({ tStart: 0.49, tEnd: 0.51, bubbleId: 'b1' });
             expect(c.bubblesInRange(0, 1)).toHaveLength(0);
         });
     });
@@ -308,7 +308,7 @@ describe('PolychainContainer', () => {
         it('marks bubble as popped', () => {
             const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
-            expect(c.poppedBubbles.has('b7')).toBe(true);
+            expect(c.poppedRanges.some(pr => pr.bubbleId === 'b7')).toBe(true);
         });
 
         it('registers new segment ends in registry', () => {
@@ -355,7 +355,7 @@ describe('PolychainContainer', () => {
             const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, 0.1, ['s30'], ['s31']);
             c.mergeAtBubble('b7');
-            expect(c.poppedBubbles.has('b7')).toBe(false);
+            expect(c.poppedRanges.some(pr => pr.bubbleId === 'b7')).toBe(false);
         });
     });
 

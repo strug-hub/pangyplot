@@ -104,23 +104,26 @@ export function createContainerFromChain(chain) {
         String(s).startsWith('s') ? String(s) : `s${s}`
     );
 
-    // Build bubble metadata from chain data
-    // bubbleIds = ["b123", "b124", ...], bubblePositions = [0.0, 0.1, ...]
+    // Build bubble metadata from chain data.
+    // bubblePositions (from bubble_t) is always present.
+    // bubbleIds (from bubble_ids) may be empty for non-connector chains —
+    // in that case, use index-based placeholder IDs. The real IDs come
+    // from /bubble-meta and are matched by t-position during pop.
     const bubbleIds = chain.bubbleIds || chain.bubble_ids || [];
     const bubblePositions = chain.bubblePositions || chain.bubble_t || [];
-    if (bubbleIds.length === 0) {
-        console.warn(`[factory] chain ${chainId}: no bubbleIds (keys: ${Object.keys(chain).filter(k => k.includes('ubble')).join(',')})`);
-    }
     const bubbles = [];
-    for (let i = 0; i < bubbleIds.length && i < bubblePositions.length; i++) {
-        const id = String(bubbleIds[i]).startsWith('b') ? String(bubbleIds[i]) : `b${bubbleIds[i]}`;
+    for (let i = 0; i < bubblePositions.length; i++) {
+        const id = i < bubbleIds.length && bubbleIds[i]
+            ? (String(bubbleIds[i]).startsWith('b') ? String(bubbleIds[i]) : `b${bubbleIds[i]}`)
+            : `_bubble_${chainId}_${i}`;
         bubbles.push({ id, t: bubblePositions[i] });
     }
 
+    console.log(`[factory] creating container ${chainId}: ${bubbles.length} bubbles, ${existingNodes.length} spine nodes`);
     return new PolychainContainer({
         id: chainId,
-        spineNodes: existingNodes,  // SAME objects as in D3 sim
-        spineLinks: existingLinks,  // SAME objects as in D3 sim
+        spineNodes: existingNodes,
+        spineLinks: existingLinks,
         headSegs,
         tailSegs,
         bubbles,
