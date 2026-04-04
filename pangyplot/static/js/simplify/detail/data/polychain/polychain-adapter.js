@@ -23,17 +23,6 @@ window.__pcNodes = chainPolychainNodes;  // debug access
 // "s{id}" → polychain node (endpoint seg → head or tail node)
 const segToPolychain = new Map();
 
-// Per-root-chain counter for generating unique subchain IDs (c42:0, c42:1, ...)
-const subchainCounters = new Map();
-
-// chainId → Array<{ leftNodeIdx, rightNodeIdx, bubbleId, childIids, tStart, tEnd }> — popped gaps
-const chainGaps = new Map();
-
-/** Get gaps for a chain (empty array if none). */
-export function getChainGaps(chainId) {
-    return chainGaps.get(chainId) || [];
-}
-
 /** Check if a root chain ID has been split by pops (has subchains). */
 export function isSplitRootChain(chainId) {
     const rootId = chainId.split(':')[0];
@@ -603,8 +592,11 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
         if (g.tEnd > gapEntry.tEnd) gapEntry.tEnd = g.tEnd;
     }
 
-    // Collect ALL anchors from absorbed gaps for cleanup
+    // Collect internal anchors from absorbed gaps (not shared with the new gap).
+    // Their trackSegIds are shared boundary segs that should now be materialized.
     const allAbsorbedAnchors = new Set();
+    const sharedSegs = new Set();  // seg IDs to materialize as real nodes
+    const absorbedAnchorNodes = []; // anchor nodes to rewire + remove (caller handles)
     for (const g of absorbed) {
         if (g.anchorL) allAbsorbedAnchors.add(g.anchorL);
         if (g.anchorR) allAbsorbedAnchors.add(g.anchorR);
@@ -614,18 +606,20 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
     if (right) allAbsorbedAnchors.delete(right.node);
     allAbsorbedAnchors.delete(null);
 
-    if (absorbed.length > 0) {
-        // Remove ALL bridge links that touch any absorbed anchor
-        const simLinks = getForceLinks();
-        for (let i = simLinks.length - 1; i >= 0; i--) {
-            const l = simLinks[i];
-            if (!l.isBridgeLink) continue;
-            if (allAbsorbedAnchors.has(l.source) || allAbsorbedAnchors.has(l.target)) {
-                simLinks.splice(i, 1);
-            }
+    // Collect shared seg IDs from absorbed internal anchors.
+    // These are boundary segs where both adjacent bubbles are now popped,
+    // so the real segment node should replace the anchor.
+    for (const anchor of allAbsorbedAnchors) {
+        for (const segId of (anchor.trackSegIds || [])) {
+            sharedSegs.add(String(segId).startsWith('s') ? String(segId) : `s${segId}`);
         }
+        absorbedAnchorNodes.push(anchor);
+    }
 
-        // Remove absorbed anchor nodes from polychain + force sim
+    if (absorbed.length > 0) {
+        // Remove absorbed anchor nodes from the POLYCHAIN array and unsplice
+        // their polychain links, but leave them in the force sim so the caller
+        // can rewire existing links before removing them.
         for (const g of absorbed) {
             for (const anchor of [g.anchorL, g.anchorR]) {
                 if (!anchor) continue;
@@ -646,7 +640,6 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
         }
 
         // Merge outer seg sets from all absorbed gaps into the new gap.
-        // Merged outer segs used by resolveAllLinks for registry-based resolution.
         const allSourceSegs = new Set(gapEntry.outerSourceSegs);
         const allSinkSegs = new Set(gapEntry.outerSinkSegs);
         for (const g of absorbed) {
@@ -676,7 +669,14 @@ export function createGapAtPop(chainId, bubbleId, poppedSourceSegs = [], poppedS
 
     gaps.push(gapEntry);
 
-    return { leftNode: left ? left.node : null, rightNode: right ? right.node : null, gapEntry, didAbsorb: absorbed.length > 0 };
+    return {
+        leftNode: left ? left.node : null,
+        rightNode: right ? right.node : null,
+        gapEntry,
+        didAbsorb: absorbed.length > 0,
+        sharedSegs,           // seg IDs to materialize (both neighbors popped)
+        absorbedAnchors: absorbedAnchorNodes,  // anchor nodes to rewire + remove
+    };
 }
 
 /**
