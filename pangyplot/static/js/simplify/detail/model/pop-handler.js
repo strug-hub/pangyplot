@@ -111,7 +111,7 @@ export async function popBubbleCircleV2(hit) {
         // Add kink nodes to sim (will be positioned + linked in GFA resolution below)
         insertPoppedContent(chainId, obj.physicsNodes, obj.physicsLinks);
 
-        // Position at the old anchor's live location, not ODGI layout
+        // Spawn at anchor's live position, pull toward ODGI layout
         const anchorPos = oldAnchor
             ? { x: oldAnchor.x, y: oldAnchor.y }
             : container.positionAt(t);
@@ -120,8 +120,7 @@ export async function popBubbleCircleV2(hit) {
             n.ghostRootId = chainId;
             n.x = anchorPos.x;
             n.y = anchorPos.y;
-            n.homeX = anchorPos.x;
-            n.homeY = anchorPos.y;
+            // homeX/homeY stays as ODGI coords (set during kink creation)
         }
     }
 
@@ -197,9 +196,7 @@ export async function popBubbleCircleV2(hit) {
         });
     }
 
-    // --- Position: center children where the bubble circle was ---
-    // homeX/homeY set to spawn position so layout force keeps them here,
-    // not at ODGI coordinates which may be far from the live chain.
+    // --- Position: spawn at bubble circle, pull toward ODGI layout ---
     if (childNodes.length > 0) {
         const bubblePos = container.positionAt(t);
         let cx = 0, cy = 0;
@@ -207,10 +204,9 @@ export async function popBubbleCircleV2(hit) {
         cx /= childNodes.length; cy /= childNodes.length;
         const squish = 0.15;
         for (const n of childNodes) {
-            n.x = bubblePos.x + (n.x - cx) * squish;
-            n.y = bubblePos.y + (n.y - cy) * squish;
-            n.homeX = n.x;
-            n.homeY = n.y;
+            n.homeX = n.x; n.homeY = n.y;  // ODGI layout (for layout force pull)
+            n.x = bubblePos.x + (n.homeX - cx) * squish;  // spawn position
+            n.y = bubblePos.y + (n.homeY - cy) * squish;
         }
     }
 
