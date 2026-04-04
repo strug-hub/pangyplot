@@ -116,6 +116,7 @@ export async function popBubbleCircleV2(hit) {
             ? { x: oldAnchor.x, y: oldAnchor.y }
             : container.positionAt(t);
         for (const n of obj.physicsNodes) {
+            n.chainId = chainId;
             n.popBubbleId = bubbleId;
             n.ghostRootId = chainId;
             n.x = anchorPos.x;
@@ -223,6 +224,7 @@ export async function popBubbleCircleV2(hit) {
 
     // Tag child nodes for forces
     for (const n of childNodes) {
+        n.chainId = chainId;
         n.popBubbleId = bubbleId;
         n.ghostRootId = chainId;
     }
