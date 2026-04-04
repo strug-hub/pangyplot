@@ -10,6 +10,8 @@ import { PolychainContainer } from './polychain-container.js';
 import { SegmentObject } from './segment-object.js';
 import { BubbleObject } from './bubble-object.js';
 import * as registry from './segment-registry.js';
+import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
+import { getForceLinks } from '../data/force-data.js';
 
 // --- Polychain resampling (mirrors polychain-adapter.js logic) ---
 
@@ -77,58 +79,22 @@ function computeLoopFactor(polyline) {
  * @returns {PolychainContainer}
  */
 export function createContainerFromChain(chain) {
-    const samples = chain.polychainNodes || resamplePolyline(chain);
-    if (!samples || samples.length < 2) return null;
-
-    const nSamples = samples.length;
-    const loopFactor = computeLoopFactor(chain.polyline);
     const chainId = chain.id;
 
-    // Build spine nodes (same shape as polychain-adapter creates)
-    const spineNodes = [];
-    for (let i = 0; i < nSamples; i++) {
-        spineNodes.push({
-            id: `pn_${chainId}_${i}`,
-            iid: `pn_${chainId}_${i}`,
-            x: samples[i][0],
-            y: samples[i][1],
-            homeX: samples[i][0],
-            homeY: samples[i][1],
-            chainId: chainId,
-            isPolychainNode: true,
-            isSpineNode: true,
-            nodeIndex: i,
-            chainNodeCount: nSamples,
-            loopFactor: loopFactor,
-            radius: 0,
-            width: 0,
-        });
-    }
+    // Use the EXISTING polychain nodes already in the D3 sim (created by
+    // initPolychainLayer). The container references the same node objects
+    // so when D3 forces move them, positionAt() sees live positions.
+    const existingNodes = getPolychainNodesForChain(chainId);
+    if (!existingNodes || existingNodes.length < 2) return null;
 
-    // Build spine links (sequential, same shape as polychain-adapter)
-    let chainArcLen = 0;
-    for (let i = 0; i < nSamples - 1; i++) {
-        chainArcLen += Math.hypot(
-            samples[i + 1][0] - samples[i][0],
-            samples[i + 1][1] - samples[i][1]
-        );
-    }
-    const uniformLen = chainArcLen / (nSamples - 1) || 1;
-
-    const spineLinks = [];
-    for (let i = 0; i < nSamples - 1; i++) {
-        spineLinks.push({
-            source: spineNodes[i],
-            target: spineNodes[i + 1],
-            isSpineLink: true,
-            isPolychainLink: true, // compat: forces check this flag
-            isKinkLink: false,
-            chainId: chainId,
-            length: uniformLen,
-            loopFactor: loopFactor,
-            chainArcLen: chainArcLen,
-        });
-    }
+    // Find existing polychain links for these nodes from the D3 sim
+    const nodeIids = new Set(existingNodes.map(n => n.iid));
+    const existingLinks = getForceLinks().filter(l =>
+        l.isPolychainLink &&
+        l.chainId === chainId &&
+        nodeIids.has(typeof l.source === 'object' ? l.source.iid : l.source) &&
+        nodeIids.has(typeof l.target === 'object' ? l.target.iid : l.target)
+    );
 
     // Normalize seg IDs to s-prefixed
     const headSegs = (chain.sourceSegs || chain.source_segs || []).map(s =>
@@ -140,11 +106,11 @@ export function createContainerFromChain(chain) {
 
     return new PolychainContainer({
         id: chainId,
-        spineNodes,
-        spineLinks,
+        spineNodes: existingNodes,  // SAME objects as in D3 sim
+        spineLinks: existingLinks,  // SAME objects as in D3 sim
         headSegs,
         tailSegs,
-        bubbleMeta: [], // populated later by bubble-meta-cache
+        bubbles: [],
     });
 }
 
