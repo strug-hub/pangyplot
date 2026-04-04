@@ -55,7 +55,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         if (s.x == null || t.x == null) continue;
         if (!linkVisible(s, t)) continue;
         // Skip drawing links to hidden backbone nodes (physics-only)
-        if (s?.isSpineNode || t?.isSpineNode || s?.isPolychainNode || t?.isPolychainNode) continue;
+        // Spine-internal links already skipped above (isPolychainLink check).
         const seg = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
 
         if (link.isDel) {
