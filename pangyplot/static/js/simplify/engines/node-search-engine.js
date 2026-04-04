@@ -6,7 +6,7 @@
 import { state } from '../simplify-state.js';
 import { getLevel } from '../skeleton/data/skeleton-data.js';
 import { getForceNodes } from '../detail/data/force-data.js';
-import { getBubblePositions } from '../detail/data/bubble-meta-cache.js';
+import { getAllContainers } from '../detail/model/model-manager.js';
 import popTree from '../detail/data/pop-tree.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { formatNodeLabel } from '@format-utils';
@@ -74,13 +74,14 @@ function findBubble(numId) {
     const chains = state.detailData?.chains;
     if (!chains) return null;
 
-    for (const chain of chains) {
-        const positions = getBubblePositions(chain.id);
-        if (!positions) continue;
-        for (const pos of positions) {
-            if (pos.meta.id === bubbleId) {
-                if (pos.x === -99999) continue;
-                return [{ ref: pos, type: 'bubble' }];
+    for (const [, container] of getAllContainers()) {
+        for (const seg of container.segments) {
+            const circles = seg._lastBubbleCircles;
+            if (!circles) continue;
+            for (const b of circles) {
+                if (b.id === bubbleId || b.meta?.id === bubbleId) {
+                    return [{ ref: { x: b.x, y: b.y, meta: b.meta }, type: 'bubble' }];
+                }
             }
         }
     }
