@@ -4,6 +4,31 @@
 import { pcSettings, loopLevels } from './pc-settings.js';
 
 /**
+ * Group force nodes by chain ID, filtering and optionally sorting.
+ * @param {object[]} nodes — all sim nodes
+ * @param {object} opts
+ * @param {function} [opts.filter] — node predicate (default: isPolychainNode)
+ * @param {boolean} [opts.sort] — sort groups by nodeIndex
+ * @param {boolean} [opts.rootKey] — group by root chain ID (split on ':')
+ * @returns {Map<string, object[]>}
+ */
+function _groupByChain(nodes, { filter, sort, rootKey } = {}) {
+    const pred = filter || (n => n.isPolychainNode);
+    const chains = new Map();
+    for (const n of nodes) {
+        if (!pred(n)) continue;
+        const key = rootKey ? n.chainId.split(':')[0] : n.chainId;
+        let g = chains.get(key);
+        if (!g) { g = []; chains.set(key, g); }
+        g.push(n);
+    }
+    if (sort) {
+        for (const g of chains.values()) g.sort((a, b) => a.nodeIndex - b.nodeIndex);
+    }
+    return chains;
+}
+
+/**
  * Centroid repulsion: pushes each polychain node away from its chain's centroid.
  * Uniform outward pressure that inflates loops evenly. O(n) per tick.
  */
@@ -14,19 +39,15 @@ export function centroidRepulsion() {
         const str = (loopLevels[pcSettings.centroidLevel] ?? 0) * alpha;
         if (str === 0) return;
 
-        // Group by ROOT chain ID. Only polychain nodes participate —
-        // popped content is guided by the chain projection force instead.
+        // Group by ROOT chain ID — connectors share one centroid with parent
+        const rawChains = _groupByChain(nodes, { rootKey: true });
+
+        // Build centroid + loopFactor for each group
         const chains = new Map();
-        for (const n of nodes) {
-            if (!n.chainId || n.chainId === '__junction__') continue;
-            if (!n.isPolychainNode) continue; // only polychain nodes shape the macro structure
-            const root = n.chainId.split(':')[0];
-            let g = chains.get(root);
-            if (!g) { g = { nodes: [], cx: 0, cy: 0, loopFactor: 0 }; chains.set(root, g); }
-            g.nodes.push(n);
-            g.cx += n.x;
-            g.cy += n.y;
-            if (n.isPolychainNode && n.loopFactor) g.loopFactor = n.loopFactor;
+        for (const [key, group] of rawChains) {
+            let cx = 0, cy = 0, lf = 0;
+            for (const n of group) { cx += n.x; cy += n.y; if (n.loopFactor) lf = n.loopFactor; }
+            chains.set(key, { nodes: group, cx, cy, loopFactor: lf });
         }
 
         for (const g of chains.values()) {
@@ -65,19 +86,10 @@ export function loopClosureForce() {
         const str = (loopLevels[pcSettings.loopLevel] ?? 0) * alpha;
         if (str === 0) return;
 
-        const chains = new Map();
-        for (const n of nodes) {
-            if (!n.isPolychainNode) continue;
-            let g = chains.get(n.chainId);
-            if (!g) { g = []; chains.set(n.chainId, g); }
-            g.push(n);
-        }
-
-        for (const group of chains.values()) {
+        for (const group of _groupByChain(nodes, { sort: true }).values()) {
             const len = group.length;
             if (len < 3) continue;
             const lf = group[0].loopFactor || 0;
-            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
             const head = group[0], tail = group[len - 1];
 
             // Head->tail vector
@@ -122,14 +134,7 @@ export function parentSideForce() {
     let tickCount = 0;
 
     function recomputePerps() {
-        // Group nodes by chainId, only chains with parentPerps
-        const chains = new Map();
-        for (const n of nodes) {
-            if (!n.parentPerps) continue;
-            let g = chains.get(n.chainId);
-            if (!g) { g = []; chains.set(n.chainId, g); }
-            g.push(n);
-        }
+        const chains = _groupByChain(nodes, { filter: n => !!n.parentPerps });
 
         for (const group of chains.values()) {
             const perps = group[0].parentPerps;
@@ -212,16 +217,7 @@ export function laplacianSmoothing() {
         const k = pcSettings.smoothing * alpha;
         if (k === 0) return;
 
-        // Group polychain nodes by chain
-        const chains = new Map();
-        for (const n of nodes) {
-            if (!n.isPolychainNode) continue;
-            let group = chains.get(n.chainId);
-            if (!group) { group = []; chains.set(n.chainId, group); }
-            group.push(n);
-        }
-
-        for (const group of chains.values()) {
+        for (const group of _groupByChain(nodes, { sort: true }).values()) {
             const len = group.length;
             if (len < 3) continue;
             // Reduce smoothing on loops to avoid collapsing curvature,
@@ -229,7 +225,6 @@ export function laplacianSmoothing() {
             const lf = group[0].loopFactor || 0;
             const scale = k * (1 - 0.7 * lf);
             if (scale < 1e-6) continue;
-            group.sort((a, b) => a.nodeIndex - b.nodeIndex);
 
             for (let i = 1; i < len - 1; i++) {
                 const prev = group[i - 1];
@@ -259,16 +254,7 @@ export function balloonInflation() {
         const k = pcSettings.inflate * alpha;
         if (k === 0) return;
 
-        // Group polychain nodes by chain — ghost handles inflation for split chains
-        const chains = new Map();
-        for (const n of nodes) {
-            if (!n.isPolychainNode) continue;
-            let group = chains.get(n.chainId);
-            if (!group) { group = []; chains.set(n.chainId, group); }
-            group.push(n);
-        }
-
-        for (const group of chains.values()) {
+        for (const group of _groupByChain(nodes, { sort: true }).values()) {
             const len = group.length;
             if (len < 3) continue;
             const lf = group[0].loopFactor || 0;

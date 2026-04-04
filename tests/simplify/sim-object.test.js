@@ -135,15 +135,6 @@ describe('SegmentObject', () => {
         });
     });
 
-    describe('isDeletionLink', () => {
-        it('returns true for head-to-tail link on same object', () => {
-            const seg = makeSegment();
-            // Same seg in both head and tail, so any self-link is a deletion
-            const link = { source: 's100', target: 's100', fromStrand: '+', toStrand: '+' };
-            expect(seg.isDeletionLink(link)).toBe(true);
-        });
-    });
-
     describe('fromApiNode', () => {
         it('creates from API response', () => {
             const seg = SegmentObject.fromApiNode({
@@ -217,32 +208,6 @@ describe('BubbleObject', () => {
             const link = { source: 's50', target: 's20', fromStrand: '+', toStrand: '+' };
             const node = b.resolveEnd(link);
             expect(node).toBe(b.headNode);
-        });
-    });
-
-    describe('isDeletionLink', () => {
-        it('detects source-to-sink bypass', () => {
-            const b = makeBubble();
-            const link = { source: 's10', target: 's20' };
-            expect(b.isDeletionLink(link)).toBe(true);
-        });
-
-        it('detects reverse direction bypass', () => {
-            const b = makeBubble();
-            const link = { source: 's20', target: 's11' };
-            expect(b.isDeletionLink(link)).toBe(true);
-        });
-
-        it('rejects non-bypass links', () => {
-            const b = makeBubble();
-            const link = { source: 's10', target: 's11' }; // both in head
-            expect(b.isDeletionLink(link)).toBe(false);
-        });
-
-        it('rejects links to external segments', () => {
-            const b = makeBubble();
-            const link = { source: 's10', target: 's999' };
-            expect(b.isDeletionLink(link)).toBe(false);
         });
     });
 

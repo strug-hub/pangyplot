@@ -16,7 +16,7 @@ import { PolychainSegment } from './polychain-segment.js';
 import * as registry from './segment-registry.js';
 
 // ---------------------------------------------------------------
-// Resampling helpers (moved from polychain-adapter)
+// Resampling helpers (self-contained to avoid circular imports)
 // ---------------------------------------------------------------
 
 const MIN_NODES = 2;

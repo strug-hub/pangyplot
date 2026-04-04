@@ -79,18 +79,8 @@ export function clear() {
     _map.clear();
 }
 
-/**
- * Current number of registered segments.
- * @returns {number}
- */
+/** Current number of registered segments. */
 export function size() {
     return _map.size;
 }
 
-/**
- * Iterate all entries (for debugging / migration).
- * @returns {IterableIterator<[string, SimObject]>}
- */
-export function entries() {
-    return _map.entries();
-}

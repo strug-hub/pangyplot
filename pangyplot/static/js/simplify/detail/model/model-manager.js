@@ -2,14 +2,10 @@
  * ModelManager — central coordinator for the SimObject model layer.
  *
  * Manages all PolychainContainers and loose SimObjects (segments, bubbles).
- * Provides the integration point between the new model and the existing
- * force engine / rendering system.
- *
- * During migration, this runs alongside the old polychain-adapter and
- * seg-registry. Once migration is complete, it replaces them.
+ * Containers are created by polychain-adapter during init and added via
+ * addContainer(). Objects are added during pop/init via addObject().
  */
 
-import { createContainerFromChain } from './polychain-factory.js';
 import * as registry from './segment-registry.js';
 
 // All active PolychainContainers, keyed by root chain ID
@@ -22,30 +18,6 @@ const objects = new Map();
 window.__simContainers = () => containers;
 window.__simObjects = () => objects;
 window.__simRegistry = registry;
-
-// --- Initialization ---
-
-/**
- * Initialize the model layer from /detail-tiles response.
- * Creates PolychainContainers for all chains.
- *
- * @param {object} detailData — parsed /detail-tiles response
- *   (expects .chains array with polyline, sourceSegs, sinkSegs, etc.)
- */
-export function initModel(detailData) {
-    clearModel();
-
-    for (const chain of (detailData.chains || [])) {
-        const container = createContainerFromChain(chain);
-        if (container) {
-            containers.set(container.id, container);
-            // Register the initial PolychainSegment
-            for (const seg of container.segments) {
-                objects.set(seg.id, seg);
-            }
-        }
-    }
-}
 
 /**
  * Clear all model state.

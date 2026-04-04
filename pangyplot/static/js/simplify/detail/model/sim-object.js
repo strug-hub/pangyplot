@@ -91,23 +91,6 @@ export class SimObject {
     }
 
     /**
-     * True if this GFA link goes from head to tail of THIS object —
-     * i.e. it bypasses the interior (a deletion / source-sink bypass link).
-     *
-     * @param {object} link — a GFA link
-     * @returns {boolean}
-     */
-    isDeletionLink(link) {
-        const fromSeg = _stripPrefix(link.fromSegId ?? link.source);
-        const toSeg = _stripPrefix(link.toSegId ?? link.target);
-        const fromInHead = this.ends.head.includes(fromSeg);
-        const fromInTail = this.ends.tail.includes(fromSeg);
-        const toInHead = this.ends.head.includes(toSeg);
-        const toInTail = this.ends.tail.includes(toSeg);
-        return (fromInHead && toInTail) || (fromInTail && toInHead);
-    }
-
-    /**
      * Return drawing instructions for the batched renderer.
      * @returns {object[]} — array of RenderSpec objects
      */

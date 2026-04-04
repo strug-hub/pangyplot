@@ -7,7 +7,7 @@ import { flipChain } from '../detail/data/polychain/polychain-adapter.js';
 import { reheatSimulation } from '../detail/engines/force-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { exportViewportGfa } from './selection/selection-popup.js';
-import { popAllBubblesOnChain } from '../detail/data/bubble-pop-adapter.js';
+import { popAllBubblesOnChain } from '../detail/model/pop-handler.js';
 import { createCustomAnnotation } from '@simplify-data/custom-annotation-data.js';
 
 let menuElement = null;

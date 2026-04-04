@@ -42,7 +42,13 @@ export function exitDetailMode() {
 }
 
 function finishExit() {
-    import('../detail/engines/polychain/polychain-pop-engine.js').then(m => m.clearDetailState());
+    // Inline: clear detail state (was polychain-pop-engine.clearDetailState)
+    import('../detail/data/polychain/polychain-fetcher.js').then(m => m.clearFetchedRegion());
+    import('../detail/data/simplify-view-state.js').then(m => m.resetSimplifyViewState());
+    import('../detail/data/pop-tree.js').then(m => m.default.clear());
+    import('../detail/model/model-manager.js').then(m => m.clearModel());
+    state.detailData = null;
+    state.poppedChainIds.clear();
     state.detailOpacity = 0;
     state.skeletonOpacity = 1;
     setDetailPhase('none');
