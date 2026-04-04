@@ -7,10 +7,9 @@
 
 import { state } from '../../simplify-state.js';
 import { insertPoppedContent, removePoppedContent } from '../engines/force-engine.js';
-import { getForceNodes, getForceLinks } from '../data/force-data.js';
+import { getForceLinks } from '../data/force-data.js';
 
-import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
-import { registerSeg, resolveEndForLink } from '../data/seg-registry.js';
+import { register as registerSeg, resolveForLink } from './segment-registry.js';
 
 import { getContainer, addObject, removeObject } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
@@ -30,8 +29,8 @@ export async function popBubbleCircleV2(hit) {
     const chr = state.chromosome;
     if (!chr) return false;
 
-    const pcNodes = getPolychainNodesForChain(chainId);
-    if (!pcNodes || pcNodes.length < 2) return false;
+    const container = getContainer(chainId);
+    if (!container || container.spineNodes.length < 2) return false;
 
     // --- Fetch /pop (need source_segs and sink_segs for anchor registration) ---
     const url = `/pop?id=${encodeURIComponent(bubbleId)}`
@@ -52,20 +51,10 @@ export async function popBubbleCircleV2(hit) {
     const sinkSegs = (apiData.sink_segs || []).map(s => `s${s}`);
 
     // --- Split container ---
-    const container = getContainer(chainId);
-    if (!container) {
-        console.warn(`[pop-handler] No container for chain ${chainId}`);
-        return false;
-    }
-
     const splitResult = container.splitAtBubble(bubbleId, t, sourceSegs, sinkSegs);
     const { leftSegment, rightSegment, removedSegment, newAnchors } = splitResult;
 
-    // --- Add only NEW inner anchors to D3 sim ---
-    // Outer anchors are reused (same d3 nodes) so existing links stay valid.
-    if (newAnchors.length > 0) {
-        insertPoppedContent(chainId, newAnchors, []);
-    }
+    // New inner anchors collected — will be added to sim in one batch at the end.
 
     // --- Register segment ends in seg-registry (SimObjects, not raw nodes) ---
     if (leftSegment) {
@@ -85,6 +74,8 @@ export async function popBubbleCircleV2(hit) {
     // --- Materialize boundary segs where a side is empty ---
     const materializedObjects = [];
     const destroyedLinkMeta = [];  // link metadata from removed anchors (for undo)
+    const deferredNodes = [];      // collect all nodes for batch add
+    const deferredLinks = [];      // collect all links for batch add
     // When a split side has no bubbles, the boundary seg becomes a real
     // SegmentObject replacing the anchor. Remove old anchor + its links,
     // the new kink node takes over in the registry.
@@ -128,8 +119,9 @@ export async function popBubbleCircleV2(hit) {
             removePoppedContent([anchorIid]);
         }
 
-        // Add kink nodes to sim (will be positioned + linked in GFA resolution below)
-        insertPoppedContent(chainId, obj.physicsNodes, obj.physicsLinks);
+        // Collect for batch add (deferred to single insertPoppedContent call)
+        deferredNodes.push(...obj.physicsNodes);
+        deferredLinks.push(...obj.physicsLinks);
 
         // Spawn at anchor's live position, pull toward ODGI layout
         const anchorPos = oldAnchor
@@ -197,8 +189,8 @@ export async function popBubbleCircleV2(hit) {
             toStrand: rawLink.to_strand || '+',
         };
 
-        const fromNode = resolveEndForLink(fromSegId, linkForResolve);
-        const toNode = resolveEndForLink(toSegId, linkForResolve);
+        const fromNode = resolveForLink(linkForResolve, fromSegId);
+        const toNode = resolveForLink(linkForResolve, toSegId);
         if (!fromNode?.iid || !toNode?.iid) continue;
 
         const linkLen = (rawLink.length || 0) > 0
@@ -234,17 +226,19 @@ export async function popBubbleCircleV2(hit) {
         }
     }
 
-    // --- Add child nodes + links to D3 sim ---
-    const allNewLinks = [...childKinkLinks, ...gfaLinks];
-    if (childNodes.length > 0) {
-        insertPoppedContent(chainId, childNodes, allNewLinks);
-    }
-
-    // Tag child nodes for forces
+    // Tag child nodes for forces (before adding to sim)
     for (const n of childNodes) {
         n.chainId = chainId;
         n.popBubbleId = bubbleId;
         n.ghostRootId = chainId;
+    }
+
+    // --- Add everything to D3 sim in one batch ---
+    // All nodes + links at once to avoid mid-tick iid resolution errors.
+    const allNewNodes = [...newAnchors, ...deferredNodes, ...childNodes];
+    const allNewLinks = [...deferredLinks, ...childKinkLinks, ...gfaLinks];
+    if (allNewNodes.length > 0 || allNewLinks.length > 0) {
+        insertPoppedContent(chainId, allNewNodes, allNewLinks);
     }
 
     // --- Save undo data: actual objects, not just IDs ---

@@ -4,7 +4,7 @@
 
 import { state } from '../../simplify-state.js';
 import { getForceLinks } from '../../detail/data/force-data.js';
-import { getPolychainNodesForChain } from '../../detail/data/polychain/polychain-adapter.js';
+import { getContainer } from '../../detail/model/model-manager.js';
 
 const MAX_DEPTH = 200;
 
@@ -78,7 +78,7 @@ function buildCache() {
             // Chain-aware: when we reach a polychain node, pull in its siblings
             // at the same depth so whole chains move together
             if (nb.isPolychainNode && nb.chainId) {
-                const chainNodes = getPolychainNodesForChain(nb.chainId);
+                const chainNodes = getContainer(nb.chainId)?.spineNodes;
                 if (chainNodes) {
                     for (const cn of chainNodes) {
                         if (!visited.has(cn)) {

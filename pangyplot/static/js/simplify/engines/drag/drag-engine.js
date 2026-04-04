@@ -5,7 +5,7 @@
 import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { reheatDrag } from '../../detail/engines/force-engine.js';
-import { getPolychainNodesForChain } from '../../detail/data/polychain/polychain-adapter.js';
+import { getContainer } from '../../detail/model/model-manager.js';
 import { setupDragFixEngine } from './drag-fix-engine.js';
 import { anchorChain } from './centroid-anchor-force.js';
 import { setupDragLockBadge, showDragLock, hideDragLock } from './drag-lock-render.js';
@@ -61,7 +61,7 @@ function activateDrag(e) {
         target.fx = target.x;
         target.fy = target.y;
     } else if (mode === 'chain') {
-        const nodes = getPolychainNodesForChain(target.id);
+        const nodes = getContainer(target.id)?.spineNodes;
         state.dragChainNodes = nodes;
         if (nodes) {
             for (const n of nodes) {

@@ -4,7 +4,7 @@ import { removePoppedContent, insertPoppedContent } from '../engines/force-engin
 import { getForceNodes } from './force-data.js';
 import popTree from './pop-tree.js';
 import { getContainer, addObject, removeObject, forgetObject } from '../model/model-manager.js';
-import { registerSeg, resolveEndForLink } from './seg-registry.js';
+import { register as registerSeg, resolveForLink } from '../model/segment-registry.js';
 
 /**
  * Undo the most recent bubble pop. Returns true on success.
@@ -93,8 +93,8 @@ export function unpopLastBubble() {
             fromStrand: meta.fromStrand, toStrand: meta.toStrand,
         };
 
-        const fromNode = resolveEndForLink(meta.sourceId, linkForResolve);
-        const toNode = resolveEndForLink(meta.targetId, linkForResolve);
+        const fromNode = resolveForLink(linkForResolve, meta.sourceId);
+        const toNode = resolveForLink(linkForResolve, meta.targetId);
         if (!fromNode?.iid || !toNode?.iid) continue;
 
         recreatedLinks.push({

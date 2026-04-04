@@ -15,6 +15,67 @@
 import { PolychainSegment } from './polychain-segment.js';
 import * as registry from './segment-registry.js';
 
+// ---------------------------------------------------------------
+// Resampling helpers (moved from polychain-adapter)
+// ---------------------------------------------------------------
+
+const MIN_NODES = 2;
+
+function _cumulativeLengths(pl) {
+    const cumLen = [0];
+    for (let i = 1; i < pl.length; i++) {
+        cumLen.push(cumLen[i - 1] + Math.hypot(
+            pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]));
+    }
+    return cumLen;
+}
+
+function _interpolateAtDist(pl, cumLen, d) {
+    if (d <= 0) return [pl[0][0], pl[0][1]];
+    if (d >= cumLen[cumLen.length - 1]) return [pl[pl.length - 1][0], pl[pl.length - 1][1]];
+    let lo = 0, hi = cumLen.length - 1;
+    while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (cumLen[mid] <= d) lo = mid; else hi = mid;
+    }
+    const segLen = cumLen[hi] - cumLen[lo];
+    const t = segLen > 0 ? (d - cumLen[lo]) / segLen : 0;
+    return [
+        pl[lo][0] + t * (pl[hi][0] - pl[lo][0]),
+        pl[lo][1] + t * (pl[hi][1] - pl[lo][1]),
+    ];
+}
+
+function _resamplePolyline(polyline, bpSpan) {
+    if (!polyline || polyline.length < 2) return null;
+    const bp = bpSpan || 1;
+    const logBp = Math.log10(Math.max(bp, 10));
+    const nTarget = Math.max(MIN_NODES, Math.round(logBp * logBp));
+    const cumLen = _cumulativeLengths(polyline);
+    const totalLen = cumLen[cumLen.length - 1];
+    if (totalLen === 0) return polyline;
+    if (nTarget === polyline.length) return polyline;
+    const samples = [polyline[0]];
+    for (let i = 1; i < nTarget - 1; i++) {
+        samples.push(_interpolateAtDist(polyline, cumLen, totalLen * i / (nTarget - 1)));
+    }
+    samples.push(polyline[polyline.length - 1]);
+    return samples;
+}
+
+function _computeLoopFactor(pl) {
+    if (!pl || pl.length < 3) return 0;
+    const headToTail = Math.hypot(
+        pl[pl.length - 1][0] - pl[0][0],
+        pl[pl.length - 1][1] - pl[0][1]);
+    let arcLen = 0;
+    for (let i = 1; i < pl.length; i++) {
+        arcLen += Math.hypot(pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]);
+    }
+    if (arcLen === 0) return 0;
+    return Math.max(0, Math.min(1, 1 - headToTail / arcLen));
+}
+
 export class PolychainContainer {
     /**
      * @param {object} opts
@@ -195,8 +256,10 @@ export class PolychainContainer {
 
         const leftNeighbor = leftBubbles.length > 0 ? leftBubbles[leftBubbles.length - 1] : null;
         const rightNeighbor = rightBubbles.length > 0 ? rightBubbles[0] : null;
-        const leftEnd = leftNeighbor ? leftNeighbor.t : tPosition;
-        const rightStart = rightNeighbor ? rightNeighbor.t : tPosition;
+        // Anchor at midpoint between popped bubble and neighbor — gives the
+        // boundary segment visual space instead of sitting on the neighbor circle.
+        const leftEnd = leftNeighbor ? (leftNeighbor.t + tPosition) / 2 : tPosition;
+        const rightStart = rightNeighbor ? (rightNeighbor.t + tPosition) / 2 : tPosition;
 
         // Unregister old segment's ends
         registry.unregisterAll(oldSeg.ends.head);
@@ -344,5 +407,100 @@ export class PolychainContainer {
             const dy = nodes[i].y - nodes[i - 1].y;
             cum[i] = cum[i - 1] + Math.sqrt(dx * dx + dy * dy);
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Static factory — create container from chain API data
+    // ---------------------------------------------------------------
+
+    /**
+     * Create a PolychainContainer from /detail-tiles chain data.
+     * The container creates its own spine nodes + links internally.
+     *
+     * @param {object} chain — chain from /detail-tiles response
+     *   { id, polyline, sourceSegs, sinkSegs, bpSpan, polychainNodes?,
+     *     bubbleIds?, bubblePositions?, bubble_t?, bubble_ids? }
+     * @returns {PolychainContainer|null}
+     */
+    static fromChainData(chain) {
+        const chainId = chain.id;
+
+        // Resample polyline into spine sample points
+        const samples = chain.polychainNodes || _resamplePolyline(chain.polyline, chain.bpSpan || chain.length);
+        if (!samples || samples.length < 2) return null;
+
+        const nSamples = samples.length;
+        const loopFactor = _computeLoopFactor(chain.polyline);
+
+        // Create spine nodes
+        const spineNodes = [];
+        for (let i = 0; i < nSamples; i++) {
+            spineNodes.push({
+                id: `pn_${chainId}_${i}`,
+                iid: `pn_${chainId}_${i}`,
+                x: samples[i][0],
+                y: samples[i][1],
+                homeX: samples[i][0],
+                homeY: samples[i][1],
+                chainId,
+                isPolychainNode: true,
+                nodeIndex: i,
+                chainNodeCount: nSamples,
+                loopFactor,
+                radius: 0,
+                width: 0,
+            });
+        }
+
+        // Create spine links (sequential)
+        let chainArcLen = 0;
+        for (let i = 0; i < nSamples - 1; i++) {
+            chainArcLen += Math.hypot(
+                samples[i + 1][0] - samples[i][0],
+                samples[i + 1][1] - samples[i][1]);
+        }
+        const uniformLen = chainArcLen / (nSamples - 1) || 1;
+        const spineLinks = [];
+        for (let i = 0; i < nSamples - 1; i++) {
+            spineLinks.push({
+                source: spineNodes[i],
+                target: spineNodes[i + 1],
+                isPolychainLink: true,
+                isKinkLink: false,
+                chainId,
+                length: uniformLen,
+                loopFactor,
+                chainArcLen,
+            });
+        }
+
+        // Normalize seg IDs
+        const headSegs = (chain.sourceSegs || chain.source_segs || []).map(s =>
+            String(s).startsWith('s') ? String(s) : `s${s}`);
+        const tailSegs = (chain.sinkSegs || chain.sink_segs || []).map(s =>
+            String(s).startsWith('s') ? String(s) : `s${s}`);
+
+        // Build bubble metadata
+        const bubbleIds = chain.bubbleIds || chain.bubble_ids || [];
+        const bubblePositions = chain.bubblePositions || chain.bubble_t || [];
+        const bubbles = [];
+        for (let i = 0; i < bubblePositions.length; i++) {
+            const id = i < bubbleIds.length && bubbleIds[i]
+                ? (String(bubbleIds[i]).startsWith('b') ? String(bubbleIds[i]) : `b${bubbleIds[i]}`)
+                : `_bubble_${chainId}_${i}`;
+            bubbles.push({ id, t: bubblePositions[i] });
+        }
+
+        // Store loopFactor on chain object for parent-perp computation
+        chain.loopFactor = loopFactor;
+
+        return new PolychainContainer({
+            id: chainId,
+            spineNodes,
+            spineLinks,
+            headSegs,
+            tailSegs,
+            bubbles,
+        });
     }
 }

@@ -100,6 +100,24 @@ export function updateAnchors() {
 
 // --- Accessors ---
 
+/** Add a PolychainContainer to the store. */
+export function addContainer(container) {
+    containers.set(container.id, container);
+    for (const seg of container.segments) {
+        objects.set(seg.id, seg);
+    }
+}
+
+/** Remove a PolychainContainer and its segments. */
+export function removeContainer(chainId) {
+    const c = containers.get(chainId);
+    if (c) {
+        for (const seg of c.segments) objects.delete(seg.id);
+        c.destroy();
+        containers.delete(chainId);
+    }
+}
+
 /** Get a PolychainContainer by root chain ID. */
 export function getContainer(chainId) {
     return containers.get(chainId) ?? null;

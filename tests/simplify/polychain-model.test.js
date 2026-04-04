@@ -289,12 +289,12 @@ describe('PolychainContainer', () => {
             expect(c.segments).toHaveLength(2);
         });
 
-        it('left ends at left neighbor t, right starts at right neighbor t', () => {
+        it('left ends at midpoint to left neighbor, right starts at midpoint to right neighbor', () => {
             const c = makeContainer({ bubbles: [{ id: 'b1', t: 0.2 }, { id: 'b7', t: 0.5 }, { id: 'b2', t: 0.8 }] });
             c.splitAtBubble('b7', 0.5, ['s30'], ['s31']);
-            // Left neighbor b1 at t=0.2, right neighbor b2 at t=0.8
-            expect(c.segments[0].tRange.end).toBeCloseTo(0.2);
-            expect(c.segments[1].tRange.start).toBeCloseTo(0.8);
+            // Midpoint between popped bubble (0.5) and neighbors
+            expect(c.segments[0].tRange.end).toBeCloseTo(0.35);   // (0.2+0.5)/2
+            expect(c.segments[1].tRange.start).toBeCloseTo(0.65); // (0.5+0.8)/2
         });
 
         it('preserves outer ends, assigns inner ends', () => {

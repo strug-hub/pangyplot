@@ -6,7 +6,7 @@ import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, computeForceDeltas, linkStrength, linkDistance, chargeMaxDist, chargeStr } from '../engines/force-engine.js';
-import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
+import { getContainer } from '../model/model-manager.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
@@ -226,7 +226,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
             ctx.lineWidth = Math.max(1, 2 / state.zoom);
             ctx.setLineDash([Math.max(3, 6 / state.zoom), Math.max(2, 4 / state.zoom)]);
             for (const chain of dd.chains) {
-                const pcN = getPolychainNodesForChain(chain.id);
+                const pcN = getContainer(chain.id)?.spineNodes;
                 if (!pcN || pcN.length < 2) continue;
                 // Draw only through real polychain nodes, skipping anchors
                 const real = pcN.filter(n => !n.isAnchor);
@@ -251,7 +251,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
         for (const n of guidedNodes) {
             let pl = chainPlCache.get(n.ghostRootId);
             if (pl === undefined) {
-                const pcN = getPolychainNodesForChain(n.ghostRootId);
+                const pcN = getContainer(n.ghostRootId)?.spineNodes;
                 // Only real backbone nodes, skip anchors
                 const real = pcN ? pcN.filter(nd => !nd.isAnchor) : null;
                 pl = real && real.length >= 2 ? real.map(nd => [nd.x, nd.y]) : null;

@@ -12,7 +12,7 @@ import popTree from '../pop-tree.js';
 import { removeNodesByChainIds } from '../../engines/force-engine.js';
 import { unregisterChains } from '../simplify-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer, isSplitRootChain } from './polychain-adapter.js';
-import { initModel, updateAnchors as updateModelAnchors } from '../../model/model-manager.js';
+import { updateAnchors as updateModelAnchors } from '../../model/model-manager.js';
 import { placeGenesFromDetail } from '@simplify-data/gene-data.js';
 import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
 import { getForceNodes } from '../force-data.js';
@@ -196,7 +196,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             state.detailData = newData;
             colorState.positionRange = [newData.bpStart, newData.bpEnd];
             initPolychainLayer();
-            initModel(newData);  // shadow: init SimObject model alongside old system
         } else {
             const existingIds = new Set(state.detailData.chains.map(c => c.id));
             const incomingIds = new Set(newData.chains.map(c => c.id));
@@ -296,7 +295,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             state.detailData = newData;
             colorState.positionRange = [newData.bpStart, newData.bpEnd];
             initPolychainLayer();
-            initModel(newData);  // shadow: init SimObject model alongside old system
         } else {
             const existingIds = new Set(state.detailData.chains.map(c => c.id));
             const incomingIds = new Set(newData.chains.map(c => c.id));

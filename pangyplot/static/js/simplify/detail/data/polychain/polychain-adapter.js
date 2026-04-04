@@ -1,31 +1,20 @@
-// Adapter: converts /detail-tiles API responses into polychain nodes
-// for use in the simplify detail force simulation.
-//
-// POLYCHAIN PHYSICS EXPERIMENT:
-// Each chain's polyline vertices become force nodes connected sequentially.
-// Junction (naked) segments also become force nodes linked to polychain nodes.
-// No phantoms, no popping — just polychain nodes + junctions.
+// Adapter: orchestrates creation of PolychainContainers and junction SegmentObjects
+// from /detail-tiles API responses, resolves all links through the unified
+// segment-registry, and adds everything to the D3 force simulation.
 
-import { deserializeSubgraph } from '../../../../graph/data/records/deserializer/deserialize-subgraph.js';
 import { addPoppedNodes, removeNodesByChainIds } from '../../engines/force-engine.js';
 import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
-import { registerSegs } from '../seg-registry.js';
+import * as registry from '../../model/segment-registry.js';
+import { PolychainContainer } from '../../model/polychain-container.js';
+import { SegmentObject } from '../../model/segment-object.js';
+import { getContainer, addContainer, removeContainer,
+         addObject, clearModel } from '../../model/model-manager.js';
 
-// chainId → [polychain node objects in polyline order]
-const chainPolychainNodes = new Map();
-
-// "s{id}" → polychain node (endpoint seg → head or tail node)
-const segToPolychain = new Map();
-
-/** Check if a root chain ID has been split by pops (has subchains). */
+/** Check if a chain already has a container (avoid re-creating during incremental adds). */
 export function isSplitRootChain(chainId) {
-    const rootId = chainId.split(':')[0];
-    return subchainCounters.has(rootId);
+    return !!getContainer(chainId);
 }
-
-// Resampling constants
-const MIN_NODES = 2;
 
 /**
  * Compute cumulative arc lengths along a polyline.
@@ -59,53 +48,14 @@ export function interpolateAtDist(pl, cumLen, d) {
     ];
 }
 
-/**
- * Resample a chain's polyline with node count proportional to bpSpan,
- * uniformly spaced along arc length.
- *
- * Returns array of [x, y] sample points (always includes first and last).
- */
-function resamplePolyline(chain) {
-    const pl = chain.polyline;
-    if (!pl || pl.length < 2) return null;
-
-    // Target node count from bp span (log curve), always enforced
-    // log10(1k)=3 → 9, log10(10k)=4 → 16, log10(100k)=5 → 25
-    // log10(1M)=6 → 36, log10(10M)=7 → 49
-    const bp = chain.bpSpan || chain.length || 1;
-    const logBp = Math.log10(Math.max(bp, 10));
-    const nTarget = Math.max(MIN_NODES, Math.round(logBp * logBp));
-
-    const cumLen = cumulativeLengths(pl);
-    const totalLen = cumLen[cumLen.length - 1];
-    if (totalLen === 0) return pl;
-
-    // Always resample to nTarget: both downsample dense and upsample sparse
-    if (nTarget === pl.length) return pl;
-    const samples = [pl[0]];
-    for (let i = 1; i < nTarget - 1; i++) {
-        samples.push(interpolateAtDist(pl, cumLen, totalLen * i / (nTarget - 1)));
-    }
-    samples.push(pl[pl.length - 1]);
-    return samples;
-}
-
-// Minimum polychain nodes a chain must have before a pop split.
-// Ensures both sides of any split get >= 2 nodes (with edge clamping).
-const MIN_PRESPLIT_NODES = 8;
-
-/** Get polychain nodes for a chain, or null. */
-export function getPolychainNodesForChain(chainId) {
-    return chainPolychainNodes.get(chainId) || null;
-}
 
 /**
  * Flip a chain: reverse polychain node positions so head↔tail swap visually.
- * Node array order, nodeIndex, links, and segToPolychain are unchanged.
  */
 export function flipChain(chainId) {
-    const nodes = chainPolychainNodes.get(chainId);
-    if (!nodes || nodes.length < 2) return false;
+    const container = getContainer(chainId);
+    if (!container || container.spineNodes.length < 2) return false;
+    const nodes = container.spineNodes;
 
     const positions = nodes.map(n => ({ x: n.x, y: n.y, homeX: n.homeX, homeY: n.homeY }));
     for (let i = 0; i < nodes.length; i++) {
@@ -127,50 +77,52 @@ export function initPolychainLayer() {
     const dd = state.detailData;
     if (!dd) return;
 
-    chainPolychainNodes.clear();
-    segToPolychain.clear();
+    clearModel();
 
     const allNodes = [];
     const allLinks = [];
 
-    // 1. Create polychain nodes for every chain (resampled by bp size + bubble density)
+    // Phase A: Create containers (each builds spine + anchors internally)
     for (const chain of dd.chains) {
-        createPolychainForChain(chain, allNodes, allLinks, dd);
+        const container = PolychainContainer.fromChainData(chain);
+        if (!container) continue;
+        addContainer(container);
+
+        // Collect spine nodes + links for D3 sim
+        allNodes.push(...container.spineNodes);
+        allLinks.push(...container.spineLinks);
+
+        // Collect anchor nodes for D3 sim
+        allNodes.push(...container.getAllAnchorNodes());
+
+        // Compute parent-side perpendiculars (cross-chain concern)
+        _computeParentPerps(container, chain, dd);
     }
 
-    // 2. Deserialize junction graph nodes + links
+    // Phase B: Create junction SegmentObjects
     processJunctionGraph(dd, allNodes, allLinks);
 
-    // 4. Shared-segment links: adjacent chains sharing an endpoint seg
-    const seenSharedPairs = new Set();
-    for (const chain of dd.chains) {
-        for (const sid of (chain.sinkSegs || [])) {
-            const sinkNode = chainPolychainNodes.get(chain.id);
-            if (!sinkNode || sinkNode.length === 0) continue;
-            const tail = sinkNode[sinkNode.length - 1];
-            for (const other of dd.chains) {
-                if (other.id === chain.id) continue;
-                if (!(other.sourceSegs || []).includes(sid)) continue;
-                const otherNodes = chainPolychainNodes.get(other.id);
-                if (!otherNodes || otherNodes.length === 0) continue;
-                const otherHead = otherNodes[0];
-                if (tail === otherHead) continue;
-                const pairKey = `${tail.iid}↔${otherHead.iid}`;
-                if (seenSharedPairs.has(pairKey)) continue;
-                seenSharedPairs.add(pairKey);
-                allLinks.push(makeInterChainLink(tail, otherHead, sid, sid));
-            }
-        }
-    }
+    // Phase C: Resolve shared-segment links through registry
+    resolveSharedSegmentLinks(dd, allLinks);
 
+    // Phase D: Add everything to D3 sim
     if (allNodes.length > 0) {
         addPoppedNodes(allNodes, allLinks);
     }
 }
 
+// ---------------------------------------------------------------
+// Junction graph processing
+// ---------------------------------------------------------------
+
+function _ensurePrefix(id) {
+    const s = String(id);
+    return s.startsWith('s') ? s : `s${s}`;
+}
+
 /**
- * Process junction graph nodes + links into force-sim objects.
- * Shared by both init and incremental paths.
+ * Create junction SegmentObjects and resolve junction graph links
+ * through the unified segment registry.
  */
 function processJunctionGraph(dd, allNodes, allLinks) {
     const jg = dd.junctionGraph;
@@ -178,160 +130,171 @@ function processJunctionGraph(dd, allNodes, allLinks) {
     const junctionNodeIdSet = new Set();
 
     if (jg && jg.nodes.length > 0) {
-        for (const n of jg.nodes) junctionNodeIdSet.add(n.id);
+        // Create SegmentObjects for each junction node
+        for (const apiNode of jg.nodes) {
+            junctionNodeIdSet.add(apiNode.id);
+            const obj = SegmentObject.fromApiNode(apiNode, '__junction__');
 
-        // Build polychain record wrappers for link resolution
-        const polychainRecords = new Map();
-        for (const [chainId, nodes] of chainPolychainNodes) {
-            if (nodes.length === 0) continue;
-            const head = nodes[0];
-            const tail = nodes[nodes.length - 1];
-            polychainRecords.set(head.iid, makePolychainRecord(head));
-            polychainRecords.set(tail.iid, makePolychainRecord(tail));
+            // Position kinks along ODGI layout geometry
+            _positionKinksFromOdgi(obj, apiNode);
+
+            // Tag for junction identification
+            for (const n of obj.physicsNodes) n.chainId = '__junction__';
+
+            // Register ends in segment-registry
+            registry.registerAll(obj.ends.head, obj);
+            registry.registerAll(obj.ends.tail, obj);
+            addObject(obj);
+
+            allNodes.push(...obj.physicsNodes);
+            allLinks.push(...obj.physicsLinks);
         }
 
-        // Build segToChainPolychain for non-endpoint segs (from junctionSegChains).
-        // Uses geometric proximity to pick head vs tail of the nearest chain.
-        const segToChainPolychain = new Map();
-        const jscMap = dd.junctionSegChains || {};
-        const junctionNodePosMap = new Map(jg.nodes.map(n => [n.id, n]));
-
+        // Resolve junction graph links through registry
         for (const rawLink of (jg.links || [])) {
-            const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
-            const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
-            for (const [segId, otherSegId] of [[sId, tId], [tId, sId]]) {
-                if (segToPolychain.has(segId) || segToChainPolychain.has(segId)) continue;
-                if (junctionNodeIdSet.has(segId)) continue;
-                const chainIds = jscMap[segId];
-                if (!chainIds || chainIds.length === 0) continue;
-                const otherNode = junctionNodePosMap.get(otherSegId);
-                for (const cid of chainIds) {
-                    const nodes = chainPolychainNodes.get(cid);
-                    if (!nodes || nodes.length === 0) continue;
-                    const head = nodes[0];
-                    const tail = nodes[nodes.length - 1];
-                    let pick;
-                    if (otherNode) {
-                        const refX = (otherNode.x1 + otherNode.x2) / 2;
-                        const refY = (otherNode.y1 + otherNode.y2) / 2;
-                        const dH = Math.hypot(refX - head.x, refY - head.y);
-                        const dT = Math.hypot(refX - tail.x, refY - tail.y);
-                        pick = dH <= dT ? head : tail;
-                    } else {
-                        pick = head;
-                    }
-                    segToChainPolychain.set(segId, polychainRecords.get(pick.iid));
-                    break;
-                }
-            }
+            const sId = _ensurePrefix(rawLink.source);
+            const tId = _ensurePrefix(rawLink.target);
+
+            const linkForResolve = {
+                source: sId, target: tId,
+                fromStrand: rawLink.from_strand || '+',
+                toStrand: rawLink.to_strand || '+',
+            };
+
+            const fromNode = registry.resolveForLink(linkForResolve, sId);
+            const toNode = registry.resolveForLink(linkForResolve, tId);
+            if (!fromNode?.iid || !toNode?.iid) continue;
+
+            allLinks.push(_makeGfaLink(fromNode, toNode, sId, tId, rawLink));
         }
-
-        // Deserialize junction nodes + links with polychain linkResolver
-        const { nodes: jNodes, links: jLinks } = deserializeSubgraph(
-            { nodes: jg.nodes, links: jg.links || [] },
-            {
-                tag: { chainId: '__junction__' },
-                detectIndels: false,
-                linkResolver: (segId) => {
-                    const pn = segToPolychain.get(segId);
-                    if (pn) return polychainRecords.get(pn.iid);
-                    return segToChainPolychain.get(segId) || null;
-                },
-            }
-        );
-
-        // Set initial positions from ODGI layout — interpolate kinks along segment geometry
-        const rawNodeMap = new Map(jg.nodes.map(n => [n.id, n]));
-        const kinksByRecord = new Map();
-        for (const node of jNodes) {
-            if (!kinksByRecord.has(node.id)) kinksByRecord.set(node.id, []);
-            kinksByRecord.get(node.id).push(node);
-        }
-        for (const [recId, kinks] of kinksByRecord) {
-            const raw = rawNodeMap.get(recId);
-            if (!raw) continue;
-            kinks.sort((a, b) => {
-                const ai = parseInt(a.iid.split('#')[1]) || 0;
-                const bi = parseInt(b.iid.split('#')[1]) || 0;
-                return ai - bi;
-            });
-            const n = kinks.length;
-            for (let i = 0; i < n; i++) {
-                const t = n === 1 ? 0.5 : i / (n - 1);
-                kinks[i].x = raw.x1 + t * (raw.x2 - raw.x1);
-                kinks[i].y = raw.y1 + t * (raw.y2 - raw.y1);
-                kinks[i].homeX = kinks[i].x;
-                kinks[i].homeY = kinks[i].y;
-            }
-        }
-
-        // Register junction nodes in the segment registry
-        for (const node of jNodes) {
-            if (node.id) registerSegs([node.id], node);
-        }
-
-        allNodes.push(...jNodes);
-
-        // Tag inter-chain links with seg IDs (for future rewiring if needed)
-        const interNodeLinks = jLinks.filter(l => !l.isKinkLink);
-        let createdIdx = 0;
-        for (const rawLink of (jg.links || [])) {
-            const sId = typeof rawLink.source === 'string' ? rawLink.source : `s${rawLink.source}`;
-            const tId = typeof rawLink.target === 'string' ? rawLink.target : `s${rawLink.target}`;
-
-            const sLocal = junctionNodeIdSet.has(sId);
-            const tLocal = junctionNodeIdSet.has(tId);
-            const sPolychain = !sLocal && (segToPolychain.has(sId) || segToChainPolychain.has(sId));
-            const tPolychain = !tLocal && (segToPolychain.has(tId) || segToChainPolychain.has(tId));
-            if (!(sLocal || sPolychain) || !(tLocal || tPolychain)) continue;
-
-            const link = interNodeLinks[createdIdx++];
-            if (!link) break;
-
-            if (sPolychain || tPolychain) {
-                link.isInterChain = true;
-                link.chainId = null;
-                if (sPolychain) {
-                    link.sourceSegId = sId;
-                    link.sourceStrand = rawLink.from_strand || null;
-                }
-                if (tPolychain) {
-                    link.targetSegId = tId;
-                    link.targetStrand = rawLink.to_strand || null;
-                }
-            }
-        }
-
-        allLinks.push(...jLinks);
 
         // Endpoint-to-endpoint junction links (neither seg in junction graph)
         if (jls && jls.length > 0) {
-            for (const jl of jls) {
-                const segA = `s${jl.segs[0]}`;
-                const segB = `s${jl.segs[1]}`;
-                if (junctionNodeIdSet.has(segA) || junctionNodeIdSet.has(segB)) continue;
-                const pnA = segToPolychain.get(segA);
-                const pnB = segToPolychain.get(segB);
-                if (pnA && pnB && pnA !== pnB) {
-                    allLinks.push(makeInterChainLink(pnA, pnB, `s${jl.segs[0]}`, `s${jl.segs[1]}`));
-                }
-            }
+            _resolveEndpointJunctionLinks(jls, junctionNodeIdSet, allLinks);
         }
 
     } else if (jls && jls.length > 0) {
-        // No junction graph nodes — endpoint-to-endpoint only
-        for (const jl of jls) {
-            const pnA = segToPolychain.get(`s${jl.segs[0]}`);
-            const pnB = segToPolychain.get(`s${jl.segs[1]}`);
-            if (pnA && pnB && pnA !== pnB) {
-                allLinks.push(makeInterChainLink(pnA, pnB, `s${jl.segs[0]}`, `s${jl.segs[1]}`));
+        // No junction graph — endpoint-to-endpoint only
+        _resolveEndpointJunctionLinks(jls, new Set(), allLinks);
+    }
+}
+
+/**
+ * Position a SegmentObject's kink nodes along ODGI layout coordinates.
+ */
+function _positionKinksFromOdgi(obj, apiNode) {
+    const nodes = obj.physicsNodes;
+    const n = nodes.length;
+    for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        nodes[i].x = apiNode.x1 + t * (apiNode.x2 - apiNode.x1);
+        nodes[i].y = apiNode.y1 + t * (apiNode.y2 - apiNode.y1);
+        nodes[i].homeX = nodes[i].x;
+        nodes[i].homeY = nodes[i].y;
+    }
+}
+
+/**
+ * Create a GFA link between two resolved d3 force nodes.
+ */
+function _makeGfaLink(fromNode, toNode, fromSegId, toSegId, rawLink) {
+    const linkLen = (rawLink.length || 0) > 0
+        ? Math.min(rawLink.length / 100, 1000) : 10;
+    return {
+        isNode: false, isLink: true, class: 'link',
+        iid: `${fromNode.iid}${rawLink.from_strand || '+'}${toNode.iid}${rawLink.to_strand || '+'}`,
+        source: fromNode.iid, target: toNode.iid,
+        sourceIid: fromNode.iid, targetIid: toNode.iid,
+        sourceId: fromSegId, targetId: toSegId,
+        type: 'link',
+        chainId: null,
+        isDel: false,
+        isKinkLink: false, isRef: false, isDrawn: true,
+        length: linkLen, width: 1,
+        contained: rawLink.contained || [],
+        frequency: rawLink.frequency || 0,
+        haplotype: rawLink.haplotype || null,
+        fromStrand: rawLink.from_strand || '+',
+        toStrand: rawLink.to_strand || '+',
+    };
+}
+
+/**
+ * Resolve endpoint-to-endpoint junction links through registry.
+ */
+function _resolveEndpointJunctionLinks(jls, junctionNodeIdSet, allLinks) {
+    for (const jl of jls) {
+        const segA = `s${jl.segs[0]}`;
+        const segB = `s${jl.segs[1]}`;
+        if (junctionNodeIdSet.has(segA) || junctionNodeIdSet.has(segB)) continue;
+
+        const linkForResolve = {
+            source: segA, target: segB,
+            fromStrand: '+', toStrand: '+',
+        };
+        const nodeA = registry.resolveForLink(linkForResolve, segA);
+        const nodeB = registry.resolveForLink(linkForResolve, segB);
+        if (!nodeA?.iid || !nodeB?.iid || nodeA.iid === nodeB.iid) continue;
+
+        allLinks.push(makeInterChainLink(nodeA, nodeB, segA, segB));
+    }
+}
+
+/**
+ * Resolve shared-segment links between chains through registry.
+ * Two chains that share an endpoint seg (sinkSeg of one = sourceSeg of other)
+ * get linked via their SimObject anchors.
+ */
+function resolveSharedSegmentLinks(dd, allLinks) {
+    const seenSharedPairs = new Set();
+    for (const chain of dd.chains) {
+        for (const sid of (chain.sinkSegs || [])) {
+            for (const other of dd.chains) {
+                if (other.id === chain.id) continue;
+                if (!(other.sourceSegs || []).includes(sid)) continue;
+
+                const linkForResolve = {
+                    source: sid, target: sid,
+                    fromStrand: '+', toStrand: '+',
+                };
+                const tailNode = registry.resolveForLink(linkForResolve, sid);
+                // For the target side, we need the OTHER chain's anchor
+                // (same segId but registered to a different SimObject).
+                // Since last-write-wins in registry, we need to resolve
+                // from both chains' containers directly.
+                const srcContainer = getContainer(chain.id);
+                const tgtContainer = getContainer(other.id);
+                if (!srcContainer || !tgtContainer) continue;
+
+                // Get tail anchor from source chain's segment
+                const srcSeg = srcContainer.segments.find(
+                    s => s.ends.tail.includes(sid));
+                const tgtSeg = tgtContainer.segments.find(
+                    s => s.ends.head.includes(sid));
+                if (!srcSeg || !tgtSeg) continue;
+
+                const srcAnchor = srcSeg.resolveEnd({
+                    source: sid, target: sid,
+                    fromStrand: '+', toStrand: '+',
+                });
+                const tgtAnchor = tgtSeg.resolveEnd({
+                    source: sid, target: sid,
+                    fromStrand: '+', toStrand: '+',
+                });
+                if (!srcAnchor?.iid || !tgtAnchor?.iid) continue;
+                if (srcAnchor.iid === tgtAnchor.iid) continue;
+
+                const pairKey = `${srcAnchor.iid}↔${tgtAnchor.iid}`;
+                if (seenSharedPairs.has(pairKey)) continue;
+                seenSharedPairs.add(pairKey);
+                allLinks.push(makeInterChainLink(srcAnchor, tgtAnchor, sid, sid));
             }
         }
     }
 }
 
 /**
- * Add polychain nodes for newly added chains only (incremental on pan).
+ * Add containers for newly added chains (incremental on pan).
  */
 export function addChainsToPolychainLayer(newChains, dd) {
     if (!dd || newChains.length === 0) return;
@@ -339,39 +302,52 @@ export function addChainsToPolychainLayer(newChains, dd) {
     const allNodes = [];
     const allLinks = [];
 
-    // 1. Create polychain nodes for new chains
+    // 1. Create containers for new chains
     for (const chain of newChains) {
-        if (chainPolychainNodes.has(chain.id)) continue;
-        createPolychainForChain(chain, allNodes, allLinks, dd);
+        if (getContainer(chain.id)) continue;
+        const container = PolychainContainer.fromChainData(chain);
+        if (!container) continue;
+        addContainer(container);
+        allNodes.push(...container.spineNodes);
+        allLinks.push(...container.spineLinks);
+        allNodes.push(...container.getAllAnchorNodes());
+        _computeParentPerps(container, chain, dd);
     }
 
-    // 2. Shared-segment links between new and existing chains
+    // 2. Remove old junction nodes from sim, rebuild
+    removeNodesByChainIds(new Set(['__junction__']));
+    processJunctionGraph(dd, allNodes, allLinks);
+
+    // 3. Shared-segment links (involving new chains)
     const newChainIds = new Set(newChains.map(c => c.id));
     const seenSharedPairs = new Set();
     for (const chain of dd.chains) {
         for (const sid of (chain.sinkSegs || [])) {
-            const sinkNodes = chainPolychainNodes.get(chain.id);
-            if (!sinkNodes || sinkNodes.length === 0) continue;
-            const tail = sinkNodes[sinkNodes.length - 1];
             for (const other of dd.chains) {
                 if (other.id === chain.id) continue;
                 if (!newChainIds.has(chain.id) && !newChainIds.has(other.id)) continue;
                 if (!(other.sourceSegs || []).includes(sid)) continue;
-                const otherNodes = chainPolychainNodes.get(other.id);
-                if (!otherNodes || otherNodes.length === 0) continue;
-                const otherHead = otherNodes[0];
-                if (tail === otherHead) continue;
-                const pairKey = `${tail.iid}↔${otherHead.iid}`;
+
+                const srcContainer = getContainer(chain.id);
+                const tgtContainer = getContainer(other.id);
+                if (!srcContainer || !tgtContainer) continue;
+
+                const srcSeg = srcContainer.segments.find(s => s.ends.tail.includes(sid));
+                const tgtSeg = tgtContainer.segments.find(s => s.ends.head.includes(sid));
+                if (!srcSeg || !tgtSeg) continue;
+
+                const linkObj = { source: sid, target: sid, fromStrand: '+', toStrand: '+' };
+                const srcAnchor = srcSeg.resolveEnd(linkObj);
+                const tgtAnchor = tgtSeg.resolveEnd(linkObj);
+                if (!srcAnchor?.iid || !tgtAnchor?.iid || srcAnchor.iid === tgtAnchor.iid) continue;
+
+                const pairKey = `${srcAnchor.iid}↔${tgtAnchor.iid}`;
                 if (seenSharedPairs.has(pairKey)) continue;
                 seenSharedPairs.add(pairKey);
-                allLinks.push(makeInterChainLink(tail, otherHead, sid, sid));
+                allLinks.push(makeInterChainLink(srcAnchor, tgtAnchor, sid, sid));
             }
         }
     }
-
-    // 3. Remove old junction nodes from sim, then rebuild from current data
-    removeNodesByChainIds(new Set(['__junction__']));
-    processJunctionGraph(dd, allNodes, allLinks);
 
     if (allNodes.length > 0 || allLinks.length > 0) {
         addPoppedNodes(allNodes, allLinks);
@@ -379,18 +355,11 @@ export function addChainsToPolychainLayer(newChains, dd) {
 }
 
 /**
- * Remove polychain nodes for specific chains.
+ * Remove containers for specific chains.
  */
 export function removeChainsFromPolychainLayer(chainIds) {
     for (const cid of chainIds) {
-        const nodes = chainPolychainNodes.get(cid);
-        if (nodes) {
-            const nodeSet = new Set(nodes);
-            for (const [key, pn] of segToPolychain) {
-                if (nodeSet.has(pn)) segToPolychain.delete(key);
-            }
-            chainPolychainNodes.delete(cid);
-        }
+        removeContainer(cid);
     }
 }
 
@@ -399,183 +368,64 @@ export function removeChainsFromPolychainLayer(chainIds) {
 // ---------------------------------------------------------------
 
 /**
- * Create polychain nodes + links for a single chain and append to allNodes/allLinks.
- * Resamples the polyline based on bp size and bubble density.
- */
-/**
- * Compute loop factor from polyline geometry.
- * 1 - (head-to-tail distance / arc length). 0 = perfectly straight, 1 = endpoints overlap.
- */
-function computeLoopFactor(pl) {
-    if (!pl || pl.length < 3) return 0;
-    const headToTail = Math.hypot(
-        pl[pl.length - 1][0] - pl[0][0],
-        pl[pl.length - 1][1] - pl[0][1]);
-    let arcLen = 0;
-    for (let i = 1; i < pl.length; i++) {
-        arcLen += Math.hypot(pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]);
-    }
-    if (arcLen === 0) return 0;
-    return Math.max(0, Math.min(1, 1 - headToTail / arcLen));
-}
-
-/**
  * Reconstruct a parent chain's polyline from its connector fragments.
- * The parent (e.g. "c123") is decomposed into connectors ("c123:100-200").
- * Falls back to exact match if the parent chain is still present as-is.
  */
-function getParentPolyline(parentChainId, dd) {
-    // Try exact match first
+function _getParentPolyline(parentChainId, dd) {
     const exact = dd.chains.find(c => c.id === parentChainId);
     if (exact?.polyline?.length >= 2) return exact.polyline;
 
-    // Collect connector fragments: chains whose ID starts with "c123:"
     const prefix = parentChainId + ':';
     const connectors = dd.chains.filter(c => c.id.startsWith(prefix) && c.polyline?.length >= 2);
     if (connectors.length === 0) return null;
-
-    // Sort by x-coordinate of first polyline point (connectors are spatially ordered)
     connectors.sort((a, b) => a.polyline[0][0] - b.polyline[0][0]);
 
-    // Concatenate polylines
     const combined = [];
-    for (const c of connectors) {
-        combined.push(...c.polyline);
-    }
+    for (const c of connectors) combined.push(...c.polyline);
     return combined.length >= 2 ? combined : null;
 }
 
-function createPolychainForChain(chain, allNodes, allLinks, dd) {
-    // Prefer backend-precomputed polychain nodes, fall back to JS resampling
-    const samples = chain.polychainNodes || resamplePolyline(chain);
-    if (!samples || samples.length < 2) return;
-
-    const nSamples = samples.length;
-    const loopFactor = computeLoopFactor(chain.polyline);
-    chain.loopFactor = loopFactor;
-
-    const nodes = [];
-    for (let i = 0; i < nSamples; i++) {
-        const node = {
-            id: `pn_${chain.id}_${i}`,
-            iid: `pn_${chain.id}_${i}`,
-            x: samples[i][0],
-            y: samples[i][1],
-            homeX: samples[i][0],
-            homeY: samples[i][1],
-            chainId: chain.id,
-            isPolychainNode: true,
-            nodeIndex: i,
-            chainNodeCount: nSamples,
-            loopFactor: loopFactor,
-            radius: 0,
-            width: 0,
-        };
-        nodes.push(node);
-        allNodes.push(node);
-    }
-
-    chainPolychainNodes.set(chain.id, nodes);
-
-    // Compute parent-side perpendiculars for child chains (not connectors).
-    // Walk up the full ancestor chain so deeper children push away from all ancestors.
-    if (dd && chain.ancestors?.length > 0) {
-        // Child centroid
-        let cx = 0, cy = 0;
-        for (const n of nodes) { cx += n.x; cy += n.y; }
-        cx /= nodes.length; cy /= nodes.length;
-
-        const perps = [];
-        for (const ancestor of chain.ancestors) {
-            const ppl = getParentPolyline(ancestor.chain, dd);
-            if (!ppl || ppl.length < 2) continue;
-
-            // Find nearest segment on ancestor polyline
-            let bestDist = Infinity, bestIdx = 0;
-            for (let i = 0; i < ppl.length - 1; i++) {
-                const d = pointToSegmentDist(cx, cy, ppl[i][0], ppl[i][1], ppl[i+1][0], ppl[i+1][1]);
-                if (d < bestDist) { bestDist = d; bestIdx = i; }
-            }
-
-            // Nearest point on ancestor segment (projection of centroid)
-            const ax = ppl[bestIdx][0], ay = ppl[bestIdx][1];
-            const bx = ppl[bestIdx+1][0], by = ppl[bestIdx+1][1];
-            const tx = bx - ax, ty = by - ay;
-            const tLenSq = tx * tx + ty * ty;
-            const tLen = Math.sqrt(tLenSq) || 1;
-            const t = tLenSq > 0
-                ? Math.max(0, Math.min(1, ((cx - ax) * tx + (cy - ay) * ty) / tLenSq))
-                : 0;
-            const mx = ax + t * tx;
-            const my = ay + t * ty;
-
-            // Perpendicular (rotate tangent 90°)
-            let px = -ty / tLen, py = tx / tLen;
-
-            // Determine which side child centroid is on
-            const dot = (cx - mx) * px + (cy - my) * py;
-            if (dot < 0) { px = -px; py = -py; }
-
-            perps.push({ px, py, mx, my, ppl });
-        }
-
-        if (perps.length > 0) {
-            for (const n of nodes) {
-                n.parentPerps = perps;
-            }
-        }
-    }
-
-    // Sequential links — rest length = initial geometric distance between samples
-    // Compute total arc length for variable link stiffness
-    let chainArcLen = 0;
-    for (let i = 0; i < nodes.length - 1; i++) {
-        chainArcLen += Math.hypot(
-            samples[i + 1][0] - samples[i][0],
-            samples[i + 1][1] - samples[i][1]);
-    }
-    const uniformLen = chainArcLen / (nodes.length - 1) || 1;
-    for (let i = 0; i < nodes.length - 1; i++) {
-        allLinks.push({
-            source: nodes[i],
-            target: nodes[i + 1],
-            isPolychainLink: true,
-            isKinkLink: false,
-            chainId: chain.id,
-            length: uniformLen,
-            loopFactor: loopFactor,
-            chainArcLen: chainArcLen,
-        });
-    }
-
-    // Map endpoint segs → head/tail polychain nodes
-    const head = nodes[0];
-    const tail = nodes[nodes.length - 1];
-    for (const sid of (chain.sourceSegs || [])) {
-        segToPolychain.set(sid, head);
-    }
-    for (const sid of (chain.sinkSegs || [])) {
-        segToPolychain.set(sid, tail);
-    }
-
-    // Register in unified segment registry (ensurePrefix handles s-prefixing)
-    registerSegs(chain.sourceSegs || [], head);
-    registerSegs(chain.sinkSegs || [], tail);
-}
-
 /**
- * Create a lightweight record wrapper for a polychain node, satisfying the
- * NodeRecord interface expected by deserializeSubgraph's linkResolver.
+ * Compute parent-side perpendicular vectors for child chains.
+ * Tags spine nodes with parentPerps for the parentSideForce.
  */
-function makePolychainRecord(node) {
-    return {
-        id: node.id,
-        type: 'polychain',
-        ranges: [],
-        elements: {
-            nodes: [{ head: () => node.iid, tail: () => node.iid }],
-        },
-    };
+function _computeParentPerps(container, chain, dd) {
+    if (!chain.ancestors?.length) return;
+    const nodes = container.spineNodes;
+
+    let cx = 0, cy = 0;
+    for (const n of nodes) { cx += n.x; cy += n.y; }
+    cx /= nodes.length; cy /= nodes.length;
+
+    const perps = [];
+    for (const ancestor of chain.ancestors) {
+        const ppl = _getParentPolyline(ancestor.chain, dd);
+        if (!ppl || ppl.length < 2) continue;
+
+        let bestDist = Infinity, bestIdx = 0;
+        for (let i = 0; i < ppl.length - 1; i++) {
+            const d = pointToSegmentDist(cx, cy, ppl[i][0], ppl[i][1], ppl[i+1][0], ppl[i+1][1]);
+            if (d < bestDist) { bestDist = d; bestIdx = i; }
+        }
+
+        const ax = ppl[bestIdx][0], ay = ppl[bestIdx][1];
+        const bx = ppl[bestIdx+1][0], by = ppl[bestIdx+1][1];
+        const tx = bx - ax, ty = by - ay;
+        const tLenSq = tx * tx + ty * ty;
+        const tLen = Math.sqrt(tLenSq) || 1;
+        const t = tLenSq > 0
+            ? Math.max(0, Math.min(1, ((cx - ax) * tx + (cy - ay) * ty) / tLenSq))
+            : 0;
+        const mx = ax + t * tx, my = ay + t * ty;
+
+        let px = -ty / tLen, py = tx / tLen;
+        const dot = (cx - mx) * px + (cy - my) * py;
+        if (dot < 0) { px = -px; py = -py; }
+        perps.push({ px, py, mx, my, ppl });
+    }
+
+    if (perps.length > 0) {
+        for (const n of nodes) n.parentPerps = perps;
+    }
 }
 
 function makeInterChainLink(source, target, sourceSegId, targetSegId) {
@@ -587,8 +437,6 @@ function makeInterChainLink(source, target, sourceSegId, targetSegId) {
         length: 10,
         sourceSegId: sourceSegId || null,
         targetSegId: targetSegId || null,
-        sourceSeg: sourceSegId || null,  // unified field for registry resolution
-        targetSeg: targetSegId || null,
     };
 }
 

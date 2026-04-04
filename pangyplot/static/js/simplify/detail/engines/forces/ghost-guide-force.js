@@ -2,7 +2,7 @@
 // on its parent chain's polyline. A soft shape hint that link forces
 // can easily overcome.
 
-import { getPolychainNodesForChain } from '../../data/polychain/polychain-adapter.js';
+import { getContainer } from '../../model/model-manager.js';
 import { pcSettings } from './pc-settings.js';
 
 export function ghostGuideForce() {
@@ -12,7 +12,7 @@ export function ghostGuideForce() {
     function getChainPl(chainId) {
         let cached = _chainCache.get(chainId);
         if (cached) return cached;
-        const pcNodes = getPolychainNodesForChain(chainId);
+        const pcNodes = getContainer(chainId)?.spineNodes;
         if (!pcNodes || pcNodes.length < 2) return null;
         // Only real polychain nodes — skip anchors to avoid feedback loop
         const real = pcNodes.filter(n => !n.isAnchor);

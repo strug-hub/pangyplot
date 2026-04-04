@@ -10,123 +10,16 @@ import { PolychainContainer } from './polychain-container.js';
 import { SegmentObject } from './segment-object.js';
 import { BubbleObject } from './bubble-object.js';
 import * as registry from './segment-registry.js';
-import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
-import { getForceLinks } from '../data/force-data.js';
-
-// --- Polychain resampling (mirrors polychain-adapter.js logic) ---
-
-const MIN_NODES = 2;
-
-function resamplePolyline(chain) {
-    const pl = chain.polyline;
-    if (!pl || pl.length < 2) return null;
-
-    const bpSpan = chain.bp_span || 1;
-    const targetCount = Math.max(MIN_NODES, Math.round(Math.pow(Math.log10(bpSpan + 1), 2)));
-
-    if (pl.length <= targetCount) return pl.slice();
-
-    // Cumulative arc lengths
-    const cum = [0];
-    for (let i = 1; i < pl.length; i++) {
-        const dx = pl[i][0] - pl[i - 1][0];
-        const dy = pl[i][1] - pl[i - 1][1];
-        cum.push(cum[i - 1] + Math.sqrt(dx * dx + dy * dy));
-    }
-    const totalLen = cum[pl.length - 1] || 1;
-
-    const samples = [pl[0]];
-    for (let k = 1; k < targetCount - 1; k++) {
-        const d = (k / (targetCount - 1)) * totalLen;
-        let lo = 0;
-        while (lo < cum.length - 2 && cum[lo + 1] < d) lo++;
-        const segLen = cum[lo + 1] - cum[lo];
-        const frac = segLen > 1e-9 ? (d - cum[lo]) / segLen : 0;
-        samples.push([
-            pl[lo][0] + frac * (pl[lo + 1][0] - pl[lo][0]),
-            pl[lo][1] + frac * (pl[lo + 1][1] - pl[lo][1]),
-        ]);
-    }
-    samples.push(pl[pl.length - 1]);
-    return samples;
-}
-
-function computeLoopFactor(polyline) {
-    if (!polyline || polyline.length < 3) return 0;
-    const head = polyline[0];
-    const tail = polyline[polyline.length - 1];
-    const headTailDist = Math.hypot(tail[0] - head[0], tail[1] - head[1]);
-    let totalLen = 0;
-    for (let i = 1; i < polyline.length; i++) {
-        totalLen += Math.hypot(
-            polyline[i][0] - polyline[i - 1][0],
-            polyline[i][1] - polyline[i - 1][1]
-        );
-    }
-    if (totalLen < 1e-9) return 0;
-    return Math.max(0, 1 - headTailDist / (totalLen * 0.3));
-}
 
 // --- Factory: detail-tiles chain → PolychainContainer ---
 
 /**
  * Create a PolychainContainer from a /detail-tiles chain object.
- *
- * Produces spine nodes + spine links in the same format the current
- * polychain-adapter creates, so they can be dropped into the force sim.
- *
- * @param {object} chain — chain object from /detail-tiles response
- * @returns {PolychainContainer}
+ * Delegates to PolychainContainer.fromChainData() — the container
+ * creates its own spine nodes + links internally.
  */
 export function createContainerFromChain(chain) {
-    const chainId = chain.id;
-
-    // Use the EXISTING polychain nodes already in the D3 sim (created by
-    // initPolychainLayer). The container references the same node objects
-    // so when D3 forces move them, positionAt() sees live positions.
-    const existingNodes = getPolychainNodesForChain(chainId);
-    if (!existingNodes || existingNodes.length < 2) return null;
-
-    // Find existing polychain links for these nodes from the D3 sim
-    const nodeIids = new Set(existingNodes.map(n => n.iid));
-    const existingLinks = getForceLinks().filter(l =>
-        l.isPolychainLink &&
-        l.chainId === chainId &&
-        nodeIids.has(typeof l.source === 'object' ? l.source.iid : l.source) &&
-        nodeIids.has(typeof l.target === 'object' ? l.target.iid : l.target)
-    );
-
-    // Normalize seg IDs to s-prefixed
-    const headSegs = (chain.sourceSegs || chain.source_segs || []).map(s =>
-        String(s).startsWith('s') ? String(s) : `s${s}`
-    );
-    const tailSegs = (chain.sinkSegs || chain.sink_segs || []).map(s =>
-        String(s).startsWith('s') ? String(s) : `s${s}`
-    );
-
-    // Build bubble metadata from chain data.
-    // bubblePositions (from bubble_t) is always present.
-    // bubbleIds (from bubble_ids) may be empty for non-connector chains —
-    // in that case, use index-based placeholder IDs. The real IDs come
-    // from /bubble-meta and are matched by t-position during pop.
-    const bubbleIds = chain.bubbleIds || chain.bubble_ids || [];
-    const bubblePositions = chain.bubblePositions || chain.bubble_t || [];
-    const bubbles = [];
-    for (let i = 0; i < bubblePositions.length; i++) {
-        const id = i < bubbleIds.length && bubbleIds[i]
-            ? (String(bubbleIds[i]).startsWith('b') ? String(bubbleIds[i]) : `b${bubbleIds[i]}`)
-            : `_bubble_${chainId}_${i}`;
-        bubbles.push({ id, t: bubblePositions[i] });
-    }
-
-    return new PolychainContainer({
-        id: chainId,
-        spineNodes: existingNodes,
-        spineLinks: existingLinks,
-        headSegs,
-        tailSegs,
-        bubbles,
-    });
+    return PolychainContainer.fromChainData(chain);
 }
 
 // --- Factory: /pop response → child SimObjects ---
