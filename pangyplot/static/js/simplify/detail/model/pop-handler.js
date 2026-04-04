@@ -67,8 +67,10 @@ export async function popBubbleCircleV2(hit) {
         return false;
     }
 
+    console.log(`[pop-handler] pre-split: container has ${container.bubbles.length} bubbles, ${container.segments.length} segments, popped=${container.poppedBubbles.size}`);
     const splitResult = container.splitAtBubble(bubbleId, t, 0.02, sourceSegs, sinkSegs);
     const { leftSegment, rightSegment, removedSegment, materializeHead, materializeTail } = splitResult;
+    console.log(`[pop-handler] split result: left=${!!leftSegment}, right=${!!rightSegment}, materializeHead=[${materializeHead}], materializeTail=[${materializeTail}], segments now=${container.segments.length}`);
 
     // Register new segment anchor segs in old seg-registry
     if (leftSegment) {
