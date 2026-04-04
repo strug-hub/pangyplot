@@ -24,10 +24,11 @@ function getVisibleChainPolylinesByColor(chains) {
                 const pl = seg.getPolyline();
                 if (pl.length >= 2) pls.push(pl);
             }
-            if (pls.length === 0) pls = null;
+            // No segments = everything popped — draw nothing
+            if (pls.length === 0) continue;
         }
 
-        // Fall back to old system
+        // Fall back to old system (chains without containers)
         if (!pls) {
             const polylines = getPolychainPolylines(chain.id);
             if (!polylines) {
