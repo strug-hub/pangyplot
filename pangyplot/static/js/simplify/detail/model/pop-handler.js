@@ -14,6 +14,7 @@ import { registerSeg, resolveEndForLink } from '../data/seg-registry.js';
 import { getContainer, addObject, removeObject } from './model-manager.js';
 import { SegmentObject } from './segment-object.js';
 import { BubbleObject } from './bubble-object.js';
+import popTree from '../data/pop-tree.js';
 
 /**
  * Pop a bubble circle on a polychain.
@@ -81,6 +82,7 @@ export async function popBubbleCircleV2(hit) {
     if (rightSegment) addObject(rightSegment);
 
     // --- Materialize boundary segs where a side is empty ---
+    const materializedObjects = [];  // track for undo
     // When a split side has no bubbles, the boundary seg becomes a real
     // SegmentObject replacing the anchor. Remove old anchor + its links,
     // the new kink node takes over in the registry.
@@ -94,6 +96,7 @@ export async function popBubbleCircleV2(hit) {
 
         const obj = SegmentObject.fromApiNode(apiNode, chainId);
         addObject(obj);
+        materializedObjects.push(obj);
 
         // Register SimObject ends (overwrites old anchor registration)
         for (const sid of obj.ends.head) registerSeg(sid, obj);
@@ -231,6 +234,21 @@ export async function popBubbleCircleV2(hit) {
         n.popBubbleId = bubbleId;
         n.ghostRootId = chainId;
     }
+
+    // --- Save undo data ---
+    const allNodeIids = [
+        ...childNodes.map(n => n.iid),
+        ...materializedObjects.flatMap(o => o.physicsNodes.map(n => n.iid)),
+    ];
+    popTree.register(bubbleId, chainId, null, {
+        bubbleId,
+        chainId,
+        t,
+        childObjectIds: childObjects.map(o => o.id),
+        materializedObjectIds: materializedObjects.map(o => o.id),
+        allNodeIids,
+        innerAnchorIids: newAnchors.map(n => n.iid),
+    });
 
     console.log(`[pop-handler] pop ${bubbleId} on ${chainId}: ` +
         `left=${!!leftSegment} right=${!!rightSegment}, ` +
