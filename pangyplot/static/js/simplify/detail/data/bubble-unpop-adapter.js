@@ -55,10 +55,12 @@ export function unpopLastBubble() {
         // Restore the old segment
         if (removedSegment) {
             container.segments.push(removedSegment);
-            // Sort segments by tRange start
             container.segments.sort((a, b) => a.tRange.start - b.tRange.start);
 
-            // Add to model store
+            // Restore anchor ownership (splitAt changed simObject to the split segments)
+            removedSegment.headAnchor.simObject = removedSegment;
+            removedSegment.tailAnchor.simObject = removedSegment;
+
             addObject(removedSegment);
 
             // Re-register the restored segment's ends
@@ -95,7 +97,10 @@ export function unpopLastBubble() {
 
         const fromNode = resolveEndForLink(fromSegId, link);
         const toNode = resolveEndForLink(toSegId, link);
-        if (!fromNode?.iid || !toNode?.iid) continue;
+        if (!fromNode?.iid || !toNode?.iid) {
+            console.log(`[unpop] link skip: ${fromSegId}→${toSegId}, from=${fromNode?.iid ?? 'null'} to=${toNode?.iid ?? 'null'}`);
+            continue;
+        }
 
         // Update the link's endpoints to the resolved nodes
         link.source = fromNode.iid;
