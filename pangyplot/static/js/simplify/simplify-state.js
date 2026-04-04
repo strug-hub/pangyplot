@@ -37,7 +37,6 @@ export const state = {
     detailOpacity: 0,
     skeletonOpacity: 1,
     isFetching: false,         // true while a detail fetch is in-flight
-    detailSuppressed: false,   // spacebar toggle: force skeleton view while zoomed in
     forceVectors: false,        // Y-key toggle: show per-node force vectors
     forceVectorMode: 'all',    // U-key cycle: 'all', 'charge', 'intra', 'link', 'layout', 'linkRepul'
 

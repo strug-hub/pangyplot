@@ -73,16 +73,4 @@ export function setupPanZoom(canvas) {
         if (state.stats) scheduleFrame();
     });
 
-    // --- Spacebar: toggle detail <-> skeleton while zoomed in ---
-    canvas.addEventListener('keydown', e => {
-        if (e.code !== 'Space' || e.repeat) return;
-        if (state.targetGridSize > state.DETAIL_EXIT_THRESHOLD) return;
-        e.preventDefault();
-        state.detailSuppressed = !state.detailSuppressed;
-        if (state.detailSuppressed) {
-            exitDetailMode();
-        } else {
-            scheduleDetailFetch();
-        }
-    });
 }

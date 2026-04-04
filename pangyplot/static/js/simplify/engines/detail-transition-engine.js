@@ -106,9 +106,6 @@ export function scheduleDetailFetch() {
             // Not in detail and not zoomed enough — nothing to do
             return;
         } else if (inDetail && state.targetGridSize > exitThreshold) {
-            state.detailSuppressed = false;
-            exitDetailMode();
-        } else if (state.detailSuppressed) {
             exitDetailMode();
         } else {
             if (!isReady()) return;
