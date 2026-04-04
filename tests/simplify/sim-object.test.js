@@ -118,9 +118,10 @@ describe('SegmentObject', () => {
 
         it('matches via target field too', () => {
             const seg = makeSegment();
+            // target role, "-" strand → tailNode
             const link = { source: 's200', target: 's100', fromStrand: '+', toStrand: '-' };
             const node = seg.resolveEnd(link);
-            expect(node).toBe(seg.headNode);
+            expect(node).toBe(seg.tailNode);
         });
     });
 
@@ -202,20 +203,20 @@ describe('BubbleObject', () => {
     });
 
     describe('resolveEnd', () => {
-        it('returns head kink for source seg match', () => {
+        it('returns tail kink for source seg + strand match', () => {
             const b = makeBubble({ length: 5000 });
+            // s10 is source (role=source), strand "+" → tail
             const link = { source: 's10', target: 's50', fromStrand: '+', toStrand: '+' };
             const node = b.resolveEnd(link);
-            // source seg is in head, + strand → headNode
-            expect(node).toBe(b.headNode);
+            expect(node).toBe(b.tailNode);
         });
 
-        it('returns tail kink for sink seg match', () => {
+        it('returns head kink for target seg + strand match', () => {
             const b = makeBubble({ length: 5000 });
+            // s20 is target (role=target), strand "+" → head
             const link = { source: 's50', target: 's20', fromStrand: '+', toStrand: '+' };
             const node = b.resolveEnd(link);
-            // sink seg is in tail, + strand → tailNode
-            expect(node).toBe(b.tailNode);
+            expect(node).toBe(b.headNode);
         });
     });
 

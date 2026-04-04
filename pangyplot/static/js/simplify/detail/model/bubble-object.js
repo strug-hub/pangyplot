@@ -150,13 +150,13 @@ export class BubbleObject extends SimObject {
         const match = this._matchLink(link);
         if (!match) return null;
 
-        // Head side: source segs → first kink. Tail side: sink segs → last kink.
-        // Strand flips within side: "+" → far end, "-" → near end.
-        if (match.side === 'head') {
-            return match.strand === '+' ? this.headNode : this.tailNode;
-        }
-        if (match.side === 'tail') {
+        // Same source/target logic as SegmentObject:
+        //   Source: "+" → tail, "-" → head
+        //   Target: "+" → head, "-" → tail
+        if (match.role === 'source') {
             return match.strand === '+' ? this.tailNode : this.headNode;
+        } else {
+            return match.strand === '+' ? this.headNode : this.tailNode;
         }
         return this.headNode;
     }

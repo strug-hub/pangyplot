@@ -127,11 +127,14 @@ export class SegmentObject extends SimObject {
         const match = this._matchLink(link);
         if (!match) return null;
 
-        // Strand determines which end of the kinked segment to attach to.
-        // "+" strand → tail (last kink), "-" strand → head (first kink).
-        if (match.strand === '+') return this.tailNode;
-        if (match.strand === '-') return this.headNode;
-        return this.headNode;
+        // Source and target have opposite kink selection:
+        //   Source: "+" → tail (link leaves from end), "-" → head
+        //   Target: "+" → head (link arrives at start), "-" → tail
+        if (match.role === 'source') {
+            return match.strand === '+' ? this.tailNode : this.headNode;
+        } else {
+            return match.strand === '+' ? this.headNode : this.tailNode;
+        }
     }
 
     getRenderables() {

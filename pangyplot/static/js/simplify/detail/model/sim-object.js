@@ -163,10 +163,10 @@ export class SimObject {
         const toSeg = _stripPrefix(link.toSegId ?? link.target);
 
         let side = this._whichEnd(fromSeg);
-        if (side) return { segId: fromSeg, strand: link.fromStrand || '+', side };
+        if (side) return { segId: fromSeg, strand: link.fromStrand || '+', side, role: 'source' };
 
         side = this._whichEnd(toSeg);
-        if (side) return { segId: toSeg, strand: link.toStrand || '+', side };
+        if (side) return { segId: toSeg, strand: link.toStrand || '+', side, role: 'target' };
 
         return null;
     }
