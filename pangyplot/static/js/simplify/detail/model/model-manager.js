@@ -36,7 +36,9 @@ window.__simRegistry = registry;
 export function initModel(detailData) {
     clearModel();
 
+    console.log(`[model] initModel: ${(detailData.chains || []).length} chains`);
     for (const chain of (detailData.chains || [])) {
+        console.log(`[model] chain ${chain.id}: bubbleIds=${(chain.bubbleIds||[]).length}, bubblePositions=${(chain.bubblePositions||[]).length}, keys=${Object.keys(chain).filter(k=>k.includes('ubble')).join(',')}`);
         const container = createContainerFromChain(chain);
         if (container) {
             containers.set(container.id, container);
@@ -239,8 +241,7 @@ export function unpopBubbleOnChain(opts) {
 
 /** Get a PolychainContainer by root chain ID. */
 export function getContainer(chainId) {
-    const rootId = chainId.split(':')[0];
-    return containers.get(rootId) ?? null;
+    return containers.get(chainId) ?? null;
 }
 
 /** Get all containers. */

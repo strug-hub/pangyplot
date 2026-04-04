@@ -106,8 +106,11 @@ export function createContainerFromChain(chain) {
 
     // Build bubble metadata from chain data
     // bubbleIds = ["b123", "b124", ...], bubblePositions = [0.0, 0.1, ...]
-    const bubbleIds = chain.bubbleIds || [];
-    const bubblePositions = chain.bubblePositions || [];
+    const bubbleIds = chain.bubbleIds || chain.bubble_ids || [];
+    const bubblePositions = chain.bubblePositions || chain.bubble_t || [];
+    if (bubbleIds.length === 0) {
+        console.warn(`[factory] chain ${chainId}: no bubbleIds (keys: ${Object.keys(chain).filter(k => k.includes('ubble')).join(',')})`);
+    }
     const bubbles = [];
     for (let i = 0; i < bubbleIds.length && i < bubblePositions.length; i++) {
         const id = String(bubbleIds[i]).startsWith('b') ? String(bubbleIds[i]) : `b${bubbleIds[i]}`;
