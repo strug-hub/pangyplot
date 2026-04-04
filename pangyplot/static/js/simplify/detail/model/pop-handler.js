@@ -181,6 +181,8 @@ export async function popBubbleCircleV2(hit) {
         const toNode = resolveEndForLink(toSegId, linkForResolve);
         if (!fromNode?.iid || !toNode?.iid) continue;
 
+        const linkLen = (rawLink.length || 0) > 0
+            ? Math.min(rawLink.length / 100, 1000) : 10;
         gfaLinks.push({
             isNode: false, isLink: true, class: 'link',
             iid: `${fromNode.iid}${rawLink.from_strand || '+'}${toNode.iid}${rawLink.to_strand || '+'}`,
@@ -188,9 +190,10 @@ export async function popBubbleCircleV2(hit) {
             sourceIid: fromNode.iid, targetIid: toNode.iid,
             sourceId: fromSegId, targetId: toSegId,
             type: 'link',
+            chainId,
             isDel: boundaryIds.has(fromSegId) && boundaryIds.has(toSegId),
             isKinkLink: false, isRef: false, isDrawn: true,
-            length: 10, width: 1,
+            length: linkLen, width: 1,
             contained: rawLink.contained || [],
             frequency: rawLink.frequency || 0,
             haplotype: rawLink.haplotype || null,
