@@ -433,6 +433,22 @@ export function removePoppedNodes(chainId) {
     }
 }
 
+/**
+ * Remove all nodes (and their links) whose chainId is in the given set.
+ */
+export function removeNodesByChainIds(chainIds) {
+    if (!sim) return;
+    const remaining = getNodes().filter(n => !chainIds.has(n.chainId));
+    const remainingIids = new Set(remaining.map(n => n.iid));
+    const keptLinks = getLinks().filter(l => {
+        const sIid = l.source.iid ?? l.source;
+        const tIid = l.target.iid ?? l.target;
+        return remainingIids.has(sIid) && remainingIids.has(tIid);
+    });
+    syncNodes(remaining);
+    syncLinks(keptLinks);
+}
+
 // Simulation control
 // ---------------------------------------------------------------
 
