@@ -7,7 +7,8 @@
 
 import { state } from '../../simplify-state.js';
 import { insertPoppedContent, removePoppedContent } from '../engines/force-engine.js';
-import { getForceNodes } from '../data/force-data.js';
+import { getForceNodes, getForceLinks } from '../data/force-data.js';
+
 import { getPolychainNodesForChain } from '../data/polychain/polychain-adapter.js';
 import { registerSeg, resolveEndForLink } from '../data/seg-registry.js';
 
@@ -82,7 +83,8 @@ export async function popBubbleCircleV2(hit) {
     if (rightSegment) addObject(rightSegment);
 
     // --- Materialize boundary segs where a side is empty ---
-    const materializedObjects = [];  // track for undo
+    const materializedObjects = [];
+    const destroyedLinkMeta = [];  // link metadata from removed anchors (for undo)
     // When a split side has no bubbles, the boundary seg becomes a real
     // SegmentObject replacing the anchor. Remove old anchor + its links,
     // the new kink node takes over in the registry.
@@ -102,13 +104,28 @@ export async function popBubbleCircleV2(hit) {
         for (const sid of obj.ends.head) registerSeg(sid, obj);
         for (const sid of obj.ends.tail) registerSeg(sid, obj);
 
-        // Remove the old anchor that tracked this seg + any links to it
-        // The anchor is on the removedSegment (it wasn't reused since hasLeft/hasRight was false)
+        // Save link metadata from the old anchor before removing it.
+        // These links will need to be recreated on undo (pointing to the restored anchor).
         const oldAnchor = materializeHead.includes(segId)
             ? removedSegment.headAnchor
             : removedSegment.tailAnchor;
         if (oldAnchor) {
-            removePoppedContent([oldAnchor.iid]);
+            const anchorIid = oldAnchor.iid;
+            for (const l of getForceLinks()) {
+                const sIid = l.source?.iid ?? l.source;
+                const tIid = l.target?.iid ?? l.target;
+                if (sIid === anchorIid || tIid === anchorIid) {
+                    destroyedLinkMeta.push({
+                        sourceId: l.sourceId, targetId: l.targetId,
+                        fromStrand: l.fromStrand || '+', toStrand: l.toStrand || '+',
+                        chainId: l.chainId, isDel: l.isDel,
+                        length: l.length, width: l.width,
+                        contained: l.contained, frequency: l.frequency,
+                        haplotype: l.haplotype,
+                    });
+                }
+            }
+            removePoppedContent([anchorIid]);
         }
 
         // Add kink nodes to sim (will be positioned + linked in GFA resolution below)
@@ -249,8 +266,9 @@ export async function popBubbleCircleV2(hit) {
         bubbleId,
         chainId,
         // Removed from sim — restore on undo
-        removedSegment,        // the old PolychainSegment before split
-        removedAnchors,        // anchors removed during materialization
+        removedSegment,
+        removedAnchors,
+        destroyedLinkMeta,     // link metadata to recreate on undo
 
         // Added to sim — remove on undo
         addedNodes: [

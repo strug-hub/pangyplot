@@ -1,9 +1,9 @@
 // Undo a bubble pop: exact reverse using saved objects.
 
 import { removePoppedContent, insertPoppedContent } from '../engines/force-engine.js';
-import { getForceNodes, getForceLinks } from './force-data.js';
+import { getForceNodes } from './force-data.js';
 import popTree from './pop-tree.js';
-import { getContainer, addObject, removeObject } from '../model/model-manager.js';
+import { getContainer, addObject, removeObject, forgetObject } from '../model/model-manager.js';
 import { registerSeg, resolveEndForLink } from './seg-registry.js';
 
 /**
@@ -18,39 +18,35 @@ export function unpopLastBubble() {
         chainId,
         removedSegment,
         removedAnchors,
+        destroyedLinkMeta,
         addedNodes,
         addedObjects,
     } = popEntry;
 
-    // 1. Save links where ONE end is being removed but the OTHER survives.
-    //    These are cross-pop links (e.g. b16540's children → anchor → b16539's children).
-    //    Links where BOTH ends are removed are internal to this pop and don't need restoring.
-    const removeIidSet = new Set((addedNodes || []).map(n => n.iid));
-    const crossLinks = getForceLinks().filter(l => {
-        const sIid = l.source?.iid ?? l.source;
-        const tIid = l.target?.iid ?? l.target;
-        const sRemoved = removeIidSet.has(sIid);
-        const tRemoved = removeIidSet.has(tIid);
-        return (sRemoved && !tRemoved) || (!sRemoved && tRemoved);
-    });
-
-    // Remove all nodes that were added during this pop + their links
-    if (removeIidSet.size > 0) {
-        removePoppedContent([...removeIidSet]);
+    // 1. Remove all nodes that were added during this pop + their links
+    const removeIids = (addedNodes || []).map(n => n.iid);
+    if (removeIids.length > 0) {
+        removePoppedContent(removeIids);
     }
 
-    // Remove added objects from model store
+    // Remove added objects from model store WITHOUT unregistering ends.
+    // destroy() would unregister shared segs that the restored segment needs.
     for (const obj of (addedObjects || [])) {
-        removeObject(obj.id);
+        forgetObject(obj.id);
     }
 
     // 2. Restore the container: undo the split
     const container = getContainer(chainId);
     if (container) {
+        console.log(`[unpop] before filter: ${container.segments.length} segments, addedObjects has ${(addedObjects||[]).length} items`);
+        console.log(`[unpop] segment ids: [${container.segments.map(s => s.id)}]`);
+        console.log(`[unpop] addedObject ids: [${(addedObjects||[]).map(o => o.id)}]`);
         // Remove the split segments from container
         container.segments = container.segments.filter(
             s => !(addedObjects || []).includes(s)
         );
+        console.log(`[unpop] after filter: ${container.segments.length} segments`);
+        console.log(`[unpop] poppedRanges before: [${container.poppedRanges.map(pr => pr.bubbleId)}], removing: ${bubbleId}`);
 
         // Remove from poppedRanges
         const prIdx = container.poppedRanges.findIndex(pr => pr.bubbleId === bubbleId);
@@ -91,33 +87,45 @@ export function unpopLastBubble() {
         }
     }
 
-    // 4. Re-resolve destroyed links through the updated registry.
-    //    The registry now points to the restored segment's anchors.
-    const restoredLinks = [];
-    for (const link of crossLinks) {
-        const fromSegId = link.sourceId;
-        const toSegId = link.targetId;
-        if (!fromSegId || !toSegId) continue;
+    // 4. Recreate links that were destroyed during materialization.
+    //    The registry now points to the restored anchors. Resolve fresh.
+    const recreatedLinks = [];
+    for (const meta of (destroyedLinkMeta || [])) {
+        if (!meta.sourceId || !meta.targetId) continue;
 
-        const fromNode = resolveEndForLink(fromSegId, link);
-        const toNode = resolveEndForLink(toSegId, link);
-        if (!fromNode?.iid || !toNode?.iid) {
-            console.log(`[unpop] link skip: ${fromSegId}→${toSegId}, from=${fromNode?.iid ?? 'null'} to=${toNode?.iid ?? 'null'}`);
-            continue;
-        }
+        const linkForResolve = {
+            source: meta.sourceId, target: meta.targetId,
+            fromStrand: meta.fromStrand, toStrand: meta.toStrand,
+        };
 
-        // Update the link's endpoints to the resolved nodes
-        link.source = fromNode.iid;
-        link.target = toNode.iid;
-        link.sourceIid = fromNode.iid;
-        link.targetIid = toNode.iid;
-        restoredLinks.push(link);
+        const fromNode = resolveEndForLink(meta.sourceId, linkForResolve);
+        const toNode = resolveEndForLink(meta.targetId, linkForResolve);
+        if (!fromNode?.iid || !toNode?.iid) continue;
+
+        recreatedLinks.push({
+            isNode: false, isLink: true, class: 'link',
+            iid: `${fromNode.iid}${meta.fromStrand}${toNode.iid}${meta.toStrand}`,
+            source: fromNode.iid, target: toNode.iid,
+            sourceIid: fromNode.iid, targetIid: toNode.iid,
+            sourceId: meta.sourceId, targetId: meta.targetId,
+            type: 'link', chainId,
+            isDel: meta.isDel || false,
+            isKinkLink: false, isRef: false, isDrawn: true,
+            length: meta.length || 10, width: meta.width || 1,
+            contained: meta.contained || [],
+            frequency: meta.frequency || 0,
+            haplotype: meta.haplotype || null,
+        });
     }
 
-    if (restoredLinks.length > 0) {
-        insertPoppedContent(chainId, [], restoredLinks);
+    if (recreatedLinks.length > 0) {
+        insertPoppedContent(chainId, [], recreatedLinks);
     }
 
-    console.log(`[unpop] undid ${bubbleId} on ${chainId}, re-resolved ${restoredLinks.length} links`);
+    console.log(`[unpop] undid ${bubbleId} on ${chainId}, recreated ${recreatedLinks.length} links`);
+    if (container) {
+        console.log(`[unpop] final state: ${container.segments.length} segments, ${container.poppedRanges.length} poppedRanges`);
+        container.segments.forEach(s => console.log(`  seg ${s.id} [${s.tRange.start.toFixed(3)},${s.tRange.end.toFixed(3)}]`));
+    }
     return true;
 }

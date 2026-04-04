@@ -67,13 +67,19 @@ export function addObject(obj) {
     objects.set(obj.id, obj);
 }
 
-/** Remove a SimObject from the store and destroy it. */
+/** Remove a SimObject from the store and destroy it (unregisters ends). */
 export function removeObject(id) {
     const obj = objects.get(id);
     if (obj) {
         obj.destroy(registry);
         objects.delete(id);
     }
+}
+
+/** Remove a SimObject from the store WITHOUT unregistering ends.
+ *  Used by undo — the restored segment will re-register shared ends. */
+export function forgetObject(id) {
+    objects.delete(id);
 }
 
 /** Get a SimObject by ID. */
