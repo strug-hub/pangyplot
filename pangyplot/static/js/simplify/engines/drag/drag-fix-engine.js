@@ -16,7 +16,6 @@ export function setupDragFixEngine(canvas) {
         if (e.code === 'KeyF' && !e.repeat) {
             checkbox.checked = !checkbox.checked;
             state.fixOnDrag = checkbox.checked;
-            console.log('fixOnDrag:', state.fixOnDrag);
         }
     });
 }

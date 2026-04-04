@@ -7,7 +7,6 @@ import { switchTab } from './tab-set.js';
 
 const CORE_ONLY_TABS = [
     'path-selector',
-    'tool-tab',
 ];
 
 function applyTabVisibility() {
@@ -27,6 +26,11 @@ function applyTabVisibility() {
         if (activeBtn && activeBtn.classList.contains('hidden')) {
             switchTab('keyboard-shortcuts');
         }
+    }
+
+    // Hide core-only settings within shared tabs
+    for (const el of document.querySelectorAll('.core-only-setting')) {
+        el.classList.toggle('hidden', isSimplify);
     }
 
     // Toggle keyboard shortcuts panels
