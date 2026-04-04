@@ -11,7 +11,6 @@ import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
 import { state } from './simplify-state.js';
 import { setupUiBridge } from './ui/ui-bridge.js';
 import { setupPolychainForceSettings } from './ui/polychain-force-settings.js';
-import { setupDebugScatterplot } from './ui/debug-scatterplot.js';
 import { publishViewportCoordinates } from './ui/viewport-sync.js';
 import { setupNodeSearch } from './engines/node-search-engine.js';
 
@@ -46,7 +45,6 @@ async function init() {
 
 setupUiBridge();
 setupPolychainForceSettings();
-setupDebugScatterplot();
 setupNodeSearch();
 setupEngines();
 init();

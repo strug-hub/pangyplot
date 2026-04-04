@@ -14,7 +14,6 @@ import { registerSegs } from '../seg-registry.js';
 
 // chainId → [polychain node objects in polyline order]
 const chainPolychainNodes = new Map();
-window.__pcNodes = chainPolychainNodes;  // debug access
 
 // "s{id}" → polychain node (endpoint seg → head or tail node)
 const segToPolychain = new Map();
