@@ -190,15 +190,11 @@ export class PolychainContainer {
         this.poppedRanges.push({ tStart: tPosition, tEnd: tPosition, bubbleId });
 
         // Find neighbor bubbles (nearest unpopped on each side)
-        // These define where the split segments end — anchors land on neighbor positions
         const leftBubbles = this.bubblesInRange(oldSeg.tRange.start, tPosition);
         const rightBubbles = this.bubblesInRange(tPosition, oldSeg.tRange.end);
 
         const leftNeighbor = leftBubbles.length > 0 ? leftBubbles[leftBubbles.length - 1] : null;
         const rightNeighbor = rightBubbles.length > 0 ? rightBubbles[0] : null;
-
-        // Segment boundaries land on neighbor bubble t-positions
-        // so anchors coincide with where the neighbor circles are drawn
         const leftEnd = leftNeighbor ? leftNeighbor.t : tPosition;
         const rightStart = rightNeighbor ? rightNeighbor.t : tPosition;
 
@@ -206,53 +202,34 @@ export class PolychainContainer {
         registry.unregisterAll(oldSeg.ends.head);
         registry.unregisterAll(oldSeg.ends.tail);
 
+        // Segment splits itself — reuses outer anchors, creates new inner ones
+        const { left, right, newAnchors } = oldSeg.splitAt(
+            bubbleId, sourceSegs, sinkSegs,
+            leftEnd, rightStart,
+            leftBubbles.length > 0, rightBubbles.length > 0
+        );
+
         const result = {
-            leftSegment: null,
-            rightSegment: null,
+            leftSegment: left,
+            rightSegment: right,
             removedSegment: oldSeg,
-            materializeHead: [],
-            materializeTail: [],
+            newAnchors,  // only the NEW inner anchors (outer ones reused)
+            materializeHead: left ? [] : sourceSegs.map(String),
+            materializeTail: right ? [] : sinkSegs.map(String),
         };
 
-        const newSegments = [];
-
-        // Left side — only create if there are unpopped bubbles
-        if (leftBubbles.length > 0) {
-            const leftSeg = new PolychainSegment({
-                id: `${this.id}:${this.segments.length}`,
-                containerId: this.id,
-                headSegs: oldSeg.ends.head,
-                tailSegs: sourceSegs.map(String),
-                tRange: { start: oldSeg.tRange.start, end: leftEnd },
-                container: this,
-            });
-            result.leftSegment = leftSeg;
-            newSegments.push(leftSeg);
-            registry.registerAll(leftSeg.ends.head, leftSeg);
-            registry.registerAll(leftSeg.ends.tail, leftSeg);
-        } else {
-            result.materializeHead = sourceSegs.map(String);
-        }
-
-        // Right side — only create if there are unpopped bubbles
-        if (rightBubbles.length > 0) {
-            const rightSeg = new PolychainSegment({
-                id: `${this.id}:${this.segments.length + 1}`,
-                containerId: this.id,
-                headSegs: sinkSegs.map(String),
-                tailSegs: oldSeg.ends.tail,
-                tRange: { start: rightStart, end: oldSeg.tRange.end },
-                container: this,
-            });
-            result.rightSegment = rightSeg;
-            newSegments.push(rightSeg);
-            registry.registerAll(rightSeg.ends.head, rightSeg);
-            registry.registerAll(rightSeg.ends.tail, rightSeg);
-        } else {
-            result.materializeTail = sinkSegs.map(String);
-        }
-
         // Replace old segment with new ones
+        const newSegments = [];
+        if (left) {
+            newSegments.push(left);
+            registry.registerAll(left.ends.head, left);
+            registry.registerAll(left.ends.tail, left);
+        }
+        if (right) {
+            newSegments.push(right);
+            registry.registerAll(right.ends.head, right);
+            registry.registerAll(right.ends.tail, right);
+        }
         this.segments.splice(segIdx, 1, ...newSegments);
 
         return result;

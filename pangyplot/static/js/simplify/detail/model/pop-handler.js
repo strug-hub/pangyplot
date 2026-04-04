@@ -57,28 +57,15 @@ export async function popBubbleCircleV2(hit) {
     }
 
     const splitResult = container.splitAtBubble(bubbleId, t, sourceSegs, sinkSegs);
-    const { leftSegment, rightSegment, removedSegment } = splitResult;
+    const { leftSegment, rightSegment, removedSegment, newAnchors } = splitResult;
 
-    // --- Swap anchors in D3 sim ---
-    // Remove old segment's anchors
-    const removeIids = removedSegment.physicsNodes.map(n => n.iid);
-    // Collect old anchor iids that are actually in the sim
-    const existingIids = new Set(getForceNodes().map(n => n.iid));
-    const iidsToRemove = removeIids.filter(iid => existingIids.has(iid));
-    if (iidsToRemove.length > 0) {
-        removePoppedContent(iidsToRemove);
-    }
-
-    // Add new segments' anchors to sim
-    const newAnchors = [];
-    if (leftSegment) newAnchors.push(...leftSegment.physicsNodes);
-    if (rightSegment) newAnchors.push(...rightSegment.physicsNodes);
-
+    // --- Add only NEW inner anchors to D3 sim ---
+    // Outer anchors are reused (same d3 nodes) so existing links stay valid.
     if (newAnchors.length > 0) {
         insertPoppedContent(chainId, newAnchors, []);
     }
 
-    // --- Register anchor segs in old seg-registry ---
+    // --- Register all segment anchor segs in seg-registry ---
     if (leftSegment) {
         for (const segId of leftSegment.ends.head) registerSeg(segId, leftSegment.headAnchor);
         for (const segId of leftSegment.ends.tail) registerSeg(segId, leftSegment.tailAnchor);

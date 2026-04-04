@@ -227,6 +227,85 @@ export class PolychainSegment extends SimObject {
     }
 
     // ---------------------------------------------------------------
+    // Split
+    // ---------------------------------------------------------------
+
+    /**
+     * Split this segment at a popped bubble. Reuses outer anchors so
+     * existing links stay valid. Only creates new inner anchors at the gap.
+     *
+     * @param {string} bubbleId
+     * @param {number} tPosition — bubble's t
+     * @param {string[]} sourceSegs — source segs of the popped bubble
+     * @param {string[]} sinkSegs — sink segs of the popped bubble
+     * @param {number} leftEnd — t for left segment's tail (left neighbor bubble's t)
+     * @param {number} rightStart — t for right segment's head (right neighbor bubble's t)
+     * @param {boolean} hasLeft — whether left side has unpopped bubbles
+     * @param {boolean} hasRight — whether right side has unpopped bubbles
+     * @returns {{ left, right, newAnchors }}
+     */
+    splitAt(bubbleId, sourceSegs, sinkSegs, leftEnd, rightStart, hasLeft, hasRight) {
+        let left = null, right = null;
+        const newAnchors = [];
+
+        if (hasLeft) {
+            // New inner tailAnchor for left segment (at gap boundary)
+            const innerTailAnchor = _createAnchorNode(
+                `anchor_${this.parentId}_${_anchorIdCounter++}_T`,
+                0, 0  // positioned by updateAnchors on next frame
+            );
+            innerTailAnchor.simObject = null; // set below
+
+            left = new PolychainSegment({
+                id: `${this.parentId}:${_anchorIdCounter}`,
+                containerId: this.parentId,
+                headSegs: this.ends.head,
+                tailSegs: sourceSegs.map(String),
+                tRange: { start: this.tRange.start, end: leftEnd },
+                container: this.container,
+            });
+            // Reuse outer headAnchor (same d3 node — links stay valid)
+            left.headAnchor = this.headAnchor;
+            left.headAnchor.simObject = left;
+            // Use new inner tailAnchor
+            left.tailAnchor = innerTailAnchor;
+            left.tailAnchor.simObject = left;
+            left.physicsNodes = [left.headAnchor, left.tailAnchor];
+
+            newAnchors.push(innerTailAnchor);
+        }
+
+        if (hasRight) {
+            // New inner headAnchor for right segment (at gap boundary)
+            const innerHeadAnchor = _createAnchorNode(
+                `anchor_${this.parentId}_${_anchorIdCounter++}_H`,
+                0, 0  // positioned by updateAnchors on next frame
+            );
+            innerHeadAnchor.simObject = null; // set below
+
+            right = new PolychainSegment({
+                id: `${this.parentId}:${_anchorIdCounter}`,
+                containerId: this.parentId,
+                headSegs: sinkSegs.map(String),
+                tailSegs: this.ends.tail,
+                tRange: { start: rightStart, end: this.tRange.end },
+                container: this.container,
+            });
+            // Use new inner headAnchor
+            right.headAnchor = innerHeadAnchor;
+            right.headAnchor.simObject = right;
+            // Reuse outer tailAnchor (same d3 node — links stay valid)
+            right.tailAnchor = this.tailAnchor;
+            right.tailAnchor.simObject = right;
+            right.physicsNodes = [right.headAnchor, right.tailAnchor];
+
+            newAnchors.push(innerHeadAnchor);
+        }
+
+        return { left, right, newAnchors };
+    }
+
+    // ---------------------------------------------------------------
     // Testing
     // ---------------------------------------------------------------
 
