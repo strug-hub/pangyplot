@@ -2,6 +2,7 @@
 // Takes a plain data dict and knows how to render each key.
 
 import { formatBp } from '@format-utils';
+import { isDebugMode } from '@app-state';
 
 const TYPE_COLORS = {
     simple: '#4a90d9',
@@ -28,9 +29,11 @@ export function formatTooltipHtml(data) {
     if (data.length != null)   lines.push(row('length', formatBp(data.length, { unit: true })));
     if (data.gc != null)       lines.push(row('gc', data.gc));
     if (data.bubbles != null)  lines.push(row('bubbles', data.bubbles));
-    if (data.polyline != null) lines.push(row('polyline', data.polyline + ' pts'));
-    if (data.loop != null)     lines.push(row('loop', data.loop));
-    if (data.depth != null)    lines.push(row('depth', data.depth));
+    if (isDebugMode()) {
+        if (data.polyline != null) lines.push(row('polyline', data.polyline + ' pts', '#c97a7a'));
+        if (data.loop != null)     lines.push(row('loop', data.loop, '#c97a7a'));
+        if (data.depth != null)    lines.push(row('depth', data.depth, '#c97a7a'));
+    }
 
     return lines.join('<br>');
 }

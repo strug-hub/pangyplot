@@ -42,12 +42,9 @@ export function hitTestForceNodes(dataX, dataY) {
 
 export function getForceNodeTooltip(node) {
     if (node.chainId === '__junction__') {
-        const segChains = state.detailData?.junctionSegChains || {};
-        const chains = segChains[node.id] || [];
         return {
             segment: node.recordId || node.id,
             length: node.seqLength,
-            chains: chains.length > 0 ? chains.join(', ') : null,
         };
     }
     return {
