@@ -2,12 +2,14 @@
 
 import { state } from '../../simplify-state.js';
 import { getForceNodes } from '../data/force-data.js';
+import { getRenderScale } from '../engines/forces/pc-settings.js';
 
 const HIT_RADIUS_PX = 12;
 
 export function hitTestBubbles(dataX, dataY) {
     if (!state.detailData || !state.detailData.bubbles || state.detailOpacity < 0.5) return null;
-    const margin = HIT_RADIUS_PX / state.zoom;
+    const RS = getRenderScale();
+    const margin = HIT_RADIUS_PX * RS / state.zoom;
     for (const b of state.detailData.bubbles) {
         const dx = (dataX - b.x) / (b.rx + margin);
         const dy = (dataY - b.y) / (b.ry + margin);
@@ -21,7 +23,8 @@ export function hitTestForceNodes(dataX, dataY) {
     const nodes = getForceNodes();
     if (nodes.length === 0) return null;
 
-    const hitR = HIT_RADIUS_PX / state.zoom;
+    const RS = getRenderScale();
+    const hitR = HIT_RADIUS_PX * RS / state.zoom;
     let bestDist = hitR;
     let bestNode = null;
 

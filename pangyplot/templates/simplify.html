@@ -34,7 +34,8 @@
             "@app-state": "{{ url_for('static', filename='js/app-state.js') }}",
             "@color-utils": "{{ url_for('static', filename='js/utils/color-utils.js') }}",
             "@format-utils": "{{ url_for('static', filename='js/utils/format-utils.js') }}",
-            "@simplify-data/": "{{ url_for('static', filename='js/simplify/data/') }}"
+            "@simplify-data/": "{{ url_for('static', filename='js/simplify/data/') }}",
+            "@debug/": "{{ url_for('static', filename='js/simplify/debug/') }}"
         }
     }
     </script>
@@ -257,6 +258,7 @@
                     <span><span id="reduction" class="val">--</span> reduction</span>
                     <div id="grid-meter"></div>
                     <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
+                    <span id="render-scale-display" style="color: #888; font-size: 12px;">RS <span id="render-scale-val" class="val" style="color: #f80;">1.0</span></span>
                     <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
                     <span id="cursor-bp" style="color: #999; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>
                     <span id="stats"></span>

@@ -25,5 +25,28 @@ export const pcSettings = {
 /** Single read point for the scale factor — all forces use this. */
 export function getScale() { return pcSettings.dataScale; }
 
+/** Base pixel width for detail rendering (polychain lines, nodes, bubbles). */
+export const BASE_RENDER_PX = 3;
+
+// State ref — set once at init to avoid circular imports with simplify-state.
+let _state = null;
+export function bindRenderState(state) { _state = state; }
+
+/** Render thickness scale: zoom-based ramp × user slider multiplier. */
+export function getRenderScale() {
+    const zoom = _state?.zoom ?? 1;
+    const threshold = pcSettings.dataScale;
+    const maxBoost = _state?.renderMaxBoost ?? 2;
+    const multiplier = _state?.thicknessMultiplier ?? 1;
+    const zoomBoost = zoom <= threshold ? 0 : Math.min(zoom / threshold - 1, maxBoost);
+    return multiplier * (1 + zoomBoost);
+}
+
+/** Compute the base width for detail rendering at the current zoom/scale. */
+export function getBaseWidth() {
+    const zoom = _state?.zoom ?? 1;
+    return Math.max(1.5, BASE_RENDER_PX * getRenderScale() / zoom);
+}
+
 export const loopLevels = { 0: 0, 1: 1, 2: 4, 3: 10, 4: 25, 5: 50 };
 export const linkStrengthLevels = { 1: 0.05, 2: 0.1, 3: 0.5, 4: 0.75, 5: 1.0 };

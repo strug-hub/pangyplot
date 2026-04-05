@@ -11,9 +11,9 @@ const HOVER_COLOR = '#aca9a6';
 const SELECTED_COLOR = '#F44336';
 
 // Sizes matching core's highlight-selection-renderer.js
-const HALO_THICKNESS = 10;
-const HOVER_SIZE = 12;
-const HOVER_THICKNESS = 1.5;
+const HALO_THICKNESS = 2;
+const HOVER_SIZE = 2.4;
+const HOVER_THICKNESS = 0.3;
 
 // Dirty-check cache: stores link *references* (not coordinates),
 // so positions update automatically as force nodes move.

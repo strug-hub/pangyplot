@@ -8,6 +8,7 @@ import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-
 import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta } from '../../data/bubble-meta-cache.js';
 import { getAllAnnotations } from '@simplify-data/custom-annotation-data.js';
 import { getContainer } from '../../model/model-manager.js';
+import { getBaseWidth } from '../../engines/forces/pc-settings.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
@@ -53,7 +54,8 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
     if (!dd) return;
 
     // Halo: thicker than chain line, drawn behind it
-    const haloWidth = Math.max(4, 10 / state.zoom);
+    const bw = getBaseWidth(state.zoom, state.renderMaxBoost, state.thicknessMultiplier);
+    const haloWidth = Math.max(4, bw * 2);
     if (!svg) {
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
@@ -240,7 +242,7 @@ export function drawDetail(svg = null) {
         ctx.lineCap = 'round';
     }
 
-    const baseWidth = Math.max(1.5, 3 / state.zoom);
+    const baseWidth = getBaseWidth(state.zoom, state.renderMaxBoost, state.thicknessMultiplier);
 
     // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
     drawGeneOverlays(ctx, opacity, baseWidth, svg);
@@ -252,10 +254,9 @@ export function drawDetail(svg = null) {
     }
 
     // 2.5. Bubble positions + circle markers (single pass, positions updated in-place)
-    // Hide bubbles when force vectors debug is active
     const gridSize = state.targetGridSize;
-    const bubbleR = Math.max(1.5, 3 / state.zoom);
-    const circlesByColor = state.forceVectors ? null : updateBubblesAndBuildCircles(
+    const bubbleR = baseWidth;
+    const circlesByColor = updateBubblesAndBuildCircles(
         state.detailData.chains, state.chromosome, bubbleR, gridSize);
     if (circlesByColor) {
         // Batch by (color, quantized alpha) for efficient draw calls
@@ -276,15 +277,15 @@ export function drawDetail(svg = null) {
     // 2.6. Hovered bubble circle highlight (ctrl+hover)
     if (!svg && state.hoveredBubbleCircle) {
         const hb = state.hoveredBubbleCircle;
-        const highlightR = Math.max(2.5, 5 / state.zoom);
-        strokeRing(ctx, hb.x, hb.y, highlightR, '#fff', Math.max(0.5, 1 / state.zoom), 0.8 * opacity);
+        const highlightR = Math.max(2.5, baseWidth * 1.5);
+        strokeRing(ctx, hb.x, hb.y, highlightR, '#fff', Math.max(0.5, baseWidth / 6), 0.8 * opacity);
     }
 
     // 3. Selection highlight
     if (state.selectedChains.size > 0) {
         const selected = getSelectedPolylines();
         if (selected.length > 0) {
-            strokePolylines(ctx, selected, '#FAB3AE', Math.max(2.5, 5 / state.zoom), 0.9 * opacity, svg);
+            strokePolylines(ctx, selected, '#FAB3AE', Math.max(2.5, baseWidth * 1.5), 0.9 * opacity, svg);
         }
     }
 
@@ -296,7 +297,7 @@ export function drawDetail(svg = null) {
             for (const seg of hoverContainer.segments) {
                 const pl = seg.getPolyline();
                 if (pl.length >= 2) {
-                    strokePolyline(ctx, pl, '#fff', Math.max(2.5, 5 / state.zoom), 0.3 * opacity);
+                    strokePolyline(ctx, pl, '#fff', Math.max(2.5, baseWidth * 1.5), 0.3 * opacity);
                 }
             }
         }

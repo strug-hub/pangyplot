@@ -4,23 +4,21 @@
 import createSliderSet from '@ui/components/slider-set.js';
 import { resetSlider } from '@ui/elements/slider.js';
 import { pcSettings, applyPcSettings, pauseSim, resumeSim, isSimulating } from '../detail/engines/force-engine.js';
+import { isDebugMode } from '@app-state';
+import eventBus from '@event-bus';
+import { setupRenderSettings } from './render-settings.js';
 
 function mainSliders() {
     return [
         {
-            label: "Node Repulsion", icon: "atom",
-            min: -500, max: 0, step: 1, default: pcSettings.charge,
-            onChange: (v) => { pcSettings.charge = v; applyPcSettings(); }
-        },
-        {
-            label: "Centroid Repulsion", icon: "up-right-and-down-left-from-center",
-            min: 0, max: 5, step: 1, default: pcSettings.centroidLevel,
-            onChange: (v) => { pcSettings.centroidLevel = v; applyPcSettings(); }
-        },
-        {
             label: "Layout Impulse", icon: "circle-nodes",
             min: 0, max: 5, step: 1, default: pcSettings.layoutLevel,
             onChange: (v) => { pcSettings.layoutLevel = v; applyPcSettings(); }
+        },
+        {
+            label: "Node Repulsion", icon: "atom",
+            min: -500, max: 0, step: 1, default: pcSettings.charge,
+            onChange: (v) => { pcSettings.charge = v; applyPcSettings(); }
         },
         {
             label: "Smoothing", icon: "wand-magic-sparkles",
@@ -32,11 +30,21 @@ function mainSliders() {
             min: 0, max: 0.02, step: 0.001, default: pcSettings.inflate,
             onChange: (v) => { pcSettings.inflate = v; applyPcSettings(); }
         },
+        {
+            label: "Scale Factor", icon: "ruler",
+            min: 0.1, max: 5, step: 0.01, default: pcSettings.dataScale,
+            onChange: (v) => { pcSettings.dataScale = v; applyPcSettings(); }
+        },
     ];
 }
 
 function advancedSliders() {
     return [
+        {
+            label: "Centroid Repulsion", icon: "up-right-and-down-left-from-center",
+            min: 0, max: 5, step: 1, default: pcSettings.centroidLevel,
+            onChange: (v) => { pcSettings.centroidLevel = v; applyPcSettings(); }
+        },
         {
             label: "Loop Pull", icon: "down-left-and-up-right-to-center",
             min: 0, max: 5, step: 1, default: pcSettings.loopLevel,
@@ -70,6 +78,25 @@ function advancedSliders() {
     ];
 }
 
+let advancedEl = null;
+
+function rebuildAdvanced(container) {
+    if (advancedEl) {
+        advancedEl.remove();
+        advancedEl = null;
+    }
+    if (!isDebugMode()) return;
+
+    const details = document.createElement('details');
+    details.className = 'advanced-settings';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Advanced';
+    details.appendChild(summary);
+    details.appendChild(createSliderSet('pc-adv', advancedSliders()));
+    container.appendChild(details);
+    advancedEl = details;
+}
+
 export function setupPolychainForceSettings() {
     const container = document.getElementById('force-settings-container');
     if (!container) return;
@@ -97,41 +124,14 @@ export function setupPolychainForceSettings() {
     container.appendChild(stopBtn);
 
     // Main sliders
-    const mainSet = createSliderSet('pc-force', mainSliders());
-    container.appendChild(mainSet);
+    container.appendChild(createSliderSet('pc-force', mainSliders()));
 
-    // Collapsible advanced section
-    const details = document.createElement('details');
-    details.className = 'advanced-settings';
-    const summary = document.createElement('summary');
-    summary.textContent = 'Advanced';
-    details.appendChild(summary);
+    // Advanced section (debug mode only)
+    rebuildAdvanced(container);
+    eventBus.subscribe('app:debug-mode-changed', () => rebuildAdvanced(container));
 
-    const advSet = createSliderSet('pc-adv', advancedSliders());
-    details.appendChild(advSet);
-    container.appendChild(details);
-
-    // Scale factor slider (debug — shows the dataScale multiplier)
-    const scaleDetails = document.createElement('details');
-    scaleDetails.className = 'advanced-settings';
-    scaleDetails.open = true;
-    const scaleSummary = document.createElement('summary');
-    scaleSummary.textContent = 'Scale';
-    scaleDetails.appendChild(scaleSummary);
-
-    const scaleSet = createSliderSet('pc-scale', [
-        {
-            label: "Scale Factor", icon: "ruler",
-            min: 0.1, max: 5, step: 0.01, default: pcSettings.dataScale,
-            onChange: (v) => { pcSettings.dataScale = v; applyPcSettings(); }
-        },
-    ]);
-    scaleDetails.appendChild(scaleSet);
-    container.appendChild(scaleDetails);
-
-    // Clear render settings (not used by simplify viewer)
-    const renderContainer = document.getElementById('render-settings-container');
-    if (renderContainer) renderContainer.innerHTML = '';
+    // Render settings (thickness scaling)
+    setupRenderSettings();
 }
 
 /** Update the scale factor slider to reflect the current pcSettings.dataScale. */

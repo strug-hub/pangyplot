@@ -4,6 +4,7 @@ import { state } from '../../../simplify-state.js';
 import { pointToSegmentDist } from '../../../utils/geometry.js';
 import { cumulativeLengths } from '../../data/polychain/polychain-adapter.js';
 import { getContainer } from '../../model/model-manager.js';
+import { getRenderScale } from '../../engines/forces/pc-settings.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -30,11 +31,13 @@ function getChainPolyline(chainId, chain) {
 
 export function hitTestChains(dataX, dataY) {
     if (!state.detailData || state.detailOpacity < 0.5) return null;
-    const hitR = HIT_RADIUS_PX / state.zoom;
+    const hitR = HIT_RADIUS_PX * getRenderScale() / state.zoom;
     let bestDist = hitR;
     let bestChain = null;
 
     for (const chain of state.detailData.chains) {
+        const container = getContainer(chain.id);
+        if (container && container.segments.length === 0) continue;
         const pl = getChainPolyline(chain.id, chain);
         if (pl.length < 2) continue;
         for (let i = 0; i < pl.length - 1; i++) {
@@ -52,6 +55,8 @@ export function chainsInRect(minX, minY, maxX, maxY) {
     if (!state.detailData) return [];
     const result = [];
     for (const chain of state.detailData.chains) {
+        const container = getContainer(chain.id);
+        if (container && container.segments.length === 0) continue;
         const pl = getChainPolyline(chain.id, chain);
         if (pl.length < 2) continue;
 
@@ -142,7 +147,7 @@ function clipSegmentToRect(ax, ay, bx, by, minX, minY, maxX, maxY) {
  */
 export function hitTestBubbleCircles(dataX, dataY) {
     if (!state.detailData || state.detailOpacity < 0.5) return null;
-    const hitR = HIT_RADIUS_PX / state.zoom;
+    const hitR = HIT_RADIUS_PX * getRenderScale() / state.zoom;
     const gridSize = state.targetGridSize;
     let bestDist = hitR;
     let best = null;

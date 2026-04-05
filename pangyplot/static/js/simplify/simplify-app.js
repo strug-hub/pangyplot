@@ -9,12 +9,15 @@ import { scheduleDetailFetch } from './engines/detail-transition-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
 import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
 import { state } from './simplify-state.js';
+import { bindRenderState } from './detail/engines/forces/pc-settings.js';
 import { setupUiBridge } from './ui/ui-bridge.js';
 import { setupPolychainForceSettings } from './ui/polychain-force-settings.js';
 import { publishViewportCoordinates } from './ui/viewport-sync.js';
 import { setupNodeSearch } from './engines/node-search-engine.js';
 
 async function init() {
+    bindRenderState(state);
+
     // Determine initial chromosome from URL hash, fall back to chrY
     const hashParams = parseUrlHash();
     state.chromosome = (hashParams && hashParams.chrom) ? hashParams.chrom : 'chrY';

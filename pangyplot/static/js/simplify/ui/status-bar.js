@@ -11,6 +11,7 @@ import { positionTooltip } from '@ui/elements/tooltip.js';
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
 import { renderedJunctionNodes, renderedJunctionLinks } from '../detail/render/force-render-manager.js';
+import { getRenderScale } from '../detail/engines/forces/pc-settings.js';
 
 // Hide/show debug bars based on debug mode
 function updateDebugBars(enabled) {
@@ -62,6 +63,8 @@ export function updateZoom() {
     state.dom.zoomVal.textContent = state.zoom < 1
         ? state.zoom.toFixed(4) : state.zoom.toFixed(1);
     state.dom.gridVal.textContent = `[${state.targetGridSize.toFixed(0)}]`;
+    const rs = getRenderScale();
+    state.dom.renderScaleVal.textContent = rs.toFixed(2);
 }
 
 let prevLevel = -1;

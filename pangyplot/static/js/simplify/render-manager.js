@@ -10,23 +10,18 @@ import { isDebugMode } from '@app-state';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail, drawCustomAnnotationLabels } from './detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from './detail/render/force-render-manager.js';
-import { getAlpha } from './detail/engines/force-engine.js';
+import { getBaseWidth } from './detail/engines/forces/pc-settings.js';
 import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
 import { getLevelMeta } from '@simplify-data/chromosome-data.js';
 import { getSearchHighlights } from './engines/node-search-engine.js';
 import { strokeRing } from './detail/render/detail-painter.js';
-// import { renderDragInfluenceCircle } from './engines/drag/drag-influence-render.js';
-
-// ---------------------------------------------------------------
-// FPS tracker (debug mode only)
-// ---------------------------------------------------------------
-let _fpsFrames = 0;
-let _fpsLast = performance.now();
-let _fpsDisplay = 0;
-let _timingsHistory = [];  // ring buffer of last 5 frames
-let _timingsAvg = null;
+import { getActiveView } from '@debug/debug-orchestrator.js';
+import { drawDebugHud, recordTimings } from '@debug/debug-hud.js';
+// Register debug views (side-effect imports)
+import '@debug/views/force-vectors.js';
+import '@debug/views/hit-zones.js';
 
 // ---------------------------------------------------------------
 // Main draw
@@ -61,13 +56,13 @@ function draw() {
     const vpMaxX = vp.maxX + margin;
     const vpMaxY = vp.maxY + margin;
 
+    let _t0;
+    const timings = [];
+
     // ===== DATA-SPACE TRANSFORM =====
     ctx.save();
     ctx.translate(state.panX, state.panY);
     ctx.scale(state.zoom, state.zoom);
-
-    let _t0;
-    const timings = [];
 
     // ===== SKELETON LAYER (skipped when detail is fully active) =====
     const skipSkeleton = state.detailData && state.detailPhase === 'static';
@@ -84,9 +79,13 @@ function draw() {
     if (state.detailData && state.detailOpacity > 0) {
         if (_debug) _t0 = performance.now();
         drawDetail();
-        drawForceGraph(state.ctx, Math.max(1.5, 3 / state.zoom), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
+        drawForceGraph(state.ctx, getBaseWidth(), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
         if (_debug) timings.push(['detail', performance.now() - _t0]);
     }
+
+    // --- Active debug view overlay (data-space) ---
+    const activeDebugView = _debug ? getActiveView() : null;
+    if (activeDebugView) activeDebugView.draw(ctx);
 
     // --- Search highlight rings (data-space) ---
     const searchHits = getSearchHighlights();
@@ -124,82 +123,10 @@ function draw() {
     drawGeneLabelOverlay(ctx, cw);
     if (_debug) timings.push(['labels', performance.now() - _t0]);
 
+    // --- Debug HUD (screen coords) ---
     if (_debug) {
-        _timingsHistory.push(timings);
-        if (_timingsHistory.length > 5) _timingsHistory.shift();
-        // Average across recent frames
-        const avg = new Map();
-        for (const frame of _timingsHistory) {
-            for (const [label, ms] of frame) {
-                avg.set(label, (avg.get(label) || 0) + ms);
-            }
-        }
-        const n = _timingsHistory.length;
-        _timingsAvg = [...avg.entries()].map(([label, total]) => [label, total / n]);
-    }
-
-    // --- FPS counter + timing breakdown (debug mode) ---
-    if (isDebugMode()) {
-        _fpsFrames++;
-        const now = performance.now();
-        if (now - _fpsLast >= 1000) {
-            _fpsDisplay = _fpsFrames;
-            _fpsFrames = 0;
-            _fpsLast = now;
-        }
-        ctx.save();
-        ctx.font = '13px monospace';
-        ctx.textAlign = 'right';
-        ctx.globalAlpha = 0.8;
-
-        // Alpha decay (top-right)
-        const alpha = getAlpha();
-        if (alpha > 0) {
-            const barW = 80, barH = 6, bx = cw - 12 - barW, by = 14;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(bx, by, barW, barH);
-            ctx.fillStyle = alpha > 0.5 ? '#f90' : alpha > 0.05 ? '#0ff' : '#555';
-            ctx.fillRect(bx, by, barW * alpha, barH);
-            ctx.fillStyle = '#888';
-            ctx.fillText(`\u03B1 ${alpha.toFixed(4)}`, cw - 12, by + barH + 14);
-        }
-
-        // Scale bar (middle-left)
-        const scaleBarScreenPx = 100;
-        const graphUnitsPerBar = scaleBarScreenPx / state.zoom;
-        const bx2 = 16, by2 = ch / 2;
-        ctx.strokeStyle = '#888';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(bx2, by2);
-        ctx.lineTo(bx2 + scaleBarScreenPx, by2);
-        // End ticks
-        ctx.moveTo(bx2, by2 - 4);
-        ctx.lineTo(bx2, by2 + 4);
-        ctx.moveTo(bx2 + scaleBarScreenPx, by2 - 4);
-        ctx.lineTo(bx2 + scaleBarScreenPx, by2 + 4);
-        ctx.stroke();
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#ccc';
-        ctx.fillText(`${scaleBarScreenPx}px`, bx2, by2 - 10);
-        ctx.fillText(`${graphUnitsPerBar.toFixed(1)} graph`, bx2, by2 + 18);
-        ctx.fillText(`zoom: ${state.zoom.toFixed(3)}`, bx2, by2 + 32);
-        ctx.textAlign = 'right';
-
-        // FPS (bottom-right)
-        ctx.fillStyle = _fpsDisplay < 30 ? '#e44' : _fpsDisplay < 50 ? '#f90' : '#0f0';
-        ctx.fillText(`${_fpsDisplay} fps`, cw - 12, ch - 12);
-        // Show timing breakdown (averaged over last 5 frames)
-        if (_timingsAvg) {
-            ctx.fillStyle = '#ccc';
-            ctx.globalAlpha = 0.7;
-            let ty = ch - 28;
-            for (const [label, ms] of _timingsAvg) {
-                ctx.fillText(`${label}: ${ms.toFixed(1)}ms`, cw - 12, ty);
-                ty -= 14;
-            }
-        }
-        ctx.restore();
+        recordTimings(timings);
+        drawDebugHud(ctx, cw, ch);
     }
 
     // --- Status bar ---

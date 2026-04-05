@@ -8,6 +8,7 @@ import { getLevelMeta } from '@simplify-data/chromosome-data.js';
 import { drawSkeleton } from '../skeleton/render/skeleton-render-manager.js';
 import { drawDetail } from '../detail/render/polychain/polychain-render-manager.js';
 import { drawForceGraph } from '../detail/render/force-render-manager.js';
+import { getBaseWidth } from '../detail/engines/forces/pc-settings.js';
 import { drawGeneLabelOverlay } from '../skeleton/render/gene-label-overlay.js';
 import { getImageName } from '../../graph/render/download/download-utils.js';
 import { setSvgTransform, clearSvgTransform } from './simplify-svg-utils.js';
@@ -55,7 +56,7 @@ export function exportSimplifyToSvg() {
         // Detail layer
         if (state.detailData && state.detailOpacity > 0) {
             drawDetail(svg);
-            drawForceGraph(ctx, Math.max(1.5, 3 / state.zoom), svg);
+            drawForceGraph(ctx, getBaseWidth(), svg);
         }
 
         // Gene labels (already screen-space, transform not applied to labels)

@@ -37,8 +37,7 @@ export const state = {
     detailOpacity: 0,
     skeletonOpacity: 1,
     isFetching: false,         // true while a detail fetch is in-flight
-    forceVectors: false,        // Y-key toggle: show per-node force vectors
-    forceVectorMode: 'all',    // U-key cycle: 'all', 'charge', 'intra', 'link', 'layout', 'linkRepul'
+    forceVectorMode: 'all',   // U-key cycle within forces debug view
 
     // Force simulation
     poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
@@ -64,6 +63,10 @@ export const state = {
     // Config (from Jinja via window.__APP_CONFIG)
     GENOME: (window.__APP_CONFIG || {}).genome || '',
 
+    // Render scaling
+    renderMaxBoost: 2,         // max zoom-based thickness ramp above 1
+    thicknessMultiplier: 1,    // slider-controlled direct thickness multiplier
+
     // Constants
     DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
     DETAIL_EXIT_THRESHOLD: 700,   // exit detail when targetGridSize > this (hysteresis)
@@ -81,6 +84,7 @@ export const state = {
         loading: document.getElementById('loading'),
         gridMeter: document.getElementById('grid-meter'),
         zoomVal: document.getElementById('zoom-val'),
+        renderScaleVal: document.getElementById('render-scale-val'),
         gridVal: document.getElementById('grid-val'),
         viewportBp: document.getElementById('viewport-bp'),
         cursorBp: document.getElementById('cursor-bp'),

@@ -7,7 +7,6 @@ import { drawRotatedCross } from '../../../graph/render/painter/painter-utils.js
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, chargeStr } from '../engines/force-engine.js';
 import { getContainer } from '../model/model-manager.js';
-import { drawForceVectors } from './force-render-debug.js';
 import { getGenePins, isGeneVisible } from '@simplify-data/gene-data.js';
 import { getNodeColor } from '../../../graph/render/color/color-style.js';
 import { colorState } from '../../../graph/render/color/color-state.js';
@@ -33,8 +32,15 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     if (nodes.length === 0) return;
 
     // Use baseWidth (from polychain-render-manager) so naked nodes match polychain size
-    const scaleFactor = baseWidth / 5;   // kept for highlight helpers
+    const scaleFactor = baseWidth;   // passed to highlight helpers
     const opacity = state.detailOpacity;
+
+    // Debug: log render sizes every 3s
+    const now = performance.now();
+    if (!drawForceGraph._lastLog || now - drawForceGraph._lastLog > 3000) {
+        drawForceGraph._lastLog = now;
+        console.log(`[render] baseWidth=${baseWidth.toFixed(2)} zoom=${state.zoom.toFixed(4)} nodeR=${(baseWidth*0.5).toFixed(2)} kinkStroke=${baseWidth.toFixed(2)} bubbleR=${baseWidth.toFixed(2)}`);
+    }
 
     if (!svg) ctx.lineCap = 'round';
 
@@ -109,7 +115,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
             }
             jNodeCount++;
         }
-        const r = (node.width || 5) * scaleFactor * 0.5;
+        const r = baseWidth * 0.5;
         const circle = { x: node.x, y: node.y, r };
         const color = nodeColorForSelection(node);
         if (!nodesByColor.has(color)) nodesByColor.set(color, []);
@@ -129,7 +135,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
 
     // 0. Gene halos (both link and node halos, rendered before all links/nodes)
     if (genePins.length > 0) {
-        const haloWidth = Math.max(4, 10 / state.zoom);
+        const haloWidth = Math.max(4, baseWidth * 2);
         const haloLinksByColor = new Map();
         for (const segs of kinkByColor.values()) {
             for (const seg of segs) {
@@ -152,29 +158,29 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         }
     }
 
-    // 1. Kink links (segment body) — width matches source node
+    // 1. Kink links (segment body)
     for (const [color, segs] of kinkByColor) {
-        strokeSegments(ctx, segs, color, 5 * scaleFactor, opacity, svg);
+        strokeSegments(ctx, segs, color, baseWidth, opacity, svg);
     }
 
     // 2. Chain links (bubble-to-bubble)
     if (chainSegs.length > 0) {
-        strokeSegments(ctx, chainSegs, colorState.nodeColors[2], 5 * scaleFactor, 0.8 * opacity, svg);
+        strokeSegments(ctx, chainSegs, colorState.nodeColors[2], baseWidth, 0.8 * opacity, svg);
     }
 
     // 3. Junction + inter-chain links
     if (junctionSegs.length > 0) {
-        strokeSegments(ctx, junctionSegs, colorState.linkColor, Math.max(0.5, 1 / state.zoom), 0.6 * opacity, svg);
+        strokeSegments(ctx, junctionSegs, colorState.linkColor, Math.max(0.5, baseWidth / 6), 0.6 * opacity, svg);
     }
 
     // 3b. Deletion links with -x- cross at midpoint
     if (delSegs.length > 0) {
-        const delWidth = Math.max(0.5, 1 / state.zoom);
+        const delWidth = Math.max(0.5, baseWidth / 6);
         strokeSegments(ctx, delSegs, colorState.linkColor, delWidth, 0.6 * opacity, svg);
         if (!svg) {
             ctx.globalAlpha = 0.6 * opacity;
-            const crossSize = Math.max(3, 6 / state.zoom);
-            const crossWidth = Math.max(0.5, 1 / state.zoom);
+            const crossSize = Math.max(3, baseWidth);
+            const crossWidth = Math.max(0.5, baseWidth / 6);
             for (const { x1, y1, x2, y2 } of delSegs) {
                 const midX = (x1 + x2) / 2;
                 const midY = (y1 + y2) / 2;
@@ -194,10 +200,5 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
 
     // 6. Hover highlight overlay (gray outline ring) — after nodes (skip during SVG export)
     if (!svg) drawHoverHighlight(ctx, scaleFactor, opacity);
-
-    // 7. Force vector debug overlay (Y key, skip during SVG export)
-    if (!svg && state.forceVectors) {
-        drawForceVectors(ctx, nodes, links, opacity);
-    }
 }
 
