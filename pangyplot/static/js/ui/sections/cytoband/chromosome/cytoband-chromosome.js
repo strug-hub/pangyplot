@@ -34,8 +34,9 @@ export function fetchAndDrawChromosomeData(chromosome, start, end) {
       cached_data[chromosome] = chrBands;
       updateChromosomeCytoband(chrBands, chromosome, start, end);
     })
-    .catch(error => {
-      console.error("Fetch error:", error);
+    .catch(() => {
+      cached_data[chromosome] = null;
+      updateChromosomeCytoband(null, chromosome, start, end);
     });
 }
 

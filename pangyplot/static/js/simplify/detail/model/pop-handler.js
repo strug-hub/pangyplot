@@ -26,12 +26,16 @@ export async function popBubbleCircleV2(hit) {
 
     const bubbleId = hit.meta.id;
     const chainId = hit.chainId;
-    const t = hit.meta.t;
     const chr = state.chromosome;
     if (!chr) return false;
 
     const container = getContainer(chainId);
     if (!container || container.spineNodes.length < 2) return false;
+
+    // Use the container's canonical t for this bubble — metaStore t may differ
+    // from the container's t, causing segment range gaps on subsequent pops.
+    const containerBubble = container.bubbles.find(b => b.id === bubbleId);
+    const t = containerBubble ? containerBubble.t : hit.meta.t;
 
     // --- Fetch /pop (need source_segs and sink_segs for anchor registration) ---
     const url = `/pop?id=${encodeURIComponent(bubbleId)}`
@@ -165,7 +169,42 @@ export async function popBubbleCircleV2(hit) {
         for (const segId of obj.ends.tail) registerSeg(segId, obj);
     }
 
-    // Collect kink nodes + kink links from child objects
+    // Detect indel objects: any child with a GFA link from head to tail
+    // gets a synthetic deletion link (kink#0 → kink#last) for the X marker.
+    const indelMarked = new Set();
+    for (const rawLink of (apiData.links || [])) {
+        const sId = String(rawLink.source).startsWith('s')
+            ? String(rawLink.source) : `s${rawLink.source}`;
+        const tId = String(rawLink.target).startsWith('s')
+            ? String(rawLink.target) : `s${rawLink.target}`;
+        for (const obj of childObjects) {
+            if (indelMarked.has(obj)) continue;
+            const sInHead = obj.ends.head.includes(sId);
+            const sInTail = obj.ends.tail.includes(sId);
+            const tInHead = obj.ends.head.includes(tId);
+            const tInTail = obj.ends.tail.includes(tId);
+            if ((sInHead && tInTail) || (sInTail && tInHead)) {
+                if (obj.physicsNodes.length >= 3) {
+                    const headIid = `${obj.id}#0`;
+                    const tailIid = `${obj.id}#${obj.physicsNodes.length - 1}`;
+                    obj.physicsLinks.push({
+                        isNode: false, isLink: true, class: 'link',
+                        iid: `del_${obj.id}`,
+                        source: headIid, target: tailIid,
+                        sourceIid: headIid, targetIid: tailIid,
+                        sourceId: obj.id, targetId: obj.id,
+                        type: 'link', chainId,
+                        isDel: true,
+                        isKinkLink: false, isRef: false, isDrawn: true,
+                        length: 20, width: 1,
+                    });
+                }
+                indelMarked.add(obj);
+            }
+        }
+    }
+
+    // Collect kink nodes + kink links from child objects (after indel marking)
     const childNodes = [];
     const childKinkLinks = [];
     for (const obj of childObjects) {
@@ -176,6 +215,37 @@ export async function popBubbleCircleV2(hit) {
     // --- Resolve GFA links ---
     // Both endpoints must be registered ends. The SimObject resolves
     // the correct d3 node (strand-aware for kinked segments).
+
+    // Build multi-map: segId → all SimObjects that claim it as an end.
+    // Registry is last-write-wins, so shared segs between siblings lose
+    // one registration. This map preserves all claims for isDel detection.
+    const segToObjects = new Map();
+    for (const obj of childObjects) {
+        for (const s of obj.ends.head) {
+            if (!segToObjects.has(s)) segToObjects.set(s, []);
+            segToObjects.get(s).push(obj);
+        }
+        for (const s of obj.ends.tail) {
+            if (!segToObjects.has(s)) segToObjects.set(s, []);
+            segToObjects.get(s).push(obj);
+        }
+    }
+
+    function _isDeletionLink(fromSeg, toSeg) {
+        const fromObjs = segToObjects.get(fromSeg);
+        const toObjs = segToObjects.get(toSeg);
+        if (!fromObjs || !toObjs) return false;
+        for (const obj of fromObjs) {
+            if (!toObjs.includes(obj)) continue;
+            const fromInHead = obj.ends.head.includes(fromSeg);
+            const fromInTail = obj.ends.tail.includes(fromSeg);
+            const toInHead = obj.ends.head.includes(toSeg);
+            const toInTail = obj.ends.tail.includes(toSeg);
+            if ((fromInHead && toInTail) || (fromInTail && toInHead)) return true;
+        }
+        return false;
+    }
+
     const gfaLinks = [];
     for (const rawLink of (apiData.links || [])) {
         const fromSegId = String(rawLink.source).startsWith('s')
@@ -204,7 +274,7 @@ export async function popBubbleCircleV2(hit) {
             sourceId: fromSegId, targetId: toSegId,
             type: 'link',
             chainId,
-            isDel: resolveObj(fromSegId) != null && resolveObj(fromSegId) === resolveObj(toSegId),
+            isDel: _isDeletionLink(fromSegId, toSegId),
             isKinkLink: false, isRef: false, isDrawn: true,
             length: linkLen, width: 1,
             contained: rawLink.contained || [],
@@ -299,7 +369,11 @@ export async function popAllBubblesOnChain(chainId) {
                 || metaStore.bubbles.find(b => Math.abs(b.t - bubble.t) < 0.001);
         }
 
-        const hit = { x: pos.x, y: pos.y, meta: meta || { id: bubble.id, t: bubble.t }, chainId };
+        // Always use the container bubble's id/t as canonical — metaStore values may differ
+        const hitMeta = meta
+            ? { ...meta, id: bubble.id, t: bubble.t }
+            : { id: bubble.id, t: bubble.t };
+        const hit = { x: pos.x, y: pos.y, meta: hitMeta, chainId };
         await popBubbleCircleV2(hit);
     }
 }

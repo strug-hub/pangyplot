@@ -22,6 +22,7 @@ from pangyplot.preprocess.skeleton.skeleton_pipeline import (
 )
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
 from pangyplot.preprocess.spine.spine_builder import generate_spine, spine_filename
+from pangyplot.preprocess.meta import generate_meta, META_FILENAME
 
 SKELETON_FILENAME = "skeleton.json.gz"
 POLYCHAIN_DATA_FILENAME = "polychain-data.json.gz"
@@ -67,6 +68,10 @@ def generate_skeleton(chr_dir, ref, chrom):
     print("   🔗 Exporting polychain data...", end="", flush=True)
     pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
     export_polychain_data(chr_dir, gfaidx, ref, pd_path)
+    print(" Done.")
+
+    print("   📊 Computing graph metadata...", end="", flush=True)
+    generate_meta(chr_dir, ref, chrom)
     print(" Done.")
 
 
@@ -116,3 +121,7 @@ def ensure_skeleton(data_dir, db_name, ref):
                 print(f"\n[Skeleton] Missing polychain data for {chrom}, generating...")
                 _gfaidx = GFAIndex(chr_dir)
                 export_polychain_data(chr_dir, _gfaidx, ref, pd_path)
+            meta_path = os.path.join(chr_dir, META_FILENAME)
+            if not os.path.exists(meta_path):
+                print(f"\n[Meta] Missing metadata for {chrom}, generating...")
+                generate_meta(chr_dir, ref, chrom)
