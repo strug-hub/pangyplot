@@ -351,6 +351,33 @@ export async function popBubbleCircleV2(hit) {
 /**
  * Pop all bubble circles on a chain sequentially.
  */
+/**
+ * Pop all bubbles within the highlighted (shift+drag selected) ranges.
+ */
+export async function popHighlightedBubbles() {
+    for (const [chain, { tStart, tEnd }] of state.selectedChains) {
+        const container = getContainer(chain.id);
+        if (!container || container.bubbles.length === 0) continue;
+        const metaStore = getBubbleStore(chain.id);
+
+        let unpopped;
+        while ((unpopped = container.bubblesInRange(tStart, tEnd)).length > 0) {
+            const bubble = unpopped[0];
+            const pos = container.positionAt(bubble.t);
+            let meta = null;
+            if (metaStore?.bubbles) {
+                meta = metaStore.bubbles.find(b => b.id === bubble.id)
+                    || metaStore.bubbles.find(b => Math.abs(b.t - bubble.t) < 0.001);
+            }
+            const hitMeta = meta
+                ? { ...meta, id: bubble.id, t: bubble.t }
+                : { id: bubble.id, t: bubble.t };
+            const hit = { x: pos.x, y: pos.y, meta: hitMeta, chainId: chain.id };
+            await popBubbleCircleV2(hit);
+        }
+    }
+}
+
 export async function popAllBubblesOnChain(chainId) {
     const container = getContainer(chainId);
     if (!container || container.bubbles.length === 0) return;

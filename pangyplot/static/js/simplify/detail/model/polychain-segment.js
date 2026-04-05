@@ -13,6 +13,7 @@
  */
 
 import { SimObject } from './sim-object.js';
+import { pcSettings } from '../engines/forces/pc-settings.js';
 
 let _anchorIdCounter = 0;
 
@@ -164,11 +165,12 @@ export class PolychainSegment extends SimObject {
             }
             const length = meta?.length ?? 0;
 
-            // Threshold: compute from bubble length (same formula as bubble-meta-cache)
+            // Threshold: compute from bubble length, scaled by graph density
             const LOG50 = Math.log10(50);
             const RANGE_INV = 1 / (Math.log10(100050) - LOG50);
-            const threshold = length <= 0 ? 20
-                : Math.min(400, 20 + (Math.log10(length + 50) - LOG50) * RANGE_INV * 380);
+            const ds = pcSettings.dataScale;
+            const threshold = length <= 0 ? 20 * ds
+                : Math.min(400 * ds, 20 * ds + (Math.log10(length + 50) - LOG50) * RANGE_INV * 380 * ds);
 
             // Color object: built from metadata for getNodeColor()
             const colorObj = {

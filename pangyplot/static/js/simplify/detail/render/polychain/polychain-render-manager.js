@@ -8,7 +8,7 @@ import { placeGenesFromDetail, blendGenePinsToSpine } from '@simplify-data/gene-
 import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta } from '../../data/bubble-meta-cache.js';
 import { getAllAnnotations } from '@simplify-data/custom-annotation-data.js';
 import { getContainer } from '../../model/model-manager.js';
-import { getBaseWidth } from '../../engines/forces/pc-settings.js';
+import { getBaseWidth, pcSettings } from '../../engines/forces/pc-settings.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
@@ -174,7 +174,7 @@ export function drawCustomAnnotationLabels(ctx) {
 }
 
 // Fade range: bubble fades in over this gridSize range below its threshold.
-const BUBBLE_FADE_RANGE = 15;
+const BUBBLE_FADE_RANGE_BASE = 15;
 
 /**
  * Single-pass bubble update: fetches metadata for uncached chains (batched),
@@ -182,7 +182,7 @@ const BUBBLE_FADE_RANGE = 15;
  * Returns Map<color, Array<{x, y, r, alpha}>> for visible bubbles, or null.
  */
 function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
-    const showCircles = gridSize <= state.BUBBLE_CIRCLE_GRID_THRESHOLD;
+    const showCircles = gridSize <= state.BUBBLE_CIRCLE_GRID_THRESHOLD * pcSettings.dataScale;
     const byColor = showCircles ? new Map() : null;
 
     for (const chain of chains) {
@@ -203,7 +203,7 @@ function updateBubblesAndBuildCircles(chains, chr, r, gridSize) {
         for (const seg of container.segments) {
             for (const b of seg.getBubbleCircles(metaStore)) {
                 if (gridSize > b.threshold) continue;
-                const fade = Math.min(1, (b.threshold - gridSize) / BUBBLE_FADE_RANGE);
+                const fade = Math.min(1, (b.threshold - gridSize) / (BUBBLE_FADE_RANGE_BASE * pcSettings.dataScale));
                 const color = getNodeColor(b.colorObj);
                 if (!byColor.has(color)) byColor.set(color, []);
                 byColor.get(color).push({ x: b.x, y: b.y, r, alpha: fade });

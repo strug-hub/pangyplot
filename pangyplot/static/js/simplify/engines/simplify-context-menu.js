@@ -7,7 +7,7 @@ import { flipChain } from '../detail/data/polychain/polychain-adapter.js';
 import { reheatSimulation } from '../detail/engines/force-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { exportViewportGfa } from './selection/selection-popup.js';
-import { popAllBubblesOnChain } from '../detail/model/pop-handler.js';
+import { popAllBubblesOnChain, popHighlightedBubbles } from '../detail/model/pop-handler.js';
 import { createCustomAnnotation } from '@simplify-data/custom-annotation-data.js';
 import { isDebugMode } from '@app-state';
 import { getContainer } from '../detail/model/model-manager.js';
@@ -80,6 +80,15 @@ function showMenu(x, y) {
                 chainIds.add(chain.id);
             }
             createCustomAnnotation(name.trim(), chainIds);
+        });
+    }
+
+    // --- Selection actions (when chains are highlighted) ---
+    if (state.selectedChains.size > 0) {
+        addCategoryLabel(menu, 'Selection:');
+        addRow(menu, 'expand', 'Pop Highlighted', () => {
+            popHighlightedBubbles();
+            scheduleFrame();
         });
     }
 

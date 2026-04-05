@@ -7,6 +7,7 @@ import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { unpopLastBubble } from '../detail/data/bubble-unpop-adapter.js';
 import { returnToSimplify } from './selection/selection-popup.js';
 import { pauseSim, resumeSim } from '../detail/engines/force-engine.js';
+import { handleDebugKey } from '@debug/debug-orchestrator.js';
 
 // Turn off debug visuals when debug mode is disabled
 eventBus.subscribe('app:debug-mode-changed', (enabled) => {
@@ -31,18 +32,7 @@ export function setupKeyboardShortcuts(canvas) {
             scheduleFrame();
             return;
         }
-        if (isDebugMode() && e.code === 'KeyY' && !e.repeat) {
-            state.forceVectors = !state.forceVectors;
-            state.forceVectorMode = 'all';
-            scheduleFrame();
-        }
-        if (isDebugMode() && e.code === 'KeyU' && !e.repeat) {
-            const modes = ['all', 'charge', 'segCharge', 'link', 'layout', 'centroid', 'loop', 'smooth', 'balloon', 'parent', 'guide'];
-            const idx = modes.indexOf(state.forceVectorMode);
-            state.forceVectorMode = modes[(idx + 1) % modes.length];
-            if (!state.forceVectors) state.forceVectors = true;
-            scheduleFrame();
-        }
+        if (handleDebugKey(e)) return;
         if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.repeat) {
             e.preventDefault();
             if (unpopLastBubble()) {

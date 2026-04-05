@@ -22,6 +22,7 @@ import { drawDebugHud, recordTimings } from '@debug/debug-hud.js';
 // Register debug views (side-effect imports)
 import '@debug/views/force-vectors.js';
 import '@debug/views/hit-zones.js';
+import '@debug/views/gap-pressure.js';
 
 // ---------------------------------------------------------------
 // Main draw
