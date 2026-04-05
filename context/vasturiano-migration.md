@@ -40,13 +40,10 @@ The simplify viewer has grown from 16 flat files to 56 files across a `skeleton/
 - ~~Gene annotations~~ — gene table with visibility + custom colors
 
 ### Still Missing
-1. **Node dragging + fix-on-drag** -- per-node grab and pin within popped chains
-2. **Flashlight mode** -- BFS-based neighborhood dimming
-3. **Deletion link rendering** -- X cross through indel links
-4. **Path highlighting** -- sample haplotype animation
-5. **Sequence search** -- ACGT regex match
-6. **Graph rotation** -- R-key rotation
-7. **Undo stack for bubble pop** -- core has undo snapshots via `popData`; simplify pop may not have full undo yet
+1. **Flashlight mode** -- BFS-based neighborhood dimming
+2. **Path highlighting** -- sample haplotype animation
+3. **Sequence search** -- ACGT regex match
+4. **Graph rotation** -- R-key rotation
 
 ---
 
@@ -69,9 +66,9 @@ Restructured from 16 flat files into `skeleton/`, `detail/`, `engines/`, `render
 - SVG/PNG export via `render/export-simplify.js`
 - Right-click context menu via `engines/simplify-context-menu.js`
 
-### Phase 3: Force Settings UI — COMPLETE (partial)
+### Phase 3: Force Settings UI + Drag — COMPLETE
 - Force settings sliders via `ui/polychain-force-settings.js`
-- Node dragging still missing
+- Node + chain dragging via `engines/drag/` (drag-engine, drag-fix-engine, centroid-anchor-force)
 
 ### Phase 4: Selection + Info — COMPLETE
 - Chain/bubble selection via `engines/selection/multi-selection-engine.js`
@@ -81,11 +78,11 @@ Restructured from 16 flat files into `skeleton/`, `detail/`, `engines/`, `render
 - All 7 core color modes wired via eventBus (commit `ed8e295`)
 - Gene annotation table with custom colors + visibility (commit `f93b657`)
 
-### Phase 6: Bubble Pop/Unpop — COMPLETE (basic)
-- Pop via `detail/engines/polychain/polychain-pop-engine.js`
-- Pop/unpop adapters: `bubble-pop-adapter.js`, `bubble-unpop-adapter.js`
+### Phase 6: Bubble Pop/Unpop — COMPLETE
+- V2 pop via `detail/model/pop-handler.js` (SimObject-based)
+- Unpop via `detail/data/bubble-unpop-adapter.js`
+- Undo stack via `detail/data/pop-tree.js` (LIFO with parent-child tracking)
 - View state: `detail/data/simplify-view-state.js`
-- Full undo stack may not yet match core's sophistication
 
 ### Phase 7: Flashlight Mode — NOT STARTED
 
@@ -98,11 +95,7 @@ Restructured from 16 flat files into `skeleton/`, `detail/`, `engines/`, `render
 The remaining phases (7-8) are independent and can be tackled in any order:
 - **Flashlight mode**: BFS-based neighborhood dimming within popped chains; could extend to chain-level for skeleton view
 - **Path highlighting + sequence search**: sample haplotype animation, ACGT regex matching
-
-Additional polish items not in original plan:
-- Node dragging within popped chains (Phase 3 partial)
-- Full undo stack for bubble pop (Phase 6 refinement)
-- Deletion link rendering (X cross through indel links)
+- **Graph rotation**: R-key / middle-mouse rotation (not in original plan)
 
 ## Verification (End-to-End)
 

@@ -9,6 +9,7 @@ engines/drag/
 ├── drag-engine.js              Main orchestrator: pointer events, mode detection, position updates
 ├── drag-fix-engine.js          "Anchor on drag" toggle: #anchorToggle checkbox + F key
 ├── centroid-anchor-force.js    D3 force: pins chain centroid while nodes flex
+├── drag-lock-render.js         Lock icon rendering for anchored chains
 ├── drag-influence-force.js     (Disabled) BFS influence force for connected-node movement
 ├── drag-influence-engine.js    (Disabled) Scroll-wheel influence radius control
 └── drag-influence-render.js    (Disabled) Blue dashed influence circle overlay

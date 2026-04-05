@@ -154,7 +154,7 @@ D3 force simulation with 14 registered forces:
 | `balloon` | Inflate chains outward from centroid | Polychain nodes |
 | `parentSide` | Push child chains away from parent | Child polychain nodes |
 | `delLink` | Push deletion link endpoints apart | Deletion links |
-| `ghostGuide` | Pull popped nodes toward parent chain polyline | Popped nodes with ghostRootId |
+| `chainGuide` | Pull popped nodes toward parent chain polyline | Popped nodes with ghostRootId |
 | `centroidAnchor` | Soft spring after drag release | Dragged chains |
 | `spawnDamp` | Dampen velocity on newly spawned nodes | Nodes with _spawnTick |
 
@@ -228,4 +228,4 @@ All paths relative to `static/js/simplify/detail/`.
 | `forces/polychain-forces.js` | 312 | 5 chain-shape forces: centroid, loop, parent, smoothing, balloon |
 | `forces/layout-forces.js` | 82 | ODGI pull + deletion link push |
 | `forces/viewport-forces.js` | 177 | Viewport freeze (+ unused viewport charge/collide) |
-| `forces/ghost-guide-force.js` | 67 | Soft pull toward parent chain polyline |
+| `forces/chain-guide-force.js` | 67 | Soft pull toward parent chain polyline |

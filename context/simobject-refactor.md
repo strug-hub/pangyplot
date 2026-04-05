@@ -19,7 +19,7 @@ iteration but works with SimObject kink nodes via compat fields.
 - **Unified registry** (`segment-registry.js`): `Map<SegmentId, SimObject>`, ends only
 
 - **Integration layer**:
-  - `polychain-factory.js` — creates containers from /detail-tiles, objects from /pop
+  - Container creation via `PolychainContainer.fromChainData()` static method
   - `model-manager.js` — coordinates all containers + loose objects
   - `pop-handler.js` — V2 pop using SimObjects (replaces deserializeSubgraph path)
 
@@ -32,10 +32,7 @@ iteration but works with SimObject kink nodes via compat fields.
 ### What Still Uses the Old System
 
 - **Rendering**: `force-render-manager.js` and `polychain-render-manager.js` iterate raw force node/link arrays. They work with SimObject kink nodes because of compat fields.
-- **Old registries**: `seg-registry.js`, `simplify-view-state.js`, `segToPolychain` in polychain-adapter still exist. The V2 pop handler writes to both old + new registries.
-- **Old gap system**: `createGapAtPop`, `chainGaps`, anchors still used by V2 handler for polychain visual management.
-- **Ghost spine**: Still exists in polychain-adapter but not used by V2 path.
-- **Force node pop** (`popBubbleForceNode`): Still uses old deserializeSubgraph path.
+- **Old view state**: `simplify-view-state.js` still exists but may be redundant with segment-registry.
 
 ### Key Architecture
 
@@ -69,12 +66,4 @@ Console access:
 
 1. **Rendering via RenderSpecs**: Switch renderers to consume `getRenderables()` from model-manager instead of iterating raw force nodes. Low priority — current compat approach works.
 
-2. **Remove old gap/anchor system**: V2 handler still calls `createGapAtPop`. The container handles splits internally but the old gap system is still needed for polychain visual rendering (getVisibleSegments, getPolychainPolylines). To remove it, the polychain-render-manager needs to read from container.getRenderables() instead.
-
-3. **Remove ghost spine**: Not used by V2 path. Can delete `createGhostSpine`, `removeGhostSpine`, `hasGhostSpine` from polychain-adapter once the chain-split pop path is fully replaced.
-
-4. **Remove old viewState**: `simplify-view-state.js` is not used by V2 path. Can remove once `popBubbleForceNode` is also converted.
-
-5. **Convert `popBubbleForceNode`**: Still uses old deserializeSubgraph. Needs a V2 version.
-
-6. **Remove `deserializeSubgraph` dependency**: Once both pop paths use SimObjects, the shared graph deserializer is no longer needed by the simplify viewer.
+2. **Remove old viewState**: `simplify-view-state.js` may be redundant with segment-registry. Evaluate whether it can be removed.

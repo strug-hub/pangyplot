@@ -164,33 +164,21 @@ Gene annotations are displayed as colored overlays on the graph, similar to land
 
 | File | Purpose |
 |------|---------|
-| `pangyplot/preprocess/skeleton/graph_simplify.py` | Simplification script (RDP + grid + export) |
+| `pangyplot/preprocess/skeleton/generate_skeleton.py` | Skeleton generation (grid simplification) |
+| `pangyplot/preprocess/skeleton/skeleton_geometry.py` | Geometry utilities for skeleton |
+| `pangyplot/preprocess/skeleton/skeleton_pipeline.py` | Orchestrates full skeleton build pipeline |
+| `pangyplot/preprocess/skeleton/export_polychain.py` | Exports polychain + junction data |
 | `pangyplot/templates/simplify.html` | Canvas viewer with auto-LOD |
-| `pangyplot/routes.py` | `/simplify` + `/simplify-data` endpoints |
-| `pangyplot/static/data/simplify/chrY.json.gz` | Precomputed data (gitignored) |
+| `pangyplot/routes.py` | `/simplify` + `/skeleton` endpoints |
 | `context/multi-resolution-zoom.md` | This design doc |
 
 ## Usage
 
 ```bash
-# Precompute grid mipmap data
-python -m pangyplot.preprocess.skeleton.graph_simplify \
-    --db hprc.clip --chr chrY --ref GRCh38 \
-    --no-plot \
-    --export-json pangyplot/static/data/simplify/chrY.json.gz
-
 # Run app, visit http://127.0.0.1:5700/simplify
 python pangyplot.py run --db hprc.clip --ref GRCh38
-
-# Stats + matplotlib plot (no viewer export)
-python -m pangyplot.preprocess.skeleton.graph_simplify \
-    --db hprc.clip --chr chrY --ref GRCh38 --no-plot
 ```
 
 ## Next Steps
 
-- Integrate coarse view into main PangyPlot app (replace standalone viewer)
-- Implement view transition: coarse → detail when viewport < ~2 Mb
-- Load gene landmarks dynamically from annotation database (currently hardcoded)
 - Color polylines by path/haplotype density or graph topology
-- Support multiple chromosomes

@@ -1,6 +1,6 @@
 # Simplify Viewer — Module Architecture
 
-The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. Organized into a core-style hierarchy with `skeleton/`, `detail/`, `engines/`, `render/`, `data/`, `ui/`, `utils/` subdirectories (56 files total).
+The simplify viewer (`/simplify`) is a standalone canvas-based visualization for multi-resolution graph skeletons. Organized into a core-style hierarchy with `skeleton/`, `detail/`, `engines/`, `render/`, `data/`, `ui/`, `utils/`, `debug/` subdirectories (85 files total).
 
 ## Module Map
 
@@ -16,74 +16,102 @@ pangyplot/static/js/simplify/
 ├── skeleton/
 │   ├── data/
 │   │   ├── skeleton-data.js               Skeleton data structures + parsing
-│   │   ├── skeleton-init.js               Skeleton initialization
-│   │   └── gene-data.js                   Gene annotation data management
+│   │   └── skeleton-init.js               Skeleton initialization
 │   ├── render/
 │   │   ├── skeleton-painter.js            Skeleton LOD layer: polylines, junctions
 │   │   ├── skeleton-render-manager.js     Orchestrates skeleton rendering passes
 │   │   ├── skeleton-base-overlay.js       Base skeleton overlay drawing
-│   │   ├── skeleton-gene-overlay.js       Gene landmark rendering on skeleton
-│   │   └── skeleton-hover-overlay.js      Hover highlight overlay for skeleton
+│   │   ├── skeleton-hover-overlay.js      Hover highlight overlay for skeleton
+│   │   ├── gene-label-overlay.js          Gene name label rendering
+│   │   └── gene-polyline-overlay.js       Gene-colored polyline overdraw
 │   └── engines/
 │       └── skeleton-hover-engine.js       Skeleton-level hover hit-testing
 ├── detail/
 │   ├── data/
-│   │   ├── bubble-pop-adapter.js          Pop response → force simulation nodes
+│   │   ├── bubble-meta-cache.js           Batch-fetch + cache bubble metadata
 │   │   ├── bubble-unpop-adapter.js        Undo pop, restore parent bubble
-│   │   ├── force-data.js                  Force simulation data management
-│   │   ├── simplify-view-state.js         Segment → owning bubble mapping (like core viewState)
+│   │   ├── force-data.js                  Canonical force node/link arrays
+│   │   ├── polychain-data-cache.js        Cached polychain data store
+│   │   ├── pop-debug-log.js               Pop operation debug logging
+│   │   ├── pop-tree.js                    Hierarchical undo stack with parent-child tracking
+│   │   ├── simplify-view-state.js         Segment → owning bubble mapping
 │   │   └── polychain/
 │   │       ├── polychain-adapter.js       API response → polychain elements
 │   │       ├── polychain-fetcher.js       Viewport-based polychain data fetching
-│   │       ├── polychain-gene-map.js      Gene annotation mapping to polychains
-│   │       ├── polychain-tile-cache.js    Tile caching for polychain data
-│   │       └── activation-data.js         Budget-based chain activation for force sim
+│   │       └── polychain-gene-map.js      Gene annotation mapping to polychains
+│   ├── model/
+│   │   ├── sim-object.js                  Abstract base: ends, interior, resolveEnd
+│   │   ├── segment-object.js              Kinked GFA segment (1-20 nodes)
+│   │   ├── bubble-object.js               Collapsed poppable bubble
+│   │   ├── polychain-container.js         Permanent spine manager (NOT a SimObject)
+│   │   ├── polychain-segment.js           Visible chain portion with anchor nodes
+│   │   ├── segment-registry.js            Unified Map<segId, SimObject>
+│   │   ├── model-manager.js               Coordinator: containers + objects maps
+│   │   └── pop-handler.js                 V2 pop orchestrator (SimObject-based)
 │   ├── render/
 │   │   ├── detail-painter.js              Detail layer: chains, junction nodes/links
 │   │   ├── force-render-manager.js        Force graph rendering orchestration
+│   │   ├── force-render-debug.js          Force render debug overlays
 │   │   ├── highlight-painter.js           Selection highlight rendering
-│   │   ├── physics-debug-painter.js       Physics debug visualization
 │   │   └── polychain/
 │   │       └── polychain-render-manager.js  Polychain-specific rendering
 │   └── engines/
-│       ├── force-engine.js                D3-force simulation management
+│       ├── force-engine.js                D3-force simulation (14 forces)
 │       ├── node-hover-engine.js           Force-node-level hover
+│       ├── forces/
+│       │   ├── pc-settings.js             Shared config object for all forces
+│       │   ├── polychain-forces.js        5 chain-shape forces: centroid, loop, parent, smoothing, balloon
+│       │   ├── layout-forces.js           ODGI pull + deletion link push
+│       │   ├── viewport-forces.js         Viewport freeze
+│       │   └── chain-guide-force.js       Soft pull toward parent chain polyline
 │       └── polychain/
 │           ├── polychain-force-engine.js  Force simulation for polychain graphs
-│           ├── polychain-hover-engine.js  Polychain hover hit-testing
-│           └── polychain-pop-engine.js    Pop/unpop for polychains
+│           └── polychain-hover-engine.js  Polychain hover hit-testing
 ├── engines/
 │   ├── engine-manager.js                  Orchestrator: sets up all interaction engines
-│   ├── keyboard-engine.js                 Keyboard shortcuts (L-key debug, etc.)
+│   ├── keyboard-engine.js                 Keyboard shortcuts (Y, U, Ctrl+Z, Escape)
 │   ├── lod-engine.js                      LOD level management
 │   ├── detail-transition-engine.js        Fade transition between skeleton ↔ detail
-│   ├── physics-activation-engine.js       Budget-based physics zone activation
 │   ├── reference-spine-engine.js          Reference spine coordinate transforms
 │   ├── simplify-context-menu.js           Right-click context menu
 │   ├── force-interaction-gate.js          Pause/resume force sim during interaction
+│   ├── annotation-label-drag-engine.js    Drag gene annotation labels
+│   ├── node-search-engine.js              Node search highlighting
 │   ├── drag/
 │   │   ├── drag-engine.js                 Main drag orchestrator (node + chain modes)
 │   │   ├── drag-fix-engine.js             Anchor-on-drag toggle (F key + checkbox)
-│   │   └── centroid-anchor-force.js       D3 force: pins chain centroid, nodes flex
+│   │   ├── centroid-anchor-force.js       D3 force: pins chain centroid, nodes flex
+│   │   ├── drag-influence-engine.js       (Disabled) Scroll-wheel influence radius
+│   │   ├── drag-influence-force.js        (Disabled) BFS influence force
+│   │   ├── drag-influence-render.js       (Disabled) Blue dashed influence circle
+│   │   └── drag-lock-render.js            Lock icon rendering for anchored chains
 │   ├── navigation/
 │   │   ├── pan-zoom-engine.js             Pan, drag, zoom (wheel), dblclick reset, resize
-│   │   └── hash-navigation.js            URL hash: parse, navigate, debounced update
+│   │   └── hash-navigation.js             URL hash: parse, navigate, debounced update
 │   └── selection/
 │       ├── hover-engine.js                Cursor readout + hover hit-test
-│       ├── multi-selection-engine.js      Shift+drag rect, X-key pop, Escape clear
+│       ├── multi-selection-engine.js      Shift+drag rect, X-key pop, Ctrl+click pop, Escape clear
 │       └── selection-popup.js             Selection info popup with "Open Bubble View" action
 ├── data/
 │   ├── chromosome-data.js                 Chromosome metadata management
-│   └── chromosome-loader.js               Chromosome data loading
+│   ├── chromosome-loader.js               Chromosome data loading
+│   ├── custom-annotation-data.js          Custom annotation data management
+│   └── gene-data.js                       Gene annotation data management
+├── debug/
+│   ├── debug-hud.js                       Debug heads-up display
+│   ├── debug-orchestrator.js              Debug overlay orchestration
+│   └── views/
+│       ├── force-vectors.js               Force vector debug visualization
+│       └── hit-zones.js                   Hit zone debug visualization
 ├── ui/
 │   ├── polychain-force-settings.js        Runtime force parameter sliders
+│   ├── render-settings.js                 Render settings toggles
+│   ├── cursor-badge.js                    Cursor badge overlay
 │   ├── status-bar.js                      Status bar with viewport info
 │   ├── tooltip-formatter.js               Tooltip content formatting
 │   ├── ui-bridge.js                       Bridge between simplify and shared UI
 │   └── viewport-sync.js                   Viewport synchronization
 └── utils/
-    ├── color-hash.js                      Color hashing utilities
-    ├── format-utils.js                    formatBp(), subtypeColor()
     ├── frame-scheduler.js                 RAF frame scheduling
     └── geometry.js                        Geometry utilities
 ```
@@ -91,10 +119,11 @@ pangyplot/static/js/simplify/
 ## Key Dependencies
 
 - `render-manager.js` orchestrates: skeleton-render-manager, detail-painter, polychain-render-manager
-- `engine-manager.js` wires: pan-zoom-engine, hover-engine, multi-selection-engine, keyboard-engine, lod-engine, detail-transition-engine, physics-activation-engine, reference-spine-engine, simplify-context-menu
+- `engine-manager.js` wires: pan-zoom-engine, hover-engine, multi-selection-engine, keyboard-engine, lod-engine, detail-transition-engine, reference-spine-engine, simplify-context-menu, drag-engine, node-search-engine, annotation-label-drag-engine, force-interaction-gate
 - `skeleton/` is self-contained: own data, render, and engine layers for the coarse zoom level
 - `detail/` is self-contained: own data (polychain fetcher/adapter), render, and engines for fine zoom
-- `detail/data/polychain/` handles progressive data loading with tile caching and budget-based activation
+- `detail/data/polychain/` handles progressive data loading with tile caching
+- `detail/model/` contains SimObject hierarchy for unified pop/render model
 - All painters import `simplify-state.js` for zoom/pan/opacity
 - `selection-popup.js` enables "Open Bubble View" to switch to core viewer for deep inspection
 
@@ -109,10 +138,9 @@ pangyplot/static/js/simplify/
 ### Module-Local State
 Some state is private to its module rather than shared:
 - `engines/reference-spine-engine.js`: spine coordinate transforms (x↔bp, x→y)
-- `skeleton/data/gene-data.js`: gene pins array
+- `data/gene-data.js`: gene pins array
 - `detail/data/polychain/polychain-fetcher.js`: fetchController, fetchTimer, fetchedRegion
 - `engines/navigation/hash-navigation.js`: hashTimer
-- `engines/physics-activation-engine.js`: activationSet, adjacency, viewport snapshot
 
 ### Side-Effect-Free Viewport Functions
 `resizeCanvas()` and `fitToScreen()` do not call `scheduleFrame()`. Callers are responsible for triggering redraws. This prevents render↔viewport cycles.
@@ -149,9 +177,9 @@ The viewer has two distinct rendering layers that crossfade based on zoom level:
 ### Detail Layer (`detail/`)
 - Fine zoom level: polychains with bubble-segment graph subgraphs
 - **Polychain system** (`detail/data/polychain/`): chains rendered as polylines with RDP simplification, fetched via `/detail-tiles` API with tile caching
-- **Budget-based activation** (`activation-data.js`): chains sorted by complexity, greedily filled up to POP_BUDGET for force simulation
+- **Budget-based activation**: chains sorted by complexity, greedily filled up to POP_BUDGET for force simulation
 - **Force simulation** (`detail/engines/force-engine.js`, `polychain/polychain-force-engine.js`): D3-force for popped chain nodes with anchoring to polyline endpoints
-- **Bubble pop/unpop** (`bubble-pop-adapter.js`, `bubble-unpop-adapter.js`, `polychain-pop-engine.js`): expand individual bubbles within popped chains
+- **Bubble pop/unpop** (`detail/model/pop-handler.js`, `bubble-unpop-adapter.js`): expand individual bubbles within popped chains via SimObject model
 - **View state** (`simplify-view-state.js`): segment → owning bubble mapping, like core viewer's viewState
 
 ### Cross-Layer Features
