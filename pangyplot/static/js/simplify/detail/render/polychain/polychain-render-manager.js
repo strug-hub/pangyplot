@@ -288,6 +288,7 @@ export function drawDetail(svg = null) {
         }
     }
 
+
     // 4. Hover highlight (skip during SVG export)
     if (!svg && state.hoveredChain) {
         const hoverContainer = getContainer(state.hoveredChain.id);

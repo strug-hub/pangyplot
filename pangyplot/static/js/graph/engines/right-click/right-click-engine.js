@@ -57,13 +57,42 @@ export function populateOptions(forceGraph) {
         forceGraph.zoomToFit(200, 10, () => true);
     });
 
-    menu.addOption('file-export', 'Download GFA', 'general', () => {
-        const coords = appState.coords;
-        const url = new URL('/gfa', window.location.origin);
-        for (const [key, val] of Object.entries(coords)) {
-            url.searchParams.set(key, val);
+    menu.addOption('file-export', 'Download GFA', 'general', async () => {
+        const nodes = appState.selected.size > 0
+            ? [...appState.selected]
+            : forceGraph.graphData().nodes;
+
+        const bubble_ids = [];
+        const segment_ids = [];
+        for (const node of nodes) {
+            if (!node.record) continue;
+            const rawId = Number(String(node.record.id).replace(/^[bs]/, ''));
+            if (node.record.type === 'bubble') bubble_ids.push(rawId);
+            else if (node.record.type === 'segment') segment_ids.push(rawId);
         }
-        window.location.href = url.toString();
+
+        const resp = await fetch('/gfa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                genome: appState.coords.genome,
+                chromosome: appState.coords.chromosome,
+                bubble_ids,
+                segment_ids,
+            }),
+        });
+        if (!resp.ok) return;
+
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cd = resp.headers.get('Content-Disposition') || '';
+        a.download = cd.match(/filename=(.+)/)?.[1] || 'export.gfa';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     });
 
     menu.addOption('download', 'Download PNG', 'general', () => {

@@ -264,8 +264,6 @@ def build_chain_polyline(chain, stepidx, seg_index):
     bubble_t = []
     n_bubbles = len(chain.bubbles)
     for idx, b in enumerate(chain.bubbles):
-        if b.children:
-            continue
         t = idx / max(1, n_bubbles - 1) if n_bubbles > 1 else 0.5
         bubble_t.append(round(t, 4))
 

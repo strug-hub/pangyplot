@@ -17,8 +17,9 @@ export function setupPanZoom(canvas) {
         if (state.hoveredChain && state.detailData) return; // handled by drag-engine
         if (e.shiftKey && state.detailData) return; // handled by multi-selection
         // Clear selection on non-shift click
-        if (state.selectedChains.size > 0 && !state.hoveredChain) {
+        if ((state.selectedChains.size > 0 || state.selectedObjects.size > 0) && !state.hoveredChain) {
             state.selectedChains.clear();
+            state.selectedObjects.clear();
             scheduleFrame();
         }
         state.isDragging = true;

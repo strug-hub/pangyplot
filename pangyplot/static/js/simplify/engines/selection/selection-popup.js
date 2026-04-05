@@ -5,6 +5,8 @@ import { state } from '../../simplify-state.js';
 import { setCanvasMode } from '@app-state';
 import { formatBp } from '@format-utils';
 import { setupPolychainForceSettings } from '../../ui/polychain-force-settings.js';
+import { getContainer } from '../../detail/model/model-manager.js';
+import { BubbleObject } from '../../detail/model/bubble-object.js';
 
 let popupEl = null;
 let coreContainer = null;  // div that holds the core ForceGraph canvas
@@ -108,22 +110,33 @@ function ensureBackButton() {
     return backBtn;
 }
 
-function getSelectedBubbleIds() {
-    const ids = [];
+function getSelectedNodeIds() {
+    const bubbleIds = [];
+    const segmentIds = [];
+
+    // Chains: get unpopped bubbles in clip range from container
     for (const [chain, clip] of state.selectedChains) {
-        if (!chain.bubbleIds || !chain.bubblePositions) continue;
-        for (let i = 0; i < chain.bubbleIds.length; i++) {
-            const t = chain.bubblePositions[i];
-            if (t >= clip.tStart && t <= clip.tEnd) {
-                ids.push(chain.bubbleIds[i]);
-            }
+        const container = getContainer(chain.id);
+        if (!container) continue;
+        for (const b of container.bubblesInRange(clip.tStart, clip.tEnd)) {
+            bubbleIds.push(Number(String(b.id).replace(/^b/, '')));
         }
     }
-    return ids;
+
+    // Junction SimObjects
+    for (const obj of state.selectedObjects) {
+        if (obj instanceof BubbleObject) {
+            bubbleIds.push(Number(String(obj.id).replace(/^b/, '')));
+        } else if (obj.id && String(obj.id).startsWith('s')) {
+            segmentIds.push(Number(String(obj.id).replace(/^s/, '')));
+        }
+    }
+
+    return { bubbleIds, segmentIds };
 }
 
-async function downloadGfa(bubbleIds) {
-    if (bubbleIds.length === 0) return;
+async function downloadGfa({ bubbleIds = [], segmentIds = [] } = {}) {
+    if (bubbleIds.length === 0 && segmentIds.length === 0) return;
 
     const resp = await fetch('/gfa', {
         method: 'POST',
@@ -132,6 +145,7 @@ async function downloadGfa(bubbleIds) {
             genome: state.GENOME,
             chromosome: state.chromosome,
             bubble_ids: bubbleIds,
+            segment_ids: segmentIds,
         }),
     });
     if (!resp.ok) return;
@@ -150,16 +164,28 @@ async function downloadGfa(bubbleIds) {
 
 async function exportGfa() {
     hideSelectionPopup();
-    downloadGfa(getSelectedBubbleIds());
+    downloadGfa(getSelectedNodeIds());
 }
 
 export async function exportViewportGfa() {
     if (!state.detailData) return;
-    const ids = [];
+    const bubbleIds = [];
     for (const chain of state.detailData.chains) {
-        if (chain.bubbleIds) ids.push(...chain.bubbleIds);
+        const container = getContainer(chain.id);
+        if (!container) continue;
+        for (const b of container.bubblesInRange(0, 1)) {
+            bubbleIds.push(Number(String(b.id).replace(/^b/, '')));
+        }
     }
-    downloadGfa(ids);
+    const segmentIds = [];
+    for (const obj of state.selectedObjects) {
+        if (obj instanceof BubbleObject) {
+            bubbleIds.push(Number(String(obj.id).replace(/^b/, '')));
+        } else if (obj.id && String(obj.id).startsWith('s')) {
+            segmentIds.push(Number(String(obj.id).replace(/^s/, '')));
+        }
+    }
+    downloadGfa({ bubbleIds, segmentIds });
 }
 
 function getSelectionBpRange() {
@@ -269,7 +295,7 @@ function row(label, value, color) {
 
 export function showSelectionPopup(screenX, screenY) {
     const range = getSelectionBpRange();
-    if (!range) return;
+    if (!range && state.selectedObjects.size === 0) return;
 
     const el = ensurePopup();
     const count = state.selectedChains.size;
@@ -283,8 +309,9 @@ export function showSelectionPopup(screenX, screenY) {
 
     const rangeText = `${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}`;
     const lines = [];
-    lines.push(row('chains', count));
-    lines.push(`<span class="sp-range-link" style="cursor:pointer">${row('range', rangeText, '#5bb8f0')}</span>`);
+    if (count > 0) lines.push(row('chains', count));
+    if (state.selectedObjects.size > 0) lines.push(row('junctions', state.selectedObjects.size));
+    if (range) lines.push(`<span class="sp-range-link" style="cursor:pointer">${row('range', rangeText, '#5bb8f0')}</span>`);
     if (totalSize > 0) lines.push(row('total size', formatBp(totalSize, { unit: true })));
     info.innerHTML = lines.join('<br>');
 

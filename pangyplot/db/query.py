@@ -294,12 +294,13 @@ def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
     return result
 
 
-def generate_gfa(indexes, genome, chrom, bubble_ids):
-    """Build GFA 1.0 lines for the subgraph defined by a list of bubble IDs.
+def generate_gfa(indexes, genome, chrom, bubble_ids, segment_ids=None):
+    """Build GFA 1.0 lines for the subgraph defined by bubble and/or segment IDs.
 
     Resolves bubbles → segments (recursive via get_descendant_ids),
-    fetches full Segment objects with sequences, discovers links, and
-    extracts P-lines from haplotype paths.
+    merges in any explicitly requested segment IDs, fetches full
+    Segment objects with sequences, discovers links, and extracts
+    P-lines from haplotype paths.
 
     All data is fetched eagerly (requires app context), then yields
     formatted lines so Flask can stream the response.
@@ -317,6 +318,10 @@ def generate_gfa(indexes, genome, chrom, bubble_ids):
     for bid in bubble_ids:
         bubble = bubbleidx[bid]
         seg_ids.update(bubbleidx.get_descendant_ids(bubble))
+
+    # 1b. Add explicitly requested segment IDs
+    if segment_ids:
+        seg_ids.update(segment_ids)
 
     if not seg_ids:
         return iter([])
@@ -476,6 +481,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         bubble_ids = chain_data.pop("_bubble_ids", None)
         if bubble_ids is None:
             bubble_ids = chain_data.get("bubble_ids", [])
+        chain_data["bubble_ids"] = bubble_ids
         for bid in bubble_ids:
             _bid_to_chain[bid] = chain_data["id"]
         chain_data["popped"] = False

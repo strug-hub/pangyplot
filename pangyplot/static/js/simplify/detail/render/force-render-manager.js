@@ -17,6 +17,16 @@ import { bubbleGridThreshold } from '../data/bubble-meta-cache.js';
 export let renderedJunctionNodes = 0;
 export let renderedJunctionLinks = 0;
 
+const SELECTION_COLOR = '#FAB3AE';
+
+function nodeColorForSelection(node) {
+    if (state.selectedObjects.size > 0 && node.simObject &&
+        state.selectedObjects.has(node.simObject)) {
+        return SELECTION_COLOR;
+    }
+    return getNodeColor(node);
+}
+
 export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const nodes = getForceNodes();
     const links = getForceLinks();
@@ -62,7 +72,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         if (link.isDel) {
             delSegs.push(seg);
         } else if (link.isKinkLink) {
-            const color = getNodeColor(s);
+            const color = nodeColorForSelection(s);
             if (!kinkByColor.has(color)) kinkByColor.set(color, []);
             kinkByColor.get(color).push(seg);
         } else if (link.type === 'chain') {
@@ -101,7 +111,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         }
         const r = (node.width || 5) * scaleFactor * 0.5;
         const circle = { x: node.x, y: node.y, r };
-        const color = getNodeColor(node);
+        const color = nodeColorForSelection(node);
         if (!nodesByColor.has(color)) nodesByColor.set(color, []);
         nodesByColor.get(color).push(circle);
         if (node.type !== 'bubble') {

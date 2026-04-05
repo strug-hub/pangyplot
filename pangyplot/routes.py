@@ -357,12 +357,14 @@ def gfa():
     genome = data.get("genome")
     chromosome = data.get("chromosome")
     bubble_ids = data.get("bubble_ids", [])
+    segment_ids = data.get("segment_ids", [])
 
-    if not genome or not chromosome or not bubble_ids:
-        return jsonify({"error": "Missing genome, chromosome, or bubble_ids"}), 400
+    if not genome or not chromosome or (not bubble_ids and not segment_ids):
+        return jsonify({"error": "Missing genome, chromosome, or node IDs"}), 400
 
     try:
-        gen = query.generate_gfa(current_app, genome, chromosome, bubble_ids)
+        gen = query.generate_gfa(current_app, genome, chromosome, bubble_ids,
+                                 segment_ids=segment_ids)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 

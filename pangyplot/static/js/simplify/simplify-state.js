@@ -45,6 +45,7 @@ export const state = {
 
     // Selection (Shift+drag rectangle)
     selectedChains: new Map(),   // Map<chain, { tStart, tEnd }> — clipped arc-length fraction
+    selectedObjects: new Set(),  // Set<SimObject> — selected junction SegmentObjects/BubbleObjects
     selectionBox: null,          // { startX, startY, endX, endY } in screen coords, or null
 
     // Hover

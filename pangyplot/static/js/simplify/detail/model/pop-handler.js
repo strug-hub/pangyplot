@@ -285,22 +285,21 @@ export async function popAllBubblesOnChain(chainId) {
     const container = getContainer(chainId);
     if (!container || container.bubbles.length === 0) return;
 
-    const bubbleIds = container.bubbles.map(b => b.id);
     const metaStore = getBubbleStore(chainId);
 
-    for (const bubbleId of bubbleIds) {
-        if (container.poppedRanges.some(pr => pr.bubbleId === bubbleId)) continue;
-        const bubble = container.bubbles.find(b => b.id === bubbleId);
-        if (!bubble) continue;
-
+    // Walk unpopped bubbles — bubblesInRange excludes already-popped ranges.
+    // Re-query each iteration since popping changes the ranges.
+    let unpopped;
+    while ((unpopped = container.bubblesInRange(0, 1)).length > 0) {
+        const bubble = unpopped[0];
         const pos = container.positionAt(bubble.t);
         let meta = null;
         if (metaStore?.bubbles) {
-            meta = metaStore.bubbles.find(b => b.id === bubbleId)
+            meta = metaStore.bubbles.find(b => b.id === bubble.id)
                 || metaStore.bubbles.find(b => Math.abs(b.t - bubble.t) < 0.001);
         }
 
-        const hit = { x: pos.x, y: pos.y, meta: meta || { id: bubbleId, t: bubble.t }, chainId };
+        const hit = { x: pos.x, y: pos.y, meta: meta || { id: bubble.id, t: bubble.t }, chainId };
         await popBubbleCircleV2(hit);
     }
 }

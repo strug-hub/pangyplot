@@ -4,6 +4,8 @@ import { state } from '../../simplify-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { hitTestChains, chainsInRect, hitTestBubbleCircles } from '../../detail/engines/polychain/polychain-hover-engine.js';
 import { popBubbleCircleV2 } from '../../detail/model/pop-handler.js';
+import { getAllObjects } from '../../detail/model/model-manager.js';
+import { PolychainSegment } from '../../detail/model/polychain-segment.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
@@ -93,6 +95,19 @@ export function setupMultiSelection(canvas) {
         const hits = chainsInRect(dMinX, dMinY, dMaxX, dMaxY);
         state.selectedChains.clear();
         for (const h of hits) state.selectedChains.set(h.chain, { tStart: h.tStart, tEnd: h.tEnd });
+
+        // Hit-test junction SimObjects (SegmentObjects/BubbleObjects)
+        state.selectedObjects.clear();
+        for (const obj of getAllObjects().values()) {
+            if (obj instanceof PolychainSegment) continue;
+            for (const node of obj.physicsNodes) {
+                if (node.x >= dMinX && node.x <= dMaxX &&
+                    node.y >= dMinY && node.y <= dMaxY) {
+                    state.selectedObjects.add(obj);
+                    break;
+                }
+            }
+        }
         scheduleFrame();
     });
 
@@ -102,7 +117,7 @@ export function setupMultiSelection(canvas) {
         const endScreenX = e.clientX;
         const endScreenY = e.clientY;
         state.selectionBox = null;
-        if (state.selectedChains.size > 0) {
+        if (state.selectedChains.size > 0 || state.selectedObjects.size > 0) {
             showSelectionPopup(endScreenX, endScreenY);
         } else {
             hideSelectionPopup();
@@ -114,8 +129,9 @@ export function setupMultiSelection(canvas) {
     canvas.addEventListener('keydown', e => {
         if (e.code !== 'Escape') return;
         let changed = false;
-        if (state.selectedChains.size > 0 || state.selectionBox) {
+        if (state.selectedChains.size > 0 || state.selectedObjects.size > 0 || state.selectionBox) {
             state.selectedChains.clear();
+            state.selectedObjects.clear();
             state.selectionBox = null;
             isSelecting = false;
             hideSelectionPopup();
