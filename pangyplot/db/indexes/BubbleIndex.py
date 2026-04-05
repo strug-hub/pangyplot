@@ -366,23 +366,17 @@ class BubbleIndex:
         if bubble is None:
             return {"source_segs": [], "sink_segs": [], "child_bubbles": [], "child_bubble_objects": [], "nodes": [], "links": []}
 
-        child_bubble_objects = [self[cid] for cid in bubble.children]
-
-        all_segs = set(bubble.source_segments + bubble.sink_segments) | bubble.inside
-        for child in child_bubble_objects:
-            all_segs.update(child.source_segments + child.sink_segments)
+        # Recursively collect ALL descendant segment IDs (boundaries + inside)
+        all_segs = self.get_descendant_ids(bubble)
+        all_segs.update(bubble.source_segments + bubble.sink_segments)
 
         segments, links = self.gfaidx.get_subgraph(all_segs, stepidx)
-        child_bubbles = [
-            {"id": cb.id, "source_segs": cb.source_segments, "sink_segs": cb.sink_segments, "inside_segs": sorted(cb.inside)}
-            for cb in child_bubble_objects
-        ]
 
         return {
             "source_segs": bubble.source_segments,
             "sink_segs": bubble.sink_segments,
-            "child_bubbles": child_bubbles,
-            "child_bubble_objects": child_bubble_objects,
+            "child_bubbles": [],
+            "child_bubble_objects": [],
             "nodes": segments,
             "links": links,
         }

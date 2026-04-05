@@ -25,7 +25,7 @@ from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.preprocess.meta import compute_meta
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
-from pangyplot.db.query import get_bubble_meta
+from pangyplot.db.query import get_bubble_meta, pop_bubble
 
 REFERENCE = "gi|568815592"
 
@@ -226,11 +226,38 @@ class TestPolychainIndex:
         assert len(pi.chain_ids) == 34
 
     def test_includes_non_reference_chains(self, drb1_indexes):
-        """Chains with no segments on the reference path are still included."""
+        """Layout-based query finds chains invisible to step-based query,
+        and those chains are represented in the polychain index."""
+        bi = drb1_indexes["bubble_index"]
+        si = drb1_indexes["step_index"]
         pi = drb1_indexes["polychain_index"]
-        chain_ids = set(int(x) for x in pi.chain_ids)
-        # Chain 89 has 59 bubbles but zero segments on the reference
-        assert 89 in chain_ids
+
+        max_step = len(si.starts) - 1
+        step_chains = bi.get_top_level_bubbles(0, max_step, as_chains=True)
+        layout_chains = bi.get_top_level_bubbles_by_layout(
+            float('-inf'), float('inf'), as_chains=True)
+
+        # Layout should find strictly more chains than step-based
+        step_ids = set(c.id for c in step_chains)
+        layout_ids = set(c.id for c in layout_chains)
+        nonref_ids = layout_ids - step_ids
+        assert len(nonref_ids) > 0, "Expected non-reference chains in DRB1"
+
+        # Every layout chain should be in the polychain index (top-level or decomposed)
+        pi_chain_ids = set(int(x) for x in pi.chain_ids)
+        decomp_chain_ids = set()
+        for cid in pi.chain_ids:
+            decomp = pi.get_decomposition(int(cid))
+            if decomp:
+                for cd in decomp['chains']:
+                    base = cd['id'].split(':')[0].lstrip('c')
+                    if base.isdigit():
+                        decomp_chain_ids.add(int(base))
+        all_represented = pi_chain_ids | decomp_chain_ids
+
+        missing = layout_ids - all_represented
+        assert len(missing) == 0, (
+            f"Non-reference chains not in polychain index: {sorted(missing)}")
 
     def test_layout_query_covers_all(self, drb1_indexes):
         """Layout-based query with infinite range returns all chains."""
@@ -474,3 +501,79 @@ class TestBubbleMetaConsistency:
         assert len(mismatches) == 0, (
             f"{len(mismatches)} chains with mismatched t-values:\n"
             + "\n".join(mismatches[:10]))
+
+
+# ---------------------------------------------------------------------------
+# Full pop coverage
+# ---------------------------------------------------------------------------
+
+class TestFullPopCoverage:
+    """Pop every bubble and verify all GFA segments and links are represented
+    across the polychain data + pop responses."""
+
+    def test_all_segments_and_links_covered(self, drb1_indexes):
+        import gzip
+        import json as _json
+        import sqlite3
+
+        indexes = type('Idx', (), {
+            'step_index': {('DRB1', REFERENCE): drb1_indexes["step_index"]},
+            'bubble_index': {'DRB1': drb1_indexes["bubble_index"]},
+            'gfa_index': {'DRB1': drb1_indexes["gfa_index"]},
+        })()
+
+        # 1. Collect segments + links from polychain data (chain endpoints + junction)
+        pd_path = os.path.join(drb1_indexes["dir"], "polychain-data.json.gz")
+        with gzip.open(pd_path, 'rt') as f:
+            pd = _json.load(f)
+
+        covered_segs = set()
+        covered_links = set()
+
+        for c in pd['chains']:
+            for sid in (c.get('source_segs') or []):
+                covered_segs.add(int(str(sid).lstrip('s')))
+            for sid in (c.get('sink_segs') or []):
+                covered_segs.add(int(str(sid).lstrip('s')))
+
+        for sid in pd['junction']['ids']:
+            covered_segs.add(int(sid))
+
+        for l in pd['junction']['links']:
+            s, t = int(l[0]), int(l[1])
+            covered_links.add((min(s, t), max(s, t)))
+
+        # 2. Pop every bubble and collect segments + links
+        conn = sqlite3.connect(os.path.join(drb1_indexes["dir"], "bubbles.db"))
+        all_bids = [r[0] for r in conn.execute('SELECT id FROM bubbles').fetchall()]
+        conn.close()
+
+        for bid in all_bids:
+            result = pop_bubble(indexes, f'b{bid}', REFERENCE, 'DRB1')
+            for n in result['nodes']:
+                covered_segs.add(int(str(n['id']).lstrip('s')))
+            for l in result['links']:
+                s = int(str(l['source']).lstrip('s'))
+                t = int(str(l['target']).lstrip('s'))
+                covered_links.add((min(s, t), max(s, t)))
+
+        # 3. Compare to full GFA
+        seg_index = drb1_indexes["segment_idx"]
+        all_segs = set()
+        for sid in range(seg_index.max_id() + 1):
+            if sid < len(seg_index.valid) and seg_index.valid[sid]:
+                all_segs.add(sid)
+
+        link_index = drb1_indexes["link_idx"]
+        all_links = set()
+        for i in range(len(link_index.from_ids)):
+            s, t = int(link_index.from_ids[i]), int(link_index.to_ids[i])
+            all_links.add((min(s, t), max(s, t)))
+
+        missing_segs = all_segs - covered_segs
+        missing_links = all_links - covered_links
+
+        assert len(missing_segs) == 0, (
+            f"{len(missing_segs)} segments missing: {sorted(missing_segs)[:20]}")
+        assert len(missing_links) == 0, (
+            f"{len(missing_links)} links missing: {sorted(missing_links)[:10]}")

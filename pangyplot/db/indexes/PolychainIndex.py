@@ -57,7 +57,7 @@ class PolychainIndex:
         for chain in all_chains:
             r = decompose_chain(
                 chain, CANONICAL_EXPAND_THRESHOLD, None,
-                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
+                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=5)
 
             if not r["chains"]:
                 continue
