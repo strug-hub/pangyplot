@@ -24,6 +24,7 @@ from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.preprocess.meta import compute_meta
+from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
 
 REFERENCE = "gi|568815592"
 
@@ -56,6 +57,9 @@ def drb1_indexes(fixtures_dir):
         step_index = StepIndex(tmpdir, REFERENCE)
         bubble_index = BubbleIndex(tmpdir, gfa_index)
         polychain_index = PolychainIndex(tmpdir, bubble_index, gfa_index, step_index, REFERENCE)
+
+        pd_path = os.path.join(tmpdir, "polychain-data.json.gz")
+        export_polychain_data(tmpdir, gfa_index, REFERENCE, pd_path)
 
         yield {
             "dir": tmpdir,
@@ -283,3 +287,124 @@ class TestGraphMeta:
         bp = meta["bp_range"]
         assert bp["start"] > 32_000_000
         assert bp["end"] > bp["start"]
+
+
+# ---------------------------------------------------------------------------
+# Polychain data segment coverage
+# ---------------------------------------------------------------------------
+
+class TestPolychainSegmentCoverage:
+    """Verify that polychain chains + junction nodes account for all segments
+    that belong to any bubble. Segments not in any bubble (tips/dangles) are
+    expected to be missing."""
+
+    def test_all_bubbled_segments_covered(self, drb1_indexes):
+        import gzip
+        import json as _json
+        import sqlite3
+
+        pd_path = os.path.join(drb1_indexes["dir"], "polychain-data.json.gz")
+        with gzip.open(pd_path, 'rt') as f:
+            pd = _json.load(f)
+
+        # 1. Collect chain endpoint segs
+        chain_segs = set()
+        for c in pd['chains']:
+            for sid in (c.get('source_segs') or []):
+                chain_segs.add(int(str(sid).lstrip('s')))
+            for sid in (c.get('sink_segs') or []):
+                chain_segs.add(int(str(sid).lstrip('s')))
+
+        # 2. Collect junction node seg IDs
+        junc_ids = set(pd['junction']['ids'])
+
+        # 3. Recursively collect all segments from all bubbles
+        conn = sqlite3.connect(os.path.join(drb1_indexes["dir"], "bubbles.db"))
+        conn.row_factory = sqlite3.Row
+
+        def get_bubble_segs(bubble_id, visited):
+            if bubble_id in visited:
+                return set()
+            visited.add(bubble_id)
+            row = conn.execute(
+                'SELECT source, sink, inside, children FROM bubbles WHERE id = ?',
+                (bubble_id,)).fetchone()
+            if not row:
+                return set()
+            segs = set()
+            for field in ('source', 'sink', 'inside'):
+                segs.update(int(s) for s in _json.loads(row[field]))
+            for child_id in _json.loads(row['children']):
+                segs |= get_bubble_segs(child_id, visited)
+            return segs
+
+        all_bubble_segs = set()
+        visited = set()
+        all_bubbles = conn.execute('SELECT id FROM bubbles').fetchall()
+        for r in all_bubbles:
+            all_bubble_segs |= get_bubble_segs(r['id'], visited)
+        conn.close()
+
+        # 4. Coverage: every segment that's in a bubble should be in
+        #    chain endpoints, junction nodes, or bubble inside segs
+        covered = chain_segs | junc_ids | all_bubble_segs
+        missing_from_coverage = all_bubble_segs - covered
+        assert len(missing_from_coverage) == 0, (
+            f"{len(missing_from_coverage)} bubbled segments not covered: "
+            f"{sorted(missing_from_coverage)[:20]}")
+
+    def test_all_segments_covered(self, drb1_indexes):
+        """Every segment should be reachable: chain endpoint, junction node,
+        or inside a bubble (fetched on pop)."""
+        import gzip
+        import json as _json
+        import sqlite3
+
+        pd_path = os.path.join(drb1_indexes["dir"], "polychain-data.json.gz")
+        with gzip.open(pd_path, 'rt') as f:
+            pd = _json.load(f)
+
+        # Chain endpoints + junction nodes
+        covered = set()
+        for c in pd['chains']:
+            for sid in (c.get('source_segs') or []):
+                covered.add(int(str(sid).lstrip('s')))
+            for sid in (c.get('sink_segs') or []):
+                covered.add(int(str(sid).lstrip('s')))
+        covered.update(pd['junction']['ids'])
+
+        # Bubble inside segs (fetched on demand via /pop)
+        conn = sqlite3.connect(os.path.join(drb1_indexes["dir"], "bubbles.db"))
+        conn.row_factory = sqlite3.Row
+
+        def get_bubble_segs(bubble_id, visited):
+            if bubble_id in visited:
+                return set()
+            visited.add(bubble_id)
+            row = conn.execute(
+                'SELECT source, sink, inside, children FROM bubbles WHERE id = ?',
+                (bubble_id,)).fetchone()
+            if not row:
+                return set()
+            segs = set()
+            for field in ('source', 'sink', 'inside'):
+                segs.update(int(s) for s in _json.loads(row[field]))
+            for child_id in _json.loads(row['children']):
+                segs |= get_bubble_segs(child_id, visited)
+            return segs
+
+        visited = set()
+        for r in conn.execute('SELECT id FROM bubbles').fetchall():
+            covered |= get_bubble_segs(r['id'], visited)
+        conn.close()
+
+        # All segments in the database
+        seg_index = drb1_indexes["segment_idx"]
+        all_segs = set()
+        for sid in range(seg_index.max_id() + 1):
+            if sid < len(seg_index.valid) and seg_index.valid[sid]:
+                all_segs.add(sid)
+
+        missing = all_segs - covered
+        assert len(missing) == 0, (
+            f"{len(missing)} segments not reachable: {sorted(missing)}")

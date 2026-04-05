@@ -152,6 +152,26 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
         junc_gc.append(int(seg_index.gc_count[sid]))
         junc_id_set.add(sid)
 
+    # --- 4b. Add orphan segments (tips/dangles not in any bubble or chain) ---
+    orphan_count = 0
+    for sid in range(len(seg_index.valid)):
+        if not seg_index.valid[sid]:
+            continue
+        if sid in chain_endpoint_segs or sid in junc_id_set:
+            continue
+        if bubbleidx.segment_in_bubble(sid, include_boundary=True) is not None:
+            continue
+        # Orphan — add to junction arrays
+        junc_ids.append(int(sid))
+        junc_x1.append(round(float(seg_index.x1[sid]), 1))
+        junc_y1.append(round(float(seg_index.y1[sid]), 1))
+        junc_x2.append(round(float(seg_index.x2[sid]), 1))
+        junc_y2.append(round(float(seg_index.y2[sid]), 1))
+        junc_lengths.append(int(seg_index.length[sid]))
+        junc_gc.append(int(seg_index.gc_count[sid]))
+        junc_id_set.add(sid)
+        orphan_count += 1
+
     # GFA links between junction segments
     junc_links = []
     junc_link_seen = set()

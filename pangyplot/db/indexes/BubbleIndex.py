@@ -217,11 +217,23 @@ class BubbleIndex:
             return self[bubble_id]
         return None
 
-    def segment_in_bubble(self, seg_id):
+    def segment_in_bubble(self, seg_id, include_boundary=False):
         if seg_id >= len(self.segment_to_bubble) or seg_id < 0:
             return None
         bubble_id = self.segment_to_bubble[seg_id]
-        return None if bubble_id == 0 else bubble_id
+        if bubble_id != 0:
+            return bubble_id
+        if not include_boundary:
+            return None
+        # Check if seg is a source/sink of a top-level bubble (unmapped
+        # because parent is None). Lazily build boundary map on first use.
+        if not hasattr(self, '_boundary_bubble_map'):
+            self._boundary_bubble_map = {}
+            for row in db.iter_relationships(self.dir):
+                if row["parent"] is None:
+                    for sid in row["source"] + row["sink"]:
+                        self._boundary_bubble_map[sid] = row["id"]
+        return self._boundary_bubble_map.get(seg_id)
 
     def parent_of_bubble(self, bubble_id):
         if bubble_id >= len(self.bubble_to_parent) or bubble_id < 0:
