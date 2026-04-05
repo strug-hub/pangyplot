@@ -27,3 +27,13 @@ def mini_odgi_layout(fixtures_dir):
 @pytest.fixture(scope="module")
 def mini_bandage_layout(fixtures_dir):
     return fixtures_dir / "mini.bandage.json"
+
+
+@pytest.fixture(scope="module")
+def drb1_gfa(fixtures_dir):
+    return fixtures_dir / "DRB1-3123.gfa"
+
+
+@pytest.fixture(scope="module")
+def drb1_layout(fixtures_dir):
+    return fixtures_dir / "DRB1-3123.lay.tsv"

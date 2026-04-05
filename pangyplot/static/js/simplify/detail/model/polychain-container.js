@@ -483,9 +483,6 @@ export class PolychainContainer {
         // Build bubble metadata
         const bubbleIds = chain.bubbleIds || chain.bubble_ids || [];
         const bubblePositions = chain.bubblePositions || chain.bubble_t || [];
-        if (bubblePositions.length > 0 && bubbleIds.length === 0) {
-            console.warn(`[container] ${chainId}: bubble_t=${bubblePositions.length} but bubbleIds is empty`, chain);
-        }
         const bubbles = [];
         for (let i = 0; i < bubblePositions.length; i++) {
             const id = i < bubbleIds.length && bubbleIds[i]
