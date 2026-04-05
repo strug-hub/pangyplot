@@ -1,6 +1,6 @@
 // Layout and structural D3 forces: position pull and deletion-link push.
 
-import { pcSettings } from './pc-settings.js';
+import { pcSettings, getScale } from './pc-settings.js';
 
 /**
  * Combined layout pull — applies pcSettings.layoutLevel to polychain nodes,
@@ -44,7 +44,7 @@ export function combinedLayoutForce() {
 export function delLinkForce(getLinks) {
     let nodes = [];
     function force(alpha) {
-        const strength = pcSettings.delLinkStrength ?? 2;
+        const strength = (pcSettings.delLinkStrength ?? 2) * getScale();
         const delLinks = getLinks().filter(l => l.isDel);
         for (const link of delLinks) {
             if (!link.bubbleId) continue;

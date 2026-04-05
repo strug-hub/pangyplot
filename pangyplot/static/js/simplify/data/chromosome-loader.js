@@ -7,6 +7,8 @@ import { initGeneCache } from './gene-data.js';
 import { state } from '../simplify-state.js';
 import { initPolychainDataCache } from '../detail/data/polychain-data-cache.js';
 import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
+import { pcSettings, REFERENCE_LINK_DISTANCE } from '../detail/engines/forces/pc-settings.js';
+import { syncScaleSlider } from '../ui/polychain-force-settings.js';
 
 /** Decode delta-encoded polylines in-place. */
 function decodeDelta(levels) {
@@ -24,11 +26,12 @@ export async function loadChromosome(chromosome) {
     // Fetch skeleton, spine, polychain, and genes in parallel
     const chr = encodeURIComponent(chromosome);
     const genome = encodeURIComponent(state.GENOME);
-    const [skelResp, spineResp, pdResp, geneResp] = await Promise.all([
+    const [skelResp, spineResp, pdResp, geneResp, metaResp] = await Promise.all([
         fetch(`/skeleton?chromosome=${chr}`),
         fetch(`/spine?chromosome=${chr}`),
         fetch(`/polychain-data?chromosome=${chr}`),
         fetch(`/genes?genome=${genome}&chromosome=${chr}&mane_only=true`),
+        fetch(`/graph-meta?chromosome=${chr}`),
     ]);
 
     if (!skelResp.ok) throw new Error(`HTTP ${skelResp.status}`);
@@ -48,6 +51,19 @@ export async function loadChromosome(chromosome) {
         const pdRaw = await pdResp.json();
         initPolychainDataCache(pdRaw);
     }
+
+    // Graph metadata (force scaling)
+    if (metaResp.ok) {
+        const meta = await metaResp.json();
+        if (meta.median_link_distance) {
+            pcSettings.dataScale = meta.median_link_distance / REFERENCE_LINK_DISTANCE;
+        }
+        state.graphMeta = meta;
+    } else {
+        pcSettings.dataScale = 1;
+        state.graphMeta = null;
+    }
+    syncScaleSlider();
 
     // Genes (fetched for entire chromosome; MANE Select first, fallback to all)
     let genes = [];

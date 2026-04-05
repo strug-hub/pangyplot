@@ -168,6 +168,17 @@ def polychain_data_file():
     return Response(data, mimetype='application/json',
                     headers={'Content-Encoding': 'gzip'})
 
+@bp.route('/graph-meta')
+def graph_meta():
+    chrom = request.args.get('chromosome')
+    if not chrom:
+        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    meta_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "meta.json")
+    if not os.path.exists(meta_path):
+        return jsonify({}), 200
+    with open(meta_path, 'r') as f:
+        return Response(f.read(), mimetype='application/json')
+
 @bp.route('/chains', methods=["GET"])
 def chains():
     genome = request.args.get("genome")

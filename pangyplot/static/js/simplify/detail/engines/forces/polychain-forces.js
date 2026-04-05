@@ -1,7 +1,7 @@
 // Polychain-specific D3 forces: loop shaping, inflation, and hierarchy.
 // Each export is a factory function returning a D3-compatible force object.
 
-import { pcSettings, loopLevels } from './pc-settings.js';
+import { pcSettings, loopLevels, getScale } from './pc-settings.js';
 
 /**
  * Group force nodes by chain ID, filtering and optionally sorting.
@@ -36,7 +36,7 @@ export function centroidRepulsion() {
     let nodes = [];
 
     function force(alpha) {
-        const str = (loopLevels[pcSettings.centroidLevel] ?? 0) * alpha;
+        const str = (loopLevels[pcSettings.centroidLevel] ?? 0) * alpha * getScale();
         if (str === 0) return;
 
         // Group by ROOT chain ID — connectors share one centroid with parent
@@ -104,7 +104,7 @@ export function loopClosureForce() {
             if (sign >= 0) {
                 scale = sign;
             } else {
-                const midpoint = 500;
+                const midpoint = 500 * getScale();
                 const distScale = 1 / (1 + (dist / midpoint) * (dist / midpoint));
                 scale = sign * distScale;
             }
@@ -179,13 +179,14 @@ export function parentSideForce() {
     }
 
     function force(alpha) {
-        const str = pcSettings.parentSide * alpha;
+        const S = getScale();
+        const str = pcSettings.parentSide * alpha * S;
         if (str === 0) return;
 
         // Recompute perpendiculars every 20 ticks
         if (++tickCount % 20 === 0) recomputePerps();
 
-        const maxDist = 500;  // stop pushing when child is far enough from parent
+        const maxDist = 500 * S;  // stop pushing when child is far enough from parent
         for (const n of nodes) {
             if (!n.parentPerps) continue;
             for (let ai = 0; ai < n.parentPerps.length; ai++) {

@@ -29,18 +29,18 @@ document.getElementById("go-button").addEventListener("click", function () {
   let start = document.getElementById("go-start").textContent;
   let end = document.getElementById("go-end").textContent;
 
-  if (
-    chromosome == null || chromosome == EMPTY ||
-    start == null || start == EMPTY ||
-    end == null || end == EMPTY
-  ) {
+  if (chromosome == null || chromosome == EMPTY) {
     errorAnimationBadInput(goBox);
-  } else {
+    return;
+  }
 
+  const hasCoords = start != null && start != EMPTY && end != null && end != EMPTY;
+
+  if (hasCoords) {
     const flanking = getFlankingInput();
     const minusFlanking = document.getElementById('go-flanking-minus-button');
     const plusFlanking = document.getElementById('go-flanking-plus-button');
-        
+
     if(minusFlanking.classList.contains("button-selected")){
       const startInt = parseInt(start);
       start = String(Math.max(0, startInt-flanking));
@@ -48,17 +48,19 @@ document.getElementById("go-button").addEventListener("click", function () {
       const endInt = parseInt(end);
       end = String(endInt+flanking);
     }
-
-
-    const data = {
-      genome: document.getElementById('go-genome').textContent,
-      chromosome,
-      start,
-      end
-    };
-    updateUrlHash(chromosome, start, end);
-    eventBus.publish("ui:construct-graph", data);
+  } else {
+    start = null;
+    end = null;
   }
+
+  const data = {
+    genome: document.getElementById('go-genome').textContent,
+    chromosome,
+    start,
+    end
+  };
+  updateUrlHash(chromosome, start, end);
+  eventBus.publish("ui:construct-graph", data);
 });
 
 function updateGoValues(chromValue = null, startValue = null, endValue = null) {
@@ -93,6 +95,18 @@ function errorAnimationBadInput(textBox) {
 
 eventBus.subscribe("ui:coordinates-changed", function (data) {
     updateGoValues(data.chromosome, data.start, data.end);
+
+    // When chromosome selected without coordinates, fill from graph metadata
+    if (data.chromosome && data.start == null && data.end == null) {
+        fetch(`/graph-meta?chromosome=${encodeURIComponent(data.chromosome)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(meta => {
+                if (meta?.bp_range) {
+                    updateGoValues(data.chromosome, meta.bp_range.start, meta.bp_range.end);
+                }
+            })
+            .catch(() => {});
+    }
 });
 
 function updateGenomicCoordinates(rawText) {
@@ -102,30 +116,35 @@ function updateGenomicCoordinates(rawText) {
   const textBox = document.getElementById("go-chrom-start-end");
   let input = rawText.replace(/\s+/g, "").replace(/,/g, "");
 
-  const pattern = /^(chr)?[^:]+:\d+-\d+$/;
+  // Accept "chr:start-end" or bare chromosome name
+  const coordPattern = /^([^:]+):(\d+)-(\d+)$/;
+  const coordMatch = input.match(coordPattern);
 
-  if (!pattern.test(input)) {
-    errorAnimationBadInput(textBox);
+  if (coordMatch) {
+    let [, chromosome, startStr, endStr] = coordMatch;
+    let start = parseInt(startStr, 10);
+    let end = parseInt(endStr, 10);
+
+    if (end < 0 || start < 0 || end < start) {
+      errorAnimationBadInput(textBox);
+      return;
+    }
+
+    textBox.value = "";
+    const data = {chromosome, start, end, source: "coordinate-text"};
+    eventBus.publish("ui:coordinates-changed", data);
     return;
   }
 
-  let [chromosome, range] = input.split(":");
-  let [start, end] = range.split("-").map((s) => parseInt(s, 10));
-
-  if (end < 0 || start < 0) {
-    errorAnimationBadInput(textBox);
+  // Bare chromosome name (no colon, no range)
+  if (/^[A-Za-z0-9._|:+-]+$/.test(input) && !input.includes(':')) {
+    textBox.value = "";
+    const data = {chromosome: input, start: null, end: null, source: "coordinate-text"};
+    eventBus.publish("ui:coordinates-changed", data);
     return;
   }
 
-  if (end < start) {
-    errorAnimationBadInput(textBox);
-    return;
-  }
-
-  textBox.value = "";
-
-  const data = {chromosome: chromosome, start: start, end: end, source: "coordinate-text"};
-  eventBus.publish("ui:coordinates-changed", data);
+  errorAnimationBadInput(textBox);
 }
 
 function getFlankingInput() {

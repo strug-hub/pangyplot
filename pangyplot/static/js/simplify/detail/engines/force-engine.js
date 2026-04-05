@@ -9,7 +9,7 @@ import defaults from '../../../graph/forces/settings/force-defaults.js';
 
 // Settings (re-exported so existing importers don't break)
 export { pcSettings } from './forces/pc-settings.js';
-import { pcSettings, SIMPLIFY_LINK_SCALE, SIMPLIFY_CHARGE, linkStrengthLevels } from './forces/pc-settings.js';
+import { pcSettings, SIMPLIFY_LINK_SCALE, SIMPLIFY_CHARGE, linkStrengthLevels, getScale } from './forces/pc-settings.js';
 
 // Force factories
 import { viewportFreezeForce } from './forces/viewport-forces.js';
@@ -145,17 +145,20 @@ function spawnDampingForce() {
 // --- Exported force parameter functions (single source of truth for force + debug UI) ---
 
 export function chargeMaxDist(d) {
-    if (d.isPolychainNode) return 400;
-    return 100;  // popped segments
+    const S = getScale();
+    if (d.isPolychainNode) return 400 * S;
+    return 100 * S;  // popped segments
 }
 
 export function chargeStr(d) {
-    if (d.isPolychainNode) return pcSettings.charge;
-    return -20;  // popped segments
+    const S = getScale();
+    if (d.isPolychainNode) return pcSettings.charge * S;
+    return -20 * S;  // popped segments
 }
 
 function collideRadius(d) {
-    return d.isPolychainNode ? pcSettings.collisionRadius : defaults.COLLISION_RADIUS;
+    const S = getScale();
+    return (d.isPolychainNode ? pcSettings.collisionRadius : defaults.COLLISION_RADIUS) * S;
 }
 
 // ---------------------------------------------------------------

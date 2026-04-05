@@ -2,6 +2,7 @@
 // Populates the "Force Settings" tab in the simplify viewer.
 
 import createSliderSet from '@ui/components/slider-set.js';
+import { resetSlider } from '@ui/elements/slider.js';
 import { pcSettings, applyPcSettings, pauseSim, resumeSim, isSimulating } from '../detail/engines/force-engine.js';
 
 function mainSliders() {
@@ -110,7 +111,30 @@ export function setupPolychainForceSettings() {
     details.appendChild(advSet);
     container.appendChild(details);
 
+    // Scale factor slider (debug — shows the dataScale multiplier)
+    const scaleDetails = document.createElement('details');
+    scaleDetails.className = 'advanced-settings';
+    scaleDetails.open = true;
+    const scaleSummary = document.createElement('summary');
+    scaleSummary.textContent = 'Scale';
+    scaleDetails.appendChild(scaleSummary);
+
+    const scaleSet = createSliderSet('pc-scale', [
+        {
+            label: "Scale Factor", icon: "ruler",
+            min: 0.1, max: 5, step: 0.01, default: pcSettings.dataScale,
+            onChange: (v) => { pcSettings.dataScale = v; applyPcSettings(); }
+        },
+    ]);
+    scaleDetails.appendChild(scaleSet);
+    container.appendChild(scaleDetails);
+
     // Clear render settings (not used by simplify viewer)
     const renderContainer = document.getElementById('render-settings-container');
     if (renderContainer) renderContainer.innerHTML = '';
+}
+
+/** Update the scale factor slider to reflect the current pcSettings.dataScale. */
+export function syncScaleSlider() {
+    resetSlider('scale-factor', pcSettings.dataScale);
 }

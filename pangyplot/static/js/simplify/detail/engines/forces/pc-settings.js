@@ -4,6 +4,8 @@
 export const SIMPLIFY_LINK_SCALE = 1;   // rest distance = link.length * this (matches core)
 export const SIMPLIFY_CHARGE = -200;
 
+export const REFERENCE_LINK_DISTANCE = 20;
+
 export const pcSettings = {
     charge: -200,
     chargeMaxDist: 400,
@@ -17,7 +19,11 @@ export const pcSettings = {
     parentSide: 1.5,          // push child chains to one side of parent
     guideLevel: 0.015,        // chain projection guide pull strength
     delLinkStrength: 2,       // deletion link perpendicular push
+    dataScale: 1,             // auto-set from median_link_distance / REFERENCE_LINK_DISTANCE
 };
+
+/** Single read point for the scale factor — all forces use this. */
+export function getScale() { return pcSettings.dataScale; }
 
 export const loopLevels = { 0: 0, 1: 1, 2: 4, 3: 10, 4: 25, 5: 50 };
 export const linkStrengthLevels = { 1: 0.05, 2: 0.1, 3: 0.5, 4: 0.75, 5: 1.0 };
