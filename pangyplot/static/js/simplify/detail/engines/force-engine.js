@@ -387,7 +387,7 @@ export function registerCustomForce(name, forceFn) {
 export function applyPcSettings() {
     if (!sim) return;
     const charge = sim.force('charge');
-    if (charge) charge.strength(() => chargeStr({ isPolychainNode: true }))
+    if (charge) charge.strength(d => d.isPolychainNode ? chargeStr(d) : 0)
         .distanceMax(chargeMaxDist({ isPolychainNode: true }));
     const collide = sim.force('collide');
     if (collide) collide.radius(collideRadius);
