@@ -22,6 +22,8 @@ import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
+from pangyplot.db.indexes.PolychainIndex import PolychainIndex
+from pangyplot.preprocess.meta import compute_meta
 
 REFERENCE = "gi|568815592"
 
@@ -53,6 +55,7 @@ def drb1_indexes(fixtures_dir):
         gfa_index = GFAIndex(tmpdir)
         step_index = StepIndex(tmpdir, REFERENCE)
         bubble_index = BubbleIndex(tmpdir, gfa_index)
+        polychain_index = PolychainIndex(tmpdir, bubble_index, gfa_index, step_index, REFERENCE)
 
         yield {
             "dir": tmpdir,
@@ -62,6 +65,7 @@ def drb1_indexes(fixtures_dir):
             "gfa_index": gfa_index,
             "step_index": step_index,
             "bubble_index": bubble_index,
+            "polychain_index": polychain_index,
         }
     finally:
         shutil.rmtree(tmpdir)
@@ -204,3 +208,78 @@ class TestDiskArtifacts:
             or os.path.isfile(os.path.join(drb1_indexes["dir"], "bubbles.db"))
         )
         assert found
+
+
+# ---------------------------------------------------------------------------
+# Polychain index (chain decomposition)
+# ---------------------------------------------------------------------------
+
+class TestPolychainIndex:
+    def test_chain_count(self, drb1_indexes):
+        """All top-level chains are decomposed, including non-reference ones."""
+        pi = drb1_indexes["polychain_index"]
+        assert len(pi.chain_ids) == 34
+
+    def test_includes_non_reference_chains(self, drb1_indexes):
+        """Chains with no segments on the reference path are still included."""
+        pi = drb1_indexes["polychain_index"]
+        chain_ids = set(int(x) for x in pi.chain_ids)
+        # Chain 89 has 59 bubbles but zero segments on the reference
+        assert 89 in chain_ids
+
+    def test_layout_query_covers_all(self, drb1_indexes):
+        """Layout-based query with infinite range returns all chains."""
+        bi = drb1_indexes["bubble_index"]
+        chains = bi.get_top_level_bubbles_by_layout(
+            float('-inf'), float('inf'), as_chains=True)
+        assert len(chains) == 34
+
+    def test_step_query_misses_nonref(self, drb1_indexes):
+        """Step-based query misses non-reference chains (documents the gap)."""
+        si = drb1_indexes["step_index"]
+        bi = drb1_indexes["bubble_index"]
+        max_step = len(si.starts) - 1
+        step_chains = bi.get_top_level_bubbles(0, max_step, as_chains=True)
+        layout_chains = bi.get_top_level_bubbles_by_layout(
+            float('-inf'), float('inf'), as_chains=True)
+        assert len(step_chains) < len(layout_chains)
+
+    def test_decomposition_has_polyline(self, drb1_indexes):
+        pi = drb1_indexes["polychain_index"]
+        decomp = pi.get_decomposition(int(pi.chain_ids[0]))
+        assert decomp is not None
+        assert len(decomp["chains"]) > 0
+        assert len(decomp["chains"][0].get("polyline", [])) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Graph metadata
+# ---------------------------------------------------------------------------
+
+class TestGraphMeta:
+    def test_meta_has_required_fields(self, drb1_indexes):
+        meta = compute_meta(drb1_indexes["dir"], REFERENCE, "DRB1")
+        assert meta["total_segments"] == 3214
+        assert meta["total_links"] == 4380
+        assert meta["sample_count"] == 12
+
+    def test_median_link_distance(self, drb1_indexes):
+        meta = compute_meta(drb1_indexes["dir"], REFERENCE, "DRB1")
+        assert 5 < meta["median_link_distance"] < 10
+
+    def test_layout_bbox(self, drb1_indexes):
+        meta = compute_meta(drb1_indexes["dir"], REFERENCE, "DRB1")
+        bbox = meta["layout_bbox"]
+        assert bbox["min_x"] < bbox["max_x"]
+        assert bbox["min_y"] < bbox["max_y"]
+
+    def test_bubble_stats(self, drb1_indexes):
+        meta = compute_meta(drb1_indexes["dir"], REFERENCE, "DRB1")
+        assert meta["total_bubbles"] > 800
+        assert meta["max_bubble_depth"] >= 2
+
+    def test_bp_range(self, drb1_indexes):
+        meta = compute_meta(drb1_indexes["dir"], REFERENCE, "DRB1")
+        bp = meta["bp_range"]
+        assert bp["start"] > 32_000_000
+        assert bp["end"] > bp["start"]

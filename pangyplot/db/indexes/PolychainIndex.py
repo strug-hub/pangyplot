@@ -46,8 +46,8 @@ class PolychainIndex:
 
         seg_index = gfaidx.segment_index
 
-        max_step = len(stepidx.starts) - 1 if len(stepidx.starts) > 0 else 0
-        all_chains = bubbleidx.get_top_level_bubbles(0, max_step, as_chains=True)
+        all_chains = bubbleidx.get_top_level_bubbles_by_layout(
+            float('-inf'), float('inf'), as_chains=True)
 
         print(f"  [PolychainIndex] Building from {len(all_chains)} top-level chains...")
 
