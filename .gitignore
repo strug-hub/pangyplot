@@ -15,3 +15,9 @@ pangypaper/
 build/
 docs/build/
 docs/source/build/
+
+# Large graph files (keep local, never commit)
+*.vg
+*.og
+*.gfa
+!tests/fixtures/*.gfa
