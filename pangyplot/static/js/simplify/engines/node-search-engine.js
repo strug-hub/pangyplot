@@ -50,7 +50,7 @@ export function clearSearchHighlight() {
 function findSegment(numId) {
     const nodes = getForceNodes();
     const target = 's' + numId;
-    const node = nodes.find(n => n.id === target && !n.isPolychainNode && !n.isPhantom);
+    const node = nodes.find(n => n.id === target && !n.isPolychainNode);
     if (!node || node.x == null) return null;
     return [{ ref: node, type: 'segment' }];
 }
@@ -65,7 +65,7 @@ function findBubble(numId) {
 
     // Check force nodes (bubble may be a force node from a popped chain)
     const nodes = getForceNodes();
-    const forceNode = nodes.find(n => n.id === bubbleId && !n.isPolychainNode && !n.isPhantom);
+    const forceNode = nodes.find(n => n.id === bubbleId && !n.isPolychainNode);
     if (forceNode && forceNode.x != null) {
         return [{ ref: forceNode, type: 'bubble' }];
     }
@@ -136,7 +136,7 @@ function findPoppedChildren(bubbleId) {
 
     // Find force nodes matching the child iids
     for (const iid of childIids) {
-        const node = nodes.find(n => n.iid === iid && !n.isPolychainNode && !n.isPhantom);
+        const node = nodes.find(n => n.iid === iid && !n.isPolychainNode);
         if (node && node.x != null) {
             refs.push({ ref: node, type: 'segment' });
         }

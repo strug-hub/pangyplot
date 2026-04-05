@@ -17,7 +17,7 @@ import { centroidRepulsion,
          loopClosureForce, parentSideForce, laplacianSmoothing,
          balloonInflation } from './forces/polychain-forces.js';
 import { combinedLayoutForce, delLinkForce } from './forces/layout-forces.js';
-import { ghostGuideForce } from './forces/ghost-guide-force.js';
+import { chainGuideForce } from './forces/chain-guide-force.js';
 import { centroidAnchorForce, releaseAllChains } from '../../engines/drag/centroid-anchor-force.js';
 import { updateAnchors as updateModelAnchors } from '../model/model-manager.js';
 
@@ -181,7 +181,7 @@ export function initForce() {
             () => chargeStr({ isPolychainNode: true }),
             chargeMaxDist({ isPolychainNode: true })))
         .force('segCharge', isolatedCharge(
-            n => !n.isPolychainNode && !n.isGhostSpine && !n.isAnchor && n.chainId && n.chainId !== '__junction__',
+            n => !n.isPolychainNode && !n.isAnchor && n.chainId && n.chainId !== '__junction__',
             () => chargeStr({ isPolychainNode: false }),
             chargeMaxDist({ isPolychainNode: false })))
         // .force('collide', d3.forceCollide()
@@ -194,7 +194,7 @@ export function initForce() {
         .force('balloon', balloonInflation())
         .force('parentSide', parentSideForce())
         .force('delLink', delLinkForce(getLinks))
-        .force('ghostGuide', ghostGuideForce())
+        .force('chainGuide', chainGuideForce())
         .force('centroidAnchor', centroidAnchorForce())
         .force('spawnDamp', spawnDampingForce())
         .on('tick', onTick);
@@ -213,7 +213,7 @@ export function computeForceDeltas() {
     const alpha = 1; // Use full strength for debug visualization
     const forceNames = ['charge', 'segCharge', 'collide', 'link', 'layout',
         'centroid', 'loopClosure', 'smoothing', 'balloon', 'parentSide',
-        'delLink', 'ghostGuide', 'centroidAnchor', 'spawnDamp'];
+        'delLink', 'chainGuide', 'centroidAnchor', 'spawnDamp'];
     const result = {};
 
     for (const name of forceNames) {

@@ -26,7 +26,7 @@ export function hitTestForceNodes(dataX, dataY) {
     let bestNode = null;
 
     for (const node of nodes) {
-        if (node.isPhantom || node.isPolychainNode) continue;
+        if (node.isPolychainNode || node.isAnchor) continue;
         const dx = dataX - node.x;
         const dy = dataY - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);

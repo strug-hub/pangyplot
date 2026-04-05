@@ -17,7 +17,7 @@ const forceMap = {
     smoothing:       { color: '#FF6688', label: 'smooth' },
     balloon:         { color: '#FFD700', label: 'balloon' },
     parentSide:      { color: '#44FF44', label: 'parent' },
-    ghostGuide:      { color: '#88FFFF', label: 'guide' },
+    chainGuide:      { color: '#88FFFF', label: 'guide' },
 };
 
 export function drawForceVectors(ctx, nodes, links, opacity) {
@@ -26,7 +26,7 @@ export function drawForceVectors(ctx, nodes, links, opacity) {
     const lw = Math.max(0.5, 1.5 / state.zoom);
 
     const pcNodes = nodes.filter(n => n.isPolychainNode && n.x != null);
-    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isPhantom && !n.isAnchor && n.x != null);
+    const segNodes = nodes.filter(n => !n.isPolychainNode && !n.isAnchor && n.x != null);
     const allVisNodes = [...pcNodes, ...segNodes];
     if (allVisNodes.length === 0) return;
 
@@ -144,14 +144,14 @@ function _drawGuideProjections(ctx, nodes, opacity) {
     ctx.strokeStyle = '#88FFFF';
     ctx.lineWidth = Math.max(0.5, 1 / state.zoom);
     const chainPlCache = new Map();
-    const guidedNodes = nodes.filter(n => !n.isPolychainNode && n.ghostRootId && n.x != null);
+    const guidedNodes = nodes.filter(n => !n.isPolychainNode && n.guideChainId && n.x != null);
     for (const n of guidedNodes) {
-        let pl = chainPlCache.get(n.ghostRootId);
+        let pl = chainPlCache.get(n.guideChainId);
         if (pl === undefined) {
-            const pcN = getContainer(n.ghostRootId)?.spineNodes;
+            const pcN = getContainer(n.guideChainId)?.spineNodes;
             const real = pcN ? pcN.filter(nd => !nd.isAnchor) : null;
             pl = real && real.length >= 2 ? real.map(nd => [nd.x, nd.y]) : null;
-            chainPlCache.set(n.ghostRootId, pl);
+            chainPlCache.set(n.guideChainId, pl);
         }
         if (!pl) continue;
         let bestDist = Infinity, bestX = 0, bestY = 0;

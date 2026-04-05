@@ -5,7 +5,7 @@
 import { getContainer } from '../../model/model-manager.js';
 import { pcSettings } from './pc-settings.js';
 
-export function ghostGuideForce() {
+export function chainGuideForce() {
     let nodes = [];
     let _chainCache = new Map();
 
@@ -30,7 +30,7 @@ export function ghostGuideForce() {
 
         for (const node of nodes) {
             if (node.isPolychainNode) continue;
-            const chainId = node.ghostRootId;
+            const chainId = node.guideChainId;
             if (!chainId) continue;
 
             const pl = getChainPl(chainId);

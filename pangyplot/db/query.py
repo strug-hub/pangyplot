@@ -623,7 +623,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         # to their owning chain.  These segs are inside chain bubbles
         # (not naked, not chain endpoints) but have GFA edges to junction
         # nodes.  Without this mapping the frontend linkResolver can't
-        # resolve them to the correct chain phantom.
+        # resolve them to the correct chain.
         for link in jg_links:
             for seg_id in (link.from_id, link.to_id):
                 if seg_id in all_junction_seg_ids:

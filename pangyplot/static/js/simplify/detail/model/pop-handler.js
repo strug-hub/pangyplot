@@ -135,7 +135,7 @@ export async function popBubbleCircleV2(hit) {
         for (const n of obj.physicsNodes) {
             n.chainId = chainId;
             n.popBubbleId = bubbleId;
-            n.ghostRootId = chainId;
+            n.guideChainId = chainId;
             n.x = anchorPos.x;
             n.y = anchorPos.y;
             // homeX/homeY stays as ODGI coords (set during kink creation)
@@ -301,7 +301,7 @@ export async function popBubbleCircleV2(hit) {
     for (const n of childNodes) {
         n.chainId = chainId;
         n.popBubbleId = bubbleId;
-        n.ghostRootId = chainId;
+        n.guideChainId = chainId;
     }
 
     // --- Add everything to D3 sim in one batch ---

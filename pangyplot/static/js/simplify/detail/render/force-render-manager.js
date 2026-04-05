@@ -98,7 +98,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     let jNodeCount = 0;
 
     for (const node of nodes) {
-        if (node.x == null || node.isPhantom || node.isPolychainNode || node.isGhostSpine || node.isAnchor) continue;
+        if (node.x == null || node.isPolychainNode || node.isAnchor) continue;
         if (!nodeVisible(node.x, node.y)) continue;
         if (node.chainId === '__junction__') {
             // Hide small junction nodes when zoomed out (all visible at gridSize <= 50)
