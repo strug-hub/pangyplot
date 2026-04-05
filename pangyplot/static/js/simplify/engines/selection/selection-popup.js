@@ -117,14 +117,19 @@ function getSelectedNodeIds() {
     // Chains: get unpopped bubbles in clip range from container
     for (const [chain, clip] of state.selectedChains) {
         const container = getContainer(chain.id);
-        if (!container) continue;
-        for (const b of container.bubblesInRange(clip.tStart, clip.tEnd)) {
-            bubbleIds.push(Number(String(b.id).replace(/^b/, '')));
+        if (!container) { console.log('[GFA] no container for', chain.id); continue; }
+        const inRange = container.bubblesInRange(clip.tStart, clip.tEnd);
+        console.log(`[GFA] chain ${chain.id}: ${inRange.length} bubbles in range [${clip.tStart}, ${clip.tEnd}]`);
+        for (const b of inRange) {
+            const raw = Number(String(b.id).replace(/^b/, ''));
+            if (isNaN(raw)) console.log('[GFA] NaN bubble id:', b.id);
+            bubbleIds.push(raw);
         }
     }
 
     // Junction SimObjects
     for (const obj of state.selectedObjects) {
+        console.log('[GFA] selected object:', obj.id, obj.constructor.name);
         if (obj instanceof BubbleObject) {
             bubbleIds.push(Number(String(obj.id).replace(/^b/, '')));
         } else if (obj.id && String(obj.id).startsWith('s')) {
@@ -132,6 +137,8 @@ function getSelectedNodeIds() {
         }
     }
 
+    console.log(`[GFA] sending ${bubbleIds.length} bubbles, ${segmentIds.length} segments`);
+    console.log('[GFA] bubble sample:', bubbleIds.slice(0, 10));
     return { bubbleIds, segmentIds };
 }
 

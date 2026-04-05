@@ -207,7 +207,7 @@ def build_chain_polyline(chain, stepidx, seg_index):
 
     Returns a dict with polyline, metadata, and internal fields for
     junction wiring (_start_seg, _end_seg) and inline popping
-    (_bubble_ids, _layout_span).  Returns None if the chain can't
+    (bubble_ids, _layout_span).  Returns None if the chain can't
     produce a valid polyline.
     """
     if not chain.bubbles:
@@ -328,7 +328,7 @@ def build_chain_polyline(chain, stepidx, seg_index):
         "source_segs": chain.bubbles[0].source_segments,
         "sink_segs": chain.bubbles[-1].sink_segments,
         "bubble_t": bubble_t,
-        "_bubble_ids": [b.id for b in chain.bubbles],
+        "bubble_ids": [b.id for b in chain.bubbles],
         "_layout_span": span,
         "_start_seg": polyline_start_seg,
         "_end_seg": polyline_end_seg,
@@ -586,7 +586,7 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
     # Head↔tail (deletion allele) links are NOT suppressed.
     _suppress_links = set()
     for cd in chains_data:
-        bubble_ids = cd.get("_bubble_ids") or []
+        bubble_ids = cd.get("bubble_ids") or []
         if not bubble_ids:
             continue
         # First bubble: source segs ↔ its inside

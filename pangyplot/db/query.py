@@ -317,6 +317,9 @@ def generate_gfa(indexes, genome, chrom, bubble_ids, segment_ids=None):
     seg_ids = set()
     for bid in bubble_ids:
         bubble = bubbleidx[bid]
+        if bubble is None:
+            print(f"[GFA export] WARNING: bubble {bid} not found in index, skipping")
+            continue
         seg_ids.update(bubbleidx.get_descendant_ids(bubble))
 
     # 1b. Add explicitly requested segment IDs
@@ -478,10 +481,7 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     result_chains = []
     for chain_data in chain_result["chains"]:
         chain_data.pop("_layout_span", None)
-        bubble_ids = chain_data.pop("_bubble_ids", None)
-        if bubble_ids is None:
-            bubble_ids = chain_data.get("bubble_ids", [])
-        chain_data["bubble_ids"] = bubble_ids
+        bubble_ids = chain_data.get("bubble_ids", [])
         for bid in bubble_ids:
             _bid_to_chain[bid] = chain_data["id"]
         chain_data["popped"] = False
