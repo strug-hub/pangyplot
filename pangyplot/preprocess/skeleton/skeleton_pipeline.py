@@ -15,6 +15,37 @@ from pangyplot.preprocess.skeleton.skeleton_geometry import grid_simplify
 
 
 VIEWER_GRID_SIZES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000]
+FINE_GRID_CANDIDATES = [5, 10, 25, 50]
+
+
+def compute_grid_sizes(segment_index):
+    """Return grid sizes adapted to the layout extent.
+
+    For small graphs, prepend finer grid levels so the skeleton has
+    enough resolution at close zoom. The finest useful level is
+    roughly max(layout_width, layout_height) / 200.
+    """
+    import math
+    min_x, max_x = math.inf, -math.inf
+    min_y, max_y = math.inf, -math.inf
+    for sid in range(len(segment_index.valid)):
+        if not segment_index.valid[sid]:
+            continue
+        for x in (segment_index.x1[sid], segment_index.x2[sid]):
+            if x < min_x: min_x = x
+            if x > max_x: max_x = x
+        for y in (segment_index.y1[sid], segment_index.y2[sid]):
+            if y < min_y: min_y = y
+            if y > max_y: max_y = y
+
+    if not math.isfinite(min_x):
+        return list(VIEWER_GRID_SIZES)
+
+    extent = max(max_x - min_x, max_y - min_y)
+    min_useful = extent / 2000
+
+    extra = [g for g in FINE_GRID_CANDIDATES if g >= min_useful and g < VIEWER_GRID_SIZES[0]]
+    return sorted(extra) + list(VIEWER_GRID_SIZES)
 
 
 # ---------------------------------------------------------------------------

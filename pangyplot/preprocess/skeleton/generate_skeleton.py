@@ -15,7 +15,7 @@ from pangyplot.db.sqlite import bubble_db
 from pangyplot.version import __version__
 
 from pangyplot.preprocess.skeleton.skeleton_pipeline import (
-    VIEWER_GRID_SIZES,
+    VIEWER_GRID_SIZES, compute_grid_sizes,
     compute_degrees, find_junctions, find_linear_runs, run_to_polyline,
     load_segment_to_bubble, compute_run_chain_ids,
     export_json,
@@ -60,8 +60,9 @@ def generate_skeleton(chr_dir, ref, chrom):
     print(" Done.")
 
     print("   💾 Exporting skeleton...", end="", flush=True)
+    grid_sizes = compute_grid_sizes(segment_index)
     export_json(junctions, runs, segment_index, link_index, polylines,
-                VIEWER_GRID_SIZES, gz_path, chromosome=chrom,
+                grid_sizes, gz_path, chromosome=chrom,
                 chain_ids=chain_ids, chain_stats=chain_stats)
     print(" Done.")
 

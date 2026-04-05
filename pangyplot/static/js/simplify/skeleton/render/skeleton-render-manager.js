@@ -22,7 +22,7 @@ export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
     if (!level) return { visiblePl: 0 };
 
     const lineWidth = Math.max(0.5, 1.2 / state.zoom);
-    const skelAlpha = state.detailData ? state.skeletonOpacity : 1;
+    const skelAlpha = state.alwaysShowSkeleton ? 1 : (state.detailData ? state.skeletonOpacity : 1);
 
     // --- Cull polylines by bbox ---
     const bboxes = getLevelBboxes();

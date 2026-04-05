@@ -10,7 +10,7 @@ export function createToggle(label, initial, onChange) {
     const row = document.createElement('div');
     row.style.cssText = `
         display: flex; align-items: center; justify-content: space-between;
-        padding: 6px 2px; font-size: 12px; color: var(--unselected-text);
+        padding: 8px 4px; color: var(--font-color);
     `;
 
     const text = document.createElement('span');
@@ -19,23 +19,23 @@ export function createToggle(label, initial, onChange) {
 
     const track = document.createElement('div');
     track.style.cssText = `
-        width: 36px; height: 18px; border-radius: 9px; cursor: pointer;
-        position: relative; transition: background 0.2s;
-        background: ${initial ? 'var(--dark-green)' : '#555'};
+        width: 44px; height: 24px; border-radius: 12px; cursor: pointer;
+        position: relative; transition: background 0.2s; flex-shrink: 0;
+        background: ${initial ? '#e8b931' : '#555'};
     `;
     const thumb = document.createElement('div');
     thumb.style.cssText = `
-        width: 14px; height: 14px; border-radius: 50%; background: #fff;
+        width: 20px; height: 20px; border-radius: 50%; background: #fff;
         position: absolute; top: 2px; transition: left 0.2s;
-        left: ${initial ? '20px' : '2px'};
+        left: ${initial ? '22px' : '2px'};
     `;
     track.appendChild(thumb);
 
     let on = initial;
     function setOn(val) {
         on = val;
-        thumb.style.left = on ? '20px' : '2px';
-        track.style.background = on ? 'var(--dark-green)' : '#555';
+        thumb.style.left = on ? '22px' : '2px';
+        track.style.background = on ? '#e8b931' : '#555';
     }
     track.addEventListener('click', () => {
         setOn(!on);
@@ -43,7 +43,7 @@ export function createToggle(label, initial, onChange) {
     });
 
     row.appendChild(track);
-    row.setOn = setOn;  // expose for external toggling (e.g. keyboard shortcut)
+    row.setOn = setOn;
     return row;
 }
 

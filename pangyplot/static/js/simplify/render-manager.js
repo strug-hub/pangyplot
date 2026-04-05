@@ -75,8 +75,8 @@ function draw() {
         visiblePl = counts.visiblePl;
     }
 
-    // ===== DETAIL LAYER (drawn in same data-space transform) =====
-    if (state.detailData && state.detailOpacity > 0) {
+    // ===== DETAIL LAYER (suppressed when skeleton-always mode is on) =====
+    if (!state.alwaysShowSkeleton && state.detailData && state.detailOpacity > 0) {
         if (_debug) _t0 = performance.now();
         drawDetail();
         drawForceGraph(state.ctx, getBaseWidth(), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
