@@ -35,13 +35,6 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const scaleFactor = baseWidth;   // passed to highlight helpers
     const opacity = state.detailOpacity;
 
-    // Debug: log render sizes every 3s
-    const now = performance.now();
-    if (!drawForceGraph._lastLog || now - drawForceGraph._lastLog > 3000) {
-        drawForceGraph._lastLog = now;
-        console.log(`[render] baseWidth=${baseWidth.toFixed(2)} zoom=${state.zoom.toFixed(4)} nodeR=${(baseWidth*0.5).toFixed(2)} kinkStroke=${baseWidth.toFixed(2)} bubbleR=${baseWidth.toFixed(2)}`);
-    }
-
     if (!svg) ctx.lineCap = 'round';
 
     // Viewport culling helpers
