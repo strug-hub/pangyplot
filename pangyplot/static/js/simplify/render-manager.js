@@ -65,7 +65,7 @@ function draw() {
     ctx.scale(state.zoom, state.zoom);
 
     // ===== SKELETON LAYER (skipped when detail is fully active) =====
-    const skipSkeleton = state.detailData && state.detailPhase === 'static';
+    const skipSkeleton = !state.alwaysShowSkeleton && state.detailData && state.detailPhase === 'static';
     let visiblePl = 0;
 
     if (!skipSkeleton) {

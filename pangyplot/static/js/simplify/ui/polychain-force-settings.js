@@ -6,7 +6,7 @@ import { resetSlider } from '@ui/elements/slider.js';
 import { pcSettings, applyPcSettings, pauseSim, resumeSim, isSimulating } from '../detail/engines/force-engine.js';
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
-import { setupRenderSettings } from './render-settings.js';
+import { setupRenderSettings, setupSettingsToggles } from './render-settings.js';
 
 function mainSliders() {
     return [
@@ -132,6 +132,7 @@ export function setupPolychainForceSettings() {
 
     // Render settings (thickness scaling)
     setupRenderSettings();
+    setupSettingsToggles();
 }
 
 /** Update the scale factor slider to reflect the current pcSettings.dataScale. */

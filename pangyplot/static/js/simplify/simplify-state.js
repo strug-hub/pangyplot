@@ -66,6 +66,7 @@ export const state = {
     // Render scaling
     renderMaxBoost: 2,         // max zoom-based thickness ramp above 1
     thicknessMultiplier: 1,    // slider-controlled direct thickness multiplier
+    alwaysShowSkeleton: false, // keep skeleton visible regardless of zoom
 
     // Constants
     DETAIL_GRID_THRESHOLD: 500,   // activate detail when targetGridSize <= this
