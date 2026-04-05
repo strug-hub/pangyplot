@@ -25,6 +25,7 @@ from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.preprocess.meta import compute_meta
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
+from pangyplot.db.query import get_bubble_meta
 
 REFERENCE = "gi|568815592"
 
@@ -408,3 +409,68 @@ class TestPolychainSegmentCoverage:
         missing = all_segs - covered
         assert len(missing) == 0, (
             f"{len(missing)} segments not reachable: {sorted(missing)}")
+
+
+# ---------------------------------------------------------------------------
+# Bubble meta consistency
+# ---------------------------------------------------------------------------
+
+class TestBubbleMetaConsistency:
+    """Verify that /bubble-meta returns the right bubbles with correct t-values,
+    matching the polychain data's bubble_ids and bubble_t."""
+
+    def test_meta_bubble_count_matches_polychain(self, drb1_indexes):
+        """Every chain's bubble meta count should match its polychain bubble_ids."""
+        import gzip
+        import json as _json
+
+        pd_path = os.path.join(drb1_indexes["dir"], "polychain-data.json.gz")
+        with gzip.open(pd_path, 'rt') as f:
+            pd = _json.load(f)
+
+        indexes = type('Idx', (), {
+            'step_index': {('DRB1', REFERENCE): drb1_indexes["step_index"]},
+            'bubble_index': {'DRB1': drb1_indexes["bubble_index"]},
+        })()
+
+        mismatches = []
+        for c in pd['chains']:
+            expected = len(c.get('bubble_ids') or [])
+            if expected == 0:
+                continue
+            meta = get_bubble_meta(indexes, REFERENCE, 'DRB1', c['id'])
+            if len(meta) != expected:
+                mismatches.append(f"{c['id']}: meta={len(meta)}, expected={expected}")
+
+        assert len(mismatches) == 0, (
+            f"{len(mismatches)} chains with wrong bubble count:\n"
+            + "\n".join(mismatches[:10]))
+
+    def test_meta_t_values_match_polychain(self, drb1_indexes):
+        """Bubble meta t-values should match the polychain data's bubble_t."""
+        import gzip
+        import json as _json
+
+        pd_path = os.path.join(drb1_indexes["dir"], "polychain-data.json.gz")
+        with gzip.open(pd_path, 'rt') as f:
+            pd = _json.load(f)
+
+        indexes = type('Idx', (), {
+            'step_index': {('DRB1', REFERENCE): drb1_indexes["step_index"]},
+            'bubble_index': {'DRB1': drb1_indexes["bubble_index"]},
+        })()
+
+        mismatches = []
+        for c in pd['chains']:
+            expected_t = c.get('bubble_t') or []
+            if not expected_t:
+                continue
+            meta = get_bubble_meta(indexes, REFERENCE, 'DRB1', c['id'])
+            meta_t = [b['t'] for b in meta]
+            if meta_t != expected_t:
+                mismatches.append(
+                    f"{c['id']}: meta_t={meta_t[:5]}..., expected={expected_t[:5]}...")
+
+        assert len(mismatches) == 0, (
+            f"{len(mismatches)} chains with mismatched t-values:\n"
+            + "\n".join(mismatches[:10]))

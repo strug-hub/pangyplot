@@ -256,13 +256,11 @@ def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
     # Load bubble objects (uses FIFO cache in BubbleIndex)
     bubbles = [bubbleidx[bid] for bid in bubble_ids]
 
-    # Filter to leaf bubbles (no children) — same as chain_polyline.py
-    leaves = [b for b in bubbles if not b.children]
-    n = len(leaves)
+    n = len(bubbles)
 
     result = []
-    for idx, b in enumerate(leaves):
-        t = idx / max(1, n - 1) if n > 1 else 0.5
+    for idx, b in enumerate(bubbles):
+        t = round(idx / max(1, n - 1), 4) if n > 1 else 0.5
 
         # Convert step ranges to bp coordinates
         bp_start = None

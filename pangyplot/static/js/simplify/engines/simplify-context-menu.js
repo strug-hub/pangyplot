@@ -9,6 +9,9 @@ import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { exportViewportGfa } from './selection/selection-popup.js';
 import { popAllBubblesOnChain } from '../detail/model/pop-handler.js';
 import { createCustomAnnotation } from '@simplify-data/custom-annotation-data.js';
+import { isDebugMode } from '@app-state';
+import { getContainer } from '../detail/model/model-manager.js';
+import { getBubbleStore } from '../detail/data/bubble-meta-cache.js';
 
 let menuElement = null;
 
@@ -88,6 +91,15 @@ function showMenu(x, y) {
         addRow(menu, 'file-export', 'Download GFA', exportViewportGfa);
     }
 
+    // --- Debug actions (only in debug mode) ---
+    if (isDebugMode() && chain) {
+        addCategoryLabel(menu, 'Debug:');
+        addRow(menu, 'clipboard', 'Copy Chain Info', () => {
+            const info = buildChainDebugInfo(chain);
+            navigator.clipboard.writeText(info);
+        });
+    }
+
     menu.style.display = 'block';
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
@@ -102,6 +114,63 @@ function showMenu(x, y) {
             menu.style.top = `${y - rect.height}px`;
         }
     });
+}
+
+function buildChainDebugInfo(chain) {
+    const lines = [];
+    lines.push(`=== Chain Debug Info ===`);
+    lines.push(`id: ${chain.id}`);
+    lines.push(`subtype: ${chain.subtype}`);
+    lines.push(`depth: ${chain.depth}`);
+    lines.push(`length: ${chain.length} bp`);
+    lines.push(`gc_count: ${chain.gcCount}`);
+    lines.push(`bp_span: ${chain.bpSpan}`);
+    lines.push(`bp_start: ${chain.bpStart}, bp_end: ${chain.bpEnd}`);
+    lines.push(`n_bubbles: ${chain.nBubbles}`);
+    lines.push(`source_segs: ${JSON.stringify(chain.sourceSegs)}`);
+    lines.push(`sink_segs: ${JSON.stringify(chain.sinkSegs)}`);
+    lines.push(`parent_chain: ${chain.parentChain}`);
+    lines.push(`ancestors: ${JSON.stringify(chain.ancestors)}`);
+    lines.push(`connector: ${chain.connector}`);
+
+    // Bubble IDs and t-positions
+    lines.push(`bubble_ids: ${JSON.stringify(chain.bubbleIds)}`);
+    lines.push(`bubble_t: ${JSON.stringify(chain.bubblePositions)}`);
+
+    // Polyline
+    const pl = chain.polyline || [];
+    lines.push(`polyline: ${pl.length} pts`);
+    if (pl.length > 0) {
+        lines.push(`  head: [${pl[0][0]?.toFixed(1)}, ${pl[0][1]?.toFixed(1)}]`);
+        lines.push(`  tail: [${pl[pl.length-1][0]?.toFixed(1)}, ${pl[pl.length-1][1]?.toFixed(1)}]`);
+    }
+
+    // Container state
+    const container = getContainer(chain.id);
+    if (container) {
+        lines.push(`--- Container ---`);
+        lines.push(`spine_nodes: ${container.spineNodes.length}`);
+        lines.push(`segments: ${container.segments.length}`);
+        lines.push(`popped_ranges: ${JSON.stringify(container.poppedRanges)}`);
+        lines.push(`bubbles: ${container.bubbles.length}`);
+        for (const seg of container.segments) {
+            lines.push(`  seg ${seg.id}: tRange=[${seg.tRange.start.toFixed(4)}, ${seg.tRange.end.toFixed(4)}] head=${JSON.stringify(seg.ends.head)} tail=${JSON.stringify(seg.ends.tail)}`);
+        }
+    }
+
+    // Bubble meta cache
+    const metaStore = getBubbleStore(chain.id);
+    if (metaStore?.bubbles) {
+        lines.push(`--- Bubble Meta (${metaStore.bubbles.length} entries) ---`);
+        for (const b of metaStore.bubbles.slice(0, 20)) {
+            lines.push(`  ${b.id}: t=${b.t?.toFixed(4)}, len=${b.length}, subtype=${b.subtype}`);
+        }
+        if (metaStore.bubbles.length > 20) {
+            lines.push(`  ... (${metaStore.bubbles.length - 20} more)`);
+        }
+    }
+
+    return lines.join('\n');
 }
 
 export function setupContextMenu(canvas) {
