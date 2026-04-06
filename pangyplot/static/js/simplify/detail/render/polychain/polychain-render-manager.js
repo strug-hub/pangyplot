@@ -37,11 +37,19 @@ function getSelectedPolylines() {
     for (const [chain, clip] of state.selectedChains) {
         if (chain.polyline.length < 2) continue;
         const container = getContainer(chain.id);
-        const pl = container?.spineNodes?.length >= 2
-            ? container.spineNodes.map(n => [n.x, n.y])
-            : chain.polyline;
-        const sub = extractSubPolyline(pl, clip.tStart, clip.tEnd);
-        if (sub && sub.length >= 2) polylines.push(sub);
+        if (container && container.segments.length > 0) {
+            // Use visible segments (excludes popped ranges)
+            for (const seg of container.segments) {
+                const tStart = Math.max(seg.tRange.start, clip.tStart);
+                const tEnd = Math.min(seg.tRange.end, clip.tEnd);
+                if (tStart >= tEnd) continue;
+                const pl = container.polylineInRange(tStart, tEnd);
+                if (pl.length >= 2) polylines.push(pl);
+            }
+        } else {
+            const sub = extractSubPolyline(chain.polyline, clip.tStart, clip.tEnd);
+            if (sub && sub.length >= 2) polylines.push(sub);
+        }
     }
     return polylines;
 }
