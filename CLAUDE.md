@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is PangyPlot
 
-PangyPlot is a genome graph visualization tool — a Flask web app that serves an interactive browser for pangenome graphs in GFA format. It preprocesses GFA files into on-disk SQLite databases and in-memory array-based indexes, then serves a d3-force-graph frontend that visualizes pangenome bubbles interactively.
+PangyPlot is a genome graph visualization tool — a Flask web app that serves an interactive browser for pangenome graphs in GFA format. It preprocesses GFA files into on-disk SQLite databases and in-memory array-based indexes, then serves a canvas-based multi-resolution frontend that visualizes pangenome bubbles interactively.
 
 ## Commands
 
@@ -82,14 +82,13 @@ Quick indexes use Python `array` module (typed arrays) for memory efficiency. Th
 
 ### Frontend
 
-Two viewers in `pangyplot/static/js/`: a core force-directed graph viewer (`graph/`) using d3-force-graph, and a simplify viewer (`simplify/`) using raw canvas for multi-resolution skeleton exploration. Templates are Jinja2 in `pangyplot/templates/`. Bubbles can be "popped" (expanded) interactively via the `/pop` API endpoint.
+The viewer lives in `pangyplot/static/js/graph/` and uses raw canvas for multi-resolution skeleton and detail rendering. Templates are Jinja2 in `pangyplot/templates/`. Bubbles can be "popped" (expanded) interactively via the `/pop` API endpoint. Shared UI components (navbar, cytoband, gene search, coordinates, tabs, color picker) are in `pangyplot/static/js/ui/`.
 
 ### Key API endpoints
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /` | Renders core viewer |
-| `GET /simplify` | Renders simplify (multi-resolution skeleton) viewer |
+| `GET /` | Renders the viewer |
 | `GET /select?genome=&chromosome=&start=&end=` | Returns bubble graph (nodes+links) for a genomic region |
 | `GET /pop?id=&genome=&chromosome=` | Expands a bubble node into its internal subgraph |
 | `GET /path?genome=&chromosome=&start=&end=&sample=` | Returns a sample's haplotype path through a region |

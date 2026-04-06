@@ -4,12 +4,12 @@ import path from 'path';
 export default defineConfig({
     resolve: {
         alias: {
-            '@simplify': path.resolve('pangyplot/static/js/simplify'),
-            '@simplify-data': path.resolve('pangyplot/static/js/simplify/data'),
-            '@model': path.resolve('pangyplot/static/js/simplify/detail/model'),
+            '@graph': path.resolve('pangyplot/static/js/graph'),
+            '@graph-data': path.resolve('pangyplot/static/js/graph/data'),
+            '@model': path.resolve('pangyplot/static/js/graph/detail/model'),
         },
     },
     test: {
-        include: ['tests/simplify/**/*.test.js'],
+        include: ['tests/graph/**/*.test.js'],
     },
 });

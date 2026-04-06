@@ -11,14 +11,12 @@ bp = Blueprint("routes", __name__)
 
 @bp.route('/')
 def index():
-    return render_template("index.html",
-                           init_chromosome=request.args.get('chromosome', ''),
-                           init_start=request.args.get('start', ''),
-                           init_end=request.args.get('end', ''))
+    return render_template("index.html", genome=current_app.genome)
 
 @bp.route('/simplify')
-def simplify_viewer():
-    return render_template("simplify.html", genome=current_app.genome)
+def simplify_redirect():
+    from flask import redirect
+    return redirect('/', code=301)
 
 @bp.context_processor
 def inject_ga_tag_id():

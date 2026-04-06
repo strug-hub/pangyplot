@@ -2,13 +2,13 @@
 
 ## Context
 
-The core PangyPlot viewer (`static/js/graph/`, 133 files) uses vasturiano's `force-graph` library but already bypasses most of its features. The simplify viewer (`static/js/simplify/`, 16 files) uses raw canvas and is architecturally superior for this project.
+The old core PangyPlot viewer used vasturiano's `force-graph` library but already bypassed most of its features. The simplify viewer used raw canvas and was architecturally superior for this project.
 
-Rather than migrating the core viewer away from vasturiano, we evolve the simplify viewer to absorb core features. The simplify viewer will adopt the core's module organization (engines, managers, records) while keeping its raw-canvas foundation. Once feature-complete, it replaces the core viewer entirely.
+The simplify viewer was evolved to absorb core features, adopting the core's module organization (engines, managers, records) while keeping its raw-canvas foundation. The migration is now complete: the simplify viewer has been promoted to the main (and only) viewer at `static/js/graph/`, and the old core viewer has been removed.
 
-## Current State (as of March 2026)
+## Current State (as of April 2026)
 
-The simplify viewer has grown from 16 flat files to 56 files across a `skeleton/`, `detail/`, `engines/`, `render/`, `data/`, `ui/`, `utils/` hierarchy. Most migration phases are complete. Current capabilities:
+The viewer (`static/js/graph/`) has grown from the original 16 flat files to 56+ files across a `skeleton/`, `detail/`, `engines/`, `render/`, `data/`, `ui/`, `utils/` hierarchy. Most migration phases are complete. Current capabilities:
 
 - Raw canvas rendering with RAF loop, skeleton/detail duality
 - Manual zoom/pan with cursor anchoring
@@ -22,7 +22,7 @@ The simplify viewer has grown from 16 flat files to 56 files across a `skeleton/
 - URL hash navigation
 - Physics zone debug overlay
 - Right-click context menu with SVG/PNG export
-- Selection popup with "Open Bubble View" to switch to core viewer
+- Selection popup with bubble details
 - All 7 core color modes integrated via eventBus
 - Force settings UI with runtime parameter sliders
 - Bubble pop/unpop within popped chains (polychain-pop-engine)
@@ -32,8 +32,8 @@ The simplify viewer has grown from 16 flat files to 56 files across a `skeleton/
 
 ### Completed (phases 1-6)
 - ~~Bubble-level pop/unpop~~ — implemented via `polychain-pop-engine.js`, `bubble-pop-adapter.js`
-- ~~Right-click context menu~~ — `simplify-context-menu.js`
-- ~~PNG/SVG export~~ — `export-simplify.js`
+- ~~Right-click context menu~~ — `context-menu.js`
+- ~~PNG/SVG export~~ — `export.js`
 - ~~Force settings UI~~ — `polychain-force-settings.js`
 - ~~Color legend + style picker~~ — all 7 modes via eventBus integration
 - ~~Single-click selection + info panel~~ — `selection-popup.js` with "Open Bubble View"
@@ -47,13 +47,13 @@ The simplify viewer has grown from 16 flat files to 56 files across a `skeleton/
 
 ---
 
-## Approach: Restructure Simplify to Match Core Module Organization
+## Approach: Restructure to Match Core Module Organization
 
-The simplify viewer currently has 16 flat files. To absorb core features, restructure into the core's proven module hierarchy while keeping the raw-canvas foundation.
+The viewer was restructured from 16 flat files into the core's proven module hierarchy while keeping the raw-canvas foundation.
 
 ### Actual Directory Structure (56 files)
 
-See `context/simplify-engine.md` for the complete current module map.
+See `context/viewer-engine.md` for the complete current module map.
 
 ---
 
@@ -63,8 +63,8 @@ See `context/simplify-engine.md` for the complete current module map.
 Restructured from 16 flat files into `skeleton/`, `detail/`, `engines/`, `render/`, `data/`, `ui/`, `utils/` hierarchy (now 56 files).
 
 ### Phase 2: Export + Context Menu — COMPLETE
-- SVG/PNG export via `render/export-simplify.js`
-- Right-click context menu via `engines/simplify-context-menu.js`
+- SVG/PNG export via `render/export.js`
+- Right-click context menu via `engines/context-menu.js`
 
 ### Phase 3: Force Settings UI + Drag — COMPLETE
 - Force settings sliders via `ui/polychain-force-settings.js`
@@ -82,7 +82,7 @@ Restructured from 16 flat files into `skeleton/`, `detail/`, `engines/`, `render
 - V2 pop via `detail/model/pop-handler.js` (SimObject-based)
 - Unpop via `detail/data/bubble-unpop-adapter.js`
 - Undo stack via `detail/data/pop-tree.js` (LIFO with parent-child tracking)
-- View state: `detail/data/simplify-view-state.js`
+- View state: `detail/data/detail-view-state.js`
 
 ### Phase 7: Flashlight Mode — NOT STARTED
 
@@ -99,7 +99,7 @@ The remaining phases (7-8) are independent and can be tackled in any order:
 
 ## Verification (End-to-End)
 
-The simplify viewer should pass this checklist:
+The viewer should pass this checklist:
 1. Graph renders with correct node/link positions and colors
 2. Zoom/pan works (wheel + drag)
 3. Skeleton LOD transitions smoothly
@@ -113,4 +113,4 @@ The simplify viewer should pass this checklist:
 11. All 7 color modes work
 12. Window resize adjusts canvas
 13. URL hash navigation preserves viewport
-14. "Open Bubble View" switches to core viewer for deep inspection
+14. Selection popup shows bubble details

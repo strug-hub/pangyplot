@@ -1,7 +1,7 @@
 # Chain Decomposition: c122 Case Study (chrY, hprc.clip)
 
 Reference analysis of chain c122 in the DAZ1 region (~23.1M-23.2M bp on chrY).
-Used to debug and validate the simplify viewer's chain expansion logic.
+Used to debug and validate the viewer's chain expansion logic.
 
 ## Chain c122 Direct Structure
 
@@ -72,7 +72,7 @@ c122 (395 bubbles: 391 leaf + 4 super)
 
 ## Progressive Detail Model
 
-Three mechanisms control what the simplify viewer shows as the user zooms in.
+Three mechanisms control what the viewer shows as the user zooms in.
 Each is gated by a threshold derived from the viewport width in layout units.
 
 ### 1. Chain Decomposition (`expand_threshold = cellSize * 2`)

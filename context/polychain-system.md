@@ -1,6 +1,6 @@
 # Polychain System Architecture
 
-The simplify viewer's detail layer renders pangenome chains as force-simulated polylines with interactive bubble popping. This document covers the full lifecycle from data fetch through rendering and interaction.
+The viewer's detail layer renders pangenome chains as force-simulated polylines with interactive bubble popping. This document covers the full lifecycle from data fetch through rendering and interaction.
 
 ## Core Concepts
 
@@ -196,7 +196,7 @@ Polychain nodes and popped segment nodes repel **within** their group but not ac
 
 ## File Map
 
-All paths relative to `static/js/simplify/detail/`.
+All paths relative to `static/js/graph/detail/`.
 
 ### Model (`model/`)
 | File | Lines | Role |

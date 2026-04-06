@@ -62,9 +62,8 @@ def create_app(data_dir, db_name, annotation_name, ref, port, development=True, 
         base_url = f"http://127.0.0.1:{port}"
         debug_label = " [DEBUG]" if debug else ""
         print(f"\nStarting PangyPlot (non-production environment){debug_label}...")
-        print(f"  Core viewer:     {base_url}/#chrY:23129355-23199010")
-        print(f"  Simplify viewer: {base_url}/simplify#chrY:23129355-23199010")
-        print(f"  Deep nesting:    {base_url}/simplify#chr20:32618374-32624146\n")
+        print(f"  Viewer:       {base_url}/#chrY:23129355-23199010")
+        print(f"  Deep nesting: {base_url}/#chr20:32618374-32624146\n")
         app.run(port=port)
 
     return app

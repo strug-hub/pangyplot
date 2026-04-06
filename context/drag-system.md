@@ -1,6 +1,6 @@
-# Simplify Viewer — Drag & Move System
+# Viewer — Drag & Move System
 
-Ported from the core graph viewer's `static/js/graph/engines/drag/` module, adapted for the simplify viewer's chain-centric data model. Lives in `static/js/simplify/engines/drag/`.
+The drag system for the viewer's chain-centric data model. Lives in `static/js/graph/engines/drag/`.
 
 ## Files
 
@@ -19,7 +19,7 @@ engines/drag/
 
 ### Node Drag
 - **Target**: Force nodes from popped bubbles or junction segments (`hoveredForceNode`, non-polychain)
-- **Behavior**: Sets `node.fx/fy` to cursor position each frame. Identical to core graph.
+- **Behavior**: Sets `node.fx/fy` to cursor position each frame.
 - **On release**: If anchor enabled → `fx/fy` stay pinned. If not → `fx/fy` cleared, node returns to force-driven position.
 
 ### Chain Drag
@@ -72,7 +72,7 @@ To re-enable: import `setupDragInfluenceEngine` in `drag-engine.js` and call it 
 
 ## Integration Points
 
-### State additions (`simplify-state.js`)
+### State additions (`state.js`)
 ```
 dragMode: null          // null | 'node' | 'chain' | 'segment'
 dragTarget: null        // force node or chain object
@@ -96,6 +96,6 @@ fixOnDrag: false        // anchor toggle
 
 ## Keyboard Focus Model
 
-All simplify viewer keyboard shortcuts use `canvas.addEventListener('keydown', ...)` (not `window`). The canvas receives `tabindex="0"` and auto-focuses on mousedown, both set up in `engine-manager.js`. This scopes shortcuts to canvas interaction and prevents firing when typing in UI panels. `outline: none` in `simplify.html` suppresses the focus ring.
+All viewer keyboard shortcuts use `canvas.addEventListener('keydown', ...)` (not `window`). The canvas receives `tabindex="0"` and auto-focuses on mousedown, both set up in `engine-manager.js`. This scopes shortcuts to canvas interaction and prevents firing when typing in UI panels. `outline: none` in `index.html` suppresses the focus ring.
 
 Affected files: `drag-fix-engine.js` (F), `keyboard-engine.js` (Y, U, Ctrl+Z, Escape), `pan-zoom-engine.js` (Space), `multi-selection-engine.js` (Shift, Escape).

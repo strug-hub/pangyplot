@@ -1,4 +1,4 @@
-# Simplify Viewer — Bubble Circle Pop
+# Viewer — Bubble Circle Pop
 
 Ctrl+click a bubble circle on a polychain to expand ("pop") it, splitting the chain into fragments and inserting the popped subgraph into the force simulation. Supports nested pops (multiple bubbles per chain) and undo via Ctrl+Z.
 
@@ -18,7 +18,7 @@ detail/data/
 ├── bubble-unpop-adapter.js     unpopLastBubble() — undo
 ├── bubble-meta-cache.js        Bubble circle positions + metadata
 ├── pop-tree.js                 PopTree — hierarchy tracking + LIFO undo stack
-└── simplify-view-state.js      Segment→node mappings
+└── detail-view-state.js        Segment→node mappings
 
 detail/engines/
 ├── force-engine.js             insertPoppedContent, removePoppedContent

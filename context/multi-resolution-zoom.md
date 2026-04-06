@@ -99,7 +99,7 @@ Grid 25,000     1,146       1,090       2,433       99.3%
 
 ## Canvas Viewer
 
-Interactive prototype at `/simplify` for testing the grid simplification pipeline.
+Interactive viewer at `/` using the grid simplification pipeline.
 
 ### Auto-LOD
 
@@ -168,14 +168,14 @@ Gene annotations are displayed as colored overlays on the graph, similar to land
 | `pangyplot/preprocess/skeleton/skeleton_geometry.py` | Geometry utilities for skeleton |
 | `pangyplot/preprocess/skeleton/skeleton_pipeline.py` | Orchestrates full skeleton build pipeline |
 | `pangyplot/preprocess/skeleton/export_polychain.py` | Exports polychain + junction data |
-| `pangyplot/templates/simplify.html` | Canvas viewer with auto-LOD |
-| `pangyplot/routes.py` | `/simplify` + `/skeleton` endpoints |
+| `pangyplot/templates/index.html` | Canvas viewer with auto-LOD |
+| `pangyplot/routes.py` | `/` + `/skeleton` endpoints |
 | `context/multi-resolution-zoom.md` | This design doc |
 
 ## Usage
 
 ```bash
-# Run app, visit http://127.0.0.1:5700/simplify
+# Run app, visit http://127.0.0.1:5700/
 python pangyplot.py run --db hprc.clip --ref GRCh38
 ```
 

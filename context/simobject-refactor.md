@@ -9,7 +9,7 @@ iteration but works with SimObject kink nodes via compat fields.
 
 ### What's Done
 
-- **SimObject class hierarchy** (`simplify/detail/model/`):
+- **SimObject class hierarchy** (`graph/detail/model/`):
   - `sim-object.js` — abstract base: `ends`, `interior`, `resolveEnd(link)`, `isDeletionLink(link)`
   - `segment-object.js` — self-kinked segment (1-20 nodes), renderer-compatible
   - `bubble-object.js` — collapsed poppable bubble
@@ -32,7 +32,7 @@ iteration but works with SimObject kink nodes via compat fields.
 ### What Still Uses the Old System
 
 - **Rendering**: `force-render-manager.js` and `polychain-render-manager.js` iterate raw force node/link arrays. They work with SimObject kink nodes because of compat fields.
-- **Old view state**: `simplify-view-state.js` still exists but may be redundant with segment-registry.
+- **Old view state**: `detail-view-state.js` still exists but may be redundant with segment-registry.
 
 ### Key Architecture
 
@@ -66,4 +66,4 @@ Console access:
 
 1. **Rendering via RenderSpecs**: Switch renderers to consume `getRenderables()` from model-manager instead of iterating raw force nodes. Low priority — current compat approach works.
 
-2. **Remove old viewState**: `simplify-view-state.js` may be redundant with segment-registry. Evaluate whether it can be removed.
+2. **Remove old viewState**: `detail-view-state.js` may be redundant with segment-registry. Evaluate whether it can be removed.

@@ -8,8 +8,7 @@ Developer notes on the backend data flow, index classes, domain objects, and coo
 
 | Endpoint | Params | Purpose |
 |---|---|---|
-| `GET /` | — | Renders core viewer |
-| `GET /simplify` | — | Renders simplify (multi-resolution skeleton) viewer |
+| `GET /` | — | Renders graph viewer (multi-resolution skeleton) |
 | `GET /select` | genome, chromosome, start, end | Primary query: bubble graph for genomic region |
 | `GET /pop` | id, genome, chromosome | Expand a collapsed bubble node into its subgraph |
 | `GET /path` | genome, chromosome, start, end, sample | Sample haplotype path through a region |
@@ -37,7 +36,7 @@ Key functions:
 - **`pop_bubble(indexes, id, genome, chrom)`** — expands a bubble via `BubbleIndex.get_popped_subgraph()`; returns `{source_segs, sink_segs, child_bubbles, nodes, links}`
 - **`get_chains(indexes, genome, chrom, start, end, expand_threshold, bubble_threshold)`** — `/chains` handler; decomposes top-level bubbles into polyline chains
 - **`get_chain_graph(indexes, chain_id, genome, chrom)`** — `/chain-graph` handler; builds hybrid subgraph for a chain (leaf bubbles as nodes, superbubbles auto-popped one level)
-- **`get_detail_tile(indexes, genome, chrom, start, end, ppbp, ...)`** — `/detail-tiles` handler; chains + junction graph + bypass links for the simplify detail layer
+- **`get_detail_tile(indexes, genome, chrom, start, end, ppbp, ...)`** — `/detail-tiles` handler; chains + junction graph + bypass links for the detail layer
 - **`get_bubbles_subgraph(indexes, bubble_ids, genome, chrom)`** — builds subgraph from a list of bubble IDs
 - **`get_path(indexes, genome, chrom, start, end, sample)`** — calls `Path.subset_path()` to extract portion
 - **`get_path_order(indexes, genome, chrom)`** — returns sample ordering index

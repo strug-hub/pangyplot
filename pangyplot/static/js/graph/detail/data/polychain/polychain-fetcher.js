@@ -1,0 +1,368 @@
+// Progressive detail: single-viewport fetch, response parsing.
+// Pure data-fetching — no skeleton imports, no UI imports, no fade or LOD decisions.
+// Uses incremental merge: new chains are added, stale chains removed surgically.
+//
+// When polychain-data cache is available (precomputed at chromosome load),
+// reads from cache instead of fetching /detail-tiles.
+
+import { state } from '../../../state.js';
+import { colorState } from '../../../color/color-state.js';
+import { recordPop, clearHistory } from '../../../../utils/pop-history.js';
+import popTree from '../pop-tree.js';
+import { removeNodesByChainIds } from '../../engines/force-engine.js';
+import { unregisterChains } from '../detail-view-state.js';
+import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer, isSplitRootChain } from './polychain-adapter.js';
+import { updateAnchors as updateModelAnchors } from '../../model/model-manager.js';
+import { placeGenesFromDetail } from '@graph-data/gene-data.js';
+import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
+import { getForceNodes } from '../force-data.js';
+import {
+    hasPolychainDataCache, getChainsInRange,
+    getJunctionNodesInRange, getJunctionLinksForNodes,
+    getJunctionSegChains, getJunctionLinkPairs, getChainAdjacency,
+} from '../polychain-data-cache.js';
+
+let fetchController = null;
+
+// Layout bounds of the union of all successful fetches.
+let fetchedRegion = null;
+
+// ---------------------------------------------------------------
+// Parse one API response into internal format
+// ---------------------------------------------------------------
+function processResponse(apiResponse) {
+    const chains = [];
+    let totalBubbles = 0;
+    for (const chain of apiResponse.chains) {
+        chains.push({
+            id: chain.id,
+            polyline: chain.polyline,
+            length: chain.length,
+            gcCount: chain.gc_count || 0,
+            bpSpan: chain.bp_span || chain.length,
+            nBubbles: chain.n_bubbles,
+            // Color proxy fields — shape matches what getNodeColor() reads
+            type: 'chain',
+            size: chain.n_bubbles,
+            isRef: chain.bp_start != null,
+            record: {
+                seqLength: chain.length,
+                gcCount: chain.gc_count || 0,
+                start: chain.bp_start ?? null,
+                end: chain.bp_end ?? null,
+            },
+            subtype: chain.subtype,
+            depth: chain.depth || 0,
+            connector: chain.connector || false,
+            bubbleIds: chain.bubble_ids || null,
+            sourceSegs: (chain.source_segs || []).map(s => `s${s}`),
+            sinkSegs: (chain.sink_segs || []).map(s => `s${s}`),
+            bubblePositions: chain.bubble_t || null,
+            bpStart: chain.bp_start ?? null,
+            bpEnd: chain.bp_end ?? null,
+            bpHead: chain.bp_head ?? null,
+            bpTail: chain.bp_tail ?? null,
+            parentChain: chain.parent_chain || null,
+            ancestors: chain.ancestors || [],
+            popped: !!chain.graph,
+            graph: chain.graph || null,
+        });
+        totalBubbles += chain.n_bubbles;
+    }
+    return {
+        chains, totalBubbles,
+        bpStart: apiResponse.tile_start,
+        bpEnd: apiResponse.tile_end,
+        junctionNodes: apiResponse.junction_nodes || [],
+        junctionLinks: (apiResponse.junction_links || []).map(l => ({
+            coords: [l[0], l[1]],
+            segs: [l[2], l[3]],
+        })),
+        junctionGraph: apiResponse.junction_graph || { nodes: [], links: [] },
+        junctionSegChains: apiResponse.junction_seg_chains || {},
+        chainAdjacency: apiResponse.chain_adjacency || {},
+    };
+}
+
+// ---------------------------------------------------------------
+// Build detail data from precomputed cache (no server fetch).
+// ---------------------------------------------------------------
+function buildDataFromCache(minX, maxX, layoutToBp) {
+    const vpChains = getChainsInRange(minX, maxX);
+    const chains = [];
+    let totalBubbles = 0;
+    for (const chain of vpChains) {
+        chains.push({
+            id: chain.id,
+            polyline: chain.polyline,
+            length: chain.length,
+            gcCount: chain.gc_count || 0,
+            bpSpan: chain.bp_span || chain.length,
+            nBubbles: chain.n_bubbles,
+            type: 'chain',
+            size: chain.n_bubbles,
+            isRef: chain.bp_start != null,
+            record: {
+                seqLength: chain.length,
+                gcCount: chain.gc_count || 0,
+                start: chain.bp_start ?? null,
+                end: chain.bp_end ?? null,
+            },
+            subtype: chain.subtype,
+            depth: chain.depth || 0,
+            connector: chain.connector || false,
+            bubbleIds: chain.bubble_ids || null,
+            sourceSegs: (chain.source_segs || []).map(s => `s${s}`),
+            sinkSegs: (chain.sink_segs || []).map(s => `s${s}`),
+            bubblePositions: chain.bubble_t || null,
+            bpStart: chain.bp_start ?? null,
+            bpEnd: chain.bp_end ?? null,
+            bpHead: chain.bp_head ?? null,
+            bpTail: chain.bp_tail ?? null,
+            parentChain: chain.parent_chain || null,
+            ancestors: chain.ancestors || [],
+            popped: false,
+            graph: null,
+        });
+        totalBubbles += chain.n_bubbles;
+    }
+
+    // Junction data: viewport-filtered nodes, construct graph from packed arrays
+    const margin = (maxX - minX) * 0.2;
+    const juncNodes = getJunctionNodesInRange(minX - margin, maxX + margin);
+    const visibleChainIds = new Set(chains.map(c => c.id));
+    const nodeIdSet = new Set(juncNodes.map(n => n.id));
+
+    // Build resolvable set for link filtering
+    const resolvableIds = new Set([...nodeIdSet]);
+    for (const c of chains) {
+        for (const sid of (c.sourceSegs || [])) resolvableIds.add(sid);
+        for (const sid of (c.sinkSegs || [])) resolvableIds.add(sid);
+    }
+    const juncGraphLinks = getJunctionLinksForNodes(resolvableIds);
+
+    const bpLeft = layoutToBp(minX, 0);
+    const bpRight = layoutToBp(maxX, 0);
+
+    return {
+        chains, totalBubbles,
+        bpStart: bpLeft != null ? Math.max(0, Math.round(bpLeft)) : 0,
+        bpEnd: bpRight != null ? Math.round(bpRight) : 0,
+        junctionNodes: [],  // not needed — packed arrays used instead
+        junctionLinks: getJunctionLinkPairs(),
+        junctionGraph: { nodes: juncNodes, links: juncGraphLinks },
+        junctionSegChains: getJunctionSegChains(visibleChainIds),
+        chainAdjacency: getChainAdjacency(),
+    };
+}
+
+// ---------------------------------------------------------------
+// Single-viewport fetch for current visible region.
+// Caller provides pre-computed viewport and coordinate info.
+// Returns true if new data was fetched, false otherwise.
+// ---------------------------------------------------------------
+export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp }) {
+    if (!chr) return false;
+
+    const vpWidth = vp.maxX - vp.minX;
+    if (vpWidth <= 0) return false;
+
+    // --- Cache check (layout coords, no bp needed) ---
+    if (fetchedRegion &&
+        fetchedRegion.chr === chr &&
+        vp.minX >= fetchedRegion.minX &&
+        vp.maxX <= fetchedRegion.maxX) {
+        return false;
+    }
+
+    // Margin: 100% of viewport width in layout units (covers ~3x zoom-out)
+    const margin = vpWidth * 1.0;
+    const fetchMinX = vp.minX - margin;
+    const fetchMaxX = vp.maxX + margin;
+
+    // --- Fast path: use precomputed polychain data cache ---
+    if (hasPolychainDataCache()) {
+        const fetchStart = performance.now();
+        const newData = buildDataFromCache(fetchMinX, fetchMaxX, layoutToBp);
+        updateDetailFetchMs(performance.now() - fetchStart);
+
+        const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
+
+        if (isFirstFetch) {
+            fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
+            state.poppedChainIds.clear();
+            popTree.clear();
+            clearHistory();
+            state.detailData = newData;
+            colorState.positionRange = [newData.bpStart, newData.bpEnd];
+            initPolychainLayer();
+        } else {
+            const existingIds = new Set(state.detailData.chains.map(c => c.id));
+            const incomingIds = new Set(newData.chains.map(c => c.id));
+            // Skip chains already present, chains that have been split by pops,
+            // and backend connectors whose root chain has been split
+            const newChains = newData.chains.filter(c =>
+                !existingIds.has(c.id) && !state.poppedChainIds.has(c.id)
+                && !isSplitRootChain(c.id));
+
+            const removedIds = new Set();
+            for (const c of state.detailData.chains) {
+                if (incomingIds.has(c.id)) continue;
+                if (c.polyline && c.polyline.length >= 2) {
+                    const chainMinX = Math.min(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
+                    const chainMaxX = Math.max(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
+                    if (chainMaxX < fetchMinX || chainMinX > fetchMaxX) {
+                        removedIds.add(c.id);
+                    }
+                }
+            }
+
+            if (removedIds.size > 0) {
+                for (const cid of state.poppedChainIds) removedIds.delete(cid);
+                if (removedIds.size > 0) {
+                    removeChainsFromPolychainLayer(removedIds);
+                    removeNodesByChainIds(removedIds);
+                    const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
+                    unregisterChains(removedIds, removedChains);
+                }
+            }
+
+            const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
+            const mergedChains = [...keptChains, ...newChains];
+            state.detailData = {
+                ...newData,
+                chains: mergedChains,
+                totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
+            };
+            colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
+
+            if (newChains.length > 0) {
+                addChainsToPolychainLayer(newChains, state.detailData);
+            }
+
+            fetchedRegion = {
+                minX: Math.min(fetchedRegion.minX, fetchMinX),
+                maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
+                chr,
+            };
+        }
+        updateDetailForceCount(getForceNodes().length);
+
+        placeGenesFromDetail(state.detailData.chains);
+        return true;
+    }
+
+    // --- Fallback: fetch from server ---
+    const bpLeft = layoutToBp(fetchMinX, 0);
+    const bpRight = layoutToBp(fetchMaxX, 0);
+    if (bpLeft === null || bpRight === null) return false;
+    const ppbp = canvasWidth / (layoutToBp(vp.maxX, 0) - layoutToBp(vp.minX, 0));
+
+    // Cancel any in-flight request
+    if (fetchController) fetchController.abort();
+    fetchController = new AbortController();
+    const signal = fetchController.signal;
+
+    const url = `/detail-tiles?genome=${encodeURIComponent(state.GENOME)}`
+        + `&chromosome=${encodeURIComponent(chr)}`
+        + `&start=${Math.max(0, Math.round(bpLeft))}&end=${Math.round(bpRight)}`
+        + `&ppbp=${ppbp}`
+        + `&layout_min_x=${fetchMinX.toFixed(1)}&layout_max_x=${fetchMaxX.toFixed(1)}`;
+
+    state.isFetching = true;
+    try {
+        const fetchStart = performance.now();
+        const resp = await fetch(url, { signal });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const apiData = await resp.json();
+        if (signal.aborted) return false;
+        updateDetailFetchMs(performance.now() - fetchStart);
+
+        const newData = processResponse(apiData);
+        const isFirstFetch = !state.detailData || state.detailData.chains.length === 0;
+
+        if (isFirstFetch) {
+            fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
+
+            state.poppedChainIds.clear();
+            popTree.clear();
+
+            clearHistory();
+            recordPop('detail-tiles', {
+                genome: state.GENOME, chromosome: chr,
+                start: Math.max(0, Math.round(bpLeft)), end: Math.round(bpRight),
+            });
+            state.detailData = newData;
+            colorState.positionRange = [newData.bpStart, newData.bpEnd];
+            initPolychainLayer();
+        } else {
+            const existingIds = new Set(state.detailData.chains.map(c => c.id));
+            const incomingIds = new Set(newData.chains.map(c => c.id));
+
+            const newChains = newData.chains.filter(c =>
+                !existingIds.has(c.id) && !state.poppedChainIds.has(c.id)
+                && !isSplitRootChain(c.id));
+
+            const removedIds = new Set();
+            for (const c of state.detailData.chains) {
+                if (incomingIds.has(c.id)) continue;
+                if (c.polyline && c.polyline.length >= 2) {
+                    const chainMinX = Math.min(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
+                    const chainMaxX = Math.max(c.polyline[0][0], c.polyline[c.polyline.length - 1][0]);
+                    if (chainMaxX < fetchMinX || chainMinX > fetchMaxX) {
+                        removedIds.add(c.id);
+                    }
+                }
+            }
+
+            if (removedIds.size > 0) {
+                for (const cid of state.poppedChainIds) {
+                    removedIds.delete(cid);
+                }
+                if (removedIds.size > 0) {
+                    removeChainsFromPolychainLayer(removedIds);
+                    removeNodesByChainIds(removedIds);
+                    const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
+                    unregisterChains(removedIds, removedChains);
+                }
+            }
+
+            const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
+            const mergedChains = [...keptChains, ...newChains];
+
+            state.detailData = {
+                ...newData,
+                chains: mergedChains,
+                totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
+            };
+            colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
+
+            if (newChains.length > 0) {
+                addChainsToPolychainLayer(newChains, state.detailData);
+            }
+
+            fetchedRegion = {
+                minX: Math.min(fetchedRegion.minX, fetchMinX),
+                maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
+                chr,
+            };
+        }
+        updateDetailForceCount(getForceNodes().length);
+
+        placeGenesFromDetail(state.detailData.chains);
+
+        return true;
+    } catch (e) {
+        if (e.name !== 'AbortError') console.warn('Detail fetch failed:', e);
+        return false;
+    } finally {
+        state.isFetching = false;
+    }
+}
+
+// ---------------------------------------------------------------
+// Public: clear fetch state
+// ---------------------------------------------------------------
+export function clearFetchedRegion() {
+    fetchedRegion = null;
+}

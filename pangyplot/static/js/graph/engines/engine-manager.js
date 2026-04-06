@@ -1,46 +1,29 @@
-import setUpModesEngine from './modes/modes-engine.js';
-import setUpDragEngine from './drag/drag-engine.js';
-import setUpNavigationEngine from './navigation/navigation-engine.js';
-import setUpSelectionEngine from './selection/selection-engine.js';
-import setupRightClickMenu from './right-click/right-click-engine.js';
-import setupBubblePopEngine from './bubble-pop/bubble-pop-engine.js';
-import setUpSequenceSearchEngine from './sequence-search/sequence-search-engine.js';
-import setUpGeneAnnotationEngine from './gene-annotation/gene-annotation-engine.js';
-import setUpPathHighlightEngine from './path-highlight/path-highlight-engine.js';
-import setUpAnchorEndsEngine from './anchor-ends/anchor-ends-engine.js';
-import setUpInformationEngine from './information/information-engine.js';
-import setUpFlashlightEngine from './flashlight/flashlight-engine.js';
-import setUpReheatEngine from './reheat/reheat-engine.js';
-import { debugStatusUpdate } from './information/debug/debug-information-engine.js';
-import { pathHighlightTick } from './path-highlight/animation/animation-tick.js';
-import { updateNodeHighlight } from './path-highlight/animation/animation-tick.js';
+// Engine orchestrator: sets up all interaction engines.
 
-export default function setUpEngineManager(forceGraph) {
+import { state } from '../state.js';
+import { setupPanZoom } from './navigation/pan-zoom-engine.js';
+import { setupHover } from './selection/hover-engine.js';
+import { setupMultiSelection } from './selection/multi-selection-engine.js';
+import { setupKeyboardShortcuts } from './keyboard-engine.js';
+import { setupContextMenu } from './context-menu.js';
+import { setupDragEngine } from './drag/drag-engine.js';
+import { setupAnnotationLabelDrag } from './annotation-label-drag-engine.js';
+import { setupPathTraceEngine } from './path-trace/path-trace-engine.js';
 
-    //todo put somewhere?
-    forceGraph.element.addEventListener('wheel', (event) => {
-        event.preventDefault();
-    });
+export function setupEngines() {
+    const canvas = state.canvas;
+    canvas.style.cursor = 'grab';
 
-    setUpModesEngine(forceGraph);
-    setUpNavigationEngine(forceGraph);
-    setUpSelectionEngine(forceGraph);
-    setUpDragEngine(forceGraph);
-    setupBubblePopEngine(forceGraph);
-    setupRightClickMenu(forceGraph);
-    setUpSequenceSearchEngine(forceGraph);
-    setUpGeneAnnotationEngine(forceGraph);
-    setUpPathHighlightEngine(forceGraph);
-    setUpAnchorEndsEngine(forceGraph);
-    setUpInformationEngine(forceGraph);
-    setUpFlashlightEngine(forceGraph);
-    setUpReheatEngine(forceGraph);
-    forceGraph.onEngineTick(() => {
-        //todo: create abstract system for adding ticks, sent to each engine above.
-        debugStatusUpdate(forceGraph);
-        pathHighlightTick(forceGraph);
-        // todo: searchSequenceEngineRerun();
-        updateNodeHighlight(forceGraph);
-    });
+    // Make canvas focusable so keyboard shortcuts only fire when it has focus
+    canvas.setAttribute('tabindex', '0');
+    canvas.addEventListener('mousedown', () => canvas.focus({ preventScroll: true }));
+
+    setupPanZoom(canvas);
+    setupHover(canvas);
+    setupAnnotationLabelDrag(canvas);
+    setupDragEngine(canvas);
+    setupMultiSelection(canvas);
+    setupKeyboardShortcuts(canvas);
+    setupContextMenu(canvas);
+    setupPathTraceEngine();
 }
-
