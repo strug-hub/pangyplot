@@ -1,6 +1,7 @@
 __pycache__/
 pangyplot/static/data/*
 .env
+.setup_state.json
 datastore/*
 
 # Node / Playwright
