@@ -1,5 +1,5 @@
 // Highlight rendering for selected and hovered force nodes.
-// Matches core viewer's three-tier highlight system: selection underlay
+// Three-tier highlight system: selection underlay
 // (filled halos + thick links) rendered BEFORE nodes, hover outline AFTER.
 
 import { state } from '../../state.js';

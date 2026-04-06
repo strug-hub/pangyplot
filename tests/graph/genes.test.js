@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock simplify-state (gene-label-renderer imports it for drawGeneLabels)
+// Mock state (gene-label-renderer imports it for drawGeneLabels)
 vi.mock('@graph/state.js', () => ({
     state: { zoom: 1, panX: 0, panY: 0, detailOpacity: 1 },
 }));

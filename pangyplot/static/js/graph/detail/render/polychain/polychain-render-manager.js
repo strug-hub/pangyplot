@@ -61,9 +61,10 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
     const dd = state.detailData;
     if (!dd) return;
 
-    // Halo: thicker than chain line, drawn behind it
+    // Halo: wide, soft glow behind the chain line
     const bw = getBaseWidth(state.zoom, state.renderMaxBoost, state.thicknessMultiplier);
-    const haloWidth = Math.max(4, bw * 2);
+    const haloWidth = Math.max(8, bw * 5);
+    const haloOpacity = opacity * 0.55;
     if (!svg) {
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
@@ -93,7 +94,7 @@ function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
     }
 
     for (const [color, polylines] of byColor) {
-        strokePolylines(ctx, polylines, color, haloWidth, opacity, svg);
+        strokePolylines(ctx, polylines, color, haloWidth, haloOpacity, svg);
     }
 }
 
@@ -252,7 +253,7 @@ export function drawDetail(svg = null) {
 
     const baseWidth = getBaseWidth(state.zoom, state.renderMaxBoost, state.thicknessMultiplier);
 
-    // 1. Gene halo outlines (drawn BEHIND chain polylines, like core viewer)
+    // 1. Gene halo outlines (drawn BEHIND chain polylines)
     drawGeneOverlays(ctx, opacity, baseWidth, svg);
 
     // 2. Chain polylines (grouped by color style)

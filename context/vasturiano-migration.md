@@ -1,10 +1,10 @@
-# Migration Plan: Evolve Simplify Viewer into Core Replacement
+# Migration History: From force-graph to Canvas Viewer
 
 ## Context
 
-The old core PangyPlot viewer used vasturiano's `force-graph` library but already bypassed most of its features. The simplify viewer used raw canvas and was architecturally superior for this project.
+The original PangyPlot viewer used vasturiano's `force-graph` library but already bypassed most of its features. A canvas-based viewer was built as a replacement, using raw canvas and an architecturally superior approach for this project.
 
-The simplify viewer was evolved to absorb core features, adopting the core's module organization (engines, managers, records) while keeping its raw-canvas foundation. The migration is now complete: the simplify viewer has been promoted to the main (and only) viewer at `static/js/graph/`, and the old core viewer has been removed.
+The canvas viewer absorbed the original viewer's features, adopting its module organization (engines, managers, records) while keeping its raw-canvas foundation. The migration is complete: the canvas viewer is the sole viewer at `static/js/graph/`, and the old force-graph viewer has been removed.
 
 ## Current State (as of April 2026)
 

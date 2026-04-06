@@ -22,17 +22,27 @@ def parse_cytoband(cytoband_file, chromosome_list=None):
 
     cytobands = dict()
     with open(cytoband_file, 'r') as file:
-        for line in file:
-            chrom, start, end, name, band_type = line.strip().split("\t")
+        for line_num, line in enumerate(file, 1):
+            fields = line.strip().split("\t")
+            if len(fields) != 5:
+                raise ValueError(
+                    f"Line {line_num}: expected 5 tab-separated columns, got {len(fields)}"
+                )
+            chrom, start, end, name, band_type = fields
 
             if name == "":
                 name = chrom
-                
+
             if chromosome_list and chrom not in chromosome_list:
                 continue
 
-            start = int(start)
-            end = int(end)
+            try:
+                start = int(start)
+                end = int(end)
+            except ValueError:
+                raise ValueError(
+                    f"Line {line_num}: non-integer coordinates: start='{start}', end='{end}'"
+                )
             color = color_map.get(band_type, "#000000")
 
             if chrom not in cytobands:
@@ -48,6 +58,9 @@ def parse_cytoband(cytoband_file, chromosome_list=None):
                 "chr": chrom    
             }
             cytobands[chrom].append(band)
+
+    if not cytobands:
+        raise ValueError(f"No cytoband data found in {cytoband_file}")
 
     # Normalize sizes and positions
     for chrom in cytobands:

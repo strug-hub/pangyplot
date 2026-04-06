@@ -128,7 +128,7 @@ A cyan bracket at the bottom of the canvas shows the ~2 Mb detail-view threshold
 
 The viewer translates layout-space positions back to genomic coordinates using a **reference spine** — a monotone envelope of `(x, bp, y)` triples from the reference path, downsampled by stride-50.
 
-- **Backend**: `build_reference_spine()` in `graph_simplify.py` walks reference steps, builds a monotone x envelope, downsamples, and exports `[x, bp, y]` triples in the JSON
+- **Backend**: `build_reference_spine()` walks reference steps, builds a monotone x envelope, downsamples, and exports `[x, bp, y]` triples in the JSON
 - **Frontend**: `initSpine()` loads into `Float64Array`s; `xToBp()`, `xToY()`, `bpToX()` use binary search + linear interpolation
 - **Viewport readout**: green `chrY:start-end` label in bottom-left shows the genomic range visible on screen
 - **Cursor readout**: gray `chrY:pos` label tracks the mouse cursor position in basepairs

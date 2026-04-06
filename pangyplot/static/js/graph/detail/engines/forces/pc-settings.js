@@ -12,7 +12,7 @@ export const pcSettings = {
     centroidLevel: 1,         // loop push level (0-5)
     loopLevel: 0,             // loop pull level (0-5)
     collisionRadius: 5,       // node collision radius
-    layoutLevel: 2,           // layout impulse level (0-5), matches core viewer
+    layoutLevel: 2,           // layout impulse level (0-5)
     linkStrengthLevel: 2,     // link strength level (1-5)
     smoothing: 0.005,         // Laplacian smoothing stiffness (0-0.03)
     inflate: 0.005,           // balloon inflation strength (0-0.02)

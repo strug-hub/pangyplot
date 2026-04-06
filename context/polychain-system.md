@@ -165,7 +165,7 @@ linkDistance(d):
   isPolychainLink    → d.length (uniform arc spacing)
   isBridgeLink       → 10
   class='link', chainId not junction → 10
-  default            → d.length * SIMPLIFY_LINK_SCALE
+  default            → d.length * LINK_SCALE
 
 linkStrength(d):
   isPolychainLink/isKinkLink:
