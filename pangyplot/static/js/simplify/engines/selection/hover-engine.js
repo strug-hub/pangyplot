@@ -12,6 +12,7 @@ import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
 import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { formatNodeLabel } from '@format-utils';
+import { wasMenuJustClosed } from '../simplify-context-menu.js';
 
 export function setupHover(canvas) {
     canvas.addEventListener('mousemove', e => {
@@ -99,6 +100,8 @@ export function setupHover(canvas) {
     canvas.addEventListener('click', e => {
         // Don't intercept ctrl/meta (pop/unpop) or shift (rectangle select)
         if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+        // Don't clear selection when dismissing context menu
+        if (wasMenuJustClosed()) return;
 
         // Suppress click if mouse moved significantly (was a pan/drag)
         if (mouseDownPos) {

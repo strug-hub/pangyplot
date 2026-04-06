@@ -12,6 +12,7 @@ import { isAnnotationBadgeAt } from '../annotation-label-drag-engine.js';
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
     canvas.addEventListener('mousedown', e => {
+        if (e.button !== 0) return; // only left-click triggers pan/drag
         if (isAnnotationBadgeAt(e.clientX, e.clientY)) return;
         if (state.hoveredForceNode) return;
         if (state.hoveredChain && state.detailData) return; // handled by drag-engine

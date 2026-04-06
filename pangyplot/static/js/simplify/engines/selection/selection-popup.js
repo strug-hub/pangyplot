@@ -65,8 +65,9 @@ function ensurePopup() {
 
     document.body.appendChild(popupEl);
 
-    // Click outside → dismiss
+    // Left-click outside → dismiss (preserve popup on right-click for context menu)
     document.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
         if (popupEl.style.display !== 'none' && !popupEl.contains(e.target)) {
             hideSelectionPopup();
         }

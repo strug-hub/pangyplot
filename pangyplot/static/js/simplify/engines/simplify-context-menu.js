@@ -14,13 +14,25 @@ import { getContainer } from '../detail/model/model-manager.js';
 import { getBubbleStore } from '../detail/data/bubble-meta-cache.js';
 
 let menuElement = null;
+let _menuJustClosed = false;
+
+/** True if the context menu was dismissed in the current event cycle. */
+export function wasMenuJustClosed() {
+    return _menuJustClosed;
+}
 
 function ensureMenu() {
     if (menuElement) return menuElement;
     menuElement = document.createElement('div');
     menuElement.id = 'custom-context-menu';
     document.body.appendChild(menuElement);
-    document.addEventListener('click', () => { menuElement.style.display = 'none'; });
+    document.addEventListener('click', () => {
+        if (menuElement.style.display !== 'none') {
+            menuElement.style.display = 'none';
+            _menuJustClosed = true;
+            requestAnimationFrame(() => { _menuJustClosed = false; });
+        }
+    });
     return menuElement;
 }
 
@@ -90,15 +102,17 @@ function showMenu(x, y) {
             popHighlightedBubbles();
             scheduleFrame();
         });
+        if (state.detailData) {
+            addRow(menu, 'file-export', 'Export GFA', () => {
+                exportViewportGfa();
+            });
+        }
     }
 
     // --- Export actions (always shown) ---
     addCategoryLabel(menu, 'Export:');
     addRow(menu, 'download', 'Download PNG', exportSimplifyToPng);
     addRow(menu, 'download', 'Download SVG', exportSimplifyToSvg);
-    if (state.detailData) {
-        addRow(menu, 'file-export', 'Download GFA', exportViewportGfa);
-    }
 
     // --- Debug actions (only in debug mode) ---
     if (isDebugMode() && chain) {
