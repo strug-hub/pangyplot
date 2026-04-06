@@ -118,7 +118,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
                 if (!isGeneVisible(pin.name)) continue;
                 if (node.x >= pin.startX && node.x <= pin.endX) {
                     if (!geneHaloCircles.has(pin.color)) geneHaloCircles.set(pin.color, []);
-                    geneHaloCircles.get(pin.color).push({ x: node.x, y: node.y, r: r * 2.5 });
+                    geneHaloCircles.get(pin.color).push({ x: node.x, y: node.y, r: r * 3.5 });
                     break;
                 }
             }
@@ -128,7 +128,8 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
 
     // 0. Gene halos (both link and node halos, rendered before all links/nodes)
     if (genePins.length > 0) {
-        const haloWidth = Math.max(4, baseWidth * 2);
+        const haloWidth = Math.max(8, baseWidth * 5);
+        const haloOpacity = opacity * 0.55;
         const haloLinksByColor = new Map();
         for (const segs of kinkByColor.values()) {
             for (const seg of segs) {
@@ -144,10 +145,10 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
             }
         }
         for (const [color, segs] of haloLinksByColor) {
-            strokeSegments(ctx, segs, color, haloWidth, opacity, svg);
+            strokeSegments(ctx, segs, color, haloWidth, haloOpacity, svg);
         }
         for (const [color, circles] of geneHaloCircles) {
-            fillCircles(ctx, circles, color, opacity, svg);
+            fillCircles(ctx, circles, color, haloOpacity, svg);
         }
     }
 
