@@ -16,6 +16,7 @@ import { SegmentObject } from './segment-object.js';
 import { BubbleObject } from './bubble-object.js';
 import { getBubbleStore } from '../data/bubble-meta-cache.js';
 import popTree from '../data/pop-tree.js';
+import { reResolve as reResolvePath } from '../../engines/path-trace/path-trace-engine.js';
 
 /**
  * Pop a bubble circle on a polychain.
@@ -345,6 +346,7 @@ export async function popBubbleCircleV2(hit) {
     });
 
 
+    reResolvePath();
     return true;
 }
 

@@ -5,6 +5,7 @@ import { getForceNodes } from './force-data.js';
 import popTree from './pop-tree.js';
 import { getContainer, addObject, removeObject, forgetObject } from '../model/model-manager.js';
 import { register as registerSeg, resolveForLink } from '../model/segment-registry.js';
+import { reResolve as reResolvePath } from '../../engines/path-trace/path-trace-engine.js';
 
 /**
  * Undo the most recent bubble pop. Returns true on success.
@@ -117,5 +118,6 @@ export function unpopLastBubble() {
         insertPoppedContent(chainId, [], recreatedLinks);
     }
 
+    reResolvePath();
     return true;
 }

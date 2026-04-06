@@ -19,6 +19,8 @@ import { getSearchHighlights } from './engines/node-search-engine.js';
 import { strokeRing } from './detail/render/detail-painter.js';
 import { getActiveView } from '@debug/debug-orchestrator.js';
 import { drawDebugHud, recordTimings } from '@debug/debug-hud.js';
+import { drawPathTrace } from './engines/path-trace/path-trace-render.js';
+import { tickPathAnimation } from './engines/path-trace/path-trace-animation.js';
 // Register debug views (side-effect imports)
 import '@debug/views/force-vectors.js';
 import '@debug/views/hit-zones.js';
@@ -82,6 +84,11 @@ function draw() {
         drawDetail();
         drawForceGraph(state.ctx, getBaseWidth(), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
         if (_debug) timings.push(['detail', performance.now() - _t0]);
+
+        // --- Path trace overlay (on top of detail + force graph) ---
+        tickPathAnimation();
+        drawPathTrace(state.ctx, getBaseWidth(), state.detailOpacity,
+            { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
     }
 
     // --- Active debug view overlay (data-space) ---

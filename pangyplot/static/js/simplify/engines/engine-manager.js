@@ -8,6 +8,7 @@ import { setupKeyboardShortcuts } from './keyboard-engine.js';
 import { setupContextMenu } from './simplify-context-menu.js';
 import { setupDragEngine } from './drag/drag-engine.js';
 import { setupAnnotationLabelDrag } from './annotation-label-drag-engine.js';
+import { setupPathTraceEngine } from './path-trace/path-trace-engine.js';
 
 export function setupEngines() {
     const canvas = state.canvas;
@@ -24,4 +25,5 @@ export function setupEngines() {
     setupMultiSelection(canvas);
     setupKeyboardShortcuts(canvas);
     setupContextMenu(canvas);
+    setupPathTraceEngine();
 }
