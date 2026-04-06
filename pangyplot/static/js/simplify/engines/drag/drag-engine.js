@@ -131,7 +131,10 @@ function endDrag() {
     } else if (mode === 'chain') {
         const nodes = state.dragChainNodes;
         if (nodes) {
+            // Unfix all nodes but let viewportFreezeForce re-pin offscreen
+            // ones immediately. Reset _vpFrozen so they get re-evaluated.
             for (const n of nodes) {
+                n._vpFrozen = false;
                 n.fx = undefined;
                 n.fy = undefined;
             }

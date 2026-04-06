@@ -8,7 +8,7 @@ import { getForceNodes, getForceLinks } from '../../detail/data/force-data.js';
 import { computeForceDeltas, linkStrength, linkDistance, chargeMaxDist } from '../../detail/engines/force-engine.js';
 import { getContainer } from '../../detail/model/model-manager.js';
 
-const MODES = ['all', 'charge', 'segCharge', 'link', 'layout', 'centroid', 'loop', 'smooth', 'balloon', 'parent', 'guide'];
+const MODES = ['all', 'charge', 'segCharge', 'link', 'layout', 'centroid', 'loop', 'smooth', 'balloon', 'parent', 'guide', 'anchorGap'];
 
 const forceMap = {
     charge:      { color: '#FF4444', label: 'charge' },
@@ -22,6 +22,7 @@ const forceMap = {
     balloon:     { color: '#FFD700', label: 'balloon' },
     parentSide:  { color: '#44FF44', label: 'parent' },
     chainGuide:  { color: '#88FFFF', label: 'guide' },
+    anchorGap:   { color: '#FF66FF', label: 'anchorGap' },
 };
 
 registerView({
@@ -116,6 +117,7 @@ function drawForceVectors(ctx, nodes, links, opacity) {
     if (mode === 'charge') _drawChargeCircles(ctx, allVisNodes, opacity);
     if (mode === 'link') _drawLinkAnnotations(ctx, links, opacity);
     if (mode === 'parent') _drawParentPerps(ctx, pcNodes, opacity, headLen);
+    if (mode === 'anchorGap') _drawAnchorGapPerps(ctx, nodes, opacity, headLen);
 
     ctx.globalAlpha = 1;
 }
@@ -356,5 +358,94 @@ function _drawParentPerps(ctx, pcNodes, opacity, headLen) {
             ctx.lineTo(ex - hl * Math.cos(angle + 0.5), ey - hl * Math.sin(angle + 0.5));
             ctx.stroke();
         }
+    }
+}
+
+function _drawAnchorGapPerps(ctx, nodes, opacity, headLen) {
+    const EPSILON = 0.005;
+    const perpLen = Math.max(12, 30 / state.zoom);
+    const dotR = Math.max(2, 4 / state.zoom);
+    const fontSize = Math.max(5, 12 / state.zoom);
+
+    // Only show anchors on chains that have popped bubbles
+    const anchors = nodes.filter(n => {
+        if (!n.isAnchor || !n.simObject?.container) return false;
+        return n.simObject.container.poppedRanges.length > 0;
+    });
+    if (anchors.length === 0) return;
+
+    ctx.globalAlpha = 0.8 * opacity;
+    ctx.lineWidth = Math.max(0.5, 1.5 / state.zoom);
+
+    for (const anchor of anchors) {
+        const seg = anchor.simObject;
+        const container = seg.container;
+        if (!container) continue;
+
+        const isHead = anchor === seg.headAnchor;
+        const t = isHead ? seg.tRange.start : seg.tRange.end;
+
+        // Compute tangent
+        const tA = Math.max(0, t - EPSILON);
+        const tB = Math.min(1, t + EPSILON);
+        const pA = container.positionAt(tA);
+        const pB = container.positionAt(tB);
+        let tx = pB.x - pA.x;
+        let ty = pB.y - pA.y;
+        const tLen = Math.hypot(tx, ty);
+        if (tLen < 0.001) continue;
+        tx /= tLen;
+        ty /= tLen;
+
+        // Perpendicular
+        const nx = -ty;
+        const ny = tx;
+
+        // Push direction arrow (into the gap)
+        const pushX = isHead ? -tx : tx;
+        const pushY = isHead ? -ty : ty;
+
+        // Draw anchor dot
+        ctx.fillStyle = '#FF66FF';
+        ctx.beginPath();
+        ctx.arc(anchor.x, anchor.y, dotR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw perpendicular line through anchor
+        ctx.strokeStyle = '#FF66FF';
+        ctx.setLineDash([Math.max(2, 4 / state.zoom), Math.max(1, 2 / state.zoom)]);
+        ctx.beginPath();
+        ctx.moveTo(anchor.x - nx * perpLen, anchor.y - ny * perpLen);
+        ctx.lineTo(anchor.x + nx * perpLen, anchor.y + ny * perpLen);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw push direction arrow
+        const arrowLen = perpLen * 0.6;
+        const ex = anchor.x + pushX * arrowLen;
+        const ey = anchor.y + pushY * arrowLen;
+        ctx.strokeStyle = '#FF66FF';
+        ctx.beginPath();
+        ctx.moveTo(anchor.x, anchor.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Arrowhead
+        const angle = Math.atan2(pushY, pushX);
+        const hl = headLen * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - hl * Math.cos(angle - 0.4), ey - hl * Math.sin(angle - 0.4));
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - hl * Math.cos(angle + 0.4), ey - hl * Math.sin(angle + 0.4));
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = '#FF66FF';
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const label = isHead ? 'H' : 'T';
+        ctx.fillText(`${label} t=${t.toFixed(3)}`, anchor.x, anchor.y - dotR - 2 / state.zoom);
     }
 }
