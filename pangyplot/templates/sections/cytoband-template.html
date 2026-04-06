@@ -13,10 +13,10 @@
                     <span id="cytoband-genome-other-selector-label">Other</span>
                     <i class="fa-solid fa-right-long flex-col"></i>
 
-                    <input id="cytoband-genome-other-selector" list="cytoband-genome-other-options">
-                    <datalist id="cytoband-genome-other-options">
+                    <select id="cytoband-genome-other-selector">
+                        <option value="" disabled selected>{{ _('Select...') }}</option>
                         <!-- Options will be appended here by JavaScript -->
-                    </datalist>
+                    </select>
 
                 </div>       
             </div> 

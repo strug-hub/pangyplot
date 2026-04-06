@@ -24,6 +24,13 @@
 
 #cytoband-genome-other-selector{
     width: 15em;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--light-green);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: inherit;
+    cursor: pointer;
 }
 
 .cytoband-chromosome-annotation{

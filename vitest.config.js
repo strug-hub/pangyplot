@@ -7,9 +7,12 @@ export default defineConfig({
             '@graph': path.resolve('pangyplot/static/js/graph'),
             '@graph-data': path.resolve('pangyplot/static/js/graph/data'),
             '@model': path.resolve('pangyplot/static/js/graph/detail/model'),
+            '@event-bus': path.resolve('pangyplot/static/js/event-bus.js'),
+            '@app-state': path.resolve('pangyplot/static/js/app-state.js'),
+            '@ui': path.resolve('pangyplot/static/js/ui'),
         },
     },
     test: {
-        include: ['tests/graph/**/*.test.js'],
+        include: ['tests/**/*.test.js'],
     },
 });

@@ -49,7 +49,6 @@ def inject_organism():
     organism = current_app.cytoband["organism"]
     emoji = organisms.VALID_ORGANISMS.get(organism, "")
     genome = organisms.ORGANISM_TO_GENOME.get(organism, "")
-    print("GENOME", genome)
     return { "organism": organism, "organism_emoji": emoji, "organism_genome": genome }
 
 @bp.route('/chromosomes', methods=["GET"])
@@ -74,8 +73,6 @@ def cytobands():
             "chromosome": current_app.cytoband["cytobands"],
             "order": current_app.cytoband["chromosomes"]
         })
-
-    print(f"Getting cytobands for {chromosome}...")
 
     bands = current_app.cytoband["cytobands"].get(chromosome)
     if bands is None:

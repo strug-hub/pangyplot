@@ -138,7 +138,6 @@ def setup_cytoband(app):
     if not cytoband_path:
         genome = organisms.ORGANISM_TO_GENOME.get(organism, None)
         if genome:
-            ORGANISM=organism
             script_dir = os.path.dirname(os.path.realpath(__file__))
             cytoband_path = os.path.join(script_dir, "static", "cytoband", f"{genome}.cytoBand.txt")
             canonical_path = os.path.join(script_dir, "static", "cytoband", f"{genome}.canonical.txt")
