@@ -41,7 +41,7 @@ SORTED="${{PREFIX}}.sorted.og"
 
 SCRIPT_LAYOUT = """
 # --------------- LAYOUT FILE ----------------------------
-odgi layout -t $THREADS -i ${{{input_var}}} --tsv ${{PREFIX}}.lay.tsv -o ${{PREFIX}}.lay{gpu_flag}
+odgi layout -t $THREADS -i ${{{input_var}}} --tsv ${{PREFIX}}.lay.tsv -o ${{PREFIX}}.lay{gpu_flag} -P
 """
 
 SCRIPT_GFA = """

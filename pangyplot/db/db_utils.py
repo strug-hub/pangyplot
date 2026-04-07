@@ -31,6 +31,13 @@ def get_connection(dir, filename, clear_existing=False):
     db_path = os.path.join(dir, filename)
 
     if clear_existing:
+        cache = getattr(_local, 'connections', None)
+        if cache and db_path in cache:
+            try:
+                cache[db_path].close()
+            except Exception:
+                pass
+            del cache[db_path]
         if os.path.exists(db_path):
             os.remove(db_path)
         conn = sqlite3.connect(db_path)

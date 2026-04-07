@@ -9,6 +9,7 @@ from pangyplot.preprocess.skeleton.generate_skeleton import generate_skeleton
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
+from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 
 def pangyplot_add(args):
 
@@ -67,5 +68,9 @@ def pangyplot_add(args):
     bubble_index = BubbleIndex(chr_path, gfa_index)
     if have_pympler:
         print(f"bubble_index size:      {asizeof(bubble_index) / 1024**2:.2f} MB")
+
+    polychain_index = PolychainIndex(chr_path, bubble_index, gfa_index, step_index, args.ref)
+    if have_pympler:
+        print(f"polychain_index size:   {asizeof(polychain_index) / 1024**2:.2f} MB")
 
     generate_skeleton(chr_path, args.ref, args.chr)
