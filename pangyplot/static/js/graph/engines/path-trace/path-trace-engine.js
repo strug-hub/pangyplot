@@ -39,15 +39,6 @@ export async function setupPathTraceEngine() {
         _fetchAndResolvePath(sample);
     });
 
-    // Clear button
-    const clearBtn = document.getElementById('path-clear-button');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            clearPathTrace();
-            _clearPathTable();
-            scheduleFrame();
-        });
-    }
 }
 
 // ---------------------------------------------------------------
@@ -79,11 +70,6 @@ async function _fetchAndResolvePath(sample) {
     }
 
     setSubpaths(paths);
-
-    // Show select container (has Show All / Clear buttons)
-    const selectContainer = document.getElementById('path-select-container');
-    if (selectContainer) selectContainer.classList.remove('hidden');
-
     _createPathTable(paths);
 }
 
@@ -186,8 +172,5 @@ function _clearPathTable() {
     }
     const animContainer = document.getElementById('path-animation-container');
     if (animContainer) animContainer.classList.add('hidden');
-    const selectContainer = document.getElementById('path-select-container');
-    if (selectContainer) selectContainer.classList.add('hidden');
-
     _localActiveSubpath = null;
 }
