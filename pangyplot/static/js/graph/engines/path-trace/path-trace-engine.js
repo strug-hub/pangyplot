@@ -5,9 +5,9 @@ import { state } from '../../state.js';
 import {
     setActiveSample, setSubpaths, setActiveSubpath,
     setDecodedPaths, getDecodedPath,
-    setResolvedPath, setRenderData, clearPathTrace,
+    setRenderData, clearPathTrace,
 } from './path-trace-state.js';
-import { decodeFromGzip } from './path-codec.js';
+import { decodeSteps } from './path-codec.js';
 import { resolveAndBuildRenderData } from './path-trace-boundary-resolver.js';
 import { setupAnimationUi, resetAnimation } from './path-trace-animation.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
@@ -88,8 +88,10 @@ async function _fetchAndDecodePath(sample, fileIndex) {
         const url = buildUrl('/path-data', params);
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        // Browser auto-decompresses gzip (Content-Encoding: gzip),
+        // so we receive raw varint bytes directly.
         const buffer = await response.arrayBuffer();
-        const steps = await decodeFromGzip(buffer);
+        const steps = decodeSteps(new Uint8Array(buffer));
 
         // Cache
         const { decodedPaths } = await import('./path-trace-state.js');
@@ -112,19 +114,16 @@ async function _fetchAndDecodePath(sample, fileIndex) {
 
 /**
  * Resolve the active subpath using boundary-based resolution.
+ * Produces render data (chain overlays, highlights) and animation waypoints.
  */
 export function resolveAndBuild(subpath) {
     if (!subpath?._steps) {
-        setResolvedPath([]);
         setRenderData(null);
         return;
     }
 
     const rd = resolveAndBuildRenderData(subpath._steps);
     setRenderData(rd);
-
-    // Build resolvedPath for animation (map steps to positions)
-    setResolvedPath(subpath._steps);
 
     resetAnimation();
     scheduleFrame();
