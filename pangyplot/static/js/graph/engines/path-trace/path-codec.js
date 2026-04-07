@@ -97,6 +97,39 @@ export function decodeSteps(data) {
 }
 
 /**
+ * Decode a gzip-compressed .binpath payload fetched as an ArrayBuffer.
+ * Uses the browser's DecompressionStream API.
+ *
+ * @param {ArrayBuffer} compressedBuffer — raw gzipped bytes from /path-data
+ * @returns {Promise<Array<{ segId: number, direction: string }>>}
+ */
+export async function decodeFromGzip(compressedBuffer) {
+    const ds = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    writer.write(new Uint8Array(compressedBuffer));
+    writer.close();
+
+    const reader = ds.readable.getReader();
+    const chunks = [];
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+    }
+
+    // Concatenate chunks into a single Uint8Array
+    const totalLen = chunks.reduce((sum, c) => sum + c.length, 0);
+    const raw = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const chunk of chunks) {
+        raw.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    return decodeSteps(raw);
+}
+
+/**
  * Encode an array of { segId, direction } objects into a varint byte stream.
  * @param {Array<{ segId: number, direction: string }>} steps
  * @returns {Uint8Array}

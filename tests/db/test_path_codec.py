@@ -1,13 +1,14 @@
 """Tests for the delta-zigzag-varint path codec (.binpath format)."""
 
+import json
 import os
-import tempfile
 
 import pytest
 
 from pangyplot.db.path_codec import (
     encode_steps, decode_steps,
-    write_binpath, read_binpath,
+    write_binpath, read_binpath, read_binpath_raw,
+    write_path_index, read_path_index, path_index_version,
     _zigzag_encode, _zigzag_decode,
     _combine, _uncombine,
 )
@@ -24,7 +25,6 @@ class TestZigzag:
         assert _zigzag_decode(_zigzag_encode(n)) == n
 
     def test_small_values_encode_small(self):
-        # Zigzag should map small magnitudes to small unsigned values
         assert _zigzag_encode(0) == 0
         assert _zigzag_encode(-1) == 1
         assert _zigzag_encode(1) == 2
@@ -87,12 +87,10 @@ class TestStepCodec:
         assert decode_steps(encode_steps(steps)) == steps
 
     def test_non_sequential_ids(self):
-        """Path visiting segments in non-sorted order (unsorted graph)."""
         steps = ["500+", "200-", "700+", "300-", "100+"]
         assert decode_steps(encode_steps(steps)) == steps
 
     def test_large_path(self):
-        """Simulate a realistic path with ~10k steps."""
         import random
         random.seed(42)
         steps = []
@@ -105,78 +103,81 @@ class TestStepCodec:
         assert decode_steps(encode_steps(steps)) == steps
 
     def test_compression_ratio(self):
-        """Verify we get meaningful compression on sequential data."""
         steps = [f"{i}+" for i in range(1, 10001)]
         encoded = encode_steps(steps)
-        json_size = sum(len(s) + 4 for s in steps)  # rough JSON array size
-        assert len(encoded) < json_size / 5  # at least 5x compression
+        json_size = sum(len(s) + 4 for s in steps)
+        assert len(encoded) < json_size / 5
 
 
 # -------------------------------------------------------------------
-# .binpath file I/O
+# .binpath file I/O (pure binary, no header)
 # -------------------------------------------------------------------
 
 class TestBinpathFile:
     def test_roundtrip(self, tmp_path):
-        filepath = os.path.join(str(tmp_path), "test.binpath")
-        metadata = {
-            "full_id": "HG00621#1#chrY#0#57227415",
-            "sample": "HG00621",
-            "hap": "1",
-            "contig": "chrY",
-            "start": 0,
-            "length": 57227415,
-            "is_ref": False,
-        }
+        filepath = str(tmp_path / "test.binpath")
         steps = ["1+", "2+", "3+", "100-", "99-"]
-
-        write_binpath(filepath, metadata, steps)
-        meta_out, steps_out = read_binpath(filepath)
-
-        assert steps_out == steps
-        assert meta_out["full_id"] == metadata["full_id"]
-        assert meta_out["sample"] == metadata["sample"]
-        assert meta_out["hap"] == metadata["hap"]
-        assert meta_out["contig"] == metadata["contig"]
-        assert meta_out["start"] == metadata["start"]
-        assert meta_out["length"] == metadata["length"]
-        assert meta_out["is_ref"] == metadata["is_ref"]
-        assert meta_out["v"] == 1
-
-    def test_path_field_stripped(self, tmp_path):
-        """If metadata has a 'path' key, it should be stripped from the header."""
-        filepath = os.path.join(str(tmp_path), "test.binpath")
-        metadata = {"sample": "test", "path": ["should", "be", "removed"]}
-        steps = ["1+"]
-
-        write_binpath(filepath, metadata, steps)
-        meta_out, _ = read_binpath(filepath)
-
-        assert "path" not in meta_out
+        write_binpath(filepath, steps)
+        assert read_binpath(filepath) == steps
 
     def test_empty_path(self, tmp_path):
-        filepath = os.path.join(str(tmp_path), "empty.binpath")
-        write_binpath(filepath, {"sample": "test"}, [])
-        meta_out, steps_out = read_binpath(filepath)
-        assert steps_out == []
+        filepath = str(tmp_path / "empty.binpath")
+        write_binpath(filepath, [])
+        assert read_binpath(filepath) == []
+
+    def test_read_raw(self, tmp_path):
+        filepath = str(tmp_path / "test.binpath")
+        steps = ["1+", "2+", "3+"]
+        write_binpath(filepath, steps)
+        raw = read_binpath_raw(filepath)
+        assert isinstance(raw, bytes)
+        assert decode_steps(raw) == steps
 
     def test_file_is_smaller_than_json(self, tmp_path):
-        """Binpath file should be much smaller than equivalent JSON."""
-        import json
-
         steps = [f"{i}+" for i in range(1, 1001)]
-        metadata = {"sample": "test", "contig": "chr1"}
 
-        binpath = os.path.join(str(tmp_path), "test.binpath")
-        write_binpath(binpath, metadata, steps)
+        binpath = str(tmp_path / "test.binpath")
+        write_binpath(binpath, steps)
 
-        json_path = os.path.join(str(tmp_path), "test.json")
+        json_path = str(tmp_path / "test.json")
         with open(json_path, "w") as f:
-            json.dump({**metadata, "path": steps}, f)
+            json.dump(steps, f)
 
-        bin_size = os.path.getsize(binpath)
-        json_size = os.path.getsize(json_path)
-        assert bin_size < json_size / 3
+        assert os.path.getsize(binpath) < os.path.getsize(json_path) / 3
+
+
+# -------------------------------------------------------------------
+# index.json I/O
+# -------------------------------------------------------------------
+
+class TestPathIndex:
+    def test_roundtrip(self, tmp_path):
+        paths_dir = str(tmp_path)
+        entries = {
+            "HG00621#1": [
+                {"file": "HG00621#1__1.binpath", "full_id": "HG00621#1#chrY", "contig": "chrY",
+                 "start": 0, "length": None, "is_ref": False},
+            ],
+            "GRCh38": [
+                {"file": "GRCh38__1.binpath", "full_id": "GRCh38#chrY", "contig": "chrY",
+                 "start": 0, "length": None, "is_ref": True},
+            ],
+        }
+        write_path_index(paths_dir, entries)
+        index = read_path_index(paths_dir)
+
+        assert "version" in index
+        assert len(index["paths"]["HG00621#1"]) == 1
+        assert index["paths"]["GRCh38"][0]["is_ref"] is True
+
+    def test_version_check(self, tmp_path):
+        paths_dir = str(tmp_path)
+        write_path_index(paths_dir, {})
+        from pangyplot.version import __version__
+        assert path_index_version(paths_dir) == __version__
+
+    def test_missing_index(self, tmp_path):
+        assert path_index_version(str(tmp_path)) is None
 
 
 # -------------------------------------------------------------------
@@ -187,10 +188,7 @@ REFERENCE = "gi|568815592"
 
 
 class TestDRB1Integration:
-    """Verify paths survive the full parse_gfa → store → retrieve pipeline."""
-
     def test_binpath_files_created(self, drb1_dir):
-        """parse_gfa should produce .binpath files, not .json."""
         paths_dir = os.path.join(drb1_dir, "paths")
         assert os.path.isdir(paths_dir)
 
@@ -198,36 +196,53 @@ class TestDRB1Integration:
         json_files = [f for f in os.listdir(paths_dir)
                       if f.endswith(".json") and "__" in f]
 
-        assert len(binpath_files) > 0, "No .binpath files produced"
-        assert len(json_files) == 0, "Legacy .json path files should not exist"
+        assert len(binpath_files) > 0
+        assert len(json_files) == 0
+
+    def test_index_json_created(self, drb1_dir):
+        paths_dir = os.path.join(drb1_dir, "paths")
+        index_path = os.path.join(paths_dir, "index.json")
+        assert os.path.exists(index_path)
+
+        index = read_path_index(paths_dir)
+        assert "version" in index
+        assert "paths" in index
+        assert len(index["paths"]) > 0
 
     def test_retrieve_reference_path(self, drb1_dir):
-        """Reference path should load correctly from .binpath."""
         paths = path_db.retrieve_paths(drb1_dir, REFERENCE)
         assert len(paths) >= 1
 
         ref = paths[0]
-        assert ref.sample == REFERENCE
         assert ref.is_ref is True
         assert len(ref.path) > 0
-        # Every step should be "ID+/-"
         for step in ref.path:
             assert step[-1] in ('+', '-')
-            int(step[:-1])  # should not raise
+            int(step[:-1])
 
     def test_retrieve_nonref_path(self, drb1_dir):
-        """A non-reference sample path should also round-trip."""
         summary = path_db.summarize(drb1_dir)
         non_ref = [s for s in summary if s != REFERENCE]
-        assert len(non_ref) > 0, "Expected at least one non-reference sample"
+        assert len(non_ref) > 0
 
         paths = path_db.retrieve_paths(drb1_dir, non_ref[0])
         assert len(paths) >= 1
         assert len(paths[0].path) > 0
 
     def test_all_samples_retrievable(self, drb1_dir):
-        """Every sample in the summary should be retrievable."""
         summary = path_db.summarize(drb1_dir)
         for sample in summary:
             paths = path_db.retrieve_paths(drb1_dir, sample)
-            assert len(paths) >= 1, f"No paths found for {sample}"
+            assert len(paths) >= 1
+
+    def test_retrieve_path_meta(self, drb1_dir):
+        meta = path_db.retrieve_path_meta(drb1_dir, REFERENCE)
+        assert len(meta) >= 1
+        assert "contig" in meta[0]
+        assert "file" in meta[0]
+
+    def test_retrieve_path_raw(self, drb1_dir):
+        raw = path_db.retrieve_path_raw(drb1_dir, REFERENCE, 0)
+        assert raw is not None
+        steps = decode_steps(raw)
+        assert len(steps) > 0

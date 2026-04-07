@@ -102,6 +102,7 @@ def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
 
             db.store_path(dir, path)
 
+    db.finalize_paths(dir)
     db.store_sample_idx(dir, sample_idx)
     reference_info = (reference_path, matching_refs)
 

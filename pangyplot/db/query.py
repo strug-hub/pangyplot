@@ -218,6 +218,18 @@ def get_path_order(indexes, genome, chrom):
     return gfaidx.get_sample_idx()
 
 
+def get_path_meta(indexes, chrom, sample):
+    """Return metadata for a sample's paths (no step data)."""
+    gfaidx = indexes.gfa_index[chrom]
+    return gfaidx.path_index.get_path_meta(sample)
+
+
+def get_path_raw(indexes, chrom, sample, file_index):
+    """Return raw compressed bytes for a specific path file."""
+    gfaidx = indexes.gfa_index[chrom]
+    return gfaidx.path_index.get_path_raw(sample, file_index)
+
+
 def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
     """Return lightweight per-bubble metadata for a chain.
 

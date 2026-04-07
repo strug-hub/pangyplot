@@ -3,8 +3,14 @@
 /** @type {string|null} */
 export let activeSample = null;
 
-/** @type {Array} Raw subpaths from /path API. */
+/** @type {Array} Path metadata from /path-meta API. */
 export let subpaths = [];
+
+/**
+ * Cached decoded paths per sample.
+ * Map<sampleName, Array<{ meta: object, steps: Array<{segId, direction}> }>>
+ */
+export let decodedPaths = new Map();
 
 /** @type {object|null} Currently selected subpath (user clicked in table). */
 export let activeSubpath = null;
@@ -35,6 +41,13 @@ export function setActiveSample(sample) { activeSample = sample; }
 
 export function setSubpaths(paths) { subpaths = paths; }
 
+export function setDecodedPaths(sample, paths) { decodedPaths.set(sample, paths); }
+
+export function getDecodedPath(sample, index) {
+    const paths = decodedPaths.get(sample);
+    return paths ? paths[index] : null;
+}
+
 export function setActiveSubpath(sp) { activeSubpath = sp; }
 
 export function setResolvedPath(rp) { resolvedPath = rp; }
@@ -52,6 +65,7 @@ export function setStepsPerFrame(s) { stepsPerFrame = s; }
 export function clearPathTrace() {
     activeSample = null;
     subpaths = [];
+    decodedPaths = new Map();
     activeSubpath = null;
     resolvedPath = [];
     renderData = null;

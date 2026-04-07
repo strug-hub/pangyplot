@@ -4,9 +4,11 @@ import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { state } from '../../state.js';
 import {
     setActiveSample, setSubpaths, setActiveSubpath,
+    setDecodedPaths, getDecodedPath,
     setResolvedPath, setRenderData, clearPathTrace,
 } from './path-trace-state.js';
-import { resolvePath, buildRenderData, rebuildBubbleToChainIndex } from './path-trace-resolver.js';
+import { decodeFromGzip } from './path-codec.js';
+import { resolveAndBuildRenderData } from './path-trace-boundary-resolver.js';
 import { setupAnimationUi, resetAnimation } from './path-trace-animation.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import createSelectableTable from '@ui/components/selectable-table.js';
@@ -36,7 +38,7 @@ export async function setupPathTraceEngine() {
         const sample = pathSelector.value;
         if (!sample) return;
         setActiveSample(sample);
-        _fetchAndResolvePath(sample);
+        _fetchPathMeta(sample);
     });
 
 }
@@ -45,32 +47,63 @@ export async function setupPathTraceEngine() {
 // Data fetching
 // ---------------------------------------------------------------
 
-async function _fetchAndResolvePath(sample) {
-    const dd = state.detailData;
-    if (!dd) {
-        console.warn('[path-trace] No detail data — path fetch requires active detail view');
+/**
+ * Fetch path metadata for a sample and populate the subpath table.
+ */
+async function _fetchPathMeta(sample) {
+    const params = {
+        sample,
+        chromosome: state.chromosome,
+    };
+
+    let meta;
+    try {
+        const url = buildUrl('/path-meta', params);
+        meta = await fetchData(url, 'path-trace');
+    } catch (e) {
+        console.warn('[path-trace] meta fetch failed:', e);
         return;
     }
+
+    setSubpaths(meta);
+    _createPathTable(meta, sample);
+}
+
+/**
+ * Fetch and decode a specific path's binary data.
+ * Caches the decoded result.
+ */
+async function _fetchAndDecodePath(sample, fileIndex) {
+    // Check cache
+    const cached = getDecodedPath(sample, fileIndex);
+    if (cached) return cached;
 
     const params = {
         sample,
-        genome: state.GENOME,
         chromosome: state.chromosome,
-        start: dd.bpStart || 0,
-        end: dd.bpEnd || 0,
+        index: fileIndex,
     };
 
-    let paths;
     try {
-        const url = buildUrl('/path', params);
-        paths = await fetchData(url, 'path-trace');
-    } catch (e) {
-        console.warn('[path-trace] fetch failed:', e);
-        return;
-    }
+        const url = buildUrl('/path-data', params);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        const steps = await decodeFromGzip(buffer);
 
-    setSubpaths(paths);
-    _createPathTable(paths);
+        // Cache
+        const { decodedPaths } = await import('./path-trace-state.js');
+        if (!decodedPaths.has(sample)) {
+            setDecodedPaths(sample, []);
+        }
+        const paths = decodedPaths.get(sample);
+        paths[fileIndex] = steps;
+
+        return steps;
+    } catch (e) {
+        console.warn('[path-trace] binary fetch/decode failed:', e);
+        return null;
+    }
 }
 
 // ---------------------------------------------------------------
@@ -78,22 +111,20 @@ async function _fetchAndResolvePath(sample) {
 // ---------------------------------------------------------------
 
 /**
- * Resolve the active subpath and update render data.
- * Also used for re-resolution after pop/unpop.
+ * Resolve the active subpath using boundary-based resolution.
  */
 export function resolveAndBuild(subpath) {
-    if (!subpath?.path) {
+    if (!subpath?._steps) {
         setResolvedPath([]);
         setRenderData(null);
         return;
     }
 
-    rebuildBubbleToChainIndex();
-    const resolved = resolvePath(subpath.path);
-    setResolvedPath(resolved);
-
-    const rd = buildRenderData(resolved);
+    const rd = resolveAndBuildRenderData(subpath._steps);
     setRenderData(rd);
+
+    // Build resolvedPath for animation (map steps to positions)
+    setResolvedPath(subpath._steps);
 
     resetAnimation();
     scheduleFrame();
@@ -132,7 +163,7 @@ function _populateDropdown(select, samples) {
     }
 }
 
-function _createPathTable(paths) {
+function _createPathTable(metaEntries, sample) {
     const container = document.getElementById('path-table-container');
     const animContainer = document.getElementById('path-animation-container');
     if (!container) return;
@@ -140,25 +171,34 @@ function _createPathTable(paths) {
     container.innerHTML = '';
     container.classList.remove('no-data');
 
-    if (!paths?.length) {
+    if (!metaEntries?.length) {
         container.textContent = 'No path data available.';
         container.classList.add('no-data');
         return;
     }
 
-    const tableData = paths.map(sp => ({
-        item: sp,
-        label: `${sp.contig}:${sp.start}-${sp.start + sp.length}`,
+    const tableData = metaEntries.map((entry, idx) => ({
+        item: { ...entry, _sample: sample, _fileIndex: idx },
+        label: entry.length != null
+            ? `${entry.contig}:${entry.start}-${entry.start + entry.length}`
+            : `${entry.contig}:${entry.start}`,
     }));
 
     const table = createSelectableTable('path', tableData, 'Subpaths');
     container.appendChild(table);
 
-    table.addEventListener('path-row-select', (e) => {
-        const subpath = e.detail.item;
-        setActiveSubpath(subpath);
-        _localActiveSubpath = subpath;
-        resolveAndBuild(subpath);
+    table.addEventListener('path-row-select', async (e) => {
+        const item = e.detail.item;
+        setActiveSubpath(item);
+
+        // Fetch + decode binary path data on demand
+        const steps = await _fetchAndDecodePath(item._sample, item._fileIndex);
+        if (!steps) return;
+
+        // Attach decoded steps to the item for resolution
+        item._steps = steps;
+        _localActiveSubpath = item;
+        resolveAndBuild(item);
 
         if (animContainer) animContainer.classList.remove('hidden');
     });

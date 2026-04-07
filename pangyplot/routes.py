@@ -341,6 +341,37 @@ def path():
 
     return jsonify(path)
 
+@bp.route('/path-meta', methods=["GET"])
+def path_meta():
+    chrom = request.args.get("chromosome")
+    sample = request.args.get("sample")
+
+    try:
+        meta = query.get_path_meta(current_app, chrom, sample)
+    except (ValueError, KeyError) as e:
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify(meta)
+
+
+@bp.route('/path-data', methods=["GET"])
+def path_data():
+    chrom = request.args.get("chromosome")
+    sample = request.args.get("sample")
+    file_index = int(request.args.get("index", 0))
+
+    try:
+        raw = query.get_path_raw(current_app, chrom, sample, file_index)
+    except (ValueError, KeyError) as e:
+        return jsonify({"error": str(e)}), 404
+
+    if raw is None:
+        return jsonify({"error": "Path file not found"}), 404
+
+    return Response(raw, mimetype='application/octet-stream',
+                    headers={'Content-Encoding': 'gzip'})
+
+
 @bp.route('/pathorder', methods=["GET"])
 def path_order():
 
