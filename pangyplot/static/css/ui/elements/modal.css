@@ -56,3 +56,11 @@
     background: var(--lighter-green);
     width: 100%;
 }
+
+.modal-disclaimer {
+    margin-top: 1.5em;
+    padding-top: 1em;
+    border-top: 1px solid var(--lighter-green);
+    color: var(--unselected-text);
+    font-size: 0.8em;
+}

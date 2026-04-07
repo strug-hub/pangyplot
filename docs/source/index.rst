@@ -79,11 +79,16 @@ If you use PangyPlot in your research, please cite:
      doi = {10.1101/2025.10.31.684064}
    }
 
+----
+
+*The tool is provided as-is and may be updated or withdrawn without notice.
+This tool is intended for research and educational purposes only. Outputs are not intended for clinical, diagnostic, or therapeutic use.*
+
 .. toctree::
    :maxdepth: 3
    :caption: Table of Contents
    :hidden:
-   
+
    basic/index
    advanced/index
    principles

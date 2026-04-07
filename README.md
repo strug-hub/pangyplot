@@ -54,3 +54,7 @@ PangyPlot is powered by
 [![d3-force-graph](https://img.shields.io/badge/d3--force--graph-FA9C1E?logo=github&logoColor=white)](https://github.com/vasturiano/force-graph)
 [![odgi layout](https://img.shields.io/badge/odgi-layout-007ACC?logo=github&logoColor=white)](https://github.com/pangenome/odgi)
 [![BubbleGun](https://img.shields.io/badge/BubbleGun-29ABE2?logo=github&logoColor=white)](https://github.com/fawaz-dabbaghieh/bubble_gun)
+
+---
+
+*The tool is provided as-is and may be updated or withdrawn without notice. This tool is intended for research and educational purposes only. Outputs are not intended for clinical, diagnostic, or therapeutic use.*
