@@ -27,7 +27,7 @@ Run all tests: `python -m pytest tests/` + `npx vitest run`
 
 ---
 
-## Current Coverage (431 Python + 178 JS = 609 tests)
+## Current Coverage (535 Python + 178 JS = 713 tests)
 
 ### Well Tested (dedicated tests, all public functions covered)
 
@@ -42,7 +42,9 @@ Run all tests: `python -m pytest tests/` + `npx vitest run`
 | `StepIndex.py` | `test_step_index.py` | Binary search, coordinate queries, segment map |
 | `BubbleIndex.py` | `test_bubble_index.py` | SNP/bigger/nested bubbles, range queries, parent-child |
 | `AnnotationIndex.py` | `test_annotation_index.py` | GFF3 fixture, hierarchy, MANE filtering, gene search |
+| `PolychainIndex.py` | `test_polychain_index.py` | Decomposition lookup, layout range queries, mmap roundtrip |
 | `SeqIndex.py` | `seq_read_write_test.py` | Nibble encode/decode roundtrip |
+| `Bubble.py` | `test_bubble.py` | Containment, source/sink flipping, siblings, ranges |
 | `Path.py` | `test_path.py` | Clone, subset_path, bubble path, sample naming |
 | `Chain.py` | `test_chain.py` | Sort, siblings, step range, internal segment IDs |
 | `parse_gff3.py` | `test_parse_gff3.py` | Line parsing, attributes, type filtering, MANE tags |
@@ -56,27 +58,41 @@ Run all tests: `python -m pytest tests/` + `npx vitest run`
 | `polychain-model.js` | `polychain-model.test.js` | Polychain model |
 | UI event bus | `*-events.test.js` (6 files) | Cytoband, color, navbar, gene search, coordinates, debug |
 
+### Route Coverage
+
+| Endpoint | Test File | Status |
+|----------|-----------|--------|
+| `/select` | `test_graph_routes.py` | Tested — structure, node/link fields, 404 |
+| `/pop` | `test_graph_routes.py` | Tested — simple SNP (segs 11/17), nested (segs 141/133), segment noop |
+| `/chains` | `test_graph_routes.py` | Tested — 16 chains for DRB1 region, required fields |
+| `/detail-tiles` | `test_graph_routes.py` | Tested — 63 chains full range, junction graph, narrow range, requires PolychainIndex |
+| `/genes` | `test_annotation_routes.py` | Tested — range queries, mane_only, narrow range exclusion |
+| `/search` | `test_annotation_routes.py` | Tested — gene name search, case insensitive |
+| `/cytoband` | `test_cytoband_routes.py` | Tested — single/all chromosomes, 404 |
+| `/chromosomes` | `test_cytoband_routes.py` | Tested — canonical + noncanonical |
+| `/path`, `/pathorder` | — | Not tested (path system under active development) |
+| `/samples` | — | Not tested |
+| `/skeleton`, `/spine`, `/polychain` | — | Not tested (static file serving) |
+| `/chain-graph`, `/bubble-meta` | — | Not tested |
+| `/gfa` | — | Not tested |
+
 ### Partially Tested (tested through pipeline or indirectly)
 
 | Module | Tested Via | Gaps |
 |--------|-----------|------|
-| `query.py` | `test_query.py`, `test_pop_links.py` | Missing: `get_path`, `get_path_order`, `get_bubble_meta`, `generate_gfa`, `get_detail_tile` |
+| `query.py` | `test_query.py`, `test_pop_links.py`, route tests | Missing: `get_path`, `get_path_order`, `get_bubble_meta`, `generate_gfa` |
 | `parse_gfa.py` | `test_parse_pipeline.py`, `test_drb1_pipeline.py` | `verify_reference`, `_parse_segments_and_links` edge cases |
 | `bubble_gun.py` | `test_drb1_pipeline.py` | Only tested in full pipeline context |
-| `PolychainIndex.py` | `test_drb1_pipeline.py` | Only tested in full pipeline context |
-| `Bubble.py` | Indirect (via index/link tests) | No dedicated test file; `correct_source_sink`, `is_contained`, `contains` untested directly |
 | `Segment.py` | Indirect (via index tests) | No dedicated test file |
 | `Annotation.py` | Indirect (via annotation tests) | `serialize()` untested directly |
 | `meta.py` | `test_drb1_pipeline.py::TestGraphMeta` | Tested with DRB1 data; no dedicated unit tests |
-| SQLite layer (`segment_db`, `link_db`, `bubble_db`, `step_db`, `annotation_db`) | Indirect via index tests | No direct unit tests, but well exercised through indexes |
-| `routes.py` | `test_cytoband_routes.py` | Only `/cytoband` and `/chromosomes` tested; 26+ endpoints missing |
+| SQLite layer | Indirect via index tests | No direct unit tests, but well exercised through indexes |
 
 ### Untested
 
 | Module | What to test | Priority |
 |--------|-------------|----------|
 | `chain_polyline.py` | `decompose_chain`, `build_chain_polyline`, `find_junction_graph`, `build_connector` — core chain decomposition logic | High |
-| `routes.py` (most endpoints) | `/select`, `/pop`, `/path`, `/genes`, `/search`, `/detail-tiles`, `/chains`, `/skeleton`, `/spine`, `/polychain`, `/samples`, `/chain-graph`, `/bubble-meta` | High |
 | `app.py` | `create_app`, `load_indexes` — startup/init | Medium |
 | `compact_graph.py` | `merge_node`, `compact_graph` — BubbleGun adapter, tightly coupled | Low |
 | `construct_bubble_links.py` | `classify_link`, `store_bubble_links` | Low |
@@ -102,14 +118,14 @@ Run all tests: `python -m pytest tests/` + `npx vitest run`
 
 ### Next Up — High Value
 
-1. **Route integration tests** — `/select`, `/pop`, `/path`, `/genes` with Flask test client and DRB1 or chrY datastore
-2. **chain_polyline.py** — `decompose_chain` is the core of the polychain system; complex logic, no tests
-3. **query.py gaps** — `get_path`, `get_detail_tile`, `get_bubble_meta`
+1. **chain_polyline.py** — `decompose_chain` is the core of the polychain system; complex logic, no tests
+2. **query.py gaps** — `get_path`, `get_path_order`, `get_bubble_meta` (path endpoints blocked by active path system refactor)
+3. **Route tests for /path, /pathorder** — after path system stabilizes
 
 ### Medium Value
 
-4. **Bubble.py** dedicated tests — `correct_source_sink`, `is_contained`, `contains`, `is_ref`
-5. **JS spine/viewport** — rewrite tests against current API (`bpToLayout`/`layoutToBp`, `getViewport`/`fitToScreen`)
+4. **JS spine/viewport** — rewrite tests against current API (`bpToLayout`/`layoutToBp`, `getViewport`/`fitToScreen`)
+5. **Remaining route endpoints** — `/samples`, `/chain-graph`, `/bubble-meta`
 
 ### Low Value (skip unless touching)
 
@@ -128,3 +144,11 @@ Run all tests: `python -m pytest tests/` + `npx vitest run`
 - **Scope**: Prefer `scope="module"` for expensive fixtures (DB loading). Use `tmp_path` for throwaway files.
 - **Bubble IDs are unstable** between runs — anchor tests to source/sink segments, not bubble IDs.
 - **Run both suites**: `python -m pytest tests/` and `npx vitest run`.
+
+---
+
+## Code Changes Made During Testing
+
+- Removed dead `child_bubbles`/`child_bubble_objects` from `BubbleIndex.get_popped_subgraph()` and `query.pop_bubble()` — hardcoded to `[]`, never read by frontend
+- Removed `get_detail_tile` fallback paths — now requires PolychainIndex and layout coords (frontend always provides both)
+- `TestJunctionGraph` in `test_query.py` skipped pending rewrite with DRB1 fixture (was using chrY datastore without PolychainIndex)
