@@ -3,6 +3,11 @@ pangyplot/static/data/*
 .env
 .setup_state.json
 datastore/*
+!datastore/graphs/
+datastore/graphs/*
+!datastore/graphs/hprc.clip/
+datastore/graphs/hprc.clip/*
+!datastore/graphs/hprc.clip/chrY/
 
 # Node / Playwright
 node_modules/
