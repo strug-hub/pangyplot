@@ -65,9 +65,8 @@ export function resolvePathByBoundaries(steps, boundaryIndex) {
         const segKey = `s${step.segId}`;
         const boundary = boundaryIndex.get(segKey);
 
-        if (!boundary) continue;
-
-        // Junction SegmentObject
+        // Check registry for SegmentObjects (junctions) — these aren't
+        // in the boundary index but are registered in the segment registry.
         const obj = registry.resolve(segKey);
         if (obj && obj.constructor.name === 'SegmentObject') {
             if (inChain) {
@@ -78,6 +77,8 @@ export function resolvePathByBoundaries(steps, boundaryIndex) {
             frames.push({ type: 'junction', object: obj });
             continue;
         }
+
+        if (!boundary) continue;
 
         if (boundary.role === 'entry') {
             if (inChain) {

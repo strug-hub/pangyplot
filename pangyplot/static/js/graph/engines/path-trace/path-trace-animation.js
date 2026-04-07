@@ -100,15 +100,27 @@ export function tickPathAnimation() {
 // ---------------------------------------------------------------
 
 function _updateStepDisplay() {
-    const el = document.getElementById('path-current-step');
-    if (!el) return;
+    const stepEl = document.getElementById('path-current-step');
+    const objEl = document.getElementById('path-current-object');
 
     if (currentFrame < 0 || frames.length === 0) {
-        el.textContent = 'N/A';
+        if (stepEl) stepEl.textContent = 'N/A';
+        if (objEl) objEl.textContent = '—';
         return;
     }
 
-    el.textContent = `${currentFrame + 1} / ${frames.length}`;
+    if (stepEl) stepEl.textContent = `${currentFrame + 1} / ${frames.length}`;
+
+    if (objEl) {
+        const frame = frames[currentFrame];
+        if (frame.type === 'chain') {
+            objEl.textContent = frame.chainId;
+        } else if (frame.type === 'junction') {
+            objEl.textContent = frame.object?.id || '—';
+        } else {
+            objEl.textContent = '—';
+        }
+    }
 }
 
 /**
