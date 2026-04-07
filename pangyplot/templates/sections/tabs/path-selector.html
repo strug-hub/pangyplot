@@ -1,6 +1,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/sections/tabs/path-selector.css') }}">
 <div class="tab-header">{{ _('Path Selector') }}</div>
 <hr>
+<div class="no-data" style="margin-bottom: 8px; font-size: x-small;">
+    <i class="fa-solid fa-triangle-exclamation"></i> {{ _('Path selector is under development') }}
+</div>
 
 <div class="flex-col">
     <select id="path-selector" name="path-selector" class="path-selector-dropdown">

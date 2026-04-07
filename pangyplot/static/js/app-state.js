@@ -40,6 +40,9 @@ export function getCurrentLang() {
     return params.get("lang") || "en";
 }
 
+const _translations = config.translations || {};
+export function t(key) { return _translations[key] || key; }
+
 export function getGenome()     { return config.genome || ""; }
 export function getChromosome() { return (hashCoords && hashCoords.chromosome) || config.chromosome || ""; }
 export function getStart()      { return (hashCoords && hashCoords.start) || config.start || ""; }

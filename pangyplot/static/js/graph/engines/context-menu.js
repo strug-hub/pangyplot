@@ -9,7 +9,7 @@ import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { exportViewportGfa } from './selection/selection-popup.js';
 import { popAllBubblesOnChain, popHighlightedBubbles } from '../detail/model/pop-handler.js';
 import { createCustomAnnotation } from '@graph-data/custom-annotation-data.js';
-import { isDebugMode } from '@app-state';
+import { isDebugMode, t } from '@app-state';
 import { getContainer } from '../detail/model/model-manager.js';
 import { getBubbleStore } from '../detail/data/bubble-meta-cache.js';
 
@@ -71,19 +71,19 @@ function showMenu(x, y) {
     // --- Chain actions (only when hovering a chain) ---
     const chain = state.hoveredChain;
     if (chain) {
-        addCategoryLabel(menu, `Chain:`);
-        addRow(menu, 'exchange', 'Flip Chain', () => {
+        addCategoryLabel(menu, t('Chain:'));
+        addRow(menu, 'exchange', t('Flip Chain'), () => {
             if (flipChain(chain.id)) {
                 reheatSimulation();
                 scheduleFrame();
             }
         });
-        addRow(menu, 'expand', 'Pop All Bubbles', () => {
+        addRow(menu, 'expand', t('Pop All Bubbles'), () => {
             popAllBubblesOnChain(chain.id);
             scheduleFrame();
         });
-        addRow(menu, 'tag', 'Add Custom Annotation', () => {
-            const name = prompt('Annotation name:');
+        addRow(menu, 'tag', t('Add Custom Annotation'), () => {
+            const name = prompt(t('Annotation name:'));
             if (!name || !name.trim()) return;
             const chainIds = new Set();
             if (state.selectedChains.size > 0) {
@@ -97,22 +97,22 @@ function showMenu(x, y) {
 
     // --- Selection actions (when chains are highlighted) ---
     if (state.selectedChains.size > 0) {
-        addCategoryLabel(menu, 'Selection:');
-        addRow(menu, 'expand', 'Pop Highlighted', () => {
+        addCategoryLabel(menu, t('Selection:'));
+        addRow(menu, 'expand', t('Pop Highlighted'), () => {
             popHighlightedBubbles();
             scheduleFrame();
         });
         if (state.detailData) {
-            addRow(menu, 'file-export', 'Export GFA', () => {
+            addRow(menu, 'file-export', t('Export GFA'), () => {
                 exportViewportGfa();
             });
         }
     }
 
     // --- Export actions (always shown) ---
-    addCategoryLabel(menu, 'Export:');
-    addRow(menu, 'download', 'Download PNG', exportToPng);
-    addRow(menu, 'download', 'Download SVG', exportToSvg);
+    addCategoryLabel(menu, t('Export:'));
+    addRow(menu, 'download', t('Download PNG'), exportToPng);
+    addRow(menu, 'download', t('Download SVG'), exportToSvg);
 
     // --- Debug actions (only in debug mode) ---
     if (isDebugMode() && chain) {

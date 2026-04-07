@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-09-29 18:32-0400\n"
+"POT-Creation-Date: 2026-04-07 16:05-0400\n"
 "PO-Revision-Date: 2025-09-29 18:23-0400\n"
 "Last-Translator: ChatGPT (OpenAI) <noreply@openai.com>\n"
 "Language: ja\n"
@@ -18,417 +18,2165 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: pangyplot/templates/color-picker.html:4
-msgid "Color Style"
-msgstr "カラースタイル"
+#: ../../node_modules/playwright/lib/utilsBundleImpl.js:49
+msgid ""
+"{|}~\",space:\" "
+"\\t\\r\\n\\v\\f\",upper:\"A-Z\",word:\"A-Za-z0-9_\",xdigit:\"A-Fa-f0-9\"};El.exports={MAX_LENGTH:1024*64,POSIX_REGEX_SOURCE:Vd,REGEX_BACKSLASH:/\\(?![*+?^${}(|)[]])/g,REGEX_NON_SPECIAL_CHARS:/^[^@![].,$*+?^{}()|\\/]+/,REGEX_SPECIAL_CHARS:/[-*+?.^${}(|)[]]/,REGEX_SPECIAL_CHARS_BACKREF:/(\\?)((W)(3*))/g,REGEX_SPECIAL_CHARS_GLOBAL:/([-*+?.^${}(|)[]])/g,REGEX_REMOVE_BACKSLASH:/(?:[.*?[^\\]]|\\(?=.))/g,REPLACEMENTS:{\"***\":\"*\",\"**/**\":\"**\",\"**/**/**\":\"**\"},CHAR_0:48,CHAR_9:57,CHAR_UPPERCASE_A:65,CHAR_LOWERCASE_A:97,CHAR_UPPERCASE_Z:90,CHAR_LOWERCASE_Z:122,CHAR_LEFT_PARENTHESES:40,CHAR_RIGHT_PARENTHESES:41,CHAR_ASTERISK:42,CHAR_AMPERSAND:38,CHAR_AT:64,CHAR_BACKWARD_SLASH:92,CHAR_CARRIAGE_RETURN:13,CHAR_CIRCUMFLEX_ACCENT:94,CHAR_COLON:58,CHAR_COMMA:44,CHAR_DOT:46,CHAR_DOUBLE_QUOTE:34,CHAR_EQUAL:61,CHAR_EXCLAMATION_MARK:33,CHAR_FORM_FEED:12,CHAR_FORWARD_SLASH:47,CHAR_GRAVE_ACCENT:96,CHAR_HASH:35,CHAR_HYPHEN_MINUS:45,CHAR_LEFT_ANGLE_BRACKET:60,CHAR_LEFT_CURLY_BRACE:123,CHAR_LEFT_SQUARE_BRACKET:91,CHAR_LINE_FEED:10,CHAR_NO_BREAK_SPACE:160,CHAR_PERCENT:37,CHAR_PLUS:43,CHAR_QUESTION_MARK:63,CHAR_RIGHT_ANGLE_BRACKET:62,CHAR_RIGHT_CURLY_BRACE:125,CHAR_RIGHT_SQUARE_BRACKET:93,CHAR_SEMICOLON:59,CHAR_SINGLE_QUOTE:39,CHAR_SPACE:32,CHAR_TAB:9,CHAR_UNDERSCORE:95,CHAR_VERTICAL_LINE:124,CHAR_ZERO_WIDTH_NOBREAK_SPACE:65279,SEP:Td.sep,extglobChars(e){return{\"!\":{type:\"negate\",open:\"(?:(?!(?:\",close:"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:10
-msgid "Node Type"
-msgstr "ノードタイプ"
+#: ../../node_modules/playwright/lib/common/expectBundleImpl.js:55
+msgid ""
+"{|}~\",space:\" "
+"\\t\\r\\n\\v\\f\",upper:\"A-Z\",word:\"A-Za-z0-9_\",xdigit:\"A-Fa-f0-9\"};ki.exports={MAX_LENGTH:1024*64,POSIX_REGEX_SOURCE:sc,REGEX_BACKSLASH:/\\(?![*+?^${}(|)[]])/g,REGEX_NON_SPECIAL_CHARS:/^[^@![].,$*+?^{}()|\\/]+/,REGEX_SPECIAL_CHARS:/[-*+?.^${}(|)[]]/,REGEX_SPECIAL_CHARS_BACKREF:/(\\?)((W)(3*))/g,REGEX_SPECIAL_CHARS_GLOBAL:/([-*+?.^${}(|)[]])/g,REGEX_REMOVE_BACKSLASH:/(?:[.*?[^\\]]|\\(?=.))/g,REPLACEMENTS:{\"***\":\"*\",\"**/**\":\"**\",\"**/**/**\":\"**\"},CHAR_0:48,CHAR_9:57,CHAR_UPPERCASE_A:65,CHAR_LOWERCASE_A:97,CHAR_UPPERCASE_Z:90,CHAR_LOWERCASE_Z:122,CHAR_LEFT_PARENTHESES:40,CHAR_RIGHT_PARENTHESES:41,CHAR_ASTERISK:42,CHAR_AMPERSAND:38,CHAR_AT:64,CHAR_BACKWARD_SLASH:92,CHAR_CARRIAGE_RETURN:13,CHAR_CIRCUMFLEX_ACCENT:94,CHAR_COLON:58,CHAR_COMMA:44,CHAR_DOT:46,CHAR_DOUBLE_QUOTE:34,CHAR_EQUAL:61,CHAR_EXCLAMATION_MARK:33,CHAR_FORM_FEED:12,CHAR_FORWARD_SLASH:47,CHAR_GRAVE_ACCENT:96,CHAR_HASH:35,CHAR_HYPHEN_MINUS:45,CHAR_LEFT_ANGLE_BRACKET:60,CHAR_LEFT_CURLY_BRACE:123,CHAR_LEFT_SQUARE_BRACKET:91,CHAR_LINE_FEED:10,CHAR_NO_BREAK_SPACE:160,CHAR_PERCENT:37,CHAR_PLUS:43,CHAR_QUESTION_MARK:63,CHAR_RIGHT_ANGLE_BRACKET:62,CHAR_RIGHT_CURLY_BRACE:125,CHAR_RIGHT_SQUARE_BRACKET:93,CHAR_SEMICOLON:59,CHAR_SINGLE_QUOTE:39,CHAR_SPACE:32,CHAR_TAB:9,CHAR_UNDERSCORE:95,CHAR_VERTICAL_LINE:124,CHAR_ZERO_WIDTH_NOBREAK_SPACE:65279,SEP:Va.sep,extglobChars(e){return{\"!\":{type:\"negate\",open:\"(?:(?!(?:\",close:"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:15
-msgid "Bubble Size"
-msgstr "バブルサイズ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "arrayExpression"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:20
-msgid "Node Length"
-msgstr "ノードの長さ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "assignmentExpression"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:25
-msgid "Ref/Alt"
-msgstr "参照/代替"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "binaryExpression"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:30
-msgid "Position"
-msgstr "位置"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "interpreterDirective"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:35
-msgid "GC Content"
-msgstr "GC 含量"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "directive"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:40
-msgid "Solid"
-msgstr "ソリッド"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "directiveLiteral"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:47
-msgid "Colors"
-msgstr "色"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "blockStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:52
-msgid "Node:"
-msgstr "ノード:"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "breakStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:61
-msgid "Link:"
-msgstr "リンク:"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "callExpression"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:66
-msgid "Background:"
-msgstr "背景:"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "catchClause"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:77
-msgid "Preset Colors"
-msgstr "プリセットカラー"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "conditionalExpression"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:81
-msgid "Primary"
-msgstr "プライマリ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "continueStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:83
-msgid "Peach"
-msgstr "ピーチ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "debuggerStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:85
-msgid "Mystic"
-msgstr "ミスティック"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "doWhileStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:87
-msgid "Purples"
-msgstr "パープル"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "emptyStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:89
-msgid "Greens"
-msgstr "グリーン"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "expressionStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:91
-msgid "Blues"
-msgstr "ブルー"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "file"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:93
-msgid "Heat"
-msgstr "ヒート"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "forInStatement"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:95
-msgid "GoldenTide"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "forStatement"
+msgstr "セグメント"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "functionDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "functionExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "identifier"
 msgstr "ゴールデンタイド"
 
-#: pangyplot/templates/color-picker.html:97
-msgid "Iris"
-msgstr "アイリス"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "ifStatement"
+msgstr "セグメント"
 
-#: pangyplot/templates/color-picker.html:99
-msgid "Sorbet"
-msgstr "ソルベ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "labeledStatement"
+msgstr "セグメントを選択"
 
-#: pangyplot/templates/color-picker.html:101
-msgid "CoralSky"
-msgstr "コーラルスカイ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "stringLiteral"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:103
-msgid "Viridis"
-msgstr "ヴィリディス"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "numericLiteral"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:105
-msgid "Mako"
-msgstr "マコ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "nullLiteral"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:107
-msgid "Magma"
-msgstr "マグマ"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "booleanLiteral"
+msgstr ""
 
-#: pangyplot/templates/color-picker.html:109
-msgid "Rocket"
-msgstr "ロケット"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "regExpLiteral"
+msgstr ""
 
-#: pangyplot/templates/coordinate-template.html:4
-msgid "Finalize Coordinates"
-msgstr "座標を確定"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "logicalExpression"
+msgstr ""
 
-#: pangyplot/templates/coordinate-template.html:35
-msgid "flanking region"
-msgstr "隣接領域"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "memberExpression"
+msgstr ""
 
-#: pangyplot/templates/coordinate-template.html:44
-msgid "Go"
-msgstr "実行"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "newExpression"
+msgstr ""
 
-#: pangyplot/templates/cytoband-template.html:6
-msgid "Chromosome Selector"
-msgstr "染色体セレクター"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "program"
+msgstr ""
 
-#: pangyplot/templates/cytoband-template.html:26
-msgid "Locus Selector"
-msgstr "遺伝子座セレクター"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectExpression"
+msgstr ""
 
-#: pangyplot/templates/cytoband-template.html:30
-msgid "No known chromosome data."
-msgstr "既知の染色体データがありません。"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectMethod"
+msgstr ""
 
-#: pangyplot/templates/gene-search-template.html:4
-msgid "Select by Gene"
-msgstr "遺伝子で選択"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectProperty"
+msgstr ""
 
-#: pangyplot/templates/gene-search-template.html:10
-msgid "Search genes..."
-msgstr "遺伝子を検索..."
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "restElement"
+msgstr "セグメント"
 
-#: pangyplot/templates/index.html:28
-msgid "PangyPlot"
-msgstr "パンジープロット"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "returnStatement"
+msgstr ""
 
-#: pangyplot/templates/index.html:34
-msgid "Locale"
-msgstr "言語"
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "sequenceExpression"
+msgstr "配列"
 
-#: pangyplot/templates/index.html:70
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "parenthesizedExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "switchCase"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "switchStatement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "thisExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "throwStatement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tryStatement"
+msgstr "セグメント"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "unaryExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "updateExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "variableDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "variableDeclarator"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "whileStatement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "withStatement"
+msgstr "セグメント"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "assignmentPattern"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "arrayPattern"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "arrowFunctionExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classBody"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "exportAllDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "exportDefaultDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "exportNamedDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "exportSpecifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "forOfStatement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "importDeclaration"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "importDefaultSpecifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "importNamespaceSpecifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "importSpecifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "importExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "metaProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classMethod"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectPattern"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "spreadElement"
+msgstr "セグメント"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "super"
+msgstr "サブタイプ："
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "taggedTemplateExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "templateElement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "templateLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "yieldExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "awaitExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "import"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "bigIntLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "exportNamespaceSpecifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "optionalMemberExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "optionalCallExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classAccessorProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classPrivateProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classPrivateMethod"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "privateName"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "staticBlock"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "importAttribute"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "anyTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "arrayTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "booleanTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "booleanLiteralTypeAnnotation"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "nullLiteralTypeAnnotation"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "classImplements"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareClass"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "declareFunction"
+msgstr "選択"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareInterface"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareModule"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareModuleExports"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareTypeAlias"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareOpaqueType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareVariable"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareExportDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declareExportAllDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "declaredPredicate"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "existsTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "functionTypeAnnotation"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "functionTypeParam"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "genericTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "inferredPredicate"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "interfaceExtends"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "interfaceDeclaration"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "interfaceTypeAnnotation"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "intersectionTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "mixedTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "emptyTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "nullableTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "numberLiteralTypeAnnotation"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "numberTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "objectTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectTypeInternalSlot"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectTypeCallProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectTypeIndexer"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectTypeProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "objectTypeSpreadProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "opaqueType"
+msgstr "ノードタイプ"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "qualifiedTypeIdentifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "stringLiteralTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "stringTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "symbolTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "thisTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tupleTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "typeofTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "typeAlias"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "typeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "typeCastExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "typeParameter"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "typeParameterDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "typeParameterInstantiation"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "unionTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "variance"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "voidTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "enumDeclaration"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumBooleanBody"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumNumberBody"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumStringBody"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumSymbolBody"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumBooleanMember"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumNumberMember"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumStringMember"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "enumDefaultedMember"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "indexedAccessType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "optionalIndexedAccessType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxAttribute"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxClosingElement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "jsxElement"
+msgstr "セグメント"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxEmptyExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxExpressionContainer"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxSpreadChild"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxIdentifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxMemberExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxNamespacedName"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxOpeningElement"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxSpreadAttribute"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxText"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "jsxFragment"
+msgstr "セグメント"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxOpeningFragment"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "jsxClosingFragment"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "noop"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "placeholder"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "v8IntrinsicIdentifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "argumentPlaceholder"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "bindExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "decorator"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "doExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "exportDefaultSpecifier"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "recordExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tupleExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "decimalLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "moduleExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "topicReference"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "pipelineTopicExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "pipelineBareFunction"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "pipelinePrimaryTopicReference"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "voidPattern"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsParameterProperty"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsDeclareFunction"
+msgstr "選択"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsDeclareMethod"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsQualifiedName"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsCallSignatureDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsConstructSignatureDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsPropertySignature"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsMethodSignature"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsIndexSignature"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsAnyKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsBooleanKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsBigIntKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsIntrinsicKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsNeverKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsNullKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsNumberKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsObjectKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsStringKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsSymbolKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsUndefinedKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsUnknownKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsVoidKeyword"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsThisType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsFunctionType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsConstructorType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeReference"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypePredicate"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeQuery"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsArrayType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsTupleType"
+msgstr "サブタイプ："
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsOptionalType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsRestType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsNamedTupleMember"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsUnionType"
+msgstr "サブタイプ："
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsIntersectionType"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsConditionalType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsInferType"
+msgstr "ノードタイプ"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsParenthesizedType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeOperator"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsIndexedAccessType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsMappedType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTemplateLiteralType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsLiteralType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsExpressionWithTypeArguments"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsInterfaceDeclaration"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsInterfaceBody"
+msgstr "操作"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeAliasDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsInstantiationExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsAsExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsSatisfiesExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeAssertion"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsEnumBody"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsEnumDeclaration"
+msgstr "選択"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsEnumMember"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsModuleDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsModuleBlock"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsImportType"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsImportEqualsDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsExternalModuleReference"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsNonNullExpression"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsExportAssignment"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsNamespaceExportDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+#, fuzzy
+msgid "tsTypeAnnotation"
+msgstr "遺伝子注釈"
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeParameterInstantiation"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeParameterDeclaration"
+msgstr ""
+
+#: ../../node_modules/playwright/lib/transform/babelBundleImpl.js:9
+msgid "tsTypeParameter"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:8
+msgid ""
+"{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i};fr.formatNames=Object.keys(fr.fullFormats);function"
+" hC(t){return t%4===0&&(t%100!==0||t%400===0)}var "
+"gC=/^(dddd)-(dd)-(dd)$/,vC=[0,31,28,31,30,31,30,31,31,30,31,30,31];function"
+" n0(t){let e=gC.exec(t);if(!e)return!1;let r=+e[1],o=+e[2],n=+e[3];return"
+" o>=1&&o<=12&&n>=1&&n<=(o===2&&hC(r)?29:vC[o])}function "
+"Ey(t,e){if(t&&e)return t>e?1:t<e?-1:0}var "
+"Iy=/^(dd):(dd):(dd(?:.d+)?)(z|([+-])(dd)(?::?(dd))?)?$/i;function "
+"Py(t){return function(r){let o=Iy.exec(r);if(!o)return!1;let "
+"n=+o[1],i=+o[2],a=+o[3],c=o[4],u=o[5]===\"-\"?-1:1,l=+(o[6]||0),d=+(o[7]||0);if(l>23||d>59||t&&!c)return!1;if(n<=23&&i<=59&&a<60)return!0;let"
+" "
+"s=i-d*u,f=n-l*u-(s<0?1:0);return(f===23||f===-1)&&(s===59||s===-1)&&a<61}}function"
+" Oy(t,e){if(!(t&&e))return;let r=new "
+"Date(\"2020-01-01T\"+t).valueOf(),o=new "
+"Date(\"2020-01-01T\"+e).valueOf();if(r&&o)return r-o}function "
+"o0(t,e){if(!(t&&e))return;let r=Iy.exec(t),o=Iy.exec(e);if(r&&o)return "
+"t=r[1]+r[2]+r[3],e=o[1]+o[2]+o[3],t>e?1:t<e?-1:0}var Ty=/t|s/i;function "
+"e0(t){let e=Py(t);return function(o){let n=o.split(Ty);return "
+"n.length===2&&n0(n[0])&&e(n[1])}}function i0(t,e){if(!(t&&e))return;let "
+"r=new Date(t).valueOf(),o=new Date(e).valueOf();if(r&&o)return "
+"r-o}function "
+"a0(t,e){if(!(t&&e))return;let[r,o]=t.split(Ty),[n,i]=e.split(Ty),a=Ey(r,n);if(a!==void"
+" 0)return a||Oy(o,i)}var "
+"_C=//|:/,yC=/^(?:[a-z][a-z0-9+-.]*:)(?:/?/(?:(?:[a-z0-9-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]d|[01]?dd?).){3}(?:25[0-5]|2[0-4]d|[01]?dd?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+.[a-z0-9-._~!$&'()*+,;=:]+)]|(?:(?:25[0-5]|2[0-4]d|[01]?dd?).){3}(?:25[0-5]|2[0-4]d|[01]?dd?)|(?:[a-z0-9-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::d*)?(?:/(?:[a-z0-9-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|/(?:(?:[a-z0-9-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:/(?:[a-z0-9-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:/(?:[a-z0-9-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)(?:?(?:[a-z0-9-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i;function"
+" $C(t){return _C.test(t)&&yC.test(t)}var "
+"t0=/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/gm;function"
+" bC(t){return t0.lastIndex=0,t0.test(t)}var "
+"xC=-(2**31),wC=2**31-1;function kC(t){return "
+"Number.isInteger(t)&&t<=wC&&t>=xC}function SC(t){return "
+"Number.isInteger(t)}function r0(){return!0}var zC=/[^\\]\\Z/;function "
+"IC(t){if(zC.test(t))return!1;try{return new "
+"RegExp(t),!0}catch{return!1}}});var c0=z(Pi=>{\"use "
+"strict\";Object.defineProperty(Pi,\"__esModule\",{value:!0});Pi.formatLimitDefinition=void"
+" 0;var "
+"PC=zy(),Xt=ee(),gn=Xt.operators,ap={formatMaximum:{okStr:\"<=\",ok:gn.LTE,fail:gn.GT},formatMinimum:{okStr:\">=\",ok:gn.GTE,fail:gn.LT},formatExclusiveMaximum:{okStr:\"<\",ok:gn.LT,fail:gn.GTE},formatExclusiveMinimum:{okStr:\">\",ok:gn.GT,fail:gn.LTE}},TC={message:({keyword:t,schemaCode:e})=>(0,Xt.str)"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:8
+msgid ""
+"|~0-9A-Za-z-]+$/,hD=/\\(["
+" -ÿ])/g,gD=/([\\\"])/g,Z0=/^[!#$%&'*+.^_"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:65
+msgid ""
+"{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,fP=\"^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$\";function"
+" hm(){return new RegExp(fP,\"u\")}var "
+"gm=/^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9]).){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,vm=/^(([0"
+"-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-"
+"fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-"
+"fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-"
+"fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0"
+"-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0"
+"-9a-fA-F]{1,4}){1,7}|:))$/,_m=t=>{let e=Pt(t!=null?t:\":\");return new "
+"RegExp("
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:65
+msgid "$ZodCheck"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:67
+#, python-brace-format
+msgid "shape[${x}]._zod.run({ value: input[${x}], issues: [] }, ctx)"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodUnion"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodXor"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodDiscriminatedUnion"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+#, fuzzy
+msgid "$ZodIntersection"
+msgstr "操作"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodTuple"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodRecord"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodMap"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodSet"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodEnum"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodFile"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodTransform"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodOptional"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodExactOptional"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodNullable"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodDefault"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+#, fuzzy
+msgid "$ZodPrefault"
+msgstr "参照/代替"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodNonOptional"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodSuccess"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodCatch"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodNaN"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodPipe"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodCodec"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodReadonly"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodTemplateLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodFunction"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodPromise"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodLazy"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:101
+msgid "$ZodCustom"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodMiniType"
+msgstr "ノードタイプ"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniString"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniStringFormat"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniNumber"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniBoolean"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniBigInt"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodMiniDate"
+msgstr "座標："
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniISODateTime"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniISODate"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniISOTime"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMiniISODuration"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodISODateTime"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodISODate"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodISOTime"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodISODuration"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodError"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodType"
+msgstr "ノードタイプ"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "_ZodString"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodString"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodStringFormat"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodEmail"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodGUID"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodUUID"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodURL"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodEmoji"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNanoID"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCUID"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCUID2"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodULID"
+msgstr "ソリッド"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodXID"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodKSUID"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodIPv4"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMAC"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodIPv6"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCIDRv4"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCIDRv6"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodBase64"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodBase64URL"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodE164"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodJWT"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCustomStringFormat"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNumber"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNumberFormat"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodBoolean"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodBigInt"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodBigIntFormat"
+msgstr "デバッグ情報"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodSymbol"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodUndefined"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNull"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodAny"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodUnknown"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNever"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodVoid"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodDate"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodArray"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodObject"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodUnion"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodXor"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodDiscriminatedUnion"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodIntersection"
+msgstr "操作"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodTuple"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodRecord"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodMap"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodSet"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodEnum"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodFile"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodTransform"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodOptional"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodExactOptional"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNullable"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodDefault"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+#, fuzzy
+msgid "ZodPrefault"
+msgstr "参照/代替"
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNonOptional"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodSuccess"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCatch"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodNaN"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodPipe"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCodec"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodReadonly"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodTemplateLiteral"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodLazy"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodPromise"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodFunction"
+msgstr ""
+
+#: ../../node_modules/playwright-core/lib/mcpBundleImpl/index.js:103
+msgid "ZodCustom"
+msgstr ""
+
+#: ../../node_modules/rollup/dist/es/shared/watch.js:2832
+#: ../../node_modules/rollup/dist/shared/index.js:2828
+msgid ""
+"{|}~',\n"
+"\t  space: ' \\t\\r\\n\\v\\f',\n"
+"\t  upper: 'A-Z',\n"
+"\t  word: 'A-Za-z0-9_',\n"
+"\t  xdigit: 'A-Fa-f0-9'\n"
+"\t};\n"
+"\n"
+"\tconstants$2 = {\n"
+"\t  DEFAULT_MAX_EXTGLOB_RECURSION,\n"
+"\t  MAX_LENGTH: 1024 * 64,\n"
+"\t  POSIX_REGEX_SOURCE,\n"
+"\n"
+"\t  // regular expressions\n"
+"\t  REGEX_BACKSLASH: /\\(?![*+?^${}(|)[]])/g,\n"
+"\t  REGEX_NON_SPECIAL_CHARS: /^[^@![].,$*+?^{}()|\\/]+/,\n"
+"\t  REGEX_SPECIAL_CHARS: /[-*+?.^${}(|)[]]/,\n"
+"\t  REGEX_SPECIAL_CHARS_BACKREF: /(\\?)((W)(3*))/g,\n"
+"\t  REGEX_SPECIAL_CHARS_GLOBAL: /([-*+?.^${}(|)[]])/g,\n"
+"\t  REGEX_REMOVE_BACKSLASH: /(?:[.*?[^\\]]|\\(?=.))/g,\n"
+"\n"
+"\t  // Replace globs with equivalent patterns to reduce parsing time.\n"
+"\t  REPLACEMENTS: {\n"
+"\t    __proto__: null,\n"
+"\t    '***': '*',\n"
+"\t    '**/**': '**',\n"
+"\t    '**/**/**': '**'\n"
+"\t  },\n"
+"\n"
+"\t  // Digits\n"
+"\t  CHAR_0: 48, /* 0 */\n"
+"\t  CHAR_9: 57, /* 9 */\n"
+"\n"
+"\t  // Alphabet chars.\n"
+"\t  CHAR_UPPERCASE_A: 65, /* A */\n"
+"\t  CHAR_LOWERCASE_A: 97, /* a */\n"
+"\t  CHAR_UPPERCASE_Z: 90, /* Z */\n"
+"\t  CHAR_LOWERCASE_Z: 122, /* z */\n"
+"\n"
+"\t  CHAR_LEFT_PARENTHESES: 40, /* ( */\n"
+"\t  CHAR_RIGHT_PARENTHESES: 41, /* ) */\n"
+"\n"
+"\t  CHAR_ASTERISK: 42, /* * */\n"
+"\n"
+"\t  // Non-alphabetic chars.\n"
+"\t  CHAR_AMPERSAND: 38, /* & */\n"
+"\t  CHAR_AT: 64, /* @ */\n"
+"\t  CHAR_BACKWARD_SLASH: 92, /*  */\n"
+"\t  CHAR_CARRIAGE_RETURN: 13, /* \r"
+" */\n"
+"\t  CHAR_CIRCUMFLEX_ACCENT: 94, /* ^ */\n"
+"\t  CHAR_COLON: 58, /* : */\n"
+"\t  CHAR_COMMA: 44, /* , */\n"
+"\t  CHAR_DOT: 46, /* . */\n"
+"\t  CHAR_DOUBLE_QUOTE: 34, /* \" */\n"
+"\t  CHAR_EQUAL: 61, /* = */\n"
+"\t  CHAR_EXCLAMATION_MARK: 33, /* ! */\n"
+"\t  CHAR_FORM_FEED: 12, /* "
+" */\n"
+"\t  CHAR_FORWARD_SLASH: 47, /* / */\n"
+"\t  CHAR_GRAVE_ACCENT: 96, /* "
+msgstr ""
+
+#: ../../pangyplot/templates/index.html:236
 msgid "Waiting for query..."
 msgstr "クエリを待機中..."
 
-#: pangyplot/templates/modal-template.html:43
-msgid "Supporting work"
-msgstr "関連する作業"
-
-#: pangyplot/templates/modal-template.html:105
-msgid "Welcome to PangyPlot"
-msgstr "パンジープロットへようこそ"
-
-#: pangyplot/templates/navbar-template.html:18
-msgid "Docs"
-msgstr "ドキュメント"
-
-#: pangyplot/templates/navbar-template.html:19
-msgid "GitHub"
-msgstr "GitHub"
-
-#: pangyplot/templates/navbar-template.html:20
-msgid "Report Bug"
-msgstr "バグを報告"
-
-#: pangyplot/templates/navbar-template.html:21
-msgid "Info"
-msgstr "情報"
-
-#: pangyplot/templates/navbar-template.html:22
-msgid "Citation"
-msgstr "引用"
-
-#: pangyplot/templates/navbar-template.html:24
-msgid "Example"
-msgstr "例 1"
-
-#: pangyplot/templates/navbar-template.html:25
-msgid "Example 2"
-msgstr "例 2"
-
-#: pangyplot/templates/navbar-template.html:26
-msgid "Example 3"
-msgstr "例 3"
-
-#: pangyplot/templates/tabs/graph-annotation.html:2
-msgid "Gene Annotations"
-msgstr "遺伝子注釈"
-
-#: pangyplot/templates/tabs/graph-annotation.html:7
-msgid "No annotations to show"
-msgstr "表示する注釈がありません"
-
-#: pangyplot/templates/tabs/graph-annotation.html:12
-msgid "Gene Name"
-msgstr "遺伝子名"
-
-#: pangyplot/templates/tabs/graph-annotation.html:13
-msgid "Exons"
-msgstr "エクソン"
-
-#: pangyplot/templates/tabs/graph-annotation.html:15
-#: pangyplot/templates/tabs/search-tab.html:15
-msgid "Color"
-msgstr "色"
-
-#: pangyplot/templates/tabs/graph-annotation.html:27
-msgid "Show All"
-msgstr "すべて表示"
-
-#: pangyplot/templates/tabs/graph-annotation.html:30
-msgid "Hide All"
-msgstr "すべて非表示"
-
-#: pangyplot/templates/tabs/graph-annotation.html:36
-msgid "Set All Colors"
-msgstr "すべての色を設定"
-
-#: pangyplot/templates/tabs/graph-info.html:6
-msgid "Graph Information"
-msgstr "グラフ情報"
-
-#: pangyplot/templates/tabs/graph-info.html:17
-msgid "Debugging Information"
-msgstr "デバッグ情報"
-
-#: pangyplot/templates/tabs/graph-settings.html:3
-msgid "Force Settings"
-msgstr "力の設定"
-
-#: pangyplot/templates/tabs/graph-settings.html:12
-msgid "Render Settings"
-msgstr "レンダー設定"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:5
-msgid "Navigation"
-msgstr "ナビゲーション"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:10
-msgid "Re-center"
-msgstr "中央に戻す"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:15
-msgid "Pan view"
-msgstr "ビュー移動"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:20
-msgid "Zoom in/out"
-msgstr "ズームイン/アウト"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:25
-msgid "Selection"
-msgstr "選択"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:30
-msgid "Select segment"
-msgstr "セグメントを選択"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:35
-msgid "Multi-select"
-msgstr "複数選択"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:40
-msgid "Zoom to selection"
-msgstr "選択範囲にズーム"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:45
-msgid "Interaction"
-msgstr "操作"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:50
-msgid "Move segment"
-msgstr "セグメントを移動"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:56
-msgid "Click"
-msgstr "クリック"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:51
-msgid "Drag"
-msgstr "ドラッグ"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:55
-msgid "Pop open bubble"
-msgstr "バブルを開く"
-
-#: pangyplot/templates/tabs/keyboard-shortcuts.html:60
-msgid "Toggle node fix"
-msgstr "ノード固定の切替"
-
-#: pangyplot/templates/tabs/path-selector.html:2
-msgid "Path Selector"
-msgstr "パスセレクター"
-
-#: pangyplot/templates/tabs/path-selector.html:12
-msgid "Show All Paths"
-msgstr "すべてのパスを表示"
-
-#: pangyplot/templates/tabs/path-selector.html:15
-msgid "Clear"
-msgstr "クリア"
-
-#: pangyplot/templates/tabs/path-selector.html:30
-msgid "Path Animation"
-msgstr "パスアニメーション"
-
-#: pangyplot/templates/tabs/path-selector.html:54
-msgid "Speed"
-msgstr "速度"
-
-#: pangyplot/templates/tabs/path-selector.html:60
-msgid "Current Step"
-msgstr "現在のステップ"
-
-#: pangyplot/templates/tabs/search-tab.html:4
-msgid "Sequence Search"
-msgstr "配列検索"
-
-#: pangyplot/templates/tabs/search-tab.html:8
-msgid "Enter short sequence (ATCGN only)"
-msgstr "短い配列を入力 (ATCGNのみ)"
-
-#: pangyplot/templates/tabs/search-tab.html:9
-msgid "Add"
-msgstr "追加"
-
-#: pangyplot/templates/tabs/search-tab.html:16
-msgid "Sequence"
-msgstr "配列"
-
-#: pangyplot/templates/tabs/search-tab.html:27
-msgid "Node Search"
-msgstr "ノード検索"
-
-#: pangyplot/templates/tabs/search-tab.html:31
-msgid "Enter node ID"
-msgstr "ノードIDを入力"
-
-#: pangyplot/templates/tabs/tool-tab.html:3
-msgid "Settings"
-msgstr "設定"
-
-#: pangyplot/templates/tabs/tool-tab.html:10
-msgid "Anchor on drag"
-msgstr "ドラッグ時に固定"
-
-#: pangyplot/templates/tabs/tool-tab.html:16
-msgid "Smooth GC colors"
-msgstr "GCカラーを滑らかに"
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Segment"
-msgstr "セグメント"
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Bubble"
-msgstr "バブル"
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "ID:"
-msgstr "ID："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Coordinates:"
-msgstr "座標："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Length:"
-msgstr "長さ："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "GC Content:"
-msgstr "GC含量："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "N Count:"
-msgstr "N数："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Sequence:"
-msgstr "配列："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Subtype:"
-msgstr "サブタイプ："
-
-#: pangyplot/templates/tabs/graph-info.html
-msgid "Inside segments:"
-msgstr "内部セグメント："
-
-#: pangyplot/templates/tabs/graph-info.html
+#: ../../pangyplot/templates/index.html:310
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:22
 msgid "Chain:"
 msgstr "チェーン："
 
-#: pangyplot/templates/tabs/graph-info.html
+#: ../../pangyplot/templates/index.html:311
+msgid "Flip Chain"
+msgstr "チェーンを反転"
+
+#: ../../pangyplot/templates/index.html:312
+msgid "Pop All Bubbles"
+msgstr "すべてのバブルを展開"
+
+#: ../../pangyplot/templates/index.html:313
+msgid "Add Custom Annotation"
+msgstr "カスタム注釈を追加"
+
+#: ../../pangyplot/templates/index.html:314
+msgid "Annotation name:"
+msgstr "注釈名："
+
+#: ../../pangyplot/templates/index.html:315
+msgid "Selection:"
+msgstr "選択："
+
+#: ../../pangyplot/templates/index.html:316
+msgid "Pop Highlighted"
+msgstr "選択を展開"
+
+#: ../../pangyplot/templates/index.html:317
+msgid "Export GFA"
+msgstr "GFA をエクスポート"
+
+#: ../../pangyplot/templates/index.html:318
+msgid "Export:"
+msgstr "エクスポート："
+
+#: ../../pangyplot/templates/index.html:319
+msgid "Download PNG"
+msgstr "PNG をダウンロード"
+
+#: ../../pangyplot/templates/index.html:320
+msgid "Download SVG"
+msgstr "SVG をダウンロード"
+
+#: ../../pangyplot/templates/index.html:321
+msgid "chains"
+msgstr "チェーン"
+
+#: ../../pangyplot/templates/index.html:322
+msgid "junctions"
+msgstr "接合点"
+
+#: ../../pangyplot/templates/index.html:323
+msgid "range"
+msgstr "範囲"
+
+#: ../../pangyplot/templates/index.html:324
+msgid "total size"
+msgstr "合計サイズ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:4
+msgid "Color Style"
+msgstr "カラースタイル"
+
+#: ../../pangyplot/templates/sections/color-picker.html:10
+msgid "Node Type"
+msgstr "ノードタイプ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:15
+msgid "Bubble Size"
+msgstr "バブルサイズ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:20
+msgid "Node Length"
+msgstr "ノードの長さ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:25
+msgid "Ref/Alt"
+msgstr "参照/代替"
+
+#: ../../pangyplot/templates/sections/color-picker.html:30
+msgid "Position"
+msgstr "位置"
+
+#: ../../pangyplot/templates/sections/color-picker.html:35
+msgid "GC Content"
+msgstr "GC 含量"
+
+#: ../../pangyplot/templates/sections/color-picker.html:40
+msgid "Solid"
+msgstr "ソリッド"
+
+#: ../../pangyplot/templates/sections/color-picker.html:47
+msgid "Colors"
+msgstr "色"
+
+#: ../../pangyplot/templates/sections/color-picker.html:52
+msgid "Node:"
+msgstr "ノード:"
+
+#: ../../pangyplot/templates/sections/color-picker.html:61
+msgid "Link:"
+msgstr "リンク:"
+
+#: ../../pangyplot/templates/sections/color-picker.html:66
+msgid "Background:"
+msgstr "背景:"
+
+#: ../../pangyplot/templates/sections/color-picker.html:77
+msgid "Preset Colors"
+msgstr "プリセットカラー"
+
+#: ../../pangyplot/templates/sections/color-picker.html:81
+msgid "Primary"
+msgstr "プライマリ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:83
+msgid "Peach"
+msgstr "ピーチ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:85
+msgid "Mystic"
+msgstr "ミスティック"
+
+#: ../../pangyplot/templates/sections/color-picker.html:87
+msgid "Purples"
+msgstr "パープル"
+
+#: ../../pangyplot/templates/sections/color-picker.html:89
+msgid "Greens"
+msgstr "グリーン"
+
+#: ../../pangyplot/templates/sections/color-picker.html:91
+msgid "Blues"
+msgstr "ブルー"
+
+#: ../../pangyplot/templates/sections/color-picker.html:93
+msgid "Heat"
+msgstr "ヒート"
+
+#: ../../pangyplot/templates/sections/color-picker.html:95
+msgid "GoldenTide"
+msgstr "ゴールデンタイド"
+
+#: ../../pangyplot/templates/sections/color-picker.html:97
+msgid "Iris"
+msgstr "アイリス"
+
+#: ../../pangyplot/templates/sections/color-picker.html:99
+msgid "Sorbet"
+msgstr "ソルベ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:101
+msgid "CoralSky"
+msgstr "コーラルスカイ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:103
+msgid "Viridis"
+msgstr "ヴィリディス"
+
+#: ../../pangyplot/templates/sections/color-picker.html:105
+msgid "Mako"
+msgstr "マコ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:107
+msgid "Magma"
+msgstr "マグマ"
+
+#: ../../pangyplot/templates/sections/color-picker.html:109
+msgid "Rocket"
+msgstr "ロケット"
+
+#: ../../pangyplot/templates/sections/coordinate-template.html:4
+msgid "Finalize Coordinates"
+msgstr "座標を確定"
+
+#: ../../pangyplot/templates/sections/coordinate-template.html:35
+msgid "flanking region"
+msgstr "隣接領域"
+
+#: ../../pangyplot/templates/sections/coordinate-template.html:44
+msgid "Go"
+msgstr "実行"
+
+#: ../../pangyplot/templates/sections/cytoband-template.html:6
+msgid "Chromosome Selector"
+msgstr "染色体セレクター"
+
+#: ../../pangyplot/templates/sections/cytoband-template.html:17
+msgid "Select..."
+msgstr "選択..."
+
+#: ../../pangyplot/templates/sections/cytoband-template.html:26
+msgid "Locus Selector"
+msgstr "遺伝子座セレクター"
+
+#: ../../pangyplot/templates/sections/cytoband-template.html:30
+msgid "No known chromosome data."
+msgstr "既知の染色体データがありません。"
+
+#: ../../pangyplot/templates/sections/gene-search-template.html:4
+msgid "Select by Gene"
+msgstr "遺伝子で選択"
+
+#: ../../pangyplot/templates/sections/gene-search-template.html:10
+msgid "Search genes..."
+msgstr "遺伝子を検索..."
+
+#: ../../pangyplot/templates/sections/modal-template.html:43
+msgid "Supporting work"
+msgstr "関連する作業"
+
+#: ../../pangyplot/templates/sections/modal-template.html:93
+msgid "Welcome to PangyPlot"
+msgstr "パンジープロットへようこそ"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:12
+msgid "PangyPlot"
+msgstr "パンジープロット"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:18
+msgid "Locale"
+msgstr "言語"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:40
+msgid "Docs"
+msgstr "ドキュメント"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:41
+msgid "GitHub"
+msgstr "GitHub"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:42
+msgid "Report Bug"
+msgstr "バグを報告"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:43
+msgid "Info"
+msgstr "情報"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:44
+msgid "Citation"
+msgstr "引用"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:46
+msgid "Example"
+msgstr "例 1"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:47
+msgid "Example 2"
+msgstr "例 2"
+
+#: ../../pangyplot/templates/sections/navbar-template.html:48
+msgid "Example 3"
+msgstr "例 3"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:2
+msgid "Gene Annotations"
+msgstr "遺伝子注釈"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:7
+msgid "No annotations to show"
+msgstr "表示する注釈がありません"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:13
+msgid "Gene Name"
+msgstr "遺伝子名"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:14
+msgid "Exons"
+msgstr "エクソン"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:16
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:15
+msgid "Color"
+msgstr "色"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:28
+msgid "Show All"
+msgstr "すべて表示"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:31
+msgid "Hide All"
+msgstr "すべて非表示"
+
+#: ../../pangyplot/templates/sections/tabs/graph-annotation.html:37
+msgid "Set All Colors"
+msgstr "すべての色を設定"
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:6
+msgid "Graph Information"
+msgstr "グラフ情報"
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:12
+msgid "Segment"
+msgstr "セグメント"
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:13
+msgid "Bubble"
+msgstr "バブル"
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:14
+msgid "ID:"
+msgstr "ID："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:15
+msgid "Coordinates:"
+msgstr "座標："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:16
+msgid "Length:"
+msgstr "長さ："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:17
+msgid "GC Content:"
+msgstr "GC含量："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:18
+msgid "N Count:"
+msgstr "N数："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:19
+msgid "Sequence:"
+msgstr "配列："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:20
+msgid "Subtype:"
+msgstr "サブタイプ："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:21
+msgid "Inside segments:"
+msgstr "内部セグメント："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:23
 msgid "Parent:"
 msgstr "親："
 
-#: pangyplot/templates/tabs/graph-info.html
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:24
 msgid "Siblings:"
 msgstr "隣接："
+
+#: ../../pangyplot/templates/sections/tabs/graph-info.html:35
+msgid "Debugging Information"
+msgstr "デバッグ情報"
+
+#: ../../pangyplot/templates/sections/tabs/graph-settings.html:3
+msgid "Force Settings"
+msgstr "力の設定"
+
+#: ../../pangyplot/templates/sections/tabs/graph-settings.html:12
+msgid "Render Settings"
+msgstr "レンダー設定"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:5
+msgid "Navigation"
+msgstr "ナビゲーション"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:10
+msgid "Pan view"
+msgstr "ビュー移動"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:11
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:26
+msgid "Drag"
+msgstr "ドラッグ"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:15
+msgid "Zoom in/out"
+msgstr "ズームイン/アウト"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:16
+msgid "Scroll"
+msgstr "スクロール"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:20
+msgid "Selection"
+msgstr "選択"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:25
+msgid "Select"
+msgstr "選択"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:30
+msgid "Clear selection"
+msgstr "選択を解除"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:35
+msgid "Interaction"
+msgstr "操作"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:40
+msgid "Bubble pop"
+msgstr "バブルを展開"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:41
+msgid "Click"
+msgstr "クリック"
+
+#: ../../pangyplot/templates/sections/tabs/keyboard-shortcuts.html:45
+msgid "Undo bubble pop"
+msgstr "展開を取り消し"
+
+#: ../../pangyplot/templates/sections/tabs/path-selector.html:2
+msgid "Path Selector"
+msgstr "パスセレクター"
+
+#: ../../pangyplot/templates/sections/tabs/path-selector.html:5
+msgid "Path selector is under development"
+msgstr "パスセレクターは開発中です"
+
+#: ../../pangyplot/templates/sections/tabs/path-selector.html:25
+msgid "Path Animation"
+msgstr "パスアニメーション"
+
+#: ../../pangyplot/templates/sections/tabs/path-selector.html:49
+msgid "Speed"
+msgstr "速度"
+
+#: ../../pangyplot/templates/sections/tabs/path-selector.html:55
+msgid "Current Step"
+msgstr "現在のステップ"
+
+#: ../../pangyplot/templates/sections/tabs/path-selector.html:60
+msgid "Object"
+msgstr "オブジェクト"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:4
+msgid "Sequence Search"
+msgstr "配列検索"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:8
+msgid "Enter short sequence (ATCGN only)"
+msgstr "短い配列を入力 (ATCGNのみ)"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:9
+msgid "Add"
+msgstr "追加"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:16
+msgid "Sequence"
+msgstr "配列"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:27
+msgid "Node Search"
+msgstr "ノード検索"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:30
+msgid "Node search is under development"
+msgstr "ノード検索は開発中です"
+
+#: ../../pangyplot/templates/sections/tabs/search-tab.html:34
+msgid "Enter node ID"
+msgstr "ノードIDを入力"
+
+#: ../../pangyplot/templates/sections/tabs/tool-tab.html:3
+msgid "Settings"
+msgstr "設定"
+
+#~ msgid "Re-center"
+#~ msgstr "中央に戻す"
+
+#~ msgid "Multi-select"
+#~ msgstr "複数選択"
+
+#~ msgid "Zoom to selection"
+#~ msgstr "選択範囲にズーム"
+
+#~ msgid "Move segment"
+#~ msgstr "セグメントを移動"
+
+#~ msgid "Pop open bubble"
+#~ msgstr "バブルを開く"
+
+#~ msgid "Toggle node fix"
+#~ msgstr "ノード固定の切替"
+
+#~ msgid "Show All Paths"
+#~ msgstr "すべてのパスを表示"
+
+#~ msgid "Clear"
+#~ msgstr "クリア"
+
+#~ msgid "Anchor on drag"
+#~ msgstr "ドラッグ時に固定"
+
+#~ msgid "Smooth GC colors"
+#~ msgstr "GCカラーを滑らかに"
 

@@ -26,6 +26,9 @@
 
 <div class="tab-header">{{ _('Node Search') }}</div>
 <hr>
+<div class="no-data" style="margin-bottom: 8px; font-size: x-small;">
+    <i class="fa-solid fa-triangle-exclamation"></i> {{ _('Node search is under development') }}
+</div>
 
 <div class="flex-row">
     <input type="text" id="node-search-bar" class="flex-4" placeholder="{{ _('Enter node ID') }}" />
@@ -34,10 +37,6 @@
 
 <div class="flex-row">
     <div id="node-search-results"></div>
-</div>
-
-<div class="no-data" style="margin-top: 8px; font-size: x-small;">
-    <i class="fa-solid fa-triangle-exclamation"></i> {{ _('Search is under development') }}
 </div>
 
 <script src="{{url_for('static', filename='js/ui/sections/tabs/sequence-search.js')}}"></script>

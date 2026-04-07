@@ -3,6 +3,7 @@
 
 import { state } from '../../state.js';
 import { formatBp } from '@format-utils';
+import { t } from '@app-state';
 import { getContainer } from '../../detail/model/model-manager.js';
 import { BubbleObject } from '../../detail/model/bubble-object.js';
 
@@ -14,7 +15,7 @@ function ensurePopup() {
     popupEl.id = 'selection-popup';
     popupEl.innerHTML = `
         <div class="sp-info"></div>
-        <button class="sp-button sp-gfa-button">Export GFA</button>
+        <button class="sp-button sp-gfa-button">${t('Export GFA')}</button>
     `;
     popupEl.style.cssText = `
         position: fixed;
@@ -189,10 +190,10 @@ export function showSelectionPopup(screenX, screenY) {
 
     const rangeText = `${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}`;
     const lines = [];
-    if (count > 0) lines.push(row('chains', count));
-    if (state.selectedObjects.size > 0) lines.push(row('junctions', state.selectedObjects.size));
-    if (range) lines.push(row('range', rangeText, '#5bb8f0'));
-    if (totalSize > 0) lines.push(row('total size', formatBp(totalSize, { unit: true })));
+    if (count > 0) lines.push(row(t('chains'), count));
+    if (state.selectedObjects.size > 0) lines.push(row(t('junctions'), state.selectedObjects.size));
+    if (range) lines.push(row(t('range'), rangeText, '#5bb8f0'));
+    if (totalSize > 0) lines.push(row(t('total size'), formatBp(totalSize, { unit: true })));
     info.innerHTML = lines.join('<br>');
 
     el.style.display = 'block';
