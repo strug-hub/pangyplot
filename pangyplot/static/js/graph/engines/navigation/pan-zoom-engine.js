@@ -8,6 +8,7 @@ import { resizeCanvas, fitToScreen } from '../../render/viewport.js';
 import { scheduleViewportPublish } from '../../ui/viewport-sync.js';
 import { pauseForInteraction, resumeAfterInteraction } from '../force-interaction-gate.js';
 import { isAnnotationBadgeAt } from '../annotation-label-drag-engine.js';
+import { clearSelectionSummary } from '@ui/sections/tabs/information-panel.js';
 
 export function setupPanZoom(canvas) {
     // --- Pan & drag ---
@@ -21,6 +22,7 @@ export function setupPanZoom(canvas) {
         if ((state.selectedChains.size > 0 || state.selectedObjects.size > 0) && !state.hoveredChain) {
             state.selectedChains.clear();
             state.selectedObjects.clear();
+            clearSelectionSummary();
             scheduleFrame();
         }
         state.isDragging = true;

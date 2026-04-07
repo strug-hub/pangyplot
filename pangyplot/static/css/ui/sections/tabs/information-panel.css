@@ -17,6 +17,18 @@
     padding: 12px 0;
 }
 
+#info-selection-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--lighter-green);
+}
+
+#info-selection-container.hidden {
+    display: none;
+}
+
 /* Type header: icon + label with subtle underline */
 .info-type-header {
     font-weight: 700;

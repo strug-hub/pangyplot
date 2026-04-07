@@ -6,9 +6,8 @@ import { hitTestChains, chainsInRect, hitTestBubbleCircles } from '../../detail/
 import { popBubbleCircleV2 } from '../../detail/model/pop-handler.js';
 import { getAllObjects } from '../../detail/model/model-manager.js';
 import { PolychainSegment } from '../../detail/model/polychain-segment.js';
-import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
+import { updateSelectionInfo, updateSelectionSummary, clearSelectionSummary } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
-import { showSelectionPopup, hideSelectionPopup } from './selection-popup.js';
 import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
 
 export function setupMultiSelection(canvas) {
@@ -69,7 +68,7 @@ export function setupMultiSelection(canvas) {
     canvas.addEventListener('mousedown', e => {
         if (!e.shiftKey || !state.detailData) return;
         isSelecting = true;
-        hideSelectionPopup();
+        clearSelectionSummary();
         const rect = canvas.getBoundingClientRect();
         const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
@@ -114,13 +113,11 @@ export function setupMultiSelection(canvas) {
     window.addEventListener('mouseup', e => {
         if (!isSelecting) return;
         isSelecting = false;
-        const endScreenX = e.clientX;
-        const endScreenY = e.clientY;
         state.selectionBox = null;
         if (state.selectedChains.size > 0 || state.selectedObjects.size > 0) {
-            showSelectionPopup(endScreenX, endScreenY);
+            updateSelectionSummary();
         } else {
-            hideSelectionPopup();
+            clearSelectionSummary();
         }
         scheduleFrame();
     });
@@ -134,7 +131,7 @@ export function setupMultiSelection(canvas) {
             state.selectedObjects.clear();
             state.selectionBox = null;
             isSelecting = false;
-            hideSelectionPopup();
+            clearSelectionSummary();
             changed = true;
         }
         if (state.selectedNode) {

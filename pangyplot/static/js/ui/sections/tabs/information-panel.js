@@ -1,8 +1,10 @@
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
 import { formatBp } from '@format-utils';
+import { state } from '../../../graph/state.js';
 
 const panel = document.getElementById('info-selected-container');
+const selectionPanel = document.getElementById('info-selection-container');
 const debugOuterContainer = document.getElementById('info-debug-container-outer');
 const debugContainer = document.getElementById('info-debug-container');
 
@@ -204,6 +206,112 @@ panel.addEventListener('click', async (e) => {
     setTimeout(() => target.classList.remove('info-copy-flash'), 200);
   } catch {}
 });
+
+function getSelectionBpRange() {
+    let minBp = Infinity, maxBp = -Infinity;
+    for (const [chain, clip] of state.selectedChains) {
+        if (chain.bpStart == null || chain.bpEnd == null) continue;
+        const chainBpSpan = chain.bpEnd - chain.bpStart;
+        if (chainBpSpan <= 0) continue;
+        const reversed = chain.bpHead != null && chain.bpTail != null &&
+            chain.bpHead > chain.bpTail;
+        let bp0, bp1;
+        if (reversed) {
+            bp0 = chain.bpStart + (1 - clip.tEnd) * chainBpSpan;
+            bp1 = chain.bpStart + (1 - clip.tStart) * chainBpSpan;
+        } else {
+            bp0 = chain.bpStart + clip.tStart * chainBpSpan;
+            bp1 = chain.bpStart + clip.tEnd * chainBpSpan;
+        }
+        if (bp0 < minBp) minBp = bp0;
+        if (bp1 > maxBp) maxBp = bp1;
+    }
+    if (!isFinite(minBp) || !isFinite(maxBp)) return null;
+    return { bpStart: minBp, bpEnd: maxBp };
+}
+
+export function updateSelectionSummary() {
+    const count = state.selectedChains.size;
+    const objCount = state.selectedObjects.size;
+    if (count === 0 && objCount === 0) {
+        selectionPanel.classList.add('hidden');
+        selectionPanel.innerHTML = '';
+        return;
+    }
+
+    selectionPanel.innerHTML = '';
+    selectionPanel.classList.remove('hidden');
+
+    const header = document.createElement('div');
+    header.className = 'info-type-header';
+    header.textContent = t.selection || 'Selection';
+    selectionPanel.appendChild(header);
+
+    if (count > 0) {
+        const row = document.createElement('div');
+        row.className = 'info-row';
+        const label = document.createElement('div');
+        label.className = 'info-label';
+        label.textContent = t.chains || 'chains';
+        const val = document.createElement('div');
+        val.className = 'info-value';
+        val.textContent = count;
+        row.append(label, val);
+        selectionPanel.appendChild(row);
+    }
+
+    if (objCount > 0) {
+        const row = document.createElement('div');
+        row.className = 'info-row';
+        const label = document.createElement('div');
+        label.className = 'info-label';
+        label.textContent = t.segment || 'Segment';
+        const val = document.createElement('div');
+        val.className = 'info-value';
+        val.textContent = objCount;
+        row.append(label, val);
+        selectionPanel.appendChild(row);
+    }
+
+    const range = getSelectionBpRange();
+    if (range) {
+        const chr = state.chromosome || '';
+        const rangeText = `${chr}:${formatBp(range.bpStart)}\u2013${formatBp(range.bpEnd)}`;
+        const row = document.createElement('div');
+        row.className = 'info-row';
+        const label = document.createElement('div');
+        label.className = 'info-label';
+        label.textContent = t.range || 'range';
+        const val = document.createElement('div');
+        val.className = 'info-value';
+        val.textContent = rangeText;
+        row.append(label, val);
+        selectionPanel.appendChild(row);
+    }
+
+    let totalSize = 0;
+    for (const chain of state.selectedChains.keys()) {
+        if (chain.length) totalSize += chain.length;
+    }
+    if (totalSize > 0) {
+        const row = document.createElement('div');
+        row.className = 'info-row';
+        const label = document.createElement('div');
+        label.className = 'info-label';
+        label.textContent = t.totalSize || 'total size';
+        const val = document.createElement('div');
+        val.className = 'info-value';
+        val.textContent = formatBp(totalSize, { unit: true });
+        row.append(label, val);
+        selectionPanel.appendChild(row);
+    }
+
+}
+
+export function clearSelectionSummary() {
+    selectionPanel.classList.add('hidden');
+    selectionPanel.innerHTML = '';
+}
 
 export function updateDebugInformation(status) {
 
