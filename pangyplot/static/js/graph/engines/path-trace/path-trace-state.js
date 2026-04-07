@@ -8,7 +8,7 @@ export let subpaths = [];
 
 /**
  * Cached decoded paths per sample.
- * Map<sampleName, Array<{ meta: object, steps: Array<{segId, direction}> }>>
+ * Map<sampleName, Array<steps>>
  */
 export let decodedPaths = new Map();
 
@@ -21,26 +21,23 @@ export let activeSubpath = null;
  * chainOverlays: Map<chainId, { tRanges: Array<{start, end}> }>
  * kinkHighlights: Set<SimObject>
  * bubbleHighlights: Set<SimObject>
- * waypoints: Array<{dist, pos, action, ...}>
+ * frames: Array<{type, ...}> — animation frame sequence
  */
 export let renderData = null;
 
 // Animation
-/** @type {Array} Waypoints for animation (from renderData.waypoints). */
-export let waypoints = [];
+/** @type {Array} Animation frames from renderData.frames. */
+export let frames = [];
 
-/** @type {number} Current distance along the waypoint path (-1 = not started). */
-export let cursorDist = -1;
+/** @type {number} Current frame index (-1 = not started). */
+export let currentFrame = -1;
 
-/** @type {Set} Objects currently lit up by animation. */
-export let activeHighlights = new Set();
-
-/** @type {number} Current chain overlay progress: chainId → tCurrent. */
-export let chainProgress = new Map();
+/** @type {number} Number of trailing frames to show in the tail. */
+export const TAIL_LENGTH = 8;
 
 export let isPlaying = false;
 export let playForward = true;
-export let speed = 5; // layout-space units per frame
+export let speed = 1; // multiplier: 1x = one frame per 500ms
 
 // ---------------------------------------------------------------
 // Mutators
@@ -61,10 +58,10 @@ export function setActiveSubpath(sp) { activeSubpath = sp; }
 
 export function setRenderData(rd) {
     renderData = rd;
-    waypoints = rd?.waypoints || [];
+    frames = rd?.frames || [];
 }
 
-export function setCursorDist(d) { cursorDist = d; }
+export function setCurrentFrame(f) { currentFrame = f; }
 
 export function setIsPlaying(p) { isPlaying = p; }
 
@@ -72,24 +69,13 @@ export function setPlayForward(f) { playForward = f; }
 
 export function setSpeed(s) { speed = s; }
 
-export function clearActiveHighlights() {
-    activeHighlights = new Set();
-    chainProgress = new Map();
-}
-
-export function addHighlight(obj) { activeHighlights.add(obj); }
-
-export function setChainProgress(chainId, t) { chainProgress.set(chainId, t); }
-
 export function clearPathTrace() {
     activeSample = null;
     subpaths = [];
     decodedPaths = new Map();
     activeSubpath = null;
     renderData = null;
-    waypoints = [];
-    cursorDist = -1;
-    activeHighlights = new Set();
-    chainProgress = new Map();
+    frames = [];
+    currentFrame = -1;
     isPlaying = false;
 }

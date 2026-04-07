@@ -78,16 +78,17 @@ Instead of server-side bubble annotation, the resolver uses **registered boundar
 - Steps between boundaries are interior to a chain — implicitly covered by the chain overlay
 - When bubbles are popped, split segments register additional boundaries, giving finer resolution
 
-### Waypoint Animation
+### Frame-Based Animation
 
-The animation cursor moves at constant layout-space speed along a **waypoint list**:
+The animation steps through resolved visual objects one at a time:
 
-- Waypoints are built during resolution: spine polyline points + bubble positions + junction positions
-- Each waypoint has `{dist, pos, action, chainId, t, ...}` where `dist` is cumulative euclidean distance
-- Cursor interpolates between waypoints via binary search + lerp
-- Progressive rendering: chain overlays grow from entry to cursor's current t-position
-- Active highlights (bubbles, junctions) accumulate as cursor passes them
-- Fading tail trail behind cursor using opacity buckets
+- **Frames**: ordered list of `{type: 'chain'|'junction', ...}` built during resolution
+- Each chain traversal = one frame (or split into partial frames around popped bubbles)
+- Each junction = one frame
+- Timer-based: one frame per 500ms at 1x speed, slider scales rate (2^slider)
+- **Tail**: previous frames render at quadratic-falloff opacity (TAIL_LENGTH = 8 frames)
+- Current frame renders at full brightness, creating a "glow moving through the graph" effect
+- Step display shows `currentFrame / totalFrames`
 
 ## Key Files (Backend)
 

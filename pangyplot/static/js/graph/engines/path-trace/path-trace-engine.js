@@ -114,7 +114,7 @@ async function _fetchAndDecodePath(sample, fileIndex) {
 
 /**
  * Resolve the active subpath using boundary-based resolution.
- * Produces render data (chain overlays, highlights) and animation waypoints.
+ * Produces render data (chain overlays, highlights) and animation frames.
  */
 export function resolveAndBuild(subpath) {
     if (!subpath?._steps) {

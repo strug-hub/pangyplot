@@ -1,12 +1,14 @@
-// Path trace animation: distance-based cursor along waypoint list.
+// Path trace animation: timer-based frame stepping through resolved objects.
 
 import {
-    waypoints, cursorDist, isPlaying, playForward, speed,
-    activeHighlights, chainProgress,
-    setCursorDist, setIsPlaying, setPlayForward, setSpeed,
-    clearActiveHighlights, addHighlight, setChainProgress,
+    frames, currentFrame, isPlaying, playForward, speed,
+    setCurrentFrame, setIsPlaying, setPlayForward, setSpeed,
 } from './path-trace-state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
+
+const BASE_INTERVAL_MS = 500; // ms per frame at 1x speed
+let _elapsed = 0;
+let _lastTime = 0;
 
 // ---------------------------------------------------------------
 // Controls
@@ -15,6 +17,9 @@ import { scheduleFrame } from '../../utils/frame-scheduler.js';
 export function playAnimation() {
     setPlayForward(true);
     setIsPlaying(true);
+    _lastTime = performance.now();
+    _elapsed = 0;
+    if (currentFrame < 0) setCurrentFrame(0);
     scheduleFrame();
 }
 
@@ -23,32 +28,25 @@ export function pauseAnimation() {
 }
 
 export function frameAdvance() {
-    if (waypoints.length === 0) return;
-    const totalDist = waypoints[waypoints.length - 1].dist;
-    const step = Math.max(1, totalDist / waypoints.length);
-    const newDist = Math.min(cursorDist < 0 ? step : cursorDist + step, totalDist);
-    setCursorDist(newDist);
-    _applyWaypointActions(newDist);
+    if (frames.length === 0) return;
+    const next = currentFrame < 0 ? 0 : Math.min(currentFrame + 1, frames.length - 1);
+    setCurrentFrame(next);
     _updateStepDisplay();
     scheduleFrame();
 }
 
 export function frameBackward() {
-    if (waypoints.length === 0) return;
-    const totalDist = waypoints[waypoints.length - 1].dist;
-    const step = Math.max(1, totalDist / waypoints.length);
-    const newDist = Math.max(cursorDist - step, 0);
-    setCursorDist(newDist);
-    // Rebuild highlights up to this distance
-    _rebuildHighlightsUpTo(newDist);
+    if (frames.length === 0) return;
+    const prev = Math.max(currentFrame - 1, 0);
+    setCurrentFrame(prev);
     _updateStepDisplay();
     scheduleFrame();
 }
 
 export function resetAnimation() {
     setIsPlaying(false);
-    setCursorDist(-1);
-    clearActiveHighlights();
+    setCurrentFrame(-1);
+    _elapsed = 0;
     _updateStepDisplay();
     scheduleFrame();
 }
@@ -65,93 +63,36 @@ export function changeAnimationSpeed(speedValue) {
  * Advance animation state. Call each frame before drawPathTrace().
  */
 export function tickPathAnimation() {
-    if (waypoints.length === 0) return;
+    if (frames.length === 0) return;
     if (!isPlaying) return;
 
     scheduleFrame();
 
-    const totalDist = waypoints[waypoints.length - 1].dist;
-    const delta = playForward ? speed : -speed;
-    let newDist = cursorDist < 0 ? 0 : cursorDist + delta;
+    const now = performance.now();
+    const dt = now - _lastTime;
+    _lastTime = now;
+    _elapsed += dt;
 
-    if (newDist >= totalDist) {
-        newDist = totalDist;
-        pauseAnimation();
-    }
-    if (newDist <= 0) {
-        newDist = 0;
-        pauseAnimation();
-    }
+    const interval = BASE_INTERVAL_MS / speed;
 
-    setCursorDist(newDist);
-    _applyWaypointActions(newDist);
-    _updateStepDisplay();
-}
+    if (_elapsed >= interval) {
+        _elapsed -= interval;
 
-// ---------------------------------------------------------------
-// Waypoint action processing
-// ---------------------------------------------------------------
+        const delta = playForward ? 1 : -1;
+        let next = currentFrame + delta;
 
-/**
- * Apply waypoint actions up to the given distance.
- * Adds highlights and updates chain progress incrementally.
- */
-function _applyWaypointActions(dist) {
-    for (const wp of waypoints) {
-        if (wp.dist > dist) break;
-
-        if (wp.action === 'junction' && wp.object) {
-            addHighlight(wp.object);
+        if (next >= frames.length) {
+            next = frames.length - 1;
+            pauseAnimation();
         }
-        if (wp.action === 'bubble' && wp.bubble) {
-            addHighlight(wp.bubble);
+        if (next < 0) {
+            next = 0;
+            pauseAnimation();
         }
-        // Track chain progress for progressive overlay rendering
-        if (wp.chainId && wp.t != null) {
-            setChainProgress(wp.chainId, wp.t);
-        }
+
+        setCurrentFrame(next);
+        _updateStepDisplay();
     }
-}
-
-/**
- * Rebuild all highlights from scratch up to a given distance.
- * Used when going backwards (can't incrementally remove).
- */
-function _rebuildHighlightsUpTo(dist) {
-    clearActiveHighlights();
-    _applyWaypointActions(dist);
-}
-
-// ---------------------------------------------------------------
-// Cursor position interpolation
-// ---------------------------------------------------------------
-
-/**
- * Get the interpolated cursor position at the current distance.
- * @returns {{ x: number, y: number } | null}
- */
-export function getCursorPosition() {
-    if (cursorDist < 0 || waypoints.length === 0) return null;
-
-    // Binary search for the waypoint just before cursorDist
-    let lo = 0, hi = waypoints.length - 1;
-    while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        if (waypoints[mid].dist <= cursorDist) lo = mid;
-        else hi = mid - 1;
-    }
-
-    const wp = waypoints[lo];
-    const next = waypoints[lo + 1];
-
-    if (!next || wp.dist === next.dist) return wp.pos;
-
-    // Lerp between wp and next
-    const frac = (cursorDist - wp.dist) / (next.dist - wp.dist);
-    return {
-        x: wp.pos.x + frac * (next.pos.x - wp.pos.x),
-        y: wp.pos.y + frac * (next.pos.y - wp.pos.y),
-    };
 }
 
 // ---------------------------------------------------------------
@@ -162,14 +103,12 @@ function _updateStepDisplay() {
     const el = document.getElementById('path-current-step');
     if (!el) return;
 
-    if (cursorDist < 0 || waypoints.length === 0) {
+    if (currentFrame < 0 || frames.length === 0) {
         el.textContent = 'N/A';
         return;
     }
 
-    const totalDist = waypoints[waypoints.length - 1].dist;
-    const pct = totalDist > 0 ? Math.round(100 * cursorDist / totalDist) : 0;
-    el.textContent = `${pct}%`;
+    el.textContent = `${currentFrame + 1} / ${frames.length}`;
 }
 
 /**
@@ -196,8 +135,7 @@ export function setupAnimationUi() {
             const newSpeed = Math.pow(2, val);
             changeAnimationSpeed(newSpeed);
             if (speedLabel) {
-                const sign = val < 0 ? '-' : '+';
-                speedLabel.textContent = `${sign}${Math.pow(2, Math.abs(val))}x`;
+                speedLabel.textContent = `${newSpeed}x`;
             }
         });
     }
