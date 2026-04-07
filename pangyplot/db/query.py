@@ -377,15 +377,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
                     layout_min_x=None, layout_max_x=None):
     """Single-request detail tile: chains + inline subgraphs for popped chains.
 
-    The backend decides which chains to pop based on screen width.
-    Uses ``_layout_span`` (layout-coordinate extent) converted to pixels
-    via a global bp→layout ratio, so chains without reference coordinates
-    (e.g. child chains from decomposed superbubbles) are handled correctly.
-
-    When ``layout_min_x``/``layout_max_x`` are provided, top-level bubbles
-    are queried by layout x-coordinate instead of bp→step conversion, which
-    catches child chains whose parent superbubble step range is outside the
-    viewport.
+    Requires a precomputed PolychainIndex and layout viewport coordinates.
+    Uses precomputed chain decompositions for fast lookup.
 
     ``expand_threshold`` is accepted for API compatibility but ignored;
     the canonical ``CANONICAL_EXPAND_THRESHOLD`` is always used to ensure
@@ -399,74 +392,28 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
     gfaidx = indexes.gfa_index.get(chrom, None)
+    polychainidx = getattr(indexes, 'polychain_index', {}).get(chrom, None)
 
     if stepidx is None or bubbleidx is None or gfaidx is None:
         raise ValueError(
             f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
+    if polychainidx is None or layout_min_x is None or layout_max_x is None:
+        raise ValueError(
+            "detail-tiles requires polychain_index and layout_min_x/layout_max_x.")
 
     seg_index = gfaidx.segment_index
 
-    # --- Decompose chains and collect structural adjacency + bypass links ---
+    # --- Decompose chains from precomputed PolychainIndex ---
 
-    decomp_adj = {}
-    bypass_links = []
-    bypass_seg_ids = set()
-    bypass_gfa_links = []
-    decomposed_bubbles = set()
-
-    polychainidx = getattr(indexes, 'polychain_index', {}).get(chrom, None)
-
-    if layout_min_x is not None and layout_max_x is not None and polychainidx is not None:
-        # Fast path: use precomputed decompositions from PolychainIndex
-        merged = polychainidx.get_chains_in_layout_range(layout_min_x, layout_max_x)
-        chain_results = merged["chains"]
-        bubble_results = merged["bubbles"]
-        bypass_links = merged["bypass_links"]
-        bypass_seg_ids = merged["bypass_seg_ids"]
-        bypass_gfa_links = merged["bypass_gfa_links"]
-        decomposed_bubbles = merged["decomposed_bubbles"]
-        decomp_adj = merged["adjacency"]
-        chain_result = {"chains": chain_results, "bubbles": bubble_results}
-    elif layout_min_x is not None and layout_max_x is not None:
-        chains = bubbleidx.get_top_level_bubbles_by_layout(
-            layout_min_x, layout_max_x, as_chains=True)
-        chain_results = []
-        bubble_results = []
-        for chain in chains:
-            r = decompose_chain(
-                chain, expand_threshold, None,
-                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
-            chain_results.extend(r["chains"])
-            bubble_results.extend(r["bubbles"])
-            bypass_links.extend(r.get("bypass_links", []))
-            bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
-            bypass_gfa_links.extend(r.get("bypass_gfa_links", []))
-            decomposed_bubbles.update(r.get("decomposed_bubbles", set()))
-            for k, v in r.get("adjacency", {}).items():
-                decomp_adj.setdefault(k, set()).update(v)
-        chain_result = {"chains": chain_results, "bubbles": bubble_results}
-    else:
-        # Step-based path: use precomputed decompositions per-chain if available
-        start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
-        top_chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
-        chain_results = []
-        bubble_results = []
-        for chain in top_chains:
-            r = (polychainidx.get_decomposition(chain.id)
-                 if polychainidx is not None else None)
-            if r is None:
-                r = decompose_chain(
-                    chain, expand_threshold, None,
-                    bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
-            chain_results.extend(r["chains"])
-            bubble_results.extend(r["bubbles"])
-            bypass_links.extend(r.get("bypass_links", []))
-            bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
-            bypass_gfa_links.extend(r.get("bypass_gfa_links", []))
-            decomposed_bubbles.update(r.get("decomposed_bubbles", set()))
-            for k, v in r.get("adjacency", {}).items():
-                decomp_adj.setdefault(k, set()).update(v)
-        chain_result = {"chains": chain_results, "bubbles": bubble_results}
+    merged = polychainidx.get_chains_in_layout_range(layout_min_x, layout_max_x)
+    chain_results = merged["chains"]
+    bubble_results = merged["bubbles"]
+    bypass_links = merged["bypass_links"]
+    bypass_seg_ids = merged["bypass_seg_ids"]
+    bypass_gfa_links = merged["bypass_gfa_links"]
+    decomposed_bubbles = merged["decomposed_bubbles"]
+    decomp_adj = merged["adjacency"]
+    chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
 
 
