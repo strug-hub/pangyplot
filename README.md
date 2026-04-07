@@ -26,7 +26,7 @@ SCREENSHOT WILL GO HERE
 
 - Graph in GFA format
 - Python 3.11 or higher recommended
-- Python packages: bitarray, sqlite, matplotlib, pympler, flask, python-dotenv
+- Python packages: flask, flask-babel, numpy, bitarray, matplotlib, pympler, python-dotenv
 - [odgi](https://github.com/pangenome/odgi) required to prepare custom data.
 
 ## Usage - Quick Start

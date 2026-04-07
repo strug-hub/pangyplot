@@ -7,7 +7,7 @@ Prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~
 
 - Python 3.11 or higher recommended.
-- Install the required Python packages: ``bitarray``, ``sqlite``, ``matplotlib``, ``pympler``, ``flask``, ``python-dotenv``
+- Install the required Python packages: ``flask``, ``flask-babel``, ``numpy``, ``bitarray``, ``matplotlib``, ``pympler``, ``python-dotenv``
 - `odgi <https://github.com/pangenome/odgi>`_ required to prepare custom data.
 
 
