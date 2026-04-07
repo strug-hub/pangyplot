@@ -14,7 +14,7 @@ from pangyplot.db.indexes.StepIndex import StepIndex
 import pangyplot.db.query as query
 
 
-DATASTORE = os.path.join(os.path.dirname(__file__), "..", "datastore")
+DATASTORE = os.path.join(os.path.dirname(__file__), "..", "..", "datastore")
 CHR_DIR   = os.path.join(DATASTORE, "graphs", "hprc.clip", "chrY")
 GENOME    = "GRCh38"
 CHROM     = "chrY"
@@ -129,11 +129,8 @@ class TestPopStructure:
         return query.pop_bubble(indexes, PARENT_BUBBLE_ID, GENOME, CHROM)
 
     def test_pop_has_required_keys(self, leaf_pop):
-        for key in ("source_segs", "sink_segs", "child_bubbles", "nodes", "links"):
+        for key in ("source_segs", "sink_segs", "nodes", "links"):
             assert key in leaf_pop
-
-    def test_leaf_has_no_child_bubbles(self, leaf_pop):
-        assert leaf_pop["child_bubbles"] == []
 
     def test_leaf_nodes_are_all_segments(self, leaf_pop):
         for node in leaf_pop["nodes"]:
@@ -144,55 +141,6 @@ class TestPopStructure:
         for seg_id in leaf_pop["source_segs"] + leaf_pop["sink_segs"]:
             assert f"s{seg_id}" in node_ids, f"Boundary seg s{seg_id} not in pop nodes"
 
-    def test_parent_has_child_bubbles(self, parent_pop):
-        assert len(parent_pop["child_bubbles"]) > 0
-
-    def test_parent_child_bubbles_in_nodes(self, parent_pop):
-        node_ids = {n["id"] for n in parent_pop["nodes"]}
-        for child in parent_pop["child_bubbles"]:
-            assert f"b{child['id']}" in node_ids, (
-                f"Child b{child['id']} not in pop nodes"
-            )
-
-    def test_parent_child_bubbles_have_boundary_and_inside_segs(self, parent_pop):
-        for child in parent_pop["child_bubbles"]:
-            assert "source_segs" in child
-            assert "sink_segs" in child
-            assert "inside_segs" in child
-
-
-# ---------------------------------------------------------------------------
-# /pop — inside_segs correctness
-# ---------------------------------------------------------------------------
-
-class TestPopInsideSegs:
-
-    @pytest.fixture(scope="class")
-    def parent_pop(self, indexes):
-        return query.pop_bubble(indexes, PARENT_BUBBLE_ID, GENOME, CHROM)
-
-    def test_child_inside_segs_match_index(self, parent_pop, indexes):
-        """inside_segs on each child bubble must match bubble.inside from the index."""
-        bubbleidx = indexes.bubble_index[CHROM]
-        for child in parent_pop["child_bubbles"]:
-            cid = child["id"]
-            bubble = bubbleidx[cid]
-            assert sorted(child["inside_segs"]) == sorted(bubble.inside), (
-                f"child b{cid}: inside_segs mismatch with index"
-            )
-
-    def test_child_inside_segs_disjoint_from_boundary_segs(self, parent_pop):
-        for child in parent_pop["child_bubbles"]:
-            boundary = set(child["source_segs"]) | set(child["sink_segs"])
-            for sid in child["inside_segs"]:
-                assert sid not in boundary, (
-                    f"child b{child['id']}: inside_seg {sid} also in source/sink"
-                )
-
-    def test_leaf_has_no_inside_segs_on_children(self, indexes):
-        """A leaf bubble has no children so child_bubbles is empty."""
-        leaf_pop = query.pop_bubble(indexes, LEAF_BUBBLE_ID, GENOME, CHROM)
-        assert leaf_pop["child_bubbles"] == []
 
 
 # ---------------------------------------------------------------------------

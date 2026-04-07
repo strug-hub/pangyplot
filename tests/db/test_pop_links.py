@@ -16,7 +16,7 @@ from pangyplot.db.indexes.StepIndex import StepIndex
 import pangyplot.db.query as query
 
 
-DATASTORE = os.path.join(os.path.dirname(__file__), "..", "datastore")
+DATASTORE = os.path.join(os.path.dirname(__file__), "..", "..", "datastore")
 CHR_DIR   = os.path.join(DATASTORE, "graphs", "hprc.clip", "chrY")
 GENOME    = "GRCh38"
 CHROM     = "chrY"
@@ -170,10 +170,6 @@ class TestParentPopLinks:
         bubble = bubbleidx[bid]
         own_segs = (set(bubble.source_segments) | set(bubble.sink_segments) | bubble.inside)
         own_seg_ids = {f"s{s}" for s in own_segs}
-        # Also include child bubble boundary segs
-        for child in parent_pop["child_bubbles"]:
-            for s in child["source_segs"] + child["sink_segs"]:
-                own_seg_ids.add(f"s{s}")
 
         for link in parent_pop["links"]:
             s_in = link["source"] in node_ids
@@ -188,19 +184,6 @@ class TestParentPopLinks:
                     f"External link endpoint {external} is actually inside bubble"
                 )
 
-    def test_child_boundary_segs_have_links(self, parent_pop):
-        """Child bubble boundary segments should be connected by links."""
-        link_segs = pop_link_seg_ids(parent_pop)
-        for child in parent_pop["child_bubbles"]:
-            for seg_id in child["source_segs"]:
-                assert f"s{seg_id}" in link_segs, (
-                    f"Child b{child['id']} source seg s{seg_id} has no links"
-                )
-            for seg_id in child["sink_segs"]:
-                assert f"s{seg_id}" in link_segs, (
-                    f"Child b{child['id']} sink seg s{seg_id} has no links"
-                )
-
     def test_parent_boundary_segs_connected(self, parent_pop):
         """Parent's own source/sink segs must be linked."""
         link_segs = pop_link_seg_ids(parent_pop)
@@ -213,94 +196,21 @@ class TestParentPopLinks:
         for link in parent_pop["links"]:
             assert link["source"] != link["target"]
 
-    def test_child_bubbles_cover_inside_segs(self, parent_pop, indexes):
-        """Every naked segment in the parent's 'inside' should either be in the
-        pop nodes directly or owned by a child bubble."""
+    def test_inside_segs_in_pop_nodes(self, parent_pop, indexes):
+        """Every segment in the parent's 'inside' should be in the pop nodes."""
         bubbleidx = indexes.bubble_index[CHROM]
         bid = int(PARENT_BUBBLE_ID[1:])
         bubble = bubbleidx[bid]
 
-        # Segments explicitly in pop nodes
         node_seg_ids = {int(n["id"][1:]) for n in parent_pop["nodes"]
                         if n["id"].startswith("s")}
-        # Segments owned by child bubbles (in their inside_segs)
-        child_inside = set()
-        for child in parent_pop["child_bubbles"]:
-            child_inside.update(child["inside_segs"])
 
         for seg_id in bubble.inside:
-            assert seg_id in node_seg_ids or seg_id in child_inside, (
-                f"Parent inside seg {seg_id} not in pop nodes or child inside_segs"
+            assert seg_id in node_seg_ids, (
+                f"Parent inside seg {seg_id} not in pop nodes"
             )
 
 
-# ---------------------------------------------------------------------------
-# Nested pop: pop a parent, then pop one of its children
-# ---------------------------------------------------------------------------
-
-class TestNestedPopLinks:
-
-    @pytest.fixture(scope="class")
-    def parent_pop_data(self, indexes):
-        return query.pop_bubble(indexes, PARENT_BUBBLE_ID, GENOME, CHROM)
-
-    @pytest.fixture(scope="class")
-    def first_child_id(self, parent_pop_data):
-        """Pick the first child bubble for nested pop."""
-        children = parent_pop_data["child_bubbles"]
-        assert len(children) > 0, "Parent has no children to nest-pop"
-        return children[0]["id"]
-
-    @pytest.fixture(scope="class")
-    def child_pop_data(self, indexes, first_child_id):
-        return query.pop_bubble(indexes, f"b{first_child_id}", GENOME, CHROM)
-
-    def test_child_pop_has_required_keys(self, child_pop_data):
-        for key in ("source_segs", "sink_segs", "child_bubbles", "nodes", "links"):
-            assert key in child_pop_data
-
-    def test_child_pop_source_sink_match_parent_metadata(self, parent_pop_data,
-                                                          first_child_id,
-                                                          child_pop_data):
-        """The child's source/sink segs from its own pop should match what the
-        parent listed in its child_bubbles metadata."""
-        parent_child = next(
-            c for c in parent_pop_data["child_bubbles"] if c["id"] == first_child_id
-        )
-        assert sorted(child_pop_data["source_segs"]) == sorted(parent_child["source_segs"])
-        assert sorted(child_pop_data["sink_segs"]) == sorted(parent_child["sink_segs"])
-
-    def test_child_pop_internal_links_valid(self, child_pop_data):
-        """Internal links in child pop must have both endpoints in nodes.
-        Cross-boundary links (to segments outside this child bubble) are expected."""
-        node_ids = pop_node_ids(child_pop_data)
-        for link in child_pop_data["links"]:
-            s_in = link["source"] in node_ids
-            t_in = link["target"] in node_ids
-            if s_in and t_in:
-                continue
-            assert s_in or t_in, (
-                f"Link {link['source']}→{link['target']}: neither endpoint in child pop nodes"
-            )
-
-    def test_shared_boundary_segs_between_parent_and_child(self, parent_pop_data,
-                                                            first_child_id,
-                                                            child_pop_data):
-        """The child's boundary segs should appear in both the parent and child pops."""
-        parent_node_ids = pop_node_ids(parent_pop_data)
-        child_node_ids = pop_node_ids(child_pop_data)
-
-        parent_child = next(
-            c for c in parent_pop_data["child_bubbles"] if c["id"] == first_child_id
-        )
-        for seg_id in parent_child["source_segs"] + parent_child["sink_segs"]:
-            seg_key = f"s{seg_id}"
-            assert seg_key in parent_node_ids, (
-                f"Shared boundary seg {seg_key} missing from parent pop nodes"
-            )
-            assert seg_key in child_node_ids, (
-                f"Shared boundary seg {seg_key} missing from child pop nodes"
-            )
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +299,6 @@ class TestSegmentPopNoop:
         result = query.pop_bubble(indexes, "s12345", GENOME, CHROM)
         assert result["source_segs"] == []
         assert result["sink_segs"] == []
-        assert result["child_bubbles"] == []
         assert result["nodes"] == []
         assert result["links"] == []
 

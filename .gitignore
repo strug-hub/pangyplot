@@ -22,3 +22,9 @@ docs/source/build/
 *.og
 *.gfa
 !tests/fixtures/*.gfa
+
+# Debug / trace artifacts
+Trace-*.json
+
+# Playwright MCP
+.playwright-mcp/

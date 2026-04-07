@@ -364,7 +364,7 @@ class BubbleIndex:
     def get_popped_subgraph(self, bubble_id, stepidx):
         bubble = self[bubble_id]
         if bubble is None:
-            return {"source_segs": [], "sink_segs": [], "child_bubbles": [], "child_bubble_objects": [], "nodes": [], "links": []}
+            return {"source_segs": [], "sink_segs": [], "nodes": [], "links": []}
 
         # Recursively collect ALL descendant segment IDs (boundaries + inside)
         all_segs = self.get_descendant_ids(bubble)
@@ -375,8 +375,6 @@ class BubbleIndex:
         return {
             "source_segs": bubble.source_segments,
             "sink_segs": bubble.sink_segments,
-            "child_bubbles": [],
-            "child_bubble_objects": [],
             "nodes": segments,
             "links": links,
         }

@@ -181,7 +181,7 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
 
 def pop_bubble(indexes, id, genome, chrom):
     if id.startswith("s"):
-        return {"source_segs": [], "sink_segs": [], "child_bubbles": [], "nodes": [], "links": []}
+        return {"source_segs": [], "sink_segs": [], "nodes": [], "links": []}
 
     id = int(id.replace("b", ""))
 
@@ -193,9 +193,7 @@ def pop_bubble(indexes, id, genome, chrom):
     return {
         "source_segs": subgraph["source_segs"],
         "sink_segs": subgraph["sink_segs"],
-        "child_bubbles": subgraph["child_bubbles"],
-        "nodes": [node.serialize() for node in subgraph["nodes"]] +
-                 [b.serialize() for b in subgraph["child_bubble_objects"]],
+        "nodes": [node.serialize() for node in subgraph["nodes"]],
         "links": [link.serialize() for link in subgraph["links"]],
     }
 
