@@ -11,6 +11,7 @@ import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
+from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 
 REFERENCE = "gi|568815592"
 
@@ -63,3 +64,11 @@ def drb1_step_index(drb1_dir):
 def drb1_bubble_index(drb1_dir):
     gfa_index = GFAIndex(drb1_dir)
     return BubbleIndex(drb1_dir, gfa_index)
+
+
+@pytest.fixture(scope="module")
+def drb1_polychain_index(drb1_dir):
+    gfa_index = GFAIndex(drb1_dir)
+    step_index = StepIndex(drb1_dir, REFERENCE)
+    bubble_index = BubbleIndex(drb1_dir, gfa_index)
+    return PolychainIndex(drb1_dir, bubble_index, gfa_index, step_index, REFERENCE)
