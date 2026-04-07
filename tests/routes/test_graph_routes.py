@@ -1,4 +1,4 @@
-"""Route tests for /select and /pop endpoints using DRB1-3123 fixture.
+"""Route tests for /select, /pop, /chains, and /detail-tiles using DRB1-3123.
 
 Specific pop test cases anchored to segments:
   - Simple SNP: endpoints 11/17, inside [12, 13], 4 nodes, 8 links
@@ -19,16 +19,20 @@ import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
+from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 
 REFERENCE = "gi|568815592"
 CHROM = "DRB1"
 START = 32580000
 END = 32585000
+# Layout range covering all DRB1 chains (x1: ~1007, x2: ~13861)
+LAYOUT_MIN_X = 1000
+LAYOUT_MAX_X = 14000
 
 
 @pytest.fixture(scope="module")
 def drb1_app(fixtures_dir):
-    """Flask app with DRB1 indexes loaded."""
+    """Flask app with DRB1 indexes loaded, including PolychainIndex."""
     tmpdir = tempfile.mkdtemp()
     layout = parse_layout(str(fixtures_dir / "DRB1-3123.lay.tsv"))
     parse_gfa(
@@ -44,12 +48,14 @@ def drb1_app(fixtures_dir):
     gfaidx = GFAIndex(tmpdir)
     stepidx = StepIndex(tmpdir, REFERENCE)
     bubbleidx = BubbleIndex(tmpdir, gfaidx)
+    polychainidx = PolychainIndex(tmpdir, bubbleidx, gfaidx, stepidx, REFERENCE)
 
     app = Flask(__name__)
     app.json.default = NumpyJSONEncoder().default
     app.step_index = {(CHROM, REFERENCE): stepidx}
     app.bubble_index = {CHROM: bubbleidx}
     app.gfa_index = {CHROM: gfaidx}
+    app.polychain_index = {CHROM: polychainidx}
     app.register_blueprint(routes_bp)
 
     yield app, bubbleidx
@@ -199,3 +205,101 @@ class TestPopNested:
             child = bubble_index[child_id]
             for sid in child.inside:
                 assert f"s{sid}" in node_ids
+
+
+# ---------------------------------------------------------------------------
+# /chains
+# ---------------------------------------------------------------------------
+
+class TestChainsRoute:
+
+    def test_returns_200(self, client):
+        resp = client.get(
+            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        assert resp.status_code == 200
+
+    def test_has_chains_and_bubbles(self, client):
+        resp = client.get(
+            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        data = resp.get_json()
+        assert "chains" in data
+        assert "bubbles" in data
+
+    def test_chain_count(self, client):
+        resp = client.get(
+            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        data = resp.get_json()
+        assert len(data["chains"]) == 16
+
+    def test_chains_have_required_fields(self, client):
+        resp = client.get(
+            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        data = resp.get_json()
+        for chain in data["chains"]:
+            assert "id" in chain
+            assert "polyline" in chain
+            assert "source_segs" in chain
+            assert "sink_segs" in chain
+            assert len(chain["polyline"]) >= 2
+
+    def test_invalid_genome_404(self, client):
+        resp = client.get(
+            f"/chains?genome=INVALID&chromosome={CHROM}&start={START}&end={END}")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /detail-tiles
+# ---------------------------------------------------------------------------
+
+class TestDetailTilesRoute:
+
+    def test_returns_200(self, client):
+        resp = client.get(
+            f"/detail-tiles?genome={REFERENCE}&chromosome={CHROM}"
+            f"&start={START}&end={END}&ppbp=0.01"
+            f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
+        assert resp.status_code == 200
+
+    def test_has_expected_keys(self, client):
+        resp = client.get(
+            f"/detail-tiles?genome={REFERENCE}&chromosome={CHROM}"
+            f"&start={START}&end={END}&ppbp=0.01"
+            f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
+        data = resp.get_json()
+        for key in ("chains", "junction_nodes", "junction_links",
+                    "junction_graph", "chain_adjacency"):
+            assert key in data
+
+    def test_full_range_chain_count(self, client):
+        resp = client.get(
+            f"/detail-tiles?genome={REFERENCE}&chromosome={CHROM}"
+            f"&start={START}&end={END}&ppbp=0.01"
+            f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
+        data = resp.get_json()
+        assert len(data["chains"]) == 63
+
+    def test_has_junction_graph(self, client):
+        resp = client.get(
+            f"/detail-tiles?genome={REFERENCE}&chromosome={CHROM}"
+            f"&start={START}&end={END}&ppbp=0.01"
+            f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
+        data = resp.get_json()
+        jg = data["junction_graph"]
+        assert len(jg["nodes"]) > 0
+        assert len(jg["links"]) > 0
+
+    def test_narrow_range_fewer_chains(self, client):
+        resp = client.get(
+            f"/detail-tiles?genome={REFERENCE}&chromosome={CHROM}"
+            f"&start={START}&end={END}&ppbp=0.01"
+            f"&layout_min_x=3000&layout_max_x=5000")
+        data = resp.get_json()
+        assert len(data["chains"]) < 63
+
+    def test_invalid_genome_404(self, client):
+        resp = client.get(
+            f"/detail-tiles?genome=INVALID&chromosome={CHROM}"
+            f"&start={START}&end={END}&ppbp=0.01"
+            f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
+        assert resp.status_code == 404
