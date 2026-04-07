@@ -73,6 +73,8 @@ class Path:
                     current_path = self.clone(no_path=True)
                     current_path.start = pos
                 current_path.add_step(id, direction)
+                length += l
+                buffer_count = 0
             else:
                 if current_path is not None:
                     buffer_count += 1
@@ -86,6 +88,10 @@ class Path:
                 length = 0
 
             pos += l
+
+        if current_path is not None:
+            current_path.length = length
+            subsets.append(current_path)
 
         return subsets
 

@@ -99,11 +99,13 @@ class TestSubsetPath:
         ids = [s[0] for s in subsets[0]]
         assert ids == [1, 2, 3, 4, 5]
 
-    def test_no_flush_without_gap(self):
-        """If all steps are in range, nothing is flushed (no gap to trigger it)."""
+    def test_all_in_range_returns_one_subset(self):
+        """If all steps are in range, a single subset is returned."""
         p = _make_path(steps=[(5, "+"), (10, "+"), (15, "+")])
         subsets = p.subset_path(5, 15)
-        assert subsets == []
+        assert len(subsets) == 1
+        ids = [s[0] for s in subsets[0]]
+        assert ids == [5, 10, 15]
 
     def test_excludes_out_of_range_steps(self):
         """Out-of-range steps are not included in flushed subsets."""
@@ -114,6 +116,28 @@ class TestSubsetPath:
         assert len(subsets) == 1
         ids = [s[0] for s in subsets[0]]
         assert all(5 <= i <= 10 for i in ids)
+
+    def test_length_includes_in_range_segments(self):
+        """Length should include in-range segment lengths, not just buffer."""
+        class FakeGfa:
+            def segment_length(self, sid):
+                return 100  # every segment is 100bp
+
+        steps = [(i, "+") for i in range(1, 6)]            # 5 in-range
+        steps += [(100 + i, "+") for i in range(15)]        # out of range
+        p = _make_path(steps=steps, start=0)
+        subsets = p.subset_path(1, 5, gfaidx=FakeGfa(), buffer=10)
+        assert len(subsets) == 1
+        # 5 in-range (500) + 11 buffer (1100) before flush at buffer_count > 10
+        assert subsets[0].length == 500 + 1100
+
+    def test_trailing_subset_appended(self):
+        """A path ending while in-range should still produce a subset."""
+        p = _make_path(steps=[(1, "+"), (2, "+"), (3, "+")])
+        subsets = p.subset_path(1, 3)
+        assert len(subsets) == 1
+        ids = [s[0] for s in subsets[0]]
+        assert ids == [1, 2, 3]
 
 
 # ---------------------------------------------------------------------------
