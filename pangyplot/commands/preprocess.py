@@ -1,6 +1,4 @@
 import os
-import shutil
-import subprocess
 import sys
 from datetime import datetime
 
@@ -131,18 +129,8 @@ def pangyplot_preprocess(args):
     print()
 
     # GPU
-    gpu_available = shutil.which("nvidia-smi") is not None
-    if gpu_available:
-        try:
-            subprocess.run(["nvidia-smi"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, OSError):
-            gpu_available = False
-
-    if gpu_available:
-        print(f"  {GREEN}GPU detected.{RESET}")
-    else:
-        print(f"  {DIM}No GPU detected.{RESET}")
-    use_gpu = prompt_yn("Enable GPU acceleration for layout? (recommended)", default=gpu_available)
+    print(f"  {DIM}Tip: run 'odgi layout --help 2>&1 | grep gpu' to check if your odgi supports GPU.{RESET}")
+    use_gpu = prompt_yn("Enable GPU acceleration for layout? (recommended for large graphs)", default=False)
     print()
 
     # SLURM
