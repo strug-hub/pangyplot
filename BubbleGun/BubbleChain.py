@@ -107,42 +107,33 @@ class BubbleChain:
         """
         sorts the bubbles in the chain
 
-        Note: This function is an improvement on the last one and done by ScottMastro in Issue 8
+        This solution is inspired by the solution in Issue #8 by ScottMastro
         """
-    
-        # Step 1: Build a mapping from each node ID to its connected bubbles
+        # Linear walk using bubble adjacency; avoids quadratic scans on long chains.
         node_to_bubbles = dict()
         for b in self.bubbles:
-            for node_id in [str(b.source.id), str(b.sink.id)]:
-                if node_id not in node_to_bubbles:
-                    node_to_bubbles[node_id] = []
-                node_to_bubbles[node_id].append(b)
+            for node_id in (b.source.id, b.sink.id):
+                node_to_bubbles.setdefault(node_id, set()).add(b)
 
-        # Step 2: Start at one end of the chain
-        current_node = self.ends[0]
+        current_node = self.ends[0]  # choose one end of the chain as start
         visited_bubbles = set()
 
-        # Step 3: Traverse the chain using bubble adjacency
-        while True:
-            candidates = node_to_bubbles.get(current_node, [])
+        while len(self.sorted) < len(self.bubbles):
+            candidates = node_to_bubbles.get(current_node, set())
             next_bubble = None
-
             for b in candidates:
                 if b not in visited_bubbles:
                     next_bubble = b
                     break
 
-            if next_bubble is None:   #shouldn't happen in a valid chain
+            if next_bubble is None:
                 logging.error("No unvisited bubble found: break in bubble chain. Stopping traversal.")
-                sys.exit(1)
+                break
 
             self.sorted.append(next_bubble)
             visited_bubbles.add(next_bubble)
 
-            # Step 4: Move to the next node
-            if str(next_bubble.source.id) == current_node:
-                current_node = str(next_bubble.sink.id)
+            if next_bubble.source.id == current_node:
+                current_node = next_bubble.sink.id
             else:
-                current_node = str(next_bubble.source.id)
-            if len(self.sorted) == len(self.bubbles):
-                break
+                current_node = next_bubble.source.id

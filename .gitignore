@@ -23,6 +23,9 @@ docs/source/build/
 *.gfa
 !tests/fixtures/*.gfa
 
+# Benchmark results
+benchmark_results/
+
 # Debug / trace artifacts
 Trace-*.json
 
