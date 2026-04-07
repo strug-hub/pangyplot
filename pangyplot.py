@@ -7,6 +7,7 @@ from pangyplot.commands import setup
 from pangyplot.commands import status
 from pangyplot.commands import annotate
 from pangyplot.commands import reindex
+from pangyplot.commands import preprocess
 from pangyplot.version import __version__,__version_name__
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -63,6 +64,8 @@ def parse_args():
     #parser_run = subparsers.add_parser('reindex', help='Reindex all GFA files.')
     #parser_run.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
 
+    parser_preprocess = subparsers.add_parser('preprocess', help='Interactive generator for odgi preprocessing scripts.')
+
     parser_example = subparsers.add_parser('example', help='Adds example DRB1 data.')
     #parser_example.add_argument('--chrM', help='Use HPRC chrM data', action='store_true')
     #parser_example.add_argument('--gencode', help='Add genocode annotations', action='store_true')
@@ -84,6 +87,9 @@ def parse_args():
 
     if args.command == 'run':
         run.pangyplot_run(args)
+
+    if args.command == 'preprocess':
+        preprocess.pangyplot_preprocess(args)
 
     if args.command == 'annotate':
         annotate.pangyplot_annotate(args)

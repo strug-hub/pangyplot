@@ -23,13 +23,29 @@ From the odgi documentation:
    `Graph Drawing by Stochastic Gradient Descent <https://arxiv.org/abs/1710.04626>`_. 
    The force-directed graph drawing algorithm minimizes the graph's energy function or stress level.
 
+Script Generator
+^^^^^^^^^^^^^^^^
+
+PangyPlot provides an interactive script generator that walks you through the preprocessing steps:
+
+.. code-block:: bash
+
+    python pangyplot.py preprocess
+
+This will prompt you for the ODGI file path, number of threads, whether to sort the graph, path priorities, GPU acceleration, and output directory. It produces a ready-to-run bash script with the appropriate ``odgi sort``, ``odgi layout``, and ``odgi view`` commands.
+
+GPU acceleration is auto-detected and enabled by default if available.
+
+Manual Steps
+^^^^^^^^^^^^
+
 To do the one-dimensional sort of the graph:
 
 .. code-block:: bash
 
     odgi sort -i ${INPUT}.og -o ${OUTPUT}.og --optimize -Y -H paths.txt
 
-We highly recommend the ``-H`` flag to specify which paths to prioritize. The ``paths.txt`` file contains one path name per line, the path priority. 
+We highly recommend the ``-H`` flag to specify which paths to prioritize. The ``paths.txt`` file contains one path name per line, the path priority.
 The primary reference path should be set as the first path in this file.
 The ``--optimize`` flag is also needed for optimizing node IDs.
 
