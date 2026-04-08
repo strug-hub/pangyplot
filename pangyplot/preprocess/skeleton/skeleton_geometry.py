@@ -1,6 +1,7 @@
 """Spatial simplification algorithms for skeleton building."""
 
 import math
+from collections import defaultdict
 
 
 # ---------------------------------------------------------------------------
@@ -47,25 +48,29 @@ def rdp_simplify(polyline, epsilon):
 
 
 # ---------------------------------------------------------------------------
-# Grid-based spatial simplification
+# Grid-based spatial simplification with edge dedup and path tracing
 # ---------------------------------------------------------------------------
 
 def grid_simplify(polylines, cell_size, chain_ids=None):
-    """Snap all coordinates to a spatial grid and deduplicate.
+    """Snap coordinates to a spatial grid, deduplicate edges, and trace
+    minimal polylines through the resulting graph.
 
-    This merges nearby points (which RDP cannot do), enabling much
-    coarser simplification levels. A polyline whose endpoints snap to the
-    same grid cell collapses and is removed.
+    Steps:
+      1. Snap all points to grid cells, remove consecutive duplicates
+      2. Collect unique directed edges (deduplicate overlapping segments)
+      3. Build adjacency graph and trace paths through degree-2 nodes
 
-    If chain_ids is provided (parallel to polylines), it is filtered in sync.
     Returns new_polylines or (new_polylines, new_chain_ids).
+    Chain IDs are assigned per-edge from the first contributing polyline,
+    then the most common chain ID along each traced path wins.
     """
     def snap(x, y):
         return (round(x / cell_size) * cell_size,
                 round(y / cell_size) * cell_size)
 
-    new_polylines = []
-    new_chain_ids = [] if chain_ids is not None else None
+    # 1. Collect unique edges from all polylines
+    edges = set()
+    edge_chain = {}  # canonical edge → chain_id (first seen wins)
     for i, pl in enumerate(polylines):
         snapped = [snap(p[0], p[1]) for p in pl]
         # Remove consecutive duplicates
@@ -73,10 +78,78 @@ def grid_simplify(polylines, cell_size, chain_ids=None):
         for p in snapped[1:]:
             if p != deduped[-1]:
                 deduped.append(p)
-        if len(deduped) >= 2:
-            new_polylines.append(deduped)
+        cid = chain_ids[i] if chain_ids is not None else -1
+        for j in range(len(deduped) - 1):
+            a, b = deduped[j], deduped[j + 1]
+            edge = (a, b) if a <= b else (b, a)
+            if edge not in edges:
+                edges.add(edge)
+                edge_chain[edge] = cid
+
+    # 2. Build adjacency graph
+    adj = defaultdict(set)
+    for a, b in edges:
+        adj[a].add(b)
+        adj[b].add(a)
+
+    # 3. Trace paths through degree-2 nodes
+    used = set()
+    new_polylines = []
+    new_chain_ids = [] if chain_ids is not None else None
+
+    def trace_path(start, first_nbr):
+        """Walk from start through first_nbr, continuing through degree-2 nodes."""
+        path = [start]
+        path_edges = []
+        cur, prev = first_nbr, start
+        while True:
+            edge = (min(prev, cur), max(prev, cur))
+            if edge in used:
+                break
+            path.append(cur)
+            used.add(edge)
+            path_edges.append(edge)
+            if len(adj[cur]) != 2:
+                break
+            neighbors = [n for n in adj[cur] if n != prev]
+            if not neighbors:
+                break
+            prev, cur = cur, neighbors[0]
+        return path, path_edges
+
+    def majority_chain(path_edges):
+        """Return the most common chain ID along a traced path."""
+        counts = defaultdict(int)
+        for e in path_edges:
+            cid = edge_chain.get(e, -1)
+            counts[cid] += 1
+        if not counts:
+            return -1
+        return max(counts, key=counts.get)
+
+    # Start from junctions and dead-ends (degree != 2)
+    starts = [n for n in adj if len(adj[n]) != 2]
+    for node in starts:
+        for nbr in list(adj[node]):
+            edge = (min(node, nbr), max(node, nbr))
+            if edge in used:
+                continue
+            path, path_edges = trace_path(node, nbr)
+            if len(path) >= 2:
+                new_polylines.append(path)
+                if new_chain_ids is not None:
+                    new_chain_ids.append(majority_chain(path_edges))
+
+    # Handle remaining cycles (all degree-2, no junction start)
+    for a, b in edges:
+        canon = (a, b) if a <= b else (b, a)
+        if canon in used:
+            continue
+        path, path_edges = trace_path(a, b)
+        if len(path) >= 2:
+            new_polylines.append(path)
             if new_chain_ids is not None:
-                new_chain_ids.append(chain_ids[i])
+                new_chain_ids.append(majority_chain(path_edges))
 
     if chain_ids is not None:
         return new_polylines, new_chain_ids

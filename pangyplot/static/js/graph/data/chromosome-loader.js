@@ -52,24 +52,37 @@ export async function loadChromosome(chromosome) {
 
     if (!skelMetaResp.ok) throw new Error(`HTTP ${skelMetaResp.status}`);
     if (!skelBinResp.ok) throw new Error(`HTTP ${skelBinResp.status}`);
+
+    let t1 = performance.now();
     const raw = await skelMetaResp.json();
+    console.log(`[load]   meta json: ${(performance.now() - t1).toFixed(0)}ms`);
+
+    t1 = performance.now();
     const binBuffer = await skelBinResp.arrayBuffer();
+    console.log(`[load]   bin arraybuffer: ${(performance.now() - t1).toFixed(0)}ms`);
+
+    t1 = performance.now();
     indexBinaryLevels(binBuffer, raw.levels);
+    console.log(`[load]   index levels: ${(performance.now() - t1).toFixed(0)}ms`);
 
     const tSkelParse = performance.now();
     console.log(`[load] skeleton parse: ${(tSkelParse - tFetch).toFixed(0)}ms`);
 
     // Spine (shared coordinate infrastructure)
+    t1 = performance.now();
     if (spineResp.ok) {
         const spineData = await spineResp.json();
         if (spineData.spine) initSpine(spineData.spine);
     }
+    console.log(`[load]   spine: ${(performance.now() - t1).toFixed(0)}ms`);
 
     // Polychain data (may be empty)
+    t1 = performance.now();
     if (pdResp.ok) {
         const pdRaw = await pdResp.json();
         initPolychainDataCache(pdRaw);
     }
+    console.log(`[load]   polychain: ${(performance.now() - t1).toFixed(0)}ms`);
 
     // Graph metadata (force scaling)
     if (metaResp.ok) {

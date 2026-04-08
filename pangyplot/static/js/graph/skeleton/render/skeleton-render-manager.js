@@ -6,6 +6,9 @@ import { drawBasePolylines } from './skeleton-base-overlay.js';
 import { drawHoverOverlay } from './skeleton-hover-overlay.js';
 import { drawGenePolylines } from './gene-polyline-overlay.js';
 
+// Last-frame culling stats (read by debug status bar)
+export let lastCullStats = { drawn: 0 };
+
 /**
  * Draw the full skeleton layer for the current LOD level.
  * Called inside data-space transform (ctx.translate + ctx.scale already applied).
@@ -14,12 +17,10 @@ import { drawGenePolylines } from './gene-polyline-overlay.js';
  *   1. Base polylines (white with glow)
  *   2. Hover highlight (blue, hovered family)
  *   3. Gene-colored polyline overdraw
- *
- * @returns {{ visiblePl: number }}
  */
 export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
     const level = getLevel();
-    if (!level) return { visiblePl: 0 };
+    if (!level) return;
 
     const lineWidth = Math.max(0.5, 1.2 / state.zoom);
     const skelAlpha = state.alwaysShowSkeleton ? 1 : (state.detailData ? state.skeletonOpacity : 1);
@@ -34,6 +35,8 @@ export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
         visibleIndices.push(i);
     }
 
+    lastCullStats = { drawn: visibleIndices.length };
+
     // 1. Base polylines
     drawBasePolylines(ctx, level, visibleIndices, skelAlpha, lineWidth, svg);
 
@@ -42,6 +45,4 @@ export function drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY, svg = null) {
 
     // 3. Gene-colored polyline overdraw
     drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMinY, vpMaxX, vpMaxY, svg);
-
-    return { visiblePl: visibleIndices.length };
 }

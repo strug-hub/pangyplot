@@ -5,7 +5,8 @@
 import { state } from '../../state.js';
 import { registerView } from '../debug-orchestrator.js';
 import { getLevel } from '../../skeleton/data/skeleton-data.js';
-import { getDataBounds, getLevelMeta, getAllLevelMeta } from '@graph-data/chromosome-data.js';
+import { getLevelMeta, getAllLevelMeta } from '@graph-data/chromosome-data.js';
+import { lastCullStats } from '../../skeleton/render/skeleton-render-manager.js';
 
 registerView({
     key: 'KeyL',
@@ -17,40 +18,14 @@ registerView({
         if (!level || !level.gridSize) return;
 
         const gs = level.gridSize;
-        const bounds = getDataBounds();
         const dpr = window.devicePixelRatio || 1;
         const cw = state.canvas.width / dpr;
         const ch = state.canvas.height / dpr;
 
-        // Viewport in data-space
         const vpMinX = -state.panX / state.zoom;
         const vpMinY = -state.panY / state.zoom;
         const vpMaxX = (cw - state.panX) / state.zoom;
         const vpMaxY = (ch - state.panY) / state.zoom;
-
-        const startX = Math.floor(Math.max(vpMinX, bounds.minX) / gs) * gs;
-        const endX   = Math.ceil(Math.min(vpMaxX, bounds.maxX) / gs) * gs;
-        const startY = Math.floor(Math.max(vpMinY, bounds.minY) / gs) * gs;
-        const endY   = Math.ceil(Math.min(vpMaxY, bounds.maxY) / gs) * gs;
-
-        const lw = Math.max(0.3, 0.8 / state.zoom);
-
-        // --- Grid lines (data-space) ---
-        ctx.save();
-        ctx.strokeStyle = 'rgba(91, 184, 240, 0.2)';
-        ctx.lineWidth = lw;
-
-        ctx.beginPath();
-        for (let x = startX; x <= endX; x += gs) {
-            ctx.moveTo(x, startY);
-            ctx.lineTo(x, endY);
-        }
-        for (let y = startY; y <= endY; y += gs) {
-            ctx.moveTo(startX, y);
-            ctx.lineTo(endX, y);
-        }
-        ctx.stroke();
-        ctx.restore();
 
         // --- Stats panel (screen-space) ---
         const viewW = vpMaxX - vpMinX;
@@ -62,10 +37,13 @@ registerView({
         const allMeta = getAllLevelMeta();
         const reduction = ((1 - meta.nodeCount / state.stats.totalSegments) * 100).toFixed(1);
 
+        const { visible, drawn } = lastCullStats;
+
         const lines = [
             `Grid ${gs.toLocaleString()}  [level ${state.currentLOD}/${allMeta.length - 1}]  target: ${state.targetGridSize.toFixed(0)}`,
             `${meta.polylineCount.toLocaleString()} polylines  |  ${meta.nodeCount.toLocaleString()} nodes  |  -${reduction}% reduction`,
             `Cells in view:  ${cellsX} \u00D7 ${cellsY}  =  ${(cellsX * cellsY).toLocaleString()}`,
+            `Drawing: ${drawn.toLocaleString()} / ${meta.polylineCount.toLocaleString()} in viewport`,
         ];
 
         ctx.save();
