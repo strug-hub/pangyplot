@@ -115,10 +115,13 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     candidates.sort((a, b) => a.sxMid - b.sxMid);
 
     // Update pinned set so coloring functions only highlight genes with labels.
+    const prevSize = pinnedGenes.size;
     pinnedGenes.clear();
     for (const c of candidates) {
         pinnedGenes.add(c.gene.name);
     }
+    // First population triggers a second frame so gene polylines (drawn earlier) pick it up
+    if (prevSize === 0 && pinnedGenes.size > 0) scheduleFrame();
 
     // Y-axis collision avoidance: nudge overlapping labels upward.
     const xMargin = 8;

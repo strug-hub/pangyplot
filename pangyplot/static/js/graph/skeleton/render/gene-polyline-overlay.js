@@ -3,7 +3,8 @@
 import { state } from '../../state.js';
 import { getLevelBboxes } from '../data/skeleton-data.js';
 import { getGenePins, isGeneVisible } from '@graph-data/gene-data.js';
-import { strokePolylines } from './skeleton-painter.js';
+import { strokePolylinesClipX } from './skeleton-painter.js';
+import { strokePolylinesSvgClipX } from '../../render/svg-utils.js';
 import { hexToRgba } from '@color-utils';
 import { getPinnedGenes } from './gene-label-overlay.js';
 
@@ -15,8 +16,10 @@ let polylineCache = null;  // { lod, pinVer, data: Map<name, number[]> }
 export function bumpGenePinVersion() { genePinVersion++; }
 
 function buildPolylineIndex(level, bboxes) {
+    const pinnedCount = getPinnedGenes().size;
     if (polylineCache && polylineCache.lod === state.currentLOD &&
-        polylineCache.pinVer === genePinVersion) {
+        polylineCache.pinVer === genePinVersion &&
+        polylineCache.pinnedCount === pinnedCount) {
         return polylineCache.data;
     }
 
@@ -39,7 +42,7 @@ function buildPolylineIndex(level, bboxes) {
         if (indices.length > 0) data.set(gene.name, indices);
     }
 
-    polylineCache = { lod: state.currentLOD, pinVer: genePinVersion, data };
+    polylineCache = { lod: state.currentLOD, pinVer: genePinVersion, pinnedCount: pinnedCount, data };
     return data;
 }
 
@@ -57,7 +60,15 @@ export function drawGenePolylines(ctx, level, lineWidth, skelAlpha, vpMinX, vpMi
     for (const gene of genePins) {
         const indices = index.get(gene.name);
         if (!indices) continue;
-        strokePolylines(ctx, level.polylines, indices, hexToRgba(gene.color, skelAlpha), lineWidth * 1.5, svg);
+        if (svg) {
+            strokePolylinesSvgClipX(svg, level.polylines, indices,
+                hexToRgba(gene.color, skelAlpha), lineWidth * 1.5,
+                gene.startX, gene.endX);
+        } else {
+            strokePolylinesClipX(ctx, level.polylines, indices,
+                hexToRgba(gene.color, skelAlpha), lineWidth * 1.5,
+                gene.startX, gene.endX);
+        }
     }
 }
 

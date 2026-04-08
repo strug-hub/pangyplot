@@ -80,6 +80,54 @@ export function strokePolylinesSvg(target, polylines, indices, color, lineWidth,
     }
 }
 
+/**
+ * Stroke polylines clipped to data-space x range [xMin, xMax].
+ * Segments crossing the boundary are interpolated.
+ */
+export function strokePolylinesSvgClipX(target, polylines, indices, color, lineWidth, xMin, xMax) {
+    const { color: c, alpha: ca } = parseColor(color);
+    const parent = wrapGroup(target, ca);
+    for (const i of indices) {
+        const pl = polylines[i];
+        const clipped = clipPolylineX(pl, xMin, xMax);
+        for (const seg of clipped) {
+            addPolyline(parent, seg, c, lineWidth);
+        }
+    }
+}
+
+/** Clip a polyline to [xMin, xMax], returning an array of sub-polylines. */
+function clipPolylineX(pl, xMin, xMax) {
+    const result = [];
+    let current = null;
+    for (let j = 0; j < pl.length; j++) {
+        const x = pl[j][0], y = pl[j][1];
+        const inside = x >= xMin && x <= xMax;
+        if (j === 0) {
+            if (inside) current = [[x, y]];
+            continue;
+        }
+        const px = pl[j-1][0], py = pl[j-1][1];
+        const prevIn = px >= xMin && px <= xMax;
+
+        if (prevIn && inside) {
+            current.push([x, y]);
+        } else if (prevIn && !inside) {
+            const edge = x > xMax ? xMax : xMin;
+            const t = (edge - px) / (x - px);
+            current.push([edge, py + t * (y - py)]);
+            result.push(current);
+            current = null;
+        } else if (!prevIn && inside) {
+            const edge = px < xMin ? xMin : xMax;
+            const t = (edge - px) / (x - px);
+            current = [[edge, py + t * (y - py)], [x, y]];
+        }
+    }
+    if (current && current.length >= 2) result.push(current);
+    return result;
+}
+
 function fillDotPointsSvg(target, points, r, color, alpha) {
     const { color: c, alpha: ca } = parseColor(color);
     const parent = wrapGroup(target, ca, alpha);
