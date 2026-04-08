@@ -212,7 +212,7 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
             const bracketY = c.badgeTop + badgeH + gap;
             ctx.strokeStyle = c.gene.color;
             ctx.beginPath();
-            ctx.moveTo(c.sxMid, c.syRef + 4);
+            ctx.moveTo(c.sxMid, c.syRef);
             ctx.lineTo(c.sxMid, bracketY);
             ctx.stroke();
         }
@@ -224,7 +224,7 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
     ctx.textBaseline = 'bottom';
     for (const c of candidates) {
         const tw = ctx.measureText(c.gene.name).width;
-        const ly = c.badgeTop + badgeH;
+        const ly = c.badgeTop + badgeH - (inDetail ? 2 : 0);
 
         ctx.fillStyle = 'rgba(40, 32, 10, 0.85)';
         ctx.beginPath();

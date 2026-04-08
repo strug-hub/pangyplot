@@ -50,8 +50,9 @@ export async function loadChromosome(chromosome) {
     const tFetch = performance.now();
     console.log(`[load] fetch: ${(tFetch - t0).toFixed(0)}ms`);
 
-    if (!skelMetaResp.ok) throw new Error(`HTTP ${skelMetaResp.status}`);
-    if (!skelBinResp.ok) throw new Error(`HTTP ${skelBinResp.status}`);
+    if (!skelMetaResp.ok || !skelBinResp.ok) {
+        throw new Error(`No data for ${decodeURIComponent(chr)}. This chromosome may not be in the dataset.`);
+    }
 
     let t1 = performance.now();
     const raw = await skelMetaResp.json();
