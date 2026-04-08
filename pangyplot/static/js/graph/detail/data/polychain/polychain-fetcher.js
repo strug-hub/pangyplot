@@ -235,11 +235,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
                 addChainsToPolychainLayer(newChains, state.detailData);
             }
 
-            fetchedRegion = {
-                minX: Math.min(fetchedRegion.minX, fetchMinX),
-                maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
-                chr,
-            };
+            fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
         }
         updateDetailForceCount(getForceNodes().length);
 
@@ -329,11 +325,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
                 addChainsToPolychainLayer(newChains, state.detailData);
             }
 
-            fetchedRegion = {
-                minX: Math.min(fetchedRegion.minX, fetchMinX),
-                maxX: Math.max(fetchedRegion.maxX, fetchMaxX),
-                chr,
-            };
+            fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
         }
         updateDetailForceCount(getForceNodes().length);
 

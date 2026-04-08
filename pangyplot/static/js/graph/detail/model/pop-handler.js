@@ -164,6 +164,10 @@ export async function popBubbleCircleV2(hit) {
         }
     }
 
+    // Track pop-created objects on the container for lifecycle cleanup
+    for (const obj of childObjects) container.popChildren.add(obj);
+    for (const obj of materializedObjects) container.popChildren.add(obj);
+
     // Register each object's ends in seg-registry (SimObjects, not raw nodes)
     for (const obj of childObjects) {
         for (const segId of obj.ends.head) registerSeg(segId, obj);

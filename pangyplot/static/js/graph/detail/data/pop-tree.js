@@ -108,6 +108,23 @@ class PopTree {
         this.roots.clear();
         this.undoStack.length = 0;
     }
+
+    /** Remove all pop entries belonging to a specific chain. */
+    clearByChainId(chainId) {
+        const toRemove = [];
+        for (const [bubbleId, node] of this.pops) {
+            if (node.chainId === chainId) toRemove.push(bubbleId);
+        }
+        for (const bubbleId of toRemove) {
+            const node = this.pops.get(bubbleId);
+            if (node.parentBubbleId && this.pops.has(node.parentBubbleId)) {
+                this.pops.get(node.parentBubbleId).children.delete(bubbleId);
+            }
+            this.roots.delete(bubbleId);
+            this.pops.delete(bubbleId);
+        }
+        this.undoStack = this.undoStack.filter(bid => !toRemove.includes(bid));
+    }
 }
 
 const popTree = new PopTree();

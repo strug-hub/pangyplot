@@ -111,6 +111,9 @@ export class PolychainContainer {
         /** @type {PolychainSegment[]} */
         this.segments = [];
 
+        /** @type {Set<SimObject>} — objects created by pops on this chain */
+        this.popChildren = new Set();
+
         // Scratch buffer for cumulative arc lengths (reused each query)
         this._cumLen = new Float64Array(Math.max(this.spineNodes.length, 2));
 
@@ -368,13 +371,18 @@ export class PolychainContainer {
         return nodes;
     }
 
-    /** Destroy all segments and clear registrations. */
+    /** Destroy all segments, pop children, and clear registrations. */
     destroy() {
         for (const seg of this.segments) {
             registry.unregisterAll(seg.ends.head);
             registry.unregisterAll(seg.ends.tail);
         }
+        for (const obj of this.popChildren) {
+            registry.unregisterAll(obj.ends.head);
+            registry.unregisterAll(obj.ends.tail);
+        }
         this.segments = [];
+        this.popChildren.clear();
         this.spineNodes = [];
         this.spineLinks = [];
         this.poppedRanges = [];

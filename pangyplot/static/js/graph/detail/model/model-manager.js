@@ -7,6 +7,7 @@
  */
 
 import * as registry from './segment-registry.js';
+import popTree from '../data/pop-tree.js';
 
 // All active PolychainContainers, keyed by root chain ID
 const containers = new Map();
@@ -80,13 +81,15 @@ export function addContainer(container) {
     }
 }
 
-/** Remove a PolychainContainer and its segments. */
+/** Remove a PolychainContainer, its segments, and pop children. */
 export function removeContainer(chainId) {
     const c = containers.get(chainId);
     if (c) {
         for (const seg of c.segments) objects.delete(seg.id);
+        for (const obj of c.popChildren) objects.delete(obj.id);
         c.destroy();
         containers.delete(chainId);
+        popTree.clearByChainId(chainId);
     }
 }
 
