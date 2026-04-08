@@ -14,7 +14,7 @@ import { unregisterChains } from '../detail-view-state.js';
 import { initPolychainLayer, addChainsToPolychainLayer, removeChainsFromPolychainLayer, isSplitRootChain } from './polychain-adapter.js';
 import { updateAnchors as updateModelAnchors } from '../../model/model-manager.js';
 import { placeGenesFromDetail } from '@graph-data/gene-data.js';
-import { updateDetailFetchMs, updateDetailForceCount } from '../../../ui/status-bar.js';
+import { updateDetailFetchMs, updateDetailForceCount } from '@debug/debug-status-bar.js';
 import { getForceNodes } from '../force-data.js';
 import {
     hasPolychainDataCache, getChainsInRange,
@@ -190,7 +190,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
 
         if (isFirstFetch) {
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
-            state.poppedChainIds.clear();
             popTree.clear();
             clearHistory();
             state.detailData = newData;
@@ -202,8 +201,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             // Skip chains already present, chains that have been split by pops,
             // and backend connectors whose root chain has been split
             const newChains = newData.chains.filter(c =>
-                !existingIds.has(c.id) && !state.poppedChainIds.has(c.id)
-                && !isSplitRootChain(c.id));
+                !existingIds.has(c.id) && !isSplitRootChain(c.id));
 
             const removedIds = new Set();
             for (const c of state.detailData.chains) {
@@ -218,13 +216,10 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             }
 
             if (removedIds.size > 0) {
-                for (const cid of state.poppedChainIds) removedIds.delete(cid);
-                if (removedIds.size > 0) {
-                    removeChainsFromPolychainLayer(removedIds);
-                    removeNodesByChainIds(removedIds);
-                    const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
-                    unregisterChains(removedIds, removedChains);
-                }
+                removeChainsFromPolychainLayer(removedIds);
+                removeNodesByChainIds(removedIds);
+                const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
+                unregisterChains(removedIds, removedChains);
             }
 
             const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
@@ -284,7 +279,6 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
         if (isFirstFetch) {
             fetchedRegion = { minX: fetchMinX, maxX: fetchMaxX, chr };
 
-            state.poppedChainIds.clear();
             popTree.clear();
 
             clearHistory();
@@ -300,8 +294,7 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             const incomingIds = new Set(newData.chains.map(c => c.id));
 
             const newChains = newData.chains.filter(c =>
-                !existingIds.has(c.id) && !state.poppedChainIds.has(c.id)
-                && !isSplitRootChain(c.id));
+                !existingIds.has(c.id) && !isSplitRootChain(c.id));
 
             const removedIds = new Set();
             for (const c of state.detailData.chains) {
@@ -316,15 +309,10 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             }
 
             if (removedIds.size > 0) {
-                for (const cid of state.poppedChainIds) {
-                    removedIds.delete(cid);
-                }
-                if (removedIds.size > 0) {
-                    removeChainsFromPolychainLayer(removedIds);
-                    removeNodesByChainIds(removedIds);
-                    const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
-                    unregisterChains(removedIds, removedChains);
-                }
+                removeChainsFromPolychainLayer(removedIds);
+                removeNodesByChainIds(removedIds);
+                const removedChains = state.detailData.chains.filter(c => removedIds.has(c.id));
+                unregisterChains(removedIds, removedChains);
             }
 
             const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));

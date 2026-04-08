@@ -9,7 +9,7 @@ import { getContainer } from '../../detail/model/model-manager.js';
 import { setupDragFixEngine } from './drag-fix-engine.js';
 import { anchorChain } from './centroid-anchor-force.js';
 import { setupDragLockBadge, showDragLock, hideDragLock } from './drag-lock-render.js';
-import { hideTooltip } from '../../ui/status-bar.js';
+import { hideTooltip } from '@ui/elements/tooltip.js';
 import { resetDragInfluence } from './drag-influence-force.js';
 
 const MIN_MOVEMENT_PX = 5;

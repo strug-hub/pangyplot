@@ -78,21 +78,6 @@
             font-size: 12px;
         }
 
-        #grid-meter {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-        }
-        #grid-meter .bar {
-            width: 6px;
-            height: 14px;
-            background: #333;
-            border-radius: 1px;
-            transition: background 0.15s;
-        }
-        #grid-meter .bar.active {
-            background: #0ff;
-        }
 
         #canvas-container {
             flex: 1;
@@ -254,9 +239,6 @@
                 </div>
                 <div id="viewer-controls">
                     <span id="level-label" class="val">--</span> <span id="grid-val" style="color: #555;">[--]</span>
-                    <span><span id="visible-count" class="val">--</span> / <span id="polyline-count" style="color: #555;">--</span> lines</span>
-                    <span><span id="reduction" class="val">--</span> reduction</span>
-                    <div id="grid-meter"></div>
                     <span style="color: #888; font-size: 12px;">zoom <span id="zoom-val" class="val" style="color: #0ff;">1.0</span></span>
                     <span id="render-scale-display" style="color: #888; font-size: 12px;">RS <span id="render-scale-val" class="val" style="color: #f80;">1.0</span></span>
                     <span id="viewport-bp" style="color: #4f4; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px;"></span>

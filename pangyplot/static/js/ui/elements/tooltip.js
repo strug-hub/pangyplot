@@ -24,6 +24,25 @@ export function positionTooltip(el, clientX, clientY, container = null) {
 }
 
 /**
+ * Show the graph tooltip (#tooltip) near the cursor.
+ */
+export function showTooltip(html, clientX, clientY) {
+    const el = document.getElementById('tooltip');
+    if (!el) return;
+    el.innerHTML = html;
+    el.style.display = 'block';
+    positionTooltip(el, clientX, clientY);
+}
+
+/**
+ * Hide the graph tooltip (#tooltip).
+ */
+export function hideTooltip() {
+    const el = document.getElementById('tooltip');
+    if (el) el.style.display = 'none';
+}
+
+/**
  * Create a managed tooltip attached to a container.
  *
  * @param {HTMLElement} container - The parent element for the tooltip

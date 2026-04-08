@@ -12,7 +12,8 @@ import { scheduleDetailFetch } from '../engines/detail-transition-engine.js';
 import { scheduleHashUpdate } from '../engines/navigation/hash-navigation.js';
 import { clearGeneCache } from '@graph-data/gene-data.js';
 import { clearLabelAnimation } from '../skeleton/render/gene-label-overlay.js';
-import { showLoadingError, showStats, initGridMeter } from './status-bar.js';
+import { showLoadingError } from './loading.js';
+import { showStats } from '@debug/debug-status-bar.js';
 import { publishViewportCoordinates } from './viewport-sync.js';
 
 function handleConstructGraph(data) {
@@ -45,7 +46,6 @@ async function switchChromosome(chrom, start, end) {
     }
 
     showStats();
-    initGridMeter();
     resizeCanvas();
 
     if (start != null && end != null) {

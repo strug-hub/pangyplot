@@ -1,13 +1,11 @@
-// Centralized UI status bar updates. All DOM writes to the info bar and detail
-// bar flow through here. Other modules update state.js; the render
-// loop (or event handlers) call these functions to flush state to the DOM.
+// Debug status bar: DOM updates for viewer-controls and detail-bar.
+// These bars are only visible in debug mode.
 
 import { state } from '../state.js';
 import { formatBp } from '@format-utils';
 import { layoutToBp } from '../engines/reference-spine-engine.js';
 import { viewportBpSpan } from '../render/viewport.js';
 import { getLevelCount, getLevelMeta } from '@graph-data/chromosome-data.js';
-import { positionTooltip } from '@ui/elements/tooltip.js';
 import { isDebugMode } from '@app-state';
 import eventBus from '@event-bus';
 import { renderedJunctionNodes, renderedJunctionLinks } from '../detail/render/force-render-manager.js';
@@ -28,11 +26,6 @@ eventBus.subscribe('app:debug-mode-changed', updateDebugBars);
 // One-time init
 // ---------------------------------------------------------------
 
-/** Show loading error and abort. */
-export function showLoadingError(msg) {
-    state.dom.loading.textContent = `Error loading data: ${msg}`;
-}
-
 /** Hide loading spinner and populate the static stats line. */
 export function showStats() {
     state.dom.loading.style.display = 'none';
@@ -40,18 +33,6 @@ export function showStats() {
         `${state.stats.totalSegments.toLocaleString()} segs | ` +
         `${state.stats.junctionCount.toLocaleString()} junctions | ` +
         `${getLevelCount()} grid levels`;
-}
-
-/** Build grid meter bars (call once after data load). */
-export function initGridMeter() {
-    const meter = state.dom.gridMeter;
-    meter.innerHTML = '';
-    const count = getLevelCount();
-    for (let i = 0; i < count; i++) {
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        meter.appendChild(bar);
-    }
 }
 
 // ---------------------------------------------------------------
@@ -69,30 +50,14 @@ export function updateZoom() {
 
 let prevLevel = -1;
 
-/** Light up grid meter bars and update skeleton level readout. */
+/** Update skeleton level readout. */
 export function updateSkeletonLevel(levelIndex) {
     if (levelIndex === prevLevel) return false;
     prevLevel = levelIndex;
 
-    // Grid meter bars
-    const bars = state.dom.gridMeter.children;
-    const n = bars.length;
-    for (let i = 0; i < n; i++) {
-        bars[i].classList.toggle('active', i < n - levelIndex);
-    }
-
-    // Level info
     const meta = getLevelMeta();
     state.dom.levelLabel.textContent = meta.label;
-    state.dom.polylineCount.textContent = meta.polylineCount.toLocaleString();
-    const pct = ((1 - meta.nodeCount / state.stats.totalSegments) * 100).toFixed(1);
-    state.dom.reduction.textContent = `${pct}%`;
     return true;
-}
-
-/** Update visible polyline count. */
-export function updateVisibleCounts(visiblePl) {
-    state.dom.visibleCount.textContent = visiblePl.toLocaleString();
 }
 
 /** Update viewport coordinate readout. */
@@ -106,6 +71,11 @@ export function updateViewportBp(vp) {
             state.dom.viewportBp.textContent = `${chr}:${formatBp(bpLeft)}-${formatBp(bpRight)}`;
         }
     }
+}
+
+/** Update cursor coordinate readout. */
+export function updateCursorBp(text) {
+    state.dom.cursorBp.textContent = text;
 }
 
 // ---------------------------------------------------------------
@@ -153,11 +123,6 @@ export function updateDetailPhase() {
     state.dom.detailPhase.textContent = 'DETAILS';
 }
 
-/** Update just the phase readout (called during fade animation). */
-export function updateDetailOpacityReadout() {
-    // Phase indicator only — opacity no longer tracked in UI
-}
-
 // ---------------------------------------------------------------
 // Fetch indicator
 // ---------------------------------------------------------------
@@ -170,23 +135,4 @@ export function updateFetchIndicator() {
         state.dom.fetchIndicator.classList.remove('active');
         updateDetailPhase();
     }
-}
-
-// ---------------------------------------------------------------
-// Tooltip & cursor
-// ---------------------------------------------------------------
-
-export function updateCursorBp(text) {
-    state.dom.cursorBp.textContent = text;
-}
-
-export function showTooltip(html, clientX, clientY) {
-    const el = state.dom.tooltip;
-    el.innerHTML = html;
-    el.style.display = 'block';
-    positionTooltip(el, clientX, clientY);
-}
-
-export function hideTooltip() {
-    state.dom.tooltip.style.display = 'none';
 }

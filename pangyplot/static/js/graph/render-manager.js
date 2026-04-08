@@ -12,7 +12,7 @@ import { drawDetail, drawCustomAnnotationLabels } from './detail/render/polychai
 import { drawForceGraph } from './detail/render/force-render-manager.js';
 import { getBaseWidth } from './detail/engines/forces/pc-settings.js';
 import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
-import { updateZoom, updateSkeletonLevel, updateVisibleCounts, updateViewportBp, updateDetailBar, updateFetchIndicator } from './ui/status-bar.js';
+import { updateZoom, updateSkeletonLevel, updateViewportBp, updateDetailBar, updateFetchIndicator } from '@debug/debug-status-bar.js';
 import { updateLOD } from './engines/lod-engine.js';
 import { getLevelMeta } from '@graph-data/chromosome-data.js';
 import { getSearchHighlights } from './engines/node-search-engine.js';
@@ -25,6 +25,7 @@ import { tickPathAnimation } from './engines/path-trace/path-trace-animation.js'
 import '@debug/views/force-vectors.js';
 import '@debug/views/hit-zones.js';
 import '@debug/views/gap-pressure.js';
+import '@debug/views/skeleton-grid.js';
 
 // ---------------------------------------------------------------
 // Main draw
@@ -69,13 +70,10 @@ function draw() {
 
     // ===== SKELETON LAYER (skipped when detail is fully active) =====
     const skipSkeleton = !state.alwaysShowSkeleton && state.detailData && state.detailPhase === 'static';
-    let visiblePl = 0;
-
     if (!skipSkeleton) {
         if (_debug) _t0 = performance.now();
-        const counts = drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY);
+        drawSkeleton(ctx, vpMinX, vpMinY, vpMaxX, vpMaxY);
         if (_debug) timings.push(['skeleton', performance.now() - _t0]);
-        visiblePl = counts.visiblePl;
     }
 
     // ===== DETAIL LAYER (suppressed when skeleton-always mode is on) =====
@@ -138,7 +136,6 @@ function draw() {
     }
 
     // --- Status bar ---
-    updateVisibleCounts(visiblePl);
     updateViewportBp(vp);
     updateFetchIndicator();
 

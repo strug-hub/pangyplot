@@ -9,7 +9,8 @@ import { hitTestChains, getChainTooltip, hitTestBubbleCircles, getBubbleCircleTo
 import { hitTestForceNodes, hitTestBubbles, getForceNodeTooltip, getBubbleTooltip } from '../../detail/engines/node-hover-engine.js';
 import { hitTestSkeleton, getSkeletonTooltip } from '../../skeleton/engines/skeleton-hover-engine.js';
 import { formatTooltipHtml } from '../../ui/tooltip-formatter.js';
-import { updateCursorBp, showTooltip, hideTooltip } from '../../ui/status-bar.js';
+import { updateCursorBp } from '@debug/debug-status-bar.js';
+import { showTooltip, hideTooltip } from '@ui/elements/tooltip.js';
 import { updateSelectionInfo } from '@ui/sections/tabs/information-panel.js';
 import { formatNodeLabel } from '@format-utils';
 import { wasMenuJustClosed } from '../context-menu.js';

@@ -8,7 +8,7 @@ import { getAllObjects } from '../../detail/model/model-manager.js';
 import { PolychainSegment } from '../../detail/model/polychain-segment.js';
 import { updateSelectionInfo, updateSelectionSummary, clearSelectionSummary } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
-import { showTooltip, hideTooltip } from '../../ui/status-bar.js';
+import { showTooltip, hideTooltip } from '@ui/elements/tooltip.js';
 
 export function setupMultiSelection(canvas) {
     let isSelecting = false;
@@ -43,7 +43,7 @@ export function setupMultiSelection(canvas) {
             } else {
                 const mx = state._lastMouseX ?? window.innerWidth / 2;
                 const my = state._lastMouseY ?? window.innerHeight / 2;
-                const el = state.dom.tooltip;
+                const el = document.getElementById('tooltip');
                 const container = el.offsetParent || el.parentElement;
                 const cr = container.getBoundingClientRect();
                 el.innerHTML = '<span class="tt-label">zoom in closer to select</span>';

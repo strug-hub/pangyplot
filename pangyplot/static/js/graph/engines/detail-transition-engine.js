@@ -4,7 +4,7 @@
 import { state } from '../state.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
 import { updateLOD } from './lod-engine.js';
-import { updateDetailBar, updateDetailPhase, updateDetailOpacityReadout } from '../ui/status-bar.js';
+import { updateDetailBar, updateDetailPhase } from '@debug/debug-status-bar.js';
 import { layoutToBp, isReady } from './reference-spine-engine.js';
 import { placeGenesFromSpine } from '@graph-data/gene-data.js';
 import { getViewport } from '../render/viewport.js';
@@ -48,7 +48,6 @@ function finishExit() {
     import('../detail/data/pop-tree.js').then(m => m.default.clear());
     import('../detail/model/model-manager.js').then(m => m.clearModel());
     state.detailData = null;
-    state.poppedChainIds.clear();
     state.detailOpacity = 0;
     state.skeletonOpacity = 1;
     setDetailPhase('none');
@@ -85,7 +84,6 @@ export function updateDetailOpacity() {
             return;
         }
     }
-    updateDetailOpacityReadout();
 }
 
 export function scheduleFadeFrame() {

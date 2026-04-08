@@ -39,9 +39,6 @@ export const state = {
     isFetching: false,         // true while a detail fetch is in-flight
     forceVectorMode: 'all',   // U-key cycle within forces debug view
 
-    // Force simulation
-    poppedChainIds: new Set(),  // all chain IDs currently rendered as force graph
-
     // Selection (Shift+drag rectangle)
     selectedChains: new Map(),   // Map<chain, { tStart, tEnd }> — clipped arc-length fraction
     selectedObjects: new Set(),  // Set<SimObject> — selected junction SegmentObjects/BubbleObjects
@@ -75,12 +72,8 @@ export const state = {
     // DOM element references
     dom: {
         levelLabel: document.getElementById('level-label'),
-        polylineCount: document.getElementById('polyline-count'),
-        visibleCount: document.getElementById('visible-count'),
-        reduction: document.getElementById('reduction'),
         stats: document.getElementById('stats'),
         loading: document.getElementById('loading'),
-        gridMeter: document.getElementById('grid-meter'),
         zoomVal: document.getElementById('zoom-val'),
         renderScaleVal: document.getElementById('render-scale-val'),
         gridVal: document.getElementById('grid-val'),
@@ -97,7 +90,6 @@ export const state = {
         detailRange: document.getElementById('detail-range'),
         detailSteps: document.getElementById('detail-steps'),
         detailFetchMs: document.getElementById('detail-fetch-ms'),
-        tooltip: document.getElementById('tooltip'),
         fetchIndicator: document.getElementById('fetch-indicator'),
     },
 };

@@ -7,7 +7,8 @@ import { scheduleFrame } from './utils/frame-scheduler.js';
 import './render-manager.js';
 import { scheduleDetailFetch } from './engines/detail-transition-engine.js';
 import { setupEngines } from './engines/engine-manager.js';
-import { showLoadingError, showStats, initGridMeter } from './ui/status-bar.js';
+import { showLoadingError } from './ui/loading.js';
+import { showStats } from '@debug/debug-status-bar.js';
 import { state } from './state.js';
 import { bindRenderState } from './detail/engines/forces/pc-settings.js';
 import { setupUiBridge } from './ui/ui-bridge.js';
@@ -30,7 +31,6 @@ async function init() {
     }
 
     showStats();
-    initGridMeter();
 
     resizeCanvas();
 

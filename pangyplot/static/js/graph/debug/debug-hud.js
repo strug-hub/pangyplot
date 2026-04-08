@@ -41,16 +41,16 @@ export function drawDebugHud(ctx, cw, ch) {
     const active = getActiveView();
     ctx.textAlign = 'center';
     ctx.font = '12px monospace';
-    const totalWidth = views.length * 100;
-    let vx = (cw - totalWidth) / 2 + 50;
+    const totalWidth = views.length * 140;
+    let vx = (cw - totalWidth) / 2 + 70;
     for (const v of views) {
         const isActive = active === v;
         ctx.fillStyle = isActive ? '#5bb8f0' : '#666';
         ctx.fillText(`[${v.keyLabel}] ${v.label}`, vx, 16);
         if (isActive) {
-            ctx.fillRect(vx - 40, 20, 80, 1.5);
+            ctx.fillRect(vx - 50, 20, 100, 1.5);
         }
-        vx += 100;
+        vx += 140;
     }
     if (active?.statusText) {
         ctx.fillStyle = '#f90';
