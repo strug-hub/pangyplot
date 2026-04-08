@@ -10,35 +10,54 @@ import { clearBubbleMetaCache } from '../detail/data/bubble-meta-cache.js';
 import { pcSettings, REFERENCE_LINK_DISTANCE } from '../detail/engines/forces/pc-settings.js';
 import { syncScaleSlider } from '../ui/polychain-force-settings.js';
 
-/** Decode delta-encoded polylines in-place. */
-function decodeDelta(levels) {
+/**
+ * Index the binary buffer — compute byte offsets per level without
+ * reconstructing any polylines. Returns the raw slices for lazy decoding.
+ */
+function indexBinaryLevels(buffer, levels) {
+    let offset = 0;
     for (const level of levels) {
-        for (const pl of level.polylines) {
-            for (let i = 1; i < pl.length; i++) {
-                pl[i][0] += pl[i - 1][0];
-                pl[i][1] += pl[i - 1][1];
-            }
-        }
+        const numPl = level.numPolylines;
+        const totalPts = level.totalPoints;
+
+        level._binPointCounts = new Uint32Array(buffer, offset, numPl);
+        offset += numPl * 4;
+        level._binChainIds = new Int32Array(buffer, offset, numPl);
+        offset += numPl * 4;
+        level._binCoords = new Int32Array(buffer, offset, totalPts * 2);
+        offset += totalPts * 2 * 4;
+
+        level._decoded = false;
     }
 }
 
+
 export async function loadChromosome(chromosome) {
+    const t0 = performance.now();
+
     // Fetch skeleton, spine, polychain, and genes in parallel
     const chr = encodeURIComponent(chromosome);
     const genome = encodeURIComponent(state.GENOME);
-    const [skelResp, spineResp, pdResp, geneResp, metaResp] = await Promise.all([
+    const [skelMetaResp, skelBinResp, spineResp, pdResp, geneResp, metaResp] = await Promise.all([
         fetch(`/skeleton?chromosome=${chr}`),
+        fetch(`/skeleton-bin?chromosome=${chr}`),
         fetch(`/spine?chromosome=${chr}`),
         fetch(`/polychain-data?chromosome=${chr}`),
         fetch(`/genes?genome=${genome}&chromosome=${chr}&mane_only=true`),
         fetch(`/graph-meta?chromosome=${chr}`),
     ]);
 
-    if (!skelResp.ok) throw new Error(`HTTP ${skelResp.status}`);
-    const raw = await skelResp.json();
+    const tFetch = performance.now();
+    console.log(`[load] fetch: ${(tFetch - t0).toFixed(0)}ms`);
 
-    // Decode delta-encoded coordinates before anything reads them
-    if (raw.meta?.encoding === 'delta') decodeDelta(raw.levels);
+    if (!skelMetaResp.ok) throw new Error(`HTTP ${skelMetaResp.status}`);
+    if (!skelBinResp.ok) throw new Error(`HTTP ${skelBinResp.status}`);
+    const raw = await skelMetaResp.json();
+    const binBuffer = await skelBinResp.arrayBuffer();
+    indexBinaryLevels(binBuffer, raw.levels);
+
+    const tSkelParse = performance.now();
+    console.log(`[load] skeleton parse: ${(tSkelParse - tFetch).toFixed(0)}ms`);
 
     // Spine (shared coordinate infrastructure)
     if (spineResp.ok) {
@@ -66,6 +85,7 @@ export async function loadChromosome(chromosome) {
     syncScaleSlider();
 
     // Genes (fetched for entire chromosome; MANE Select first, fallback to all)
+    const tGene0 = performance.now();
     let genes = [];
     if (geneResp.ok) {
         const geneData = await geneResp.json();
@@ -81,6 +101,9 @@ export async function loadChromosome(chromosome) {
     }
     initGeneCache(genes);
 
+    const tGene1 = performance.now();
+    console.log(`[load] genes: ${(tGene1 - tGene0).toFixed(0)}ms (${genes.length} genes)`);
+
     // Clear per-chain bubble metadata from previous chromosome
     clearBubbleMetaCache();
 
@@ -95,6 +118,10 @@ export async function loadChromosome(chromosome) {
 
     // Skeleton rendering data (skeleton-internal)
     initSkeleton(raw.levels, raw.chainMeta);
+
+    const tInit = performance.now();
+    console.log(`[load] skeleton init: ${(tInit - tGene1).toFixed(0)}ms`);
+    console.log(`[load] total: ${(tInit - t0).toFixed(0)}ms`);
 
     // App stats
     state.stats = raw.stats;

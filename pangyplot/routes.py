@@ -96,15 +96,12 @@ def genes():
     end = request.args.get("end", 2_000_000_000, type=int)
     mane_only = request.args.get("mane_only", "false").lower() == "true"
 
-    print(f"Getting genes in: {genome}#{chrom}:{start}-{end} (mane_only={mane_only})")
-
     if genome not in current_app.annotation_index:
         return jsonify({"error": f"Genome '{genome}' not found"}), 404
 
     annidx = current_app.annotation_index[genome]
-    annidx.set_step_index(current_app.step_index[(chrom, genome)])
-    genes = annidx.query_gene_range(chrom, start, end, mane_only=mane_only)
-    print(f"   Genes: {len(genes)}")
+    annidx.set_step_index(None)
+    genes = annidx.query_gene_range(chrom, start, end, type="gene", mane_only=mane_only)
 
     return jsonify({"genes": [gene.serialize() for gene in genes]}), 200
 
@@ -127,12 +124,26 @@ def skeleton():
     chrom = request.args.get('chromosome')
     if not chrom:
         return jsonify({"error": "Missing required parameter: chromosome"}), 400
-    gz_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton.json.gz")
-    if not os.path.exists(gz_path):
+    skel_dir = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton")
+    meta_path = os.path.join(skel_dir, "meta.json.gz")
+    if not os.path.exists(meta_path):
         return jsonify({"error": "No precomputed skeleton data for this chromosome."}), 404
-    with open(gz_path, 'rb') as f:
+    with open(meta_path, 'rb') as f:
         data = f.read()
     return Response(data, mimetype='application/json',
+                    headers={'Content-Encoding': 'gzip'})
+
+@bp.route('/skeleton-bin')
+def skeleton_bin():
+    chrom = request.args.get('chromosome')
+    if not chrom:
+        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    bin_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton", "polylines.bin.gz")
+    if not os.path.exists(bin_path):
+        return jsonify({"error": "No precomputed skeleton data for this chromosome."}), 404
+    with open(bin_path, 'rb') as f:
+        data = f.read()
+    return Response(data, mimetype='application/octet-stream',
                     headers={'Content-Encoding': 'gzip'})
 
 @bp.route('/spine')
@@ -142,7 +153,8 @@ def spine():
     if not chrom:
         return jsonify({"error": "Missing required parameter: chromosome"}), 400
     from pangyplot.preprocess.spine.spine_builder import spine_filename
-    gz_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, spine_filename(ref))
+    skel_dir = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton")
+    gz_path = os.path.join(skel_dir, spine_filename(ref))
     if not os.path.exists(gz_path):
         return jsonify({"error": f"No spine data for {chrom} ({ref})."}), 404
     with open(gz_path, 'rb') as f:

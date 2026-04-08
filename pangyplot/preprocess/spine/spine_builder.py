@@ -66,10 +66,11 @@ def export_spine(spine, output_path):
     print(f"Exported {output_path} ({size_kb:.0f} KB)")
 
 
-def generate_spine(chr_dir, ref, segment_index):
+def generate_spine(chr_dir, ref, segment_index, output_dir=None):
     """Build and export spine for a single chromosome + reference."""
     step_index = StepIndex(chr_dir, ref)
     spine = build_reference_spine(step_index, segment_index)
-    output_path = os.path.join(chr_dir, spine_filename(ref))
+    out = output_dir if output_dir is not None else chr_dir
+    output_path = os.path.join(out, spine_filename(ref))
     export_spine(spine, output_path)
     return spine

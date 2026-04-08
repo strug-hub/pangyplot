@@ -3,9 +3,14 @@
 
 import { getLevels, setLevels, setChainFamily, setLevelBboxes } from './skeleton-data.js';
 import { setDataBounds } from '@graph-data/chromosome-data.js';
+import { decodeLevel } from '@graph-data/skeleton-decoder.js';
 import { polylineBbox } from '../../utils/geometry.js';
 
 export function initSkeleton(levels, chainMeta) {
+    // Decode all levels from binary
+    for (const level of levels) {
+        if (!level._decoded) decodeLevel(level);
+    }
     setLevels(levels);
     buildChainFamilyMap(chainMeta);
     precomputeBboxes();

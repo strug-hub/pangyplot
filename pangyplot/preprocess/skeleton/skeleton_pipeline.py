@@ -1,9 +1,10 @@
 """
 Skeleton builder internals: graph topology, chain annotation,
-reference spine, and JSON export.
+reference spine, and binary export.
 """
 
 import gzip
+import json
 import os
 from collections import defaultdict
 
@@ -240,113 +241,110 @@ def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats=None
 
 
 # ---------------------------------------------------------------------------
-# JSON export for D3 viewer
+# Binary export for viewer
 # ---------------------------------------------------------------------------
 
-def export_json(junctions, runs, segment_index, link_index, polylines,
-                grid_cell_sizes, output_path, chromosome=None,
-                chain_ids=None, chain_stats=None):
-    """Export pure grid-based mipmap data as gzipped JSON for the D3 viewer.
-
-    Each level is a grid simplification at a different cell size.
-    Levels are sorted finest (smallest cell) to coarsest (largest cell).
-
-    If chain_ids is provided (parallel to polylines), each level includes
-    a chainIds array parallel to its polylines. chain_stats is exported
-    as top-level chainMeta.
+def export_binary(junctions, runs, segment_index, link_index, polylines,
+                  grid_cell_sizes, meta_path, bin_path, chromosome=None,
+                  chain_ids=None, chain_stats=None):
+    """Export grid-based mipmap data as two files:
+      meta_path  — gzipped JSON (stats, chainMeta, level metadata)
+      bin_path   — gzipped binary (pointCounts, chainIds, coords per level)
     """
     total_segments = len(segment_index)
-    encoder = db_utils.NumpyJSONEncoder()
     level_summaries = []
 
-    # Stream JSON to gzip file, writing each grid level as it's computed
-    # so we never hold all levels in memory at once.
-    with gzip.open(output_path, 'wt', encoding='utf-8') as f:
-        f.write('{')
+    # Build all levels first to compute metadata
+    all_levels = []
+    for cell in sorted(grid_cell_sizes):
+        if chain_ids is not None:
+            grid_pls, grid_chain_ids = grid_simplify(
+                polylines, cell, chain_ids=chain_ids)
+        else:
+            grid_pls = grid_simplify(polylines, cell)
+            grid_chain_ids = None
 
-        # Meta (must be first key for fast version detection)
-        meta = {"version": __version__, "encoding": "delta"}
-        f.write('"meta":')
-        f.write(encoder.encode(meta))
+        # Filter polylines with <2 points, delta-encode coordinates
+        point_counts = []
+        level_chain_ids = []
+        coords = []  # flat [x0, y0, dx1, dy1, ...]
+        for j, pl in enumerate(grid_pls):
+            if len(pl) < 2:
+                continue
+            point_counts.append(len(pl))
+            if grid_chain_ids is not None:
+                level_chain_ids.append(int(grid_chain_ids[j]))
+            else:
+                level_chain_ids.append(-1)
+            # First point absolute, rest delta-encoded
+            coords.append(int(round(pl[0][0])))
+            coords.append(int(round(pl[0][1])))
+            for k in range(1, len(pl)):
+                coords.append(int(round(pl[k][0] - pl[k-1][0])))
+                coords.append(int(round(pl[k][1] - pl[k-1][1])))
 
-        # Stats
-        junction_count = int(np.count_nonzero(junctions)) if hasattr(junctions, 'dtype') else len(junctions)
-        stats = {
+        total_nodes = sum(len(pl) for pl in grid_pls)
+        num_polylines = len(point_counts)
+        total_points = sum(point_counts)
+
+        all_levels.append({
+            "cell": cell,
+            "total_nodes": total_nodes,
+            "num_polylines": num_polylines,
+            "total_points": total_points,
+            "point_counts": np.array(point_counts, dtype=np.uint32),
+            "chain_ids": np.array(level_chain_ids, dtype=np.int32),
+            "coords": np.array(coords, dtype=np.int32),
+        })
+        level_summaries.append((f"Grid {cell:,}", total_nodes, num_polylines))
+
+    # Build JSON header
+    junction_count = int(np.count_nonzero(junctions)) if hasattr(junctions, 'dtype') else len(junctions)
+    header = {
+        "meta": {"version": __version__, "encoding": "binary"},
+        "stats": {
             "totalSegments": total_segments,
             "totalLinks": len(link_index),
             "junctionCount": junction_count,
             "runCount": len(runs),
-        }
-        f.write(',"stats":')
-        f.write(encoder.encode(stats))
+        },
+        "chromosome": chromosome,
+        "levels": [],
+    }
 
-        # Chromosome
-        if chromosome is not None:
-            f.write(',"chromosome":')
-            f.write(encoder.encode(chromosome))
+    if chain_stats is not None:
+        cleaned = {}
+        for k, v in chain_stats.items():
+            entry = {fk: fv for fk, fv in v.items() if fk != "parent_subtype"}
+            cleaned[str(k)] = entry
+        header["chainMeta"] = cleaned
 
-        # ChainMeta (strip parent_subtype — not used by frontend)
-        if chain_stats is not None:
-            cleaned = {}
-            for k, v in chain_stats.items():
-                entry = {fk: fv for fk, fv in v.items() if fk != "parent_subtype"}
-                cleaned[str(k)] = entry
-            f.write(',"chainMeta":')
-            f.write(encoder.encode(cleaned))
+    for level in all_levels:
+        header["levels"].append({
+            "gridSize": level["cell"],
+            "label": f"Grid {level['cell']:,}",
+            "nodeCount": level["total_nodes"],
+            "polylineCount": level["num_polylines"],
+            "numPolylines": level["num_polylines"],
+            "totalPoints": level["total_points"],
+        })
 
-        # Levels — stream one at a time
-        f.write(',"levels":[')
-        for level_idx, cell in enumerate(sorted(grid_cell_sizes)):
-            if chain_ids is not None:
-                grid_pls, grid_chain_ids = grid_simplify(
-                    polylines, cell, chain_ids=chain_ids)
-            else:
-                grid_pls = grid_simplify(polylines, cell)
-                grid_chain_ids = None
+    # Write meta JSON
+    with gzip.open(meta_path, 'wt', encoding='utf-8') as f:
+        json.dump(header, f, cls=db_utils.NumpyJSONEncoder)
 
-            # Build polylines and chain IDs in sync (filter len<2 together)
-            # Delta-encode: first point absolute, subsequent points as [dx, dy]
-            lines = []
-            level_chain_ids = [] if grid_chain_ids is not None else None
-            for j, pl in enumerate(grid_pls):
-                if len(pl) < 2:
-                    continue
-                encoded = [[round(pl[0][0], 1), round(pl[0][1], 1)]]
-                for k in range(1, len(pl)):
-                    encoded.append([round(pl[k][0] - pl[k-1][0], 1),
-                                    round(pl[k][1] - pl[k-1][1], 1)])
-                lines.append(encoded)
-                if level_chain_ids is not None:
-                    level_chain_ids.append(grid_chain_ids[j])
+    meta_mb = os.path.getsize(meta_path) / (1024 * 1024)
+    print(f"Exported {meta_path} ({meta_mb:.1f} MB)")
 
-            total_nodes = sum(len(pl) for pl in grid_pls)
-            level_data = {
-                "gridSize": cell,
-                "label": f"Grid {cell:,}",
-                "polylines": lines,
-                "nodeCount": total_nodes,
-                "polylineCount": len(lines),
-            }
-            if level_chain_ids is not None:
-                level_data["chainIds"] = level_chain_ids
+    # Write binary polylines
+    with gzip.open(bin_path, 'wb') as f:
+        for level in all_levels:
+            f.write(level["point_counts"].tobytes())
+            f.write(level["chain_ids"].tobytes())
+            f.write(level["coords"].tobytes())
 
-            level_summaries.append((level_data["label"], total_nodes,
-                                    len(lines)))
-
-            if level_idx > 0:
-                f.write(',')
-            f.write(encoder.encode(level_data))
-            del level_data, lines, grid_pls
-            if grid_chain_ids is not None:
-                del grid_chain_ids
-            if level_chain_ids is not None:
-                del level_chain_ids
-
-        f.write(']')
-        f.write('}')
-
-    size_mb = os.path.getsize(output_path) / (1024 * 1024)
-    print(f"Exported {output_path} ({size_mb:.1f} MB)")
+    bin_mb = os.path.getsize(bin_path) / (1024 * 1024)
+    print(f"Exported {bin_path} ({bin_mb:.1f} MB)")
 
     print(f"\n=== Grid Levels (finest → coarsest) ===")
     print(f"{'Cell size':>12}  {'Nodes':>10}  {'Polylines':>10}  {'Reduction':>10}")

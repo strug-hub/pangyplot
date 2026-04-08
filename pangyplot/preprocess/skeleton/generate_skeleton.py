@@ -18,18 +18,23 @@ from pangyplot.preprocess.skeleton.skeleton_pipeline import (
     VIEWER_GRID_SIZES, compute_grid_sizes,
     compute_degrees, find_junctions, find_linear_runs, run_to_polyline,
     load_segment_to_bubble, compute_run_chain_ids,
-    export_json,
+    export_binary,
 )
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
 from pangyplot.preprocess.spine.spine_builder import generate_spine, spine_filename
 from pangyplot.preprocess.meta import generate_meta, META_FILENAME
 
-SKELETON_FILENAME = "skeleton.json.gz"
+SKELETON_DIR = "skeleton"
+SKELETON_META = "meta.json.gz"
+SKELETON_BIN = "polylines.bin.gz"
 POLYCHAIN_DATA_FILENAME = "polychain-data.json.gz"
 
 def generate_skeleton(chr_dir, ref, chrom):
-    """Build and export skeleton JSON for a single chromosome directory."""
-    gz_path = os.path.join(chr_dir, SKELETON_FILENAME)
+    """Build and export skeleton binary for a single chromosome directory."""
+    skel_dir = os.path.join(chr_dir, SKELETON_DIR)
+    os.makedirs(skel_dir, exist_ok=True)
+    meta_path = os.path.join(skel_dir, SKELETON_META)
+    bin_path = os.path.join(skel_dir, SKELETON_BIN)
 
     print("→ Building skeleton.")
 
@@ -47,7 +52,7 @@ def generate_skeleton(chr_dir, ref, chrom):
     print(" Done.")
 
     print("   🧬 Building reference spine...", end="", flush=True)
-    generate_spine(chr_dir, ref, segment_index)
+    generate_spine(chr_dir, ref, segment_index, output_dir=skel_dir)
     print(" Done.")
 
     print("   ⛓️  Annotating chains...", end="", flush=True)
@@ -61,9 +66,9 @@ def generate_skeleton(chr_dir, ref, chrom):
 
     print("   💾 Exporting skeleton...", end="", flush=True)
     grid_sizes = compute_grid_sizes(segment_index)
-    export_json(junctions, runs, segment_index, link_index, polylines,
-                grid_sizes, gz_path, chromosome=chrom,
-                chain_ids=chain_ids, chain_stats=chain_stats)
+    export_binary(junctions, runs, segment_index, link_index, polylines,
+                  grid_sizes, meta_path, bin_path, chromosome=chrom,
+                  chain_ids=chain_ids, chain_stats=chain_stats)
     print(" Done.")
 
     print("   🔗 Exporting polychain data...", end="", flush=True)
@@ -76,10 +81,10 @@ def generate_skeleton(chr_dir, ref, chrom):
     print(" Done.")
 
 
-def _skeleton_version(gz_path):
-    """Read the skeleton version from the meta field without loading the full file."""
+def _skeleton_version(meta_path):
+    """Read the skeleton version from the meta file without loading fully."""
     try:
-        with gzip.open(gz_path, 'rt', encoding='utf-8') as f:
+        with gzip.open(meta_path, 'rt', encoding='utf-8') as f:
             head = f.read(200)
         m = re.search(r'"version"\s*:\s*"([^"]+)"', head)
         return m.group(1) if m else None
@@ -88,7 +93,7 @@ def _skeleton_version(gz_path):
 
 
 def ensure_skeleton(data_dir, db_name, ref):
-    """Generate skeleton JSON for any chromosome that is missing or stale.
+    """Generate skeleton for any chromosome that is missing or stale.
 
     Called automatically by the run command before starting the server.
     Discovers chromosomes from the graph directory on disk.
@@ -102,22 +107,24 @@ def ensure_skeleton(data_dir, db_name, ref):
 
     for chrom in chromosomes:
         chr_dir = os.path.join(graph_path, chrom)
-        gz_path = os.path.join(chr_dir, SKELETON_FILENAME)
+        skel_dir = os.path.join(chr_dir, SKELETON_DIR)
+        meta_path = os.path.join(skel_dir, SKELETON_META)
+        bin_path = os.path.join(skel_dir, SKELETON_BIN)
         pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
-        spine_path = os.path.join(chr_dir, spine_filename(ref))
-        if not os.path.exists(gz_path):
+        spine_path = os.path.join(skel_dir, spine_filename(ref))
+        if not os.path.exists(meta_path) or not os.path.exists(bin_path):
             print(f"\n[Skeleton] Missing skeleton for {chrom}, generating...")
             generate_skeleton(chr_dir, ref, chrom)
-        elif _skeleton_version(gz_path) != __version__:
+        elif _skeleton_version(meta_path) != __version__:
             print(f"\n[Skeleton] Rebuilding stale skeleton for {chrom} "
-                  f"({_skeleton_version(gz_path)} → {__version__})...")
+                  f"({_skeleton_version(meta_path)} → {__version__})...")
             generate_skeleton(chr_dir, ref, chrom)
         else:
             # Spine and polychain checked independently of skeleton
             if not os.path.exists(spine_path):
                 print(f"\n[Spine] Missing spine for {chrom} ({ref}), generating...")
                 _gfaidx = GFAIndex(chr_dir)
-                generate_spine(chr_dir, ref, _gfaidx.segment_index)
+                generate_spine(chr_dir, ref, _gfaidx.segment_index, output_dir=skel_dir)
             if not os.path.exists(pd_path) and PolychainIndex.validate(chr_dir):
                 print(f"\n[Skeleton] Missing polychain data for {chrom}, generating...")
                 _gfaidx = GFAIndex(chr_dir)
