@@ -66,8 +66,10 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
         const sxStart = gene.startX * state.zoom + state.panX;
         const sxEnd = gene.endX * state.zoom + state.panX;
         if (sxEnd < -80 || sxStart > cw + 80) continue;
+
         const sxMid = (sxStart + sxEnd) / 2;
         const syRef = gene.refY * state.zoom + state.panY;
+
         const tw = ctx.measureText(gene.name).width;
         const badgeW = tw + px * 2;
         allVisible.push({
@@ -76,28 +78,26 @@ export function drawGeneLabelOverlay(ctx, cw, svg = null) {
         });
     }
 
-    // Sort by screen x
-    allVisible.sort((a, b) => a.sxMid - b.sxMid);
-
     // Density-based culling: starred genes get placed first (guaranteed slots),
     // then remaining genes fill gaps with minimum spacing.
+    // Genes are sorted by stable random priority so the same genes win
+    // consistently across zoom/pan — preventing label flickering.
     const minSpacing = 20;
     const candidates = [];
 
     // Pass 1: place starred genes unconditionally
-    const starredSlots = [];
+    const acceptedXs = [];
     for (const c of allVisible) {
         if (isGeneStarred(c.gene.name)) {
             candidates.push(c);
-            starredSlots.push(c.sxMid);
+            acceptedXs.push(c.sxMid);
         }
     }
-    starredSlots.sort((a, b) => a - b);
 
-    // Pass 2: fill remaining slots respecting spacing from all accepted genes
-    const acceptedXs = [...starredSlots];
-    for (const c of allVisible) {
-        if (isGeneStarred(c.gene.name)) continue;
+    // Pass 2: sort by priority (stable across frames), fill gaps
+    const unstarred = allVisible.filter(c => !isGeneStarred(c.gene.name));
+    unstarred.sort((a, b) => a.gene.priority - b.gene.priority);
+    for (const c of unstarred) {
         let tooClose = false;
         for (const ax of acceptedXs) {
             if (Math.abs(c.sxMid - ax) < minSpacing) {

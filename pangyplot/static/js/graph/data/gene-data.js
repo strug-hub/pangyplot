@@ -2,7 +2,7 @@
 // Gene cache is populated once at chromosome load by chromosome-loader.js.
 // Placement runs on viewport change; rendering handles density culling.
 
-import { bpToLayout } from '../engines/reference-spine-engine.js';
+import { bpToLayout, layoutToBp } from '../engines/reference-spine-engine.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../state.js';
 import { populateGeneAnnotationsTable } from '../ui/gene-annotation-ui.js';
@@ -68,39 +68,95 @@ export function placeGenesForViewport() {
     if (!detailOverride && !spinePlaced) placeGenes();
 }
 
+let placeGenesAbort = null;
+
+function placeGenePin(gene) {
+    const startBp = gene.start;
+    const endBp = gene.end;
+    const startPt = bpToLayout(startBp);
+    const endPt = bpToLayout(endBp);
+    if (!startPt || !endPt) return null;
+
+    const startX = startPt.x;
+    const endX = endPt.x;
+    const midBp = (startBp + endBp) / 2;
+    const midPt = bpToLayout(midBp);
+    const midX = midPt.x;
+    const refY = midPt.y;
+
+    const nSamples = Math.min(10, Math.max(3, Math.ceil(Math.abs(endX - startX) / 20)));
+    let minY = Infinity, maxY = -Infinity;
+    for (let s = 0; s <= nSamples; s++) {
+        const sampleBp = startBp + (endBp - startBp) * s / nSamples;
+        const pt = bpToLayout(sampleBp);
+        if (pt.y < minY) minY = pt.y;
+        if (pt.y > maxY) maxY = pt.y;
+    }
+    const name = gene.gene || gene.id;
+    const color = customColors.get(name) || rgbStringToHex(stringToColor(name));
+    const priority = gene._priority ?? (gene._priority = Math.random());
+
+    return { name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color, priority };
+}
+
 function placeGenes() {
+    // Cancel any in-progress async placement
+    if (placeGenesAbort) placeGenesAbort.abort = true;
+
+    // Sort genes by bp distance from viewport center
+    const vpMinX = -state.panX / state.zoom;
+    const vpMaxX = (state.canvas.width / (window.devicePixelRatio || 1) - state.panX) / state.zoom;
+    const vpMidY = -(state.panY / state.zoom) + (state.canvas.height / (window.devicePixelRatio || 1)) / state.zoom / 2;
+    const centerBp = layoutToBp((vpMinX + vpMaxX) / 2, vpMidY) || 0;
+
+    const sorted = [...geneCache];
+    sorted.sort((a, b) => {
+        const aMid = (a.start + a.end) / 2;
+        const bMid = (b.start + b.end) / 2;
+        return Math.abs(aMid - centerBp) - Math.abs(bMid - centerBp);
+    });
+
+    // Place first batch synchronously (viewport genes)
     genePins = [];
-    for (const gene of geneCache) {
-        const startBp = gene.start;
-        const endBp = gene.end;
-        const startPt = bpToLayout(startBp);
-        const endPt = bpToLayout(endBp);
-        if (!startPt || !endPt) continue;
-
-        const startX = startPt.x;
-        const endX = endPt.x;
-        const midBp = (startBp + endBp) / 2;
-        const midPt = bpToLayout(midBp);
-        const midX = midPt.x;
-        const refY = midPt.y;
-
-        // Sample spine y at multiple bp positions to capture curves accurately
-        const nSamples = Math.max(3, Math.ceil(Math.abs(endX - startX) / 20));
-        let minY = Infinity, maxY = -Infinity;
-        for (let s = 0; s <= nSamples; s++) {
-            const sampleBp = startBp + (endBp - startBp) * s / nSamples;
-            const pt = bpToLayout(sampleBp);
-            if (pt.y < minY) minY = pt.y;
-            if (pt.y > maxY) maxY = pt.y;
-        }
-        const name = gene.gene || gene.id;
-        const color = customColors.get(name) || rgbStringToHex(stringToColor(name));
-
-        genePins.push({ name, startBp, endBp, startX, endX, midX, refY, minY, maxY, color });
+    const SYNC_BUDGET_MS = 8;
+    const t0 = performance.now();
+    let i = 0;
+    for (; i < sorted.length; i++) {
+        const pin = placeGenePin(sorted[i]);
+        if (pin) genePins.push(pin);
+        if (performance.now() - t0 > SYNC_BUDGET_MS) { i++; break; }
     }
     spinePlaced = true;
     bumpGenePinVersion();
-    populateGeneTable();
+
+    // Place remaining genes async in batches
+    if (i < sorted.length) {
+        const token = { abort: false };
+        placeGenesAbort = token;
+        const remaining = sorted.slice(i);
+        let idx = 0;
+        const BATCH = 50;
+
+        function processBatch() {
+            if (token.abort) return;
+            const end = Math.min(idx + BATCH, remaining.length);
+            for (; idx < end; idx++) {
+                const pin = placeGenePin(remaining[idx]);
+                if (pin) genePins.push(pin);
+            }
+            bumpGenePinVersion();
+            scheduleFrame();
+            if (idx < remaining.length) {
+                requestAnimationFrame(processBatch);
+            } else {
+                placeGenesAbort = null;
+                populateGeneTable();
+            }
+        }
+        requestAnimationFrame(processBatch);
+    } else {
+        populateGeneTable();
+    }
 }
 
 export function populateGeneTable() {

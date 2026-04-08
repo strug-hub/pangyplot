@@ -51,9 +51,7 @@ function finishExit() {
     state.detailOpacity = 0;
     state.skeletonOpacity = 1;
     setDetailPhase('none');
-    // Pins are already at spine positions from blending (t=1).
-    // Just clear the detailOverride flag so spine-based updates resume.
-    placeGenesFromSpine(false);
+    placeGenesFromSpine(true);
     scheduleFrame();
 }
 
