@@ -401,6 +401,14 @@ export function applyPcSettings() {
     sim.alpha(1).restart();
 }
 
+/** Clear all nodes and links from the force simulation. */
+export function clearForce() {
+    if (!sim) return;
+    syncNodes([]);
+    syncLinks([]);
+    sim.stop();
+}
+
 export function isSimulating() {
     return sim && sim.alpha() > sim.alphaMin();
 }

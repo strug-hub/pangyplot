@@ -47,6 +47,7 @@ function finishExit() {
     import('../detail/data/detail-view-state.js').then(m => m.resetDetailViewState());
     import('../detail/data/pop-tree.js').then(m => m.default.clear());
     import('../detail/model/model-manager.js').then(m => m.clearModel());
+    import('../detail/engines/force-engine.js').then(m => m.clearForce());
     state.detailData = null;
     state.detailOpacity = 0;
     state.skeletonOpacity = 1;

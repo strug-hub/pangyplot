@@ -157,6 +157,43 @@ function buildDataFromCache(minX, maxX, layoutToBp) {
 }
 
 // ---------------------------------------------------------------
+// Recompute junction data covering the full extent of all loaded
+// chains.  When a polychain-data cache is available the cache is
+// queried directly; otherwise returns {} and the server-supplied
+// junction data in newData is used as-is (best effort).
+// ---------------------------------------------------------------
+function _recomputeJunctionData(mergedChains) {
+    if (!hasPolychainDataCache()) return {};
+
+    let minX = Infinity, maxX = -Infinity;
+    for (const c of mergedChains) {
+        if (c.polyline && c.polyline.length >= 2) {
+            const x0 = c.polyline[0][0];
+            const x1 = c.polyline[c.polyline.length - 1][0];
+            if (x0 < minX) minX = x0;
+            if (x1 < minX) minX = x1;
+            if (x0 > maxX) maxX = x0;
+            if (x1 > maxX) maxX = x1;
+        }
+    }
+    if (!isFinite(minX)) return {};
+
+    const margin = (maxX - minX) * 0.2;
+    const juncNodes = getJunctionNodesInRange(minX - margin, maxX + margin);
+    const chainIds = new Set(mergedChains.map(c => c.id));
+    const resolvableIds = new Set(juncNodes.map(n => n.id));
+    for (const c of mergedChains) {
+        for (const sid of (c.sourceSegs || [])) resolvableIds.add(sid);
+        for (const sid of (c.sinkSegs || [])) resolvableIds.add(sid);
+    }
+
+    return {
+        junctionGraph: { nodes: juncNodes, links: getJunctionLinksForNodes(resolvableIds) },
+        junctionSegChains: getJunctionSegChains(chainIds),
+    };
+}
+
+// ---------------------------------------------------------------
 // Single-viewport fetch for current visible region.
 // Caller provides pre-computed viewport and coordinate info.
 // Returns true if new data was fetched, false otherwise.
@@ -224,10 +261,17 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
 
             const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
             const mergedChains = [...keptChains, ...newChains];
+
+            // Recompute junction data covering all loaded chains, not just
+            // the fetch viewport — prevents stale/missing junction links
+            // for kept chains outside the new viewport.
+            const junctionData = _recomputeJunctionData(mergedChains);
+
             state.detailData = {
                 ...newData,
                 chains: mergedChains,
                 totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
+                ...junctionData,
             };
             colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
 
@@ -314,10 +358,15 @@ export async function fetchDetailForViewport({ chr, vp, canvasWidth, layoutToBp 
             const keptChains = state.detailData.chains.filter(c => !removedIds.has(c.id));
             const mergedChains = [...keptChains, ...newChains];
 
+            // Recompute junction data for full loaded extent (cache path)
+            // or merge old + new junction data (server fallback).
+            const junctionData = _recomputeJunctionData(mergedChains);
+
             state.detailData = {
                 ...newData,
                 chains: mergedChains,
                 totalBubbles: mergedChains.reduce((sum, c) => sum + c.nBubbles, 0),
+                ...junctionData,
             };
             colorState.positionRange = [state.detailData.bpStart, state.detailData.bpEnd];
 
