@@ -41,7 +41,7 @@ export function setupHover(canvas) {
             state.hoveredChain = null;
             state.hoveredSkeletonPl = null;
 
-            const hit = hitTestBubbleCircles(layoutX, layoutY);
+            const hit = state.alwaysShowSkeleton ? null : hitTestBubbleCircles(layoutX, layoutY);
             state.hoveredBubbleCircle = hit;
 
             if (hit) {
@@ -56,10 +56,15 @@ export function setupHover(canvas) {
             // --- Chain browsing mode (default) ---
             state.hoveredBubbleCircle = null;
 
-            const hitForceNode = hitTestForceNodes(layoutX, layoutY);
-            const hitBubble = hitForceNode ? null : hitTestBubbles(layoutX, layoutY);
-            const hitChain = (hitForceNode || hitBubble) ? null : hitTestChains(layoutX, layoutY);
-            const hitSkel = (hitForceNode || hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
+            let hitForceNode = null, hitBubble = null, hitChain = null, hitSkel = null;
+            if (state.alwaysShowSkeleton) {
+                hitSkel = hitTestSkeleton(layoutX, layoutY);
+            } else {
+                hitForceNode = hitTestForceNodes(layoutX, layoutY);
+                hitBubble = hitForceNode ? null : hitTestBubbles(layoutX, layoutY);
+                hitChain = (hitForceNode || hitBubble) ? null : hitTestChains(layoutX, layoutY);
+                hitSkel = (hitForceNode || hitBubble || hitChain) ? null : hitTestSkeleton(layoutX, layoutY);
+            }
             const hit = hitForceNode || hitBubble || hitChain || hitSkel;
 
             if (hit) {
