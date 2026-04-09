@@ -34,6 +34,39 @@ def _bubble_layout_span(bubble):
     return max(abs(bubble.x2 - bubble.x1), abs(bubble.y2 - bubble.y1))
 
 
+def _polyline_cum_arc(polyline):
+    """Compute cumulative arc lengths along a polyline."""
+    cum = [0.0]
+    for i in range(1, len(polyline)):
+        dx = polyline[i][0] - polyline[i - 1][0]
+        dy = polyline[i][1] - polyline[i - 1][1]
+        cum.append(cum[-1] + math.sqrt(dx * dx + dy * dy))
+    return cum
+
+
+def _project_onto_polyline(point, polyline, cum_arc):
+    """Find the arc-length position of *point* projected onto *polyline*."""
+    px, py = point
+    best_dist = float('inf')
+    best_arc = 0.0
+    for i in range(len(polyline) - 1):
+        x1, y1 = polyline[i]
+        x2, y2 = polyline[i + 1]
+        dx, dy = x2 - x1, y2 - y1
+        seg_len_sq = dx * dx + dy * dy
+        if seg_len_sq == 0:
+            t_seg = 0.0
+        else:
+            t_seg = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / seg_len_sq))
+        proj_x = x1 + t_seg * dx
+        proj_y = y1 + t_seg * dy
+        dist = (px - proj_x) ** 2 + (py - proj_y) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best_arc = cum_arc[i] + t_seg * (cum_arc[i + 1] - cum_arc[i])
+    return best_arc
+
+
 def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
     """Find all bypass segments through a superbubble's naked internals.
 
@@ -260,12 +293,40 @@ def build_chain_polyline(chain, stepidx, seg_index):
         else:
             return None
 
-    # Bubble t-values: fractional position along chain by index
-    bubble_t = []
+    # Bubble t-values: arc-length-proportional position along polyline
+    cum_arc = _polyline_cum_arc(raw_polyline)
+    total_arc = cum_arc[-1] if cum_arc[-1] > 0 else 1.0
     n_bubbles = len(chain.bubbles)
-    for idx, b in enumerate(chain.bubbles):
-        t = idx / max(1, n_bubbles - 1) if n_bubbles > 1 else 0.5
-        bubble_t.append(round(t, 4))
+
+    if n_bubbles == 1:
+        bubble_t = [0.5]
+    else:
+        bubble_t = []
+        for b in chain.bubbles:
+            cx = (b.x1 + b.x2) / 2.0
+            cy = (b.y1 + b.y2) / 2.0
+            arc = _project_onto_polyline((cx, cy), raw_polyline, cum_arc)
+            bubble_t.append(arc / total_arc)
+
+        # Enforce monotonicity (bubbles are ordered by chain_step)
+        for i in range(1, len(bubble_t)):
+            if bubble_t[i] <= bubble_t[i - 1]:
+                bubble_t[i] = bubble_t[i - 1] + 1e-6
+
+        # Remap so first bubble → 0.0, last → 1.0
+        t_min, t_range = bubble_t[0], bubble_t[-1] - bubble_t[0]
+        if t_range > 0:
+            bubble_t = [(t - t_min) / t_range for t in bubble_t]
+        else:
+            bubble_t = [i / (n_bubbles - 1) for i in range(n_bubbles)]
+
+        # Minimum spacing to prevent visual overlap
+        min_gap = 0.5 / total_arc
+        for i in range(1, len(bubble_t)):
+            if bubble_t[i] - bubble_t[i - 1] < min_gap:
+                bubble_t[i] = min(1.0, bubble_t[i - 1] + min_gap)
+
+        bubble_t = [round(t, 6) for t in bubble_t]
 
     # Chain position from bubble ordinals (reference-independent)
     ordinals = [b.chain_step for b in chain.bubbles

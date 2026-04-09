@@ -105,6 +105,8 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
         app.bubble_index[chr] = BubbleIndex(chr_dir, app.gfa_index[chr])
         print(f"bubble_index size:      {asizeof(app.bubble_index[chr]) / 1024**2:.2f} MB")
 
+        if not PolychainIndex.validate(chr_dir):
+            print(f"  ⛓️  Building polychain index for {chr}...", flush=True)
         app.polychain_index[chr] = PolychainIndex(
             chr_dir, app.bubble_index[chr], app.gfa_index[chr],
             app.step_index[(chr, ref)], ref)

@@ -101,9 +101,10 @@ class TestBuildChainPolylineSynthetic:
         assert build_chain_polyline(chain, si, seg) is None
 
     def test_bubble_t_three_bubbles(self):
-        b1 = _make_bubble(1, 0, source=[1], sink=[2])
-        b2 = _make_bubble(2, 1, source=[1], sink=[2])
-        b3 = _make_bubble(3, 2, source=[1], sink=[2])
+        # Distinct positions so arc-length projection gives meaningful t
+        b1 = _make_bubble(1, 0, source=[1], sink=[2], x1=0, x2=2, y1=0, y2=1)
+        b2 = _make_bubble(2, 1, source=[1], sink=[2], x1=10, x2=12, y1=0, y2=1)
+        b3 = _make_bubble(3, 2, source=[1], sink=[2], x1=20, x2=22, y1=0, y2=1)
         chain = Chain(1, [b1, b2, b3])
         seg = _FakeSegIndex()
         si = type('SI', (), {
@@ -111,7 +112,11 @@ class TestBuildChainPolylineSynthetic:
             'ends': array('I', [199, 299, 399]),
         })()
         result = build_chain_polyline(chain, si, seg)
-        assert result["bubble_t"] == [0.0, 0.5, 1.0]
+        bt = result["bubble_t"]
+        assert len(bt) == 3
+        assert bt[0] == 0.0
+        assert bt[2] == 1.0
+        assert bt[0] < bt[1] < bt[2]
 
 
 class TestDecomposeChainSynthetic:
