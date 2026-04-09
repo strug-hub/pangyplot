@@ -37,6 +37,10 @@ async function switchChromosome(chrom, start, end) {
     state.chromosome = chrom;
     clearGeneCache();
     clearLabelAnimation();
+
+    // Show loading overlay while fetching new chromosome data
+    if (state.dom.loading) state.dom.loading.style.display = '';
+
     try {
         await loadChromosome(chrom);
     } catch (err) {
