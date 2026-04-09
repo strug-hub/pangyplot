@@ -5,6 +5,7 @@ import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../render/painter-utils.js';
 import { drawHoverHighlight, getNodeFillColor } from './highlight-painter.js';
+import { rx, ry } from '../../render/render-offset.js';
 import { pcSettings, chargeStr } from '../engines/force-engine.js';
 import { getContainer, collectGeneRenderables } from '../model/model-manager.js';
 import { resolve as resolveSegment } from '../model/segment-registry.js';
@@ -232,8 +233,8 @@ function _strokePolylines(ctx, polylines, color, width, opacity, svg) {
     for (const pl of polylines) {
         if (pl.length < 2) continue;
         ctx.beginPath();
-        ctx.moveTo(pl[0][0], pl[0][1]);
-        for (let i = 1; i < pl.length; i++) ctx.lineTo(pl[i][0], pl[i][1]);
+        ctx.moveTo(rx(pl[0][0]), ry(pl[0][1]));
+        for (let i = 1; i < pl.length; i++) ctx.lineTo(rx(pl[i][0]), ry(pl[i][1]));
         ctx.stroke();
     }
 }

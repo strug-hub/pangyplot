@@ -3,6 +3,7 @@
 
 import { state } from '../../state.js';
 import { getInfluence } from './drag-influence-force.js';
+import { rx, ry } from '../../render/render-offset.js';
 
 export function renderDragInfluenceCircle(ctx) {
     if (!state.dragMode) return;
@@ -31,7 +32,7 @@ export function renderDragInfluenceCircle(ctx) {
 
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, graphRadius, 0, 2 * Math.PI);
+    ctx.arc(rx(cx), ry(cy), graphRadius, 0, 2 * Math.PI);
     ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
     ctx.lineWidth = lineWidth;
     ctx.setLineDash([10 / state.zoom, 4 / state.zoom]);

@@ -18,6 +18,7 @@ import { getLevelMeta } from '@graph-data/chromosome-data.js';
 import { getSearchHighlights } from './engines/node-search-engine.js';
 import { strokeRing } from './detail/render/detail-painter.js';
 import { getActiveView } from '@debug/debug-orchestrator.js';
+import { setRenderOffset, rx, ry } from './render/render-offset.js';
 import { drawDebugHud, recordTimings } from '@debug/debug-hud.js';
 import { drawPathTrace } from './engines/path-trace/path-trace-render.js';
 import { tickPathAnimation } from './engines/path-trace/path-trace-animation.js';
@@ -64,8 +65,10 @@ function draw() {
     const timings = [];
 
     // ===== DATA-SPACE TRANSFORM =====
+    // Render offset: subtract viewport origin from all world coords so the
+    // canvas only deals with small numbers, avoiding 32-bit precision loss.
+    setRenderOffset(-state.panX / state.zoom, -state.panY / state.zoom);
     ctx.save();
-    ctx.translate(state.panX, state.panY);
     ctx.scale(state.zoom, state.zoom);
 
     // ===== SKELETON LAYER (skipped when detail is fully active) =====
@@ -100,7 +103,7 @@ function draw() {
         const lw = Math.max(2 / state.zoom, 0.5);
         for (const hit of searchHits) {
             const r = Math.max(15 / state.zoom, hit.radius + 5 / state.zoom);
-            strokeRing(ctx, hit.x, hit.y, r, '#FF9800', lw, 0.85);
+            strokeRing(ctx, rx(hit.x), ry(hit.y), r, '#FF9800', lw, 0.85);
         }
     }
 

@@ -8,6 +8,7 @@ import { state } from '../../state.js';
 import { registerView } from '../debug-orchestrator.js';
 import { getForceNodes } from '../../detail/data/force-data.js';
 import { getContainer } from '../../detail/model/model-manager.js';
+import { rx, ry } from '../../render/render-offset.js';
 
 /**
  * Find merged gaps: contiguous t-ranges not covered by any segment.
@@ -159,9 +160,9 @@ registerView({
                 ctx.setLineDash([dashLen, dashLen]);
                 ctx.beginPath();
                 if (targetPl.length >= 2) {
-                    ctx.moveTo(targetPl[0][0], targetPl[0][1]);
+                    ctx.moveTo(rx(targetPl[0][0]), ry(targetPl[0][1]));
                     for (let i = 1; i < targetPl.length; i++) {
-                        ctx.lineTo(targetPl[i][0], targetPl[i][1]);
+                        ctx.lineTo(rx(targetPl[i][0]), ry(targetPl[i][1]));
                     }
                 }
                 ctx.stroke();
@@ -184,18 +185,18 @@ registerView({
                     ctx.strokeStyle = '#FF4444';
                     ctx.lineWidth = lw * 2;
                     ctx.beginPath();
-                    ctx.moveTo(mx, my);
-                    ctx.lineTo(ex, ey);
+                    ctx.moveTo(rx(mx), ry(my));
+                    ctx.lineTo(rx(ex), ry(ey));
                     ctx.stroke();
 
                     // Arrowhead
                     if (arrowLen > 1) {
                         const angle = Math.atan2(uy, ux);
                         ctx.beginPath();
-                        ctx.moveTo(ex, ey);
-                        ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
-                        ctx.moveTo(ex, ey);
-                        ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+                        ctx.moveTo(rx(ex), ry(ey));
+                        ctx.lineTo(rx(ex) - headLen * Math.cos(angle - 0.4), ry(ey) - headLen * Math.sin(angle - 0.4));
+                        ctx.moveTo(rx(ex), ry(ey));
+                        ctx.lineTo(rx(ex) - headLen * Math.cos(angle + 0.4), ry(ey) - headLen * Math.sin(angle + 0.4));
                         ctx.stroke();
                     }
 
@@ -205,8 +206,8 @@ registerView({
                     ctx.font = `${fontSize}px monospace`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
-                    const labelX = ex + ux * fontSize * 0.8;
-                    const labelY = ey + uy * fontSize * 0.8;
+                    const labelX = rx(ex) + ux * fontSize * 0.8;
+                    const labelY = ry(ey) + uy * fontSize * 0.8;
                     ctx.fillText(`avg:${avgDist.toFixed(1)} max:${maxDist.toFixed(1)}`, labelX, labelY);
 
                     ctx.fillStyle = '#aaa';

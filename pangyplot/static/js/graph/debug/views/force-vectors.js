@@ -7,6 +7,7 @@ import { registerView } from '../debug-orchestrator.js';
 import { getForceNodes, getForceLinks } from '../../detail/data/force-data.js';
 import { computeForceDeltas, linkStrength, linkDistance, chargeMaxDist } from '../../detail/engines/force-engine.js';
 import { getContainer } from '../../detail/model/model-manager.js';
+import { rx, ry } from '../../render/render-offset.js';
 
 const MODES = ['all', 'charge', 'segCharge', 'link', 'layout', 'centroid', 'loop', 'smooth', 'balloon', 'parent', 'guide', 'anchorGap'];
 
@@ -134,13 +135,13 @@ function _drawArrow(ctx, nx, ny, fx, fy, color, arrowScale, headLen) {
     const ex = nx + ux * len, ey = ny + uy * len;
     ctx.strokeStyle = color;
     ctx.beginPath();
-    ctx.moveTo(nx, ny); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.moveTo(rx(nx), ry(ny)); ctx.lineTo(rx(ex), ry(ey)); ctx.stroke();
     const angle = Math.atan2(uy, ux);
     ctx.beginPath();
-    ctx.moveTo(ex, ey);
-    ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
-    ctx.moveTo(ex, ey);
-    ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+    ctx.moveTo(rx(ex), ry(ey));
+    ctx.lineTo(rx(ex) - headLen * Math.cos(angle - 0.4), ry(ey) - headLen * Math.sin(angle - 0.4));
+    ctx.moveTo(rx(ex), ry(ey));
+    ctx.lineTo(rx(ex) - headLen * Math.cos(angle + 0.4), ry(ey) - headLen * Math.sin(angle + 0.4));
     ctx.stroke();
 }
 
@@ -164,8 +165,8 @@ function _drawGuidePolylines(ctx, opacity) {
         const real = pcN.filter(n => !n.isAnchor);
         if (real.length < 2) continue;
         ctx.beginPath();
-        ctx.moveTo(real[0].x, real[0].y);
-        for (let i = 1; i < real.length; i++) ctx.lineTo(real[i].x, real[i].y);
+        ctx.moveTo(rx(real[0].x), ry(real[0].y));
+        for (let i = 1; i < real.length; i++) ctx.lineTo(rx(real[i].x), ry(real[i].y));
         ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -199,7 +200,7 @@ function _drawGuideProjections(ctx, nodes, opacity) {
             if (d < bestDist) { bestDist = d; bestX = px; bestY = py; }
         }
         ctx.beginPath();
-        ctx.moveTo(n.x, n.y); ctx.lineTo(bestX, bestY); ctx.stroke();
+        ctx.moveTo(rx(n.x), ry(n.y)); ctx.lineTo(rx(bestX), ry(bestY)); ctx.stroke();
     }
 }
 
@@ -219,9 +220,9 @@ function _drawCentroids(ctx, pcNodes, opacity) {
         if (g.count < 3) continue;
         const cx = g.cx / g.count, cy = g.cy / g.count;
         ctx.beginPath();
-        ctx.moveTo(cx, cy - triSize);
-        ctx.lineTo(cx - triSize * 0.866, cy + triSize * 0.5);
-        ctx.lineTo(cx + triSize * 0.866, cy + triSize * 0.5);
+        ctx.moveTo(rx(cx), ry(cy) - triSize);
+        ctx.lineTo(rx(cx) - triSize * 0.866, ry(cy) + triSize * 0.5);
+        ctx.lineTo(rx(cx) + triSize * 0.866, ry(cy) + triSize * 0.5);
         ctx.closePath(); ctx.fill();
         let arc = 0;
         const chainNodes = pcNodes.filter(n => n.chainId === chainId);
@@ -233,7 +234,7 @@ function _drawCentroids(ctx, pcNodes, opacity) {
         ctx.font = `${labelSize}px monospace`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#FF8800';
-        ctx.fillText(arcStr, cx, cy + triSize + labelSize);
+        ctx.fillText(arcStr, rx(cx), ry(cy) + triSize + labelSize);
     }
 }
 
@@ -246,7 +247,7 @@ function _drawLoopFactorDots(ctx, pcNodes, opacity) {
         const g = Math.round(lf < 0.5 ? lf * 2 * 255 : (1 - (lf - 0.5) * 2) * 255);
         const b = Math.round(Math.max(0, 1 - lf * 2) * 255);
         ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillRect(n.x - dotS / 2, n.y - dotS / 2, dotS, dotS);
+        ctx.fillRect(rx(n.x) - dotS / 2, ry(n.y) - dotS / 2, dotS, dotS);
     }
 }
 
@@ -279,7 +280,7 @@ function _drawBalloonIndices(ctx, pcNodes, opacity) {
         if (n.nodeIndex == null) continue;
         ctx.fillStyle = n.nodeIndex === 0 ? '#00FF00'
             : n.nodeIndex === n.chainNodeCount - 1 ? '#FF4444' : '#FFD700';
-        ctx.fillText(n.nodeIndex, n.x, n.y - fontSize * 1.2);
+        ctx.fillText(n.nodeIndex, rx(n.x), ry(n.y) - fontSize * 1.2);
     }
 }
 
@@ -290,7 +291,7 @@ function _drawChargeCircles(ctx, allVisNodes, opacity) {
     for (const n of allVisNodes) {
         const r = chargeMaxDist(n);
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.arc(rx(n.x), ry(n.y), r, 0, Math.PI * 2);
         ctx.stroke();
     }
 }
@@ -310,9 +311,9 @@ function _drawLinkAnnotations(ctx, links, opacity) {
         const sLabel = str < 0.01 ? str.toExponential(0) : str.toPrecision(2);
         const dLabel = dist < 1 ? dist.toPrecision(2) : Math.round(dist);
         ctx.textBaseline = 'bottom';
-        ctx.fillText(`s:${sLabel}`, mx, my);
+        ctx.fillText(`s:${sLabel}`, rx(mx), ry(my));
         ctx.textBaseline = 'top';
-        ctx.fillText(`d:${dLabel}`, mx, my);
+        ctx.fillText(`d:${dLabel}`, rx(mx), ry(my));
     }
 }
 
@@ -337,25 +338,25 @@ function _drawParentPerps(ctx, pcNodes, opacity, headLen) {
                 const tanX = -p.py, tanY = p.px;
                 ctx.strokeStyle = tanColor;
                 ctx.beginPath();
-                ctx.moveTo(p.mx - tanX * tangentHalf, p.my - tanY * tangentHalf);
-                ctx.lineTo(p.mx + tanX * tangentHalf, p.my + tanY * tangentHalf);
+                ctx.moveTo(rx(p.mx) - tanX * tangentHalf, ry(p.my) - tanY * tangentHalf);
+                ctx.lineTo(rx(p.mx) + tanX * tangentHalf, ry(p.my) + tanY * tangentHalf);
                 ctx.stroke();
                 ctx.fillStyle = tanColor;
                 ctx.beginPath();
-                ctx.arc(p.mx, p.my, Math.max(1.5, 3 / state.zoom), 0, Math.PI * 2);
+                ctx.arc(rx(p.mx), ry(p.my), Math.max(1.5, 3 / state.zoom), 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.strokeStyle = perpColor;
             const ex = n.x + p.px * perpLen, ey = n.y + p.py * perpLen;
             ctx.beginPath();
-            ctx.moveTo(n.x, n.y); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.moveTo(rx(n.x), ry(n.y)); ctx.lineTo(rx(ex), ry(ey)); ctx.stroke();
             const angle = Math.atan2(p.py, p.px);
             const hl = headLen * 0.7;
             ctx.beginPath();
-            ctx.moveTo(ex, ey);
-            ctx.lineTo(ex - hl * Math.cos(angle - 0.5), ey - hl * Math.sin(angle - 0.5));
-            ctx.moveTo(ex, ey);
-            ctx.lineTo(ex - hl * Math.cos(angle + 0.5), ey - hl * Math.sin(angle + 0.5));
+            ctx.moveTo(rx(ex), ry(ey));
+            ctx.lineTo(rx(ex) - hl * Math.cos(angle - 0.5), ry(ey) - hl * Math.sin(angle - 0.5));
+            ctx.moveTo(rx(ex), ry(ey));
+            ctx.lineTo(rx(ex) - hl * Math.cos(angle + 0.5), ry(ey) - hl * Math.sin(angle + 0.5));
             ctx.stroke();
         }
     }
@@ -408,15 +409,15 @@ function _drawAnchorGapPerps(ctx, nodes, opacity, headLen) {
         // Draw anchor dot
         ctx.fillStyle = '#FF66FF';
         ctx.beginPath();
-        ctx.arc(anchor.x, anchor.y, dotR, 0, Math.PI * 2);
+        ctx.arc(rx(anchor.x), ry(anchor.y), dotR, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw perpendicular line through anchor
         ctx.strokeStyle = '#FF66FF';
         ctx.setLineDash([Math.max(2, 4 / state.zoom), Math.max(1, 2 / state.zoom)]);
         ctx.beginPath();
-        ctx.moveTo(anchor.x - nx * perpLen, anchor.y - ny * perpLen);
-        ctx.lineTo(anchor.x + nx * perpLen, anchor.y + ny * perpLen);
+        ctx.moveTo(rx(anchor.x) - nx * perpLen, ry(anchor.y) - ny * perpLen);
+        ctx.lineTo(rx(anchor.x) + nx * perpLen, ry(anchor.y) + ny * perpLen);
         ctx.stroke();
         ctx.setLineDash([]);
 
@@ -426,18 +427,18 @@ function _drawAnchorGapPerps(ctx, nodes, opacity, headLen) {
         const ey = anchor.y + pushY * arrowLen;
         ctx.strokeStyle = '#FF66FF';
         ctx.beginPath();
-        ctx.moveTo(anchor.x, anchor.y);
-        ctx.lineTo(ex, ey);
+        ctx.moveTo(rx(anchor.x), ry(anchor.y));
+        ctx.lineTo(rx(ex), ry(ey));
         ctx.stroke();
 
         // Arrowhead
         const angle = Math.atan2(pushY, pushX);
         const hl = headLen * 0.7;
         ctx.beginPath();
-        ctx.moveTo(ex, ey);
-        ctx.lineTo(ex - hl * Math.cos(angle - 0.4), ey - hl * Math.sin(angle - 0.4));
-        ctx.moveTo(ex, ey);
-        ctx.lineTo(ex - hl * Math.cos(angle + 0.4), ey - hl * Math.sin(angle + 0.4));
+        ctx.moveTo(rx(ex), ry(ey));
+        ctx.lineTo(rx(ex) - hl * Math.cos(angle - 0.4), ry(ey) - hl * Math.sin(angle - 0.4));
+        ctx.moveTo(rx(ex), ry(ey));
+        ctx.lineTo(rx(ex) - hl * Math.cos(angle + 0.4), ry(ey) - hl * Math.sin(angle + 0.4));
         ctx.stroke();
 
         // Label
@@ -446,6 +447,6 @@ function _drawAnchorGapPerps(ctx, nodes, opacity, headLen) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         const label = isHead ? 'H' : 'T';
-        ctx.fillText(`${label} t=${t.toFixed(3)}`, anchor.x, anchor.y - dotR - 2 / state.zoom);
+        ctx.fillText(`${label} t=${t.toFixed(3)}`, rx(anchor.x), ry(anchor.y) - dotR - 2 / state.zoom);
     }
 }

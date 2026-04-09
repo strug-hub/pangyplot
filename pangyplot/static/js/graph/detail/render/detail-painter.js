@@ -5,6 +5,7 @@ import {
     strokeLinesSvg, fillDotsSvg, strokePolylineSvg, strokeBatchPolylinesSvg,
     fillCirclesSvg, strokeRingSvg, strokeSegmentsSvg, strokeDashedPolylinesSvg
 } from '../../render/svg-utils.js';
+import { rx, ry } from '../../render/render-offset.js';
 
 export function strokeLines(ctx, lines, color, lineWidth, alpha, svg = null) {
     if (svg) return strokeLinesSvg(svg, lines, color, lineWidth, alpha);
@@ -14,8 +15,8 @@ export function strokeLines(ctx, lines, color, lineWidth, alpha, svg = null) {
     ctx.setLineDash([]);
     ctx.beginPath();
     for (const line of lines) {
-        ctx.moveTo(line[0][0], line[0][1]);
-        ctx.lineTo(line[1][0], line[1][1]);
+        ctx.moveTo(rx(line[0][0]), ry(line[0][1]));
+        ctx.lineTo(rx(line[1][0]), ry(line[1][1]));
     }
     ctx.stroke();
 }
@@ -26,8 +27,8 @@ export function fillDots(ctx, points, r, color, alpha, svg = null) {
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     for (const [x, y] of points) {
-        ctx.moveTo(x + r, y);
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.moveTo(rx(x) + r, ry(y));
+        ctx.arc(rx(x), ry(y), r, 0, Math.PI * 2);
     }
     ctx.fill();
 }
@@ -39,9 +40,9 @@ export function strokePolyline(ctx, pl, color, lineWidth, alpha, svg = null) {
     ctx.globalAlpha = alpha;
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.moveTo(pl[0][0], pl[0][1]);
+    ctx.moveTo(rx(pl[0][0]), ry(pl[0][1]));
     for (let i = 1; i < pl.length; i++) {
-        ctx.lineTo(pl[i][0], pl[i][1]);
+        ctx.lineTo(rx(pl[i][0]), ry(pl[i][1]));
     }
     ctx.stroke();
 }
@@ -55,9 +56,9 @@ export function strokePolylines(ctx, polylines, color, lineWidth, alpha, svg = n
     ctx.beginPath();
     for (const pl of polylines) {
         if (pl.length < 2) continue;
-        ctx.moveTo(pl[0][0], pl[0][1]);
+        ctx.moveTo(rx(pl[0][0]), ry(pl[0][1]));
         for (let i = 1; i < pl.length; i++) {
-            ctx.lineTo(pl[i][0], pl[i][1]);
+            ctx.lineTo(rx(pl[i][0]), ry(pl[i][1]));
         }
     }
     ctx.stroke();
@@ -69,8 +70,8 @@ export function fillCircles(ctx, circles, color, alpha, svg = null) {
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     for (const { x, y, r } of circles) {
-        ctx.moveTo(x + r, y);
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.moveTo(rx(x) + r, ry(y));
+        ctx.arc(rx(x), ry(y), r, 0, Math.PI * 2);
     }
     ctx.fill();
 }
@@ -81,7 +82,7 @@ export function strokeRing(ctx, x, y, r, color, lineWidth, alpha, svg = null) {
     ctx.lineWidth = lineWidth;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(rx(x), ry(y), r, 0, Math.PI * 2);
     ctx.stroke();
 }
 
@@ -93,8 +94,8 @@ export function strokeSegments(ctx, segments, color, lineWidth, alpha, svg = nul
     ctx.setLineDash([]);
     ctx.beginPath();
     for (const { x1, y1, x2, y2 } of segments) {
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(rx(x1), ry(y1));
+        ctx.lineTo(rx(x2), ry(y2));
     }
     ctx.stroke();
 }
@@ -107,9 +108,9 @@ export function strokeDashedPolylines(ctx, polylines, color, lineWidth, alpha, d
     ctx.setLineDash([dash, dash]);
     ctx.beginPath();
     for (const pl of polylines) {
-        ctx.moveTo(pl[0][0], pl[0][1]);
+        ctx.moveTo(rx(pl[0][0]), ry(pl[0][1]));
         for (let i = 1; i < pl.length; i++) {
-            ctx.lineTo(pl[i][0], pl[i][1]);
+            ctx.lineTo(rx(pl[i][0]), ry(pl[i][1]));
         }
     }
     ctx.stroke();

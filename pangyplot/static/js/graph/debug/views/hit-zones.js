@@ -6,6 +6,7 @@ import { registerView } from '../debug-orchestrator.js';
 import { getContainer } from '../../detail/model/model-manager.js';
 import { getForceNodes } from '../../detail/data/force-data.js';
 import { getRenderScale } from '../../detail/engines/forces/pc-settings.js';
+import { rx, ry } from '../../render/render-offset.js';
 
 const HIT_RADIUS_PX = 12;
 
@@ -55,8 +56,8 @@ function drawHitZones(ctx) {
         const pl = getChainPolyline(chain.id) || chain.polyline;
         if (!pl || pl.length < 2) continue;
         ctx.beginPath();
-        ctx.moveTo(pl[0][0], pl[0][1]);
-        for (let i = 1; i < pl.length; i++) ctx.lineTo(pl[i][0], pl[i][1]);
+        ctx.moveTo(rx(pl[0][0]), ry(pl[0][1]));
+        for (let i = 1; i < pl.length; i++) ctx.lineTo(rx(pl[i][0]), ry(pl[i][1]));
         ctx.stroke();
     }
     ctx.restore();
@@ -71,7 +72,7 @@ function drawHitZones(ctx) {
         const nodeR = (node.width || 6) / (2 * state.zoom);
         const r = Math.max(nodeR, hitR);
         ctx.beginPath();
-        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+        ctx.arc(rx(node.x), ry(node.y), r, 0, Math.PI * 2);
         ctx.fill();
     }
     ctx.restore();
@@ -87,7 +88,7 @@ function drawHitZones(ctx) {
             if (!circles) continue;
             for (const b of circles) {
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, hitR, 0, Math.PI * 2);
+                ctx.arc(rx(b.x), ry(b.y), hitR, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
