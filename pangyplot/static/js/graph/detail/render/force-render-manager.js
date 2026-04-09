@@ -6,8 +6,8 @@ import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../render/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, chargeStr } from '../engines/force-engine.js';
-import { getContainer } from '../model/model-manager.js';
-import { getGenePins, isGeneVisible } from '@graph-data/gene-data.js';
+import { getContainer, collectGeneRenderables } from '../model/model-manager.js';
+import { isGeneVisible } from '@graph-data/gene-data.js';
 import { getNodeColor } from '../../color/color-style.js';
 import { colorState } from '../../color/color-state.js';
 import { bubbleGridThreshold } from '../data/bubble-meta-cache.js';
@@ -57,7 +57,6 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const chainSegs = [];
     const junctionSegs = [];
     const delSegs = [];
-    const genePins = getGenePins();
 
     for (const link of links) {
         if (link.isPolychainLink || link.isSpineLink) continue;  // spine infrastructure, not drawn
@@ -91,9 +90,8 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
 
     renderedJunctionLinks = junctionSegs.length + delSegs.length;
 
-    // --- Categorize nodes by color (needed for gene halos before links) ---
+    // --- Categorize nodes by color ---
     const nodesByColor = new Map(); // color → [{x, y, r}]
-    const geneHaloCircles = new Map(); // color → [{x, y, r}]
     let jNodeCount = 0;
 
     for (const node of nodes) {
@@ -113,44 +111,10 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         const color = nodeColorForSelection(node);
         if (!nodesByColor.has(color)) nodesByColor.set(color, []);
         nodesByColor.get(color).push(circle);
-        if (node.type !== 'bubble') {
-            for (const pin of genePins) {
-                if (!isGeneVisible(pin.name)) continue;
-                if (node.x >= pin.startX && node.x <= pin.endX) {
-                    if (!geneHaloCircles.has(pin.color)) geneHaloCircles.set(pin.color, []);
-                    geneHaloCircles.get(pin.color).push({ x: node.x, y: node.y, r: r * 3.5 });
-                    break;
-                }
-            }
-        }
     }
     renderedJunctionNodes = jNodeCount;
 
-    // 0. Gene halos (both link and node halos, rendered before all links/nodes)
-    if (genePins.length > 0) {
-        const haloWidth = Math.max(8, baseWidth * 5);
-        const haloOpacity = opacity * 0.55;
-        const haloLinksByColor = new Map();
-        for (const segs of kinkByColor.values()) {
-            for (const seg of segs) {
-                const midX = (seg.x1 + seg.x2) / 2;
-                for (const pin of genePins) {
-                    if (!isGeneVisible(pin.name)) continue;
-                    if (midX >= pin.startX && midX <= pin.endX) {
-                        if (!haloLinksByColor.has(pin.color)) haloLinksByColor.set(pin.color, []);
-                        haloLinksByColor.get(pin.color).push(seg);
-                        break;
-                    }
-                }
-            }
-        }
-        for (const [color, segs] of haloLinksByColor) {
-            strokeSegments(ctx, segs, color, haloWidth, haloOpacity, svg);
-        }
-        for (const [color, circles] of geneHaloCircles) {
-            fillCircles(ctx, circles, color, haloOpacity, svg);
-        }
-    }
+    // Gene halos are drawn separately via drawGeneHalos() before polychain lines
 
     // 1. Kink links (segment body)
     for (const [color, segs] of kinkByColor) {
@@ -194,5 +158,67 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
 
     // 6. Hover highlight overlay (gray outline ring) — after nodes (skip during SVG export)
     if (!svg) drawHoverHighlight(ctx, scaleFactor, opacity);
+}
+
+/**
+ * Draw gene annotation halos from all SimObjects' getGeneRenderables().
+ * Batches by color for efficient rendering.
+ */
+export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
+    const specs = collectGeneRenderables();
+    if (specs.length === 0) return;
+
+    const haloWidth = Math.max(8, baseWidth * 5);
+
+    // Filter by visibility + batch by color
+    const circlesByColor = new Map();
+    const linesByColor = new Map();
+    const polylinesByColor = new Map();
+
+    for (const spec of specs) {
+        if (!isGeneVisible(spec.geneName)) continue;
+        const c = spec.color;
+        if (spec.type === 'circle') {
+            if (!circlesByColor.has(c)) circlesByColor.set(c, []);
+            circlesByColor.get(c).push(spec);
+        } else if (spec.type === 'line') {
+            if (!linesByColor.has(c)) linesByColor.set(c, []);
+            linesByColor.get(c).push(spec);
+        } else if (spec.type === 'polyline') {
+            if (!polylinesByColor.has(c)) polylinesByColor.set(c, []);
+            polylinesByColor.get(c).push(spec.points);
+        }
+    }
+
+    for (const [color, segs] of linesByColor) {
+        strokeSegments(ctx, segs, color, haloWidth, opacity, svg);
+    }
+    for (const [color, circles] of circlesByColor) {
+        fillCircles(ctx, circles, color, opacity, svg);
+    }
+    if (polylinesByColor.size > 0) {
+        if (!svg) {
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+        }
+        for (const [color, pls] of polylinesByColor) {
+            _strokePolylines(ctx, pls, color, haloWidth, opacity, svg);
+        }
+    }
+}
+
+/** Minimal polyline stroke — avoids importing from polychain render chain. */
+function _strokePolylines(ctx, polylines, color, width, opacity, svg) {
+    if (svg) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.globalAlpha = opacity;
+    for (const pl of polylines) {
+        if (pl.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(pl[0][0], pl[0][1]);
+        for (let i = 1; i < pl.length; i++) ctx.lineTo(pl[i][0], pl[i][1]);
+        ctx.stroke();
+    }
 }
 

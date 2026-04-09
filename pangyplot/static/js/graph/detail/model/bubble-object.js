@@ -10,8 +10,8 @@
  * same object (source→sink bypass).
  */
 
-import { SimObject, calculateNumberOfKinks, getKinkCoordinates, kinkLinkLength, LINK_SCALE }
-    from './sim-object.js';
+import { SimObject, calculateNumberOfKinks, getKinkCoordinates, kinkLinkLength, LINK_SCALE,
+    mixGeneColor } from './sim-object.js';
 
 export class BubbleObject extends SimObject {
     /**
@@ -61,6 +61,10 @@ export class BubbleObject extends SimObject {
         this.chainStep = opts.chainStep ?? null;
         this.siblings = opts.siblings ?? [null, null];
         this.record = opts.record ?? null;
+
+        this.refBp = (opts.bpStart != null && opts.bpEnd != null)
+            ? { start: opts.bpStart, end: opts.bpEnd }
+            : null;
 
         // Record-like object for color/rendering compat
         this._recordCompat = this.record ?? {
@@ -161,6 +165,39 @@ export class BubbleObject extends SimObject {
         return this.headNode;
     }
 
+    getGeneRenderables() {
+        if (!this._geneOverlaps || this._geneOverlaps.length === 0) return [];
+        const specs = [];
+        for (const pin of this._geneOverlaps) {
+            const color = mixGeneColor(pin.color);
+            if (this._kinkCount === 1) {
+                const n = this.physicsNodes[0];
+                specs.push({ type: 'circle', x: n.x, y: n.y, r: n.width * 1.75,
+                    color, geneName: pin.name, layer: 'gene-halo' });
+            } else {
+                const bpPerKink = (this.refBp.end - this.refBp.start) / this._kinkCount;
+                for (let i = 0; i < this._kinkCount; i++) {
+                    const kStart = this.refBp.start + i * bpPerKink;
+                    const kEnd = kStart + bpPerKink;
+                    if (kEnd <= pin.startBp || kStart >= pin.endBp) continue;
+                    const n = this.physicsNodes[i];
+                    specs.push({ type: 'circle', x: n.x, y: n.y, r: n.width * 1.75,
+                        color, geneName: pin.name, layer: 'gene-halo' });
+                }
+                for (let i = 1; i < this._kinkCount; i++) {
+                    const kMid = this.refBp.start + (i - 0.5) * bpPerKink;
+                    if (kMid < pin.startBp || kMid > pin.endBp) continue;
+                    const src = this.physicsNodes[i - 1];
+                    const tgt = this.physicsNodes[i];
+                    if (!src || !tgt) continue;
+                    specs.push({ type: 'line', x1: src.x, y1: src.y, x2: tgt.x, y2: tgt.y,
+                        color, geneName: pin.name, layer: 'gene-halo' });
+                }
+            }
+        }
+        return specs;
+    }
+
     getRenderables() {
         const specs = [];
 
@@ -214,6 +251,8 @@ export class BubbleObject extends SimObject {
             chain: apiNode.chain,
             chainStep: apiNode.chain_step,
             siblings: apiNode.siblings,
+            bpStart: apiNode.bp_start ?? null,
+            bpEnd: apiNode.bp_end ?? null,
         });
     }
 }

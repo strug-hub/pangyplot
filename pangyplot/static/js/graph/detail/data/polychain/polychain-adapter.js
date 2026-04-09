@@ -9,7 +9,8 @@ import * as registry from '../../model/segment-registry.js';
 import { PolychainContainer } from '../../model/polychain-container.js';
 import { SegmentObject } from '../../model/segment-object.js';
 import { getContainer, addContainer, removeContainer,
-         addObject, clearModel } from '../../model/model-manager.js';
+         addObject, clearModel, computeAllGeneOverlaps } from '../../model/model-manager.js';
+import { getGenePins } from '@graph-data/gene-data.js';
 
 /** Check if a chain already has a container (avoid re-creating during incremental adds). */
 export function isSplitRootChain(chainId) {
@@ -46,6 +47,31 @@ export function interpolateAtDist(pl, cumLen, d) {
         pl[lo][0] + t * (pl[hi][0] - pl[lo][0]),
         pl[lo][1] + t * (pl[hi][1] - pl[lo][1]),
     ];
+}
+
+/**
+ * Extract a sub-polyline from fractional range [tStart, tEnd] along a polyline.
+ */
+export function extractSubPolyline(pl, tStart, tEnd) {
+    if (!pl || pl.length < 2) return null;
+    const cumLen = cumulativeLengths(pl);
+    const totalLen = cumLen[cumLen.length - 1];
+    if (totalLen === 0) return null;
+
+    const dStart = tStart * totalLen;
+    const dEnd = tEnd * totalLen;
+
+    const startPt = interpolateAtDist(pl, cumLen, dStart);
+    const endPt = interpolateAtDist(pl, cumLen, dEnd);
+
+    const sub = [startPt];
+    for (let i = 1; i < pl.length - 1; i++) {
+        if (cumLen[i] > dStart && cumLen[i] < dEnd) {
+            sub.push([pl[i][0], pl[i][1]]);
+        }
+    }
+    sub.push(endPt);
+    return sub;
 }
 
 
@@ -115,6 +141,9 @@ export function initPolychainLayer() {
     if (allNodes.length > 0) {
         addPoppedNodes(allNodes, allLinks);
     }
+
+    // Phase F: Compute gene overlaps for all objects
+    computeAllGeneOverlaps(getGenePins());
 }
 
 // ---------------------------------------------------------------
@@ -424,6 +453,9 @@ export function addChainsToPolychainLayer(newChains, dd) {
     if (allNodes.length > 0 || allLinks.length > 0) {
         addPoppedNodes(allNodes, allLinks);
     }
+
+    // Recompute gene overlaps for all objects (new + existing)
+    computeAllGeneOverlaps(getGenePins());
 }
 
 /**

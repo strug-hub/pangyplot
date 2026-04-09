@@ -3,7 +3,7 @@
 // and extracts sub-polylines for rendering.
 // Uses the shared gene cache from gene-data.js (loaded at chromosome init).
 
-import { cumulativeLengths, interpolateAtDist } from './polychain-adapter.js';
+import { extractSubPolyline } from './polychain-adapter.js';
 import { getGenePins, getGeneCache, isGeneVisible } from '@graph-data/gene-data.js';
 import { rgbStringToHex, stringToColor } from '@color-utils';
 import { state } from '../../../state.js';
@@ -76,30 +76,8 @@ function buildGeneChainOverlaps(chains, genes) {
     return result;
 }
 
-/**
- * Extract a sub-polyline from fractional range [tStart, tEnd] along a polyline.
- */
-export function extractSubPolyline(pl, tStart, tEnd) {
-    if (!pl || pl.length < 2) return null;
-    const cumLen = cumulativeLengths(pl);
-    const totalLen = cumLen[cumLen.length - 1];
-    if (totalLen === 0) return null;
-
-    const dStart = tStart * totalLen;
-    const dEnd = tEnd * totalLen;
-
-    const startPt = interpolateAtDist(pl, cumLen, dStart);
-    const endPt = interpolateAtDist(pl, cumLen, dEnd);
-
-    const sub = [startPt];
-    for (let i = 1; i < pl.length - 1; i++) {
-        if (cumLen[i] > dStart && cumLen[i] < dEnd) {
-            sub.push([pl[i][0], pl[i][1]]);
-        }
-    }
-    sub.push(endPt);
-    return sub;
-}
+// extractSubPolyline moved to polychain-adapter.js
+export { extractSubPolyline } from './polychain-adapter.js';
 
 /**
  * Get gene-chain overlaps, rebuilding cache if chains or genes changed.

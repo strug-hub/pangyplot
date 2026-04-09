@@ -12,8 +12,44 @@
  * Handles its own rendering (polyline + bubble circles) and anchor positioning.
  */
 
-import { SimObject } from './sim-object.js';
+import { SimObject, mixGeneColor } from './sim-object.js';
 import { pcSettings } from '../engines/forces/pc-settings.js';
+
+/** Extract a sub-polyline for fractional range [tStart, tEnd]. */
+function _extractSubPolyline(pl, tStart, tEnd) {
+    if (!pl || pl.length < 2) return null;
+    // Cumulative arc lengths
+    const cum = [0];
+    for (let i = 1; i < pl.length; i++) {
+        cum.push(cum[i - 1] + Math.hypot(pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]));
+    }
+    const total = cum[cum.length - 1];
+    if (total === 0) return null;
+
+    const dStart = tStart * total;
+    const dEnd = tEnd * total;
+
+    function interpAt(d) {
+        if (d <= 0) return [pl[0][0], pl[0][1]];
+        if (d >= total) return [pl[pl.length - 1][0], pl[pl.length - 1][1]];
+        let lo = 0, hi = cum.length - 1;
+        while (lo < hi - 1) {
+            const mid = (lo + hi) >> 1;
+            if (cum[mid] <= d) lo = mid; else hi = mid;
+        }
+        const seg = cum[hi] - cum[lo];
+        const t = seg > 0 ? (d - cum[lo]) / seg : 0;
+        return [pl[lo][0] + t * (pl[hi][0] - pl[lo][0]),
+                pl[lo][1] + t * (pl[hi][1] - pl[lo][1])];
+    }
+
+    const sub = [interpAt(dStart)];
+    for (let i = 1; i < pl.length - 1; i++) {
+        if (cum[i] > dStart && cum[i] < dEnd) sub.push([pl[i][0], pl[i][1]]);
+    }
+    sub.push(interpAt(dEnd));
+    return sub;
+}
 
 let _anchorIdCounter = 0;
 
@@ -77,6 +113,36 @@ export class PolychainSegment extends SimObject {
 
         // Interior: bubble metadata is pulled from container on demand
         this.interior = null;
+
+        // Compute refBp from container's chain-level bp + this segment's t-range
+        this._computeRefBp();
+    }
+
+    _computeRefBp() {
+        this.refBp = null;
+        this._bpReversed = false;
+        const c = this.container;
+        if (!c || c.bpHead == null || c.bpTail == null) return;
+        const bpH = c.bpHead;
+        const bpT = c.bpTail;
+        const reversed = bpH > bpT;
+        this._bpReversed = reversed;
+        const bpMin = Math.min(bpH, bpT);
+        const bpMax = Math.max(bpH, bpT);
+        const bpSpan = bpMax - bpMin;
+        if (bpSpan <= 0) return;
+        const tS = this.tRange.start, tE = this.tRange.end;
+        if (reversed) {
+            this.refBp = {
+                start: bpMin + (1 - tE) * bpSpan,
+                end:   bpMin + (1 - tS) * bpSpan,
+            };
+        } else {
+            this.refBp = {
+                start: bpMin + tS * bpSpan,
+                end:   bpMin + tE * bpSpan,
+            };
+        }
     }
 
     // ---------------------------------------------------------------
@@ -192,6 +258,34 @@ export class PolychainSegment extends SimObject {
         });
         this._lastBubbleCircles = result;
         return result;
+    }
+
+    getGeneRenderables() {
+        if (!this._geneOverlaps || this._geneOverlaps.length === 0) return [];
+        const pl = this.getPolyline();
+        if (pl.length < 2) return [];
+        const bpSpan = this.refBp.end - this.refBp.start;
+        if (bpSpan <= 0) return [];
+        const specs = [];
+        for (const pin of this._geneOverlaps) {
+            // Map gene bp range to [0,1] fraction within this segment's bp range
+            let tStart = Math.max(0, (pin.startBp - this.refBp.start) / bpSpan);
+            let tEnd = Math.min(1, (pin.endBp - this.refBp.start) / bpSpan);
+            if (tEnd - tStart < 0.001) continue;
+            // Reversed chain: polyline runs opposite to bp direction
+            if (this._bpReversed) {
+                const flipped0 = 1 - tEnd;
+                const flipped1 = 1 - tStart;
+                tStart = flipped0;
+                tEnd = flipped1;
+            }
+            const sub = _extractSubPolyline(pl, tStart, tEnd);
+            if (!sub || sub.length < 2) continue;
+            const color = mixGeneColor(pin.color);
+            specs.push({ type: 'polyline', points: sub, color,
+                geneName: pin.name, layer: 'gene-halo' });
+        }
+        return specs;
     }
 
     /**

@@ -9,7 +9,7 @@ import { getViewport } from './render/viewport.js';
 import { isDebugMode } from '@app-state';
 import { drawSkeleton } from './skeleton/render/skeleton-render-manager.js';
 import { drawDetail, drawCustomAnnotationLabels } from './detail/render/polychain/polychain-render-manager.js';
-import { drawForceGraph } from './detail/render/force-render-manager.js';
+import { drawForceGraph, drawGeneHalos } from './detail/render/force-render-manager.js';
 import { getBaseWidth } from './detail/engines/forces/pc-settings.js';
 import { drawGeneLabelOverlay } from './skeleton/render/gene-label-overlay.js';
 import { updateZoom, updateSkeletonLevel, updateViewportBp, updateDetailBar, updateFetchIndicator } from '@debug/debug-status-bar.js';
@@ -79,6 +79,7 @@ function draw() {
     // ===== DETAIL LAYER (suppressed when skeleton-always mode is on) =====
     if (!state.alwaysShowSkeleton && state.detailData && state.detailOpacity > 0) {
         if (_debug) _t0 = performance.now();
+        drawGeneHalos(state.ctx, getBaseWidth(), state.detailOpacity);
         drawDetail();
         drawForceGraph(state.ctx, getBaseWidth(), null, { minX: vpMinX, minY: vpMinY, maxX: vpMaxX, maxY: vpMaxY });
         if (_debug) timings.push(['detail', performance.now() - _t0]);

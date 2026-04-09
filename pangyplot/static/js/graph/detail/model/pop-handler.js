@@ -12,6 +12,7 @@ import { getForceLinks } from '../data/force-data.js';
 import { register as registerSeg, resolve as resolveObj, resolveForLink } from './segment-registry.js';
 
 import { getContainer, addObject, removeObject } from './model-manager.js';
+import { getGenePins } from '@graph-data/gene-data.js';
 import { SegmentObject } from './segment-object.js';
 import { BubbleObject } from './bubble-object.js';
 import { getBubbleStore } from '../data/bubble-meta-cache.js';
@@ -173,6 +174,13 @@ export async function popBubbleCircleV2(hit) {
         for (const segId of obj.ends.head) registerSeg(segId, obj);
         for (const segId of obj.ends.tail) registerSeg(segId, obj);
     }
+
+    // Compute gene overlaps for all new objects (split segments + children + materialized)
+    const genePins = getGenePins();
+    if (leftSegment) leftSegment.computeGeneOverlaps(genePins);
+    if (rightSegment) rightSegment.computeGeneOverlaps(genePins);
+    for (const obj of childObjects) obj.computeGeneOverlaps(genePins);
+    for (const obj of materializedObjects) obj.computeGeneOverlaps(genePins);
 
     // Detect indel objects: any child with a GFA link from head to tail
     // gets a synthetic deletion link (kink#0 → kink#last) for the X marker.

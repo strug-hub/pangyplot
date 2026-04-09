@@ -6,6 +6,21 @@
  * `interior` is the object's own business — opaque to callers.
  */
 
+/**
+ * Premix a gene color with a background color at a given alpha.
+ * Returns a hex string. Avoids per-frame alpha blending.
+ */
+const _BG_R = 27, _BG_G = 27, _BG_B = 27; // #1b1b1b background
+export function mixGeneColor(hexColor, alpha = 0.55) {
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    const mr = Math.round(_BG_R + (r - _BG_R) * alpha);
+    const mg = Math.round(_BG_G + (g - _BG_G) * alpha);
+    const mb = Math.round(_BG_B + (b - _BG_B) * alpha);
+    return `#${mr.toString(16).padStart(2, '0')}${mg.toString(16).padStart(2, '0')}${mb.toString(16).padStart(2, '0')}`;
+}
+
 const LINK_SCALE = 1;
 const LINK_BASE_LENGTH = 10;
 const SINGLE_NODE_BP_THRESH = 10;
@@ -65,6 +80,20 @@ export class SimObject {
         this.interior = null;
 
         /**
+         * Reference genome bp range for this object.
+         * null = alt path (no ref coordinates) → no gene annotation.
+         * @type {{ start: number, end: number }|null}
+         */
+        this.refBp = null;
+
+        /**
+         * Cached list of gene pins that overlap this object's refBp.
+         * Populated by _computeGeneOverlaps(), used by getGeneRenderables().
+         * @type {object[]|null}
+         */
+        this._geneOverlaps = null;
+
+        /**
          * d3 force nodes this object owns in the simulation.
          * @type {object[]}
          */
@@ -95,6 +124,30 @@ export class SimObject {
      * @returns {object[]} — array of RenderSpec objects
      */
     getRenderables() {
+        return [];
+    }
+
+    /**
+     * Compute which gene pins overlap this object's refBp range.
+     * Call once at construction or when gene pins change.
+     * @param {object[]} genePins — array of GenePin objects with startBp, endBp
+     */
+    computeGeneOverlaps(genePins) {
+        if (!this.refBp || !genePins) {
+            this._geneOverlaps = [];
+            return;
+        }
+        this._geneOverlaps = genePins.filter(pin =>
+            pin.endBp > this.refBp.start && pin.startBp < this.refBp.end
+        );
+    }
+
+    /**
+     * Return gene annotation render specs. Subclasses override.
+     * Uses cached _geneOverlaps for the gene list, live positions for geometry.
+     * @returns {object[]} — render specs with { type, color, geneName, layer:'gene-halo', ... }
+     */
+    getGeneRenderables() {
         return [];
     }
 

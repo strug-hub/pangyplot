@@ -108,3 +108,27 @@ export function getAllObjects() {
     return objects;
 }
 
+/**
+ * Compute gene overlaps for all SimObjects.
+ * Call when gene pins are first available or objects are created.
+ * @param {object[]} genePins — array of GenePin objects with startBp, endBp
+ */
+export function computeAllGeneOverlaps(genePins) {
+    for (const obj of objects.values()) {
+        obj.computeGeneOverlaps(genePins);
+    }
+}
+
+/**
+ * Collect gene annotation renderables from all SimObjects.
+ * @returns {object[]} — flat array of render specs
+ */
+export function collectGeneRenderables() {
+    const specs = [];
+    for (const obj of objects.values()) {
+        const r = obj.getGeneRenderables();
+        if (r.length > 0) specs.push(...r);
+    }
+    return specs;
+}
+

@@ -105,6 +105,12 @@ export class PolychainContainer {
         /** All bubbles on this chain with their t-positions. */
         this.bubbles = opts.bubbles || [];
 
+        /** Reference bp coordinates for gene annotation. */
+        this.bpHead = opts.bpHead ?? null;
+        this.bpTail = opts.bpTail ?? null;
+        this.bpStart = opts.bpStart ?? null;
+        this.bpEnd = opts.bpEnd ?? null;
+
         /** Popped t-ranges: [{tStart, tEnd, bubbleId}] */
         this.poppedRanges = [];
 
@@ -509,6 +515,10 @@ export class PolychainContainer {
             headSegs,
             tailSegs,
             bubbles,
+            bpHead: chain.bpHead ?? null,
+            bpTail: chain.bpTail ?? null,
+            bpStart: chain.bpStart ?? null,
+            bpEnd: chain.bpEnd ?? null,
         });
     }
 }

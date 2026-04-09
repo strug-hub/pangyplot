@@ -3,7 +3,7 @@
 import { state } from '../../../state.js';
 import { getNodeColor } from '../../../color/color-style.js';
 import { strokePolyline, strokePolylines, fillCircles, strokeRing } from '../detail-painter.js';
-import { getGeneChainOverlaps, extractSubPolyline } from '../../data/polychain/polychain-gene-map.js';
+import { extractSubPolyline } from '../../data/polychain/polychain-adapter.js';
 import { placeGenesFromDetail, blendGenePinsToSpine } from '@graph-data/gene-data.js';
 import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta } from '../../data/bubble-meta-cache.js';
 import { getAllAnnotations } from '@graph-data/custom-annotation-data.js';
@@ -52,50 +52,6 @@ function getSelectedPolylines() {
         }
     }
     return polylines;
-}
-
-function drawGeneOverlays(ctx, opacity, baseWidth, svg = null) {
-    const overlaps = getGeneChainOverlaps();
-    if (overlaps.size === 0) return;
-
-    const dd = state.detailData;
-    if (!dd) return;
-
-    // Halo: wide, soft glow behind the chain line
-    const bw = getBaseWidth(state.zoom, state.renderMaxBoost, state.thicknessMultiplier);
-    const haloWidth = Math.max(8, bw * 5);
-    const haloOpacity = opacity * 0.55;
-    if (!svg) {
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.setLineDash([]);
-    }
-
-    // Batch by color to minimize state changes
-    const byColor = new Map();
-    for (const chain of dd.chains) {
-        const geneList = overlaps.get(chain.id);
-        if (!geneList) continue;
-
-        const container = getContainer(chain.id);
-        if (!container) continue;
-        const pls = container.segments.map(s => s.getPolyline()).filter(pl => pl.length >= 2);
-        if (pls.length === 0) continue;
-
-        for (const gene of geneList) {
-            for (const pl of pls) {
-                if (!pl || pl.length < 2) continue;
-                const sub = extractSubPolyline(pl, gene.tStart, gene.tEnd);
-                if (!sub || sub.length < 2) continue;
-                if (!byColor.has(gene.color)) byColor.set(gene.color, []);
-                byColor.get(gene.color).push(sub);
-            }
-        }
-    }
-
-    for (const [color, polylines] of byColor) {
-        strokePolylines(ctx, polylines, color, haloWidth, haloOpacity, svg);
-    }
 }
 
 const LABEL_FONT_SIZE = 14;
@@ -253,8 +209,7 @@ export function drawDetail(svg = null) {
 
     const baseWidth = getBaseWidth(state.zoom, state.renderMaxBoost, state.thicknessMultiplier);
 
-    // 1. Gene halo outlines (drawn BEHIND chain polylines)
-    drawGeneOverlays(ctx, opacity, baseWidth, svg);
+    // 1. Gene halos are now drawn by force-render-manager via SimObject.getGeneRenderables()
 
     // 2. Chain polylines (grouped by color style)
     const polylinesByColor = getVisibleChainPolylinesByColor(state.detailData.chains);
