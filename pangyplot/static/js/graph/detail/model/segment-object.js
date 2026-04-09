@@ -8,7 +8,7 @@
  */
 
 import { SimObject, calculateNumberOfKinks, getKinkCoordinates, kinkLinkLength, LINK_SCALE,
-    mixGeneColor } from './sim-object.js';
+    mixGeneColor, extractGeneSubPolyline } from './sim-object.js';
 
 export class SegmentObject extends SimObject {
     /**
@@ -144,31 +144,24 @@ export class SegmentObject extends SimObject {
     getGeneRenderables() {
         if (!this._geneOverlaps || this._geneOverlaps.length === 0) return [];
         const specs = [];
-        for (const pin of this._geneOverlaps) {
+        const bpSpan = this.refBp.end - this.refBp.start;
+        for (let gi = 0; gi < this._geneOverlaps.length; gi++) {
+            const pin = this._geneOverlaps[gi];
             const color = mixGeneColor(pin.color);
             if (this._kinkCount === 1) {
                 const n = this.physicsNodes[0];
                 specs.push({ type: 'circle', x: n.x, y: n.y, r: n.width * 1.75,
-                    color, geneName: pin.name, layer: 'gene-halo' });
+                    color, geneName: pin.name, layer: 'gene-halo', overlapIdx: gi });
             } else {
-                const bpPerKink = (this.refBp.end - this.refBp.start) / this._kinkCount;
-                for (let i = 0; i < this._kinkCount; i++) {
-                    const kStart = this.refBp.start + i * bpPerKink;
-                    const kEnd = kStart + bpPerKink;
-                    if (kEnd <= pin.startBp || kStart >= pin.endBp) continue;
-                    const n = this.physicsNodes[i];
-                    specs.push({ type: 'circle', x: n.x, y: n.y, r: n.width * 1.75,
-                        color, geneName: pin.name, layer: 'gene-halo' });
-                }
-                for (let i = 1; i < this._kinkCount; i++) {
-                    const kMid = this.refBp.start + (i - 0.5) * bpPerKink;
-                    if (kMid < pin.startBp || kMid > pin.endBp) continue;
-                    const src = this.physicsNodes[i - 1];
-                    const tgt = this.physicsNodes[i];
-                    if (!src || !tgt) continue;
-                    specs.push({ type: 'line', x1: src.x, y1: src.y, x2: tgt.x, y2: tgt.y,
-                        color, geneName: pin.name, layer: 'gene-halo' });
-                }
+                // Build polyline from kink positions, clip to gene bp range
+                const tStart = Math.max(0, (pin.startBp - this.refBp.start) / bpSpan);
+                const tEnd = Math.min(1, (pin.endBp - this.refBp.start) / bpSpan);
+                if (tEnd - tStart < 0.001) continue;
+                const kinkPl = this.physicsNodes.map(n => [n.x, n.y]);
+                const sub = extractGeneSubPolyline(kinkPl, tStart, tEnd);
+                if (!sub || sub.length < 2) continue;
+                specs.push({ type: 'polyline', points: sub, color,
+                    geneName: pin.name, layer: 'gene-halo', overlapIdx: gi });
             }
         }
         return specs;

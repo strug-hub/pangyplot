@@ -21,6 +21,41 @@ export function mixGeneColor(hexColor, alpha = 0.55) {
     return `#${mr.toString(16).padStart(2, '0')}${mg.toString(16).padStart(2, '0')}${mb.toString(16).padStart(2, '0')}`;
 }
 
+/**
+ * Extract a sub-polyline for fractional range [tStart, tEnd].
+ * Shared by SegmentObject, BubbleObject, PolychainSegment for gene halos.
+ */
+export function extractGeneSubPolyline(pl, tStart, tEnd) {
+    if (!pl || pl.length < 2) return null;
+    const cum = [0];
+    for (let i = 1; i < pl.length; i++) {
+        cum.push(cum[i - 1] + Math.hypot(pl[i][0] - pl[i - 1][0], pl[i][1] - pl[i - 1][1]));
+    }
+    const total = cum[cum.length - 1];
+    if (total === 0) return null;
+    const dStart = tStart * total;
+    const dEnd = tEnd * total;
+    function interpAt(d) {
+        if (d <= 0) return [pl[0][0], pl[0][1]];
+        if (d >= total) return [pl[pl.length - 1][0], pl[pl.length - 1][1]];
+        let lo = 0, hi = cum.length - 1;
+        while (lo < hi - 1) {
+            const mid = (lo + hi) >> 1;
+            if (cum[mid] <= d) lo = mid; else hi = mid;
+        }
+        const seg = cum[hi] - cum[lo];
+        const t = seg > 0 ? (d - cum[lo]) / seg : 0;
+        return [pl[lo][0] + t * (pl[hi][0] - pl[lo][0]),
+                pl[lo][1] + t * (pl[hi][1] - pl[lo][1])];
+    }
+    const sub = [interpAt(dStart)];
+    for (let i = 1; i < pl.length - 1; i++) {
+        if (cum[i] > dStart && cum[i] < dEnd) sub.push([pl[i][0], pl[i][1]]);
+    }
+    sub.push(interpAt(dEnd));
+    return sub;
+}
+
 const LINK_SCALE = 1;
 const LINK_BASE_LENGTH = 10;
 const SINGLE_NODE_BP_THRESH = 10;
