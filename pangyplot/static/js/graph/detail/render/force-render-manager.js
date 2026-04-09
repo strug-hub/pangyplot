@@ -7,7 +7,9 @@ import { drawRotatedCross } from '../../render/painter-utils.js';
 import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
 import { pcSettings, chargeStr } from '../engines/force-engine.js';
 import { getContainer, collectGeneRenderables } from '../model/model-manager.js';
+import { resolve as resolveSegment } from '../model/segment-registry.js';
 import { isGeneVisible } from '@graph-data/gene-data.js';
+import { mixGeneColor } from '../model/sim-object.js';
 import { getNodeColor } from '../../color/color-style.js';
 import { colorState } from '../../color/color-state.js';
 import { bubbleGridThreshold } from '../data/bubble-meta-cache.js';
@@ -166,9 +168,9 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
  */
 export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
     const specs = collectGeneRenderables();
-    if (specs.length === 0) return;
 
     const haloWidth = Math.max(8, baseWidth * 5);
+    const haloR = baseWidth * 1.75;
 
     // Filter by visibility + batch by color
     const circlesByColor = new Map();
@@ -180,7 +182,7 @@ export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
         const c = spec.color;
         if (spec.type === 'circle') {
             if (!circlesByColor.has(c)) circlesByColor.set(c, []);
-            circlesByColor.get(c).push(spec);
+            circlesByColor.get(c).push({ x: spec.x, y: spec.y, r: haloR });
         } else if (spec.type === 'line') {
             if (!linesByColor.has(c)) linesByColor.set(c, []);
             linesByColor.get(c).push(spec);
@@ -190,6 +192,39 @@ export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
         }
     }
 
+    // GFA link halos: highlight links where both endpoints share a gene annotation
+    const links = getForceLinks();
+    for (const link of links) {
+        if (link.isPolychainLink || link.isSpineLink || link.isKinkLink) continue;
+        const s = link.source, t = link.target;
+        if (s?.x == null || t?.x == null) continue;
+
+        const srcId = link.sourceId || link.sourceSegId;
+        const tgtId = link.targetId || link.targetSegId;
+        if (!srcId || !tgtId) continue;
+
+        const srcObj = resolveSegment(srcId);
+        const tgtObj = resolveSegment(tgtId);
+        if (!srcObj?._geneOverlaps?.length || !tgtObj?._geneOverlaps?.length) continue;
+
+        // Find first common visible gene
+        for (const pin of srcObj._geneOverlaps) {
+            if (!isGeneVisible(pin.name)) continue;
+            if (tgtObj._geneOverlaps.some(p => p.name === pin.name)) {
+                const color = mixGeneColor(pin.color);
+                if (!linesByColor.has(color)) linesByColor.set(color, []);
+                linesByColor.get(color).push({ x1: s.x, y1: s.y, x2: t.x, y2: t.y });
+                break;
+            }
+        }
+    }
+
+    if (linesByColor.size === 0 && circlesByColor.size === 0 && polylinesByColor.size === 0) return;
+
+    if (!svg) {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+    }
     for (const [color, segs] of linesByColor) {
         strokeSegments(ctx, segs, color, haloWidth, opacity, svg);
     }
@@ -197,10 +232,6 @@ export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
         fillCircles(ctx, circles, color, opacity, svg);
     }
     if (polylinesByColor.size > 0) {
-        if (!svg) {
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-        }
         for (const [color, pls] of polylinesByColor) {
             _strokePolylines(ctx, pls, color, haloWidth, opacity, svg);
         }
