@@ -3,9 +3,8 @@
 import { state } from '../../state.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import { hitTestChains, chainsInRect, hitTestBubbleCircles } from '../../detail/engines/polychain/polychain-hover-engine.js';
+import { forceNodesInRect } from '../../detail/engines/node-hover-engine.js';
 import { popBubbleCircleV2 } from '../../detail/model/pop-handler.js';
-import { getAllObjects } from '../../detail/model/model-manager.js';
-import { PolychainSegment } from '../../detail/model/polychain-segment.js';
 import { updateSelectionInfo, updateSelectionSummary, clearSelectionSummary } from '@ui/sections/tabs/information-panel.js';
 import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showTooltip, hideTooltip } from '@ui/elements/tooltip.js';
@@ -95,18 +94,7 @@ export function setupMultiSelection(canvas) {
         state.selectedChains.clear();
         for (const h of hits) state.selectedChains.set(h.chain, { tStart: h.tStart, tEnd: h.tEnd });
 
-        // Hit-test junction SimObjects (SegmentObjects/BubbleObjects)
-        state.selectedObjects.clear();
-        for (const obj of getAllObjects().values()) {
-            if (obj instanceof PolychainSegment) continue;
-            for (const node of obj.physicsNodes) {
-                if (node.x >= dMinX && node.x <= dMaxX &&
-                    node.y >= dMinY && node.y <= dMaxY) {
-                    state.selectedObjects.add(obj);
-                    break;
-                }
-            }
-        }
+        state.selectedObjects = forceNodesInRect(dMinX, dMinY, dMaxX, dMaxY);
         scheduleFrame();
     });
 

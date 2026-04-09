@@ -43,6 +43,19 @@ export function hitTestForceNodes(dataX, dataY) {
     return bestNode;
 }
 
+/** Returns all SimObjects with at least one physics node inside the rectangle. */
+export function forceNodesInRect(dMinX, dMinY, dMaxX, dMaxY) {
+    const result = new Set();
+    for (const node of getForceNodes()) {
+        if (node.isPolychainNode || node.isAnchor) continue;
+        if (node.x >= dMinX && node.x <= dMaxX &&
+            node.y >= dMinY && node.y <= dMaxY) {
+            if (node.simObject) result.add(node.simObject);
+        }
+    }
+    return result;
+}
+
 export function getForceNodeTooltip(node) {
     if (node.chainId === '__junction__') {
         return {

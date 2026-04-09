@@ -5,15 +5,30 @@
 import { state } from '../../state.js';
 import { getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeRing, strokeSegments } from './detail-painter.js';
+import { colorState } from '../../color/color-state.js';
+import { getNodeColor } from '../../color/color-style.js';
 
-// Colors matching core's color-state.js
-const HOVER_COLOR = '#aca9a6';
-const SELECTED_COLOR = '#F44336';
-
-// Sizes matching core's highlight-selection-renderer.js
 const HALO_THICKNESS = 2;
 const HOVER_SIZE = 2.4;
 const HOVER_THICKNESS = 0.3;
+
+/**
+ * Returns the visual selection state of a force node, in priority order.
+ * @returns {'selected'|'multi-selected'|'hovered'|null}
+ */
+export function getNodeVisualState(node) {
+    if (node === state.selectedNode) return 'selected';
+    if (state.selectedObjects.size > 0 && node.simObject &&
+        state.selectedObjects.has(node.simObject)) return 'multi-selected';
+    if (node === state.hoveredForceNode || node === state.hoveredBubble) return 'hovered';
+    return null;
+}
+
+/** Returns the fill color for a force node, accounting for multi-selection. */
+export function getNodeFillColor(node) {
+    if (getNodeVisualState(node) === 'multi-selected') return colorState.highlightColor;
+    return getNodeColor(node);
+}
 
 // Dirty-check cache: stores link *references* (not coordinates),
 // so positions update automatically as force nodes move.
@@ -46,12 +61,12 @@ export function drawSelectionHighlight(ctx, scaleFactor, opacity, svg = null) {
 
     // Draw link halos first (behind node halo)
     if (segs.length > 0) {
-        strokeSegments(ctx, segs, SELECTED_COLOR, HALO_THICKNESS * scaleFactor, opacity, svg);
+        strokeSegments(ctx, segs, colorState.selectedColor, HALO_THICKNESS * scaleFactor, opacity, svg);
     }
 
     // Draw node halo — filled circle larger than the node
     const r = HALO_THICKNESS * scaleFactor * 0.5;
-    fillCircles(ctx, [{ x: selNode.x, y: selNode.y, r }], SELECTED_COLOR, opacity, svg);
+    fillCircles(ctx, [{ x: selNode.x, y: selNode.y, r }], colorState.selectedColor, opacity, svg);
 }
 
 export function drawHoverHighlight(ctx, scaleFactor, opacity) {
@@ -60,7 +75,7 @@ export function drawHoverHighlight(ctx, scaleFactor, opacity) {
 
     strokeRing(ctx, hovNode.x, hovNode.y,
         HOVER_SIZE * scaleFactor,
-        HOVER_COLOR, HOVER_THICKNESS * scaleFactor, opacity);
+        colorState.hoverColor, HOVER_THICKNESS * scaleFactor, opacity);
 }
 
 export function clearSelectionCache() {

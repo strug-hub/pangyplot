@@ -4,29 +4,18 @@ import { state } from '../../state.js';
 import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../render/painter-utils.js';
-import { drawSelectionHighlight, drawHoverHighlight } from './highlight-painter.js';
+import { drawSelectionHighlight, drawHoverHighlight, getNodeFillColor } from './highlight-painter.js';
 import { pcSettings, chargeStr } from '../engines/force-engine.js';
 import { getContainer, collectGeneRenderables } from '../model/model-manager.js';
 import { resolve as resolveSegment } from '../model/segment-registry.js';
 import { isGeneVisible } from '@graph-data/gene-data.js';
 import { mixGeneColor } from '../model/sim-object.js';
-import { getNodeColor } from '../../color/color-style.js';
 import { colorState } from '../../color/color-state.js';
 import { bubbleGridThreshold } from '../data/bubble-meta-cache.js';
 
 /** Last-frame rendered junction counts (read by status-bar). */
 export let renderedJunctionNodes = 0;
 export let renderedJunctionLinks = 0;
-
-const SELECTION_COLOR = '#FAB3AE';
-
-function nodeColorForSelection(node) {
-    if (state.selectedObjects.size > 0 && node.simObject &&
-        state.selectedObjects.has(node.simObject)) {
-        return SELECTION_COLOR;
-    }
-    return getNodeColor(node);
-}
 
 export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     const nodes = getForceNodes();
@@ -72,7 +61,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         if (link.isDel) {
             delSegs.push(seg);
         } else if (link.isKinkLink) {
-            const color = nodeColorForSelection(s);
+            const color = getNodeFillColor(s);
             if (!kinkByColor.has(color)) kinkByColor.set(color, []);
             kinkByColor.get(color).push(seg);
         } else if (link.type === 'chain') {
@@ -110,7 +99,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         }
         const r = baseWidth * 0.5;
         const circle = { x: node.x, y: node.y, r };
-        const color = nodeColorForSelection(node);
+        const color = getNodeFillColor(node);
         if (!nodesByColor.has(color)) nodesByColor.set(color, []);
         nodesByColor.get(color).push(circle);
     }
@@ -166,41 +155,30 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
  * Draw gene annotation halos from all SimObjects' getGeneRenderables().
  * Batches by color for efficient rendering.
  */
-const OVERLAP_FRAC = 0.25; // fraction of haloWidth added per overlap layer
 
 export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
     const specs = collectGeneRenderables();
 
-    const haloWidth = Math.max(8, baseWidth * 5);
-    const haloR = baseWidth * 1.75;
+    const haloWidth = baseWidth * 5;
+    const haloR = baseWidth * 2.5;
 
-    // Filter by visibility, collect into layers keyed by overlapIdx
-    // Each layer: { circles: Map<color, [...]>, lines: Map<color, [...]>, polylines: Map<color, [...]> }
-    const layers = new Map(); // overlapIdx → layer
-    let maxIdx = 0;
-
-    function getLayer(idx) {
-        if (!layers.has(idx)) {
-            layers.set(idx, { circles: new Map(), lines: new Map(), polylines: new Map() });
-        }
-        if (idx > maxIdx) maxIdx = idx;
-        return layers.get(idx);
-    }
+    // Filter by visibility, batch by color
+    const circlesByColor = new Map();
+    const linesByColor = new Map();
+    const polylinesByColor = new Map();
 
     for (const spec of specs) {
         if (!isGeneVisible(spec.geneName)) continue;
-        const idx = spec.overlapIdx || 0;
-        const layer = getLayer(idx);
         const c = spec.color;
         if (spec.type === 'circle') {
-            if (!layer.circles.has(c)) layer.circles.set(c, []);
-            layer.circles.get(c).push({ x: spec.x, y: spec.y, r: haloR });
+            if (!circlesByColor.has(c)) circlesByColor.set(c, []);
+            circlesByColor.get(c).push({ x: spec.x, y: spec.y, r: haloR });
         } else if (spec.type === 'line') {
-            if (!layer.lines.has(c)) layer.lines.set(c, []);
-            layer.lines.get(c).push(spec);
+            if (!linesByColor.has(c)) linesByColor.set(c, []);
+            linesByColor.get(c).push(spec);
         } else if (spec.type === 'polyline') {
-            if (!layer.polylines.has(c)) layer.polylines.set(c, []);
-            layer.polylines.get(c).push(spec.points);
+            if (!polylinesByColor.has(c)) polylinesByColor.set(c, []);
+            polylinesByColor.get(c).push(spec.points);
         }
     }
 
@@ -223,38 +201,28 @@ export function drawGeneHalos(ctx, baseWidth, opacity, svg) {
             if (!isGeneVisible(pin.name)) continue;
             if (tgtObj._geneOverlaps.some(p => p.name === pin.name)) {
                 const color = mixGeneColor(pin.color);
-                const layer = getLayer(0);
-                if (!layer.lines.has(color)) layer.lines.set(color, []);
-                layer.lines.get(color).push({ x1: s.x, y1: s.y, x2: t.x, y2: t.y });
+                if (!linesByColor.has(color)) linesByColor.set(color, []);
+                linesByColor.get(color).push({ x1: s.x, y1: s.y, x2: t.x, y2: t.y });
                 break;
             }
         }
     }
 
-    if (layers.size === 0) return;
+    if (linesByColor.size === 0 && circlesByColor.size === 0 && polylinesByColor.size === 0) return;
 
     if (!svg) {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
     }
 
-    // Draw highest overlapIdx first (widest, behind), lowest last (narrowest, on top)
-    const sortedIdxs = [...layers.keys()].sort((a, b) => b - a);
-    for (const idx of sortedIdxs) {
-        const layer = layers.get(idx);
-        const scale = 1 + idx * OVERLAP_FRAC;
-        const w = haloWidth * scale;
-        const r = haloR * scale;
-
-        for (const [color, segs] of layer.lines) {
-            strokeSegments(ctx, segs, color, w, opacity, svg);
-        }
-        for (const [color, circles] of layer.circles) {
-            fillCircles(ctx, circles.map(c => ({ ...c, r })), color, opacity, svg);
-        }
-        for (const [color, pls] of layer.polylines) {
-            _strokePolylines(ctx, pls, color, w, opacity, svg);
-        }
+    for (const [color, segs] of linesByColor) {
+        strokeSegments(ctx, segs, color, haloWidth, opacity, svg);
+    }
+    for (const [color, circles] of circlesByColor) {
+        fillCircles(ctx, circles, color, opacity, svg);
+    }
+    for (const [color, pls] of polylinesByColor) {
+        _strokePolylines(ctx, pls, color, haloWidth, opacity, svg);
     }
 }
 

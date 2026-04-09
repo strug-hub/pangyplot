@@ -9,6 +9,7 @@ import { fetchBubbleMeta, getBubbleStore, hasBubbleMeta } from '../../data/bubbl
 import { getAllAnnotations } from '@graph-data/custom-annotation-data.js';
 import { getContainer } from '../../model/model-manager.js';
 import { getBaseWidth, pcSettings } from '../../engines/forces/pc-settings.js';
+import { colorState } from '../../../color/color-state.js';
 
 function getVisibleChainPolylinesByColor(chains) {
     const byColor = new Map();
@@ -241,15 +242,14 @@ export function drawDetail(svg = null) {
     // 2.6. Hovered bubble circle highlight (ctrl+hover)
     if (!svg && state.hoveredBubbleCircle) {
         const hb = state.hoveredBubbleCircle;
-        const highlightR = Math.max(2.5, baseWidth * 1.5);
-        strokeRing(ctx, hb.x, hb.y, highlightR, '#fff', Math.max(0.5, baseWidth / 6), 0.8 * opacity);
+        strokeRing(ctx, hb.x, hb.y, 2.4 * baseWidth, colorState.hoverColor, 0.3 * baseWidth, opacity);
     }
 
     // 3. Selection highlight
     if (state.selectedChains.size > 0) {
         const selected = getSelectedPolylines();
         if (selected.length > 0) {
-            strokePolylines(ctx, selected, '#FAB3AE', Math.max(2.5, baseWidth * 1.5), 0.9 * opacity, svg);
+            strokePolylines(ctx, selected, colorState.highlightColor, Math.max(2.5, baseWidth * 1.5), 0.9 * opacity, svg);
         }
     }
 
@@ -261,7 +261,7 @@ export function drawDetail(svg = null) {
             for (const seg of hoverContainer.segments) {
                 const pl = seg.getPolyline();
                 if (pl.length >= 2) {
-                    strokePolyline(ctx, pl, '#fff', Math.max(2.5, baseWidth * 1.5), 0.3 * opacity);
+                    strokePolyline(ctx, pl, colorState.hoverColor, Math.max(2.5, baseWidth * 1.5), 0.3 * opacity);
                 }
             }
         }
