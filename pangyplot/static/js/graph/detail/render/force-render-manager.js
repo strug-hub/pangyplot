@@ -98,7 +98,8 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
             }
             jNodeCount++;
         }
-        const r = baseWidth * 0.5;
+        const shrink = gridSize <= 50 ? 1 : 1 / Math.sqrt(gridSize / 50);
+        const r = baseWidth * shrink;
         const circle = { x: node.x, y: node.y, r };
         const color = getNodeFillColor(node);
         if (!nodesByColor.has(color)) nodesByColor.set(color, []);
@@ -109,8 +110,9 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
     // Gene halos are drawn separately via drawGeneHalos() before polychain lines
 
     // 1. Kink links (segment body)
+    const kinkShrink = gridSize <= 50 ? 1 : 1 / Math.sqrt(gridSize / 50);
     for (const [color, segs] of kinkByColor) {
-        strokeSegments(ctx, segs, color, baseWidth, opacity, svg);
+        strokeSegments(ctx, segs, color, baseWidth * 2 * kinkShrink, opacity, svg);
     }
 
     // 2. Chain links (bubble-to-bubble)
