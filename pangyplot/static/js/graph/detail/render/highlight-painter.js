@@ -1,14 +1,12 @@
 // Highlight rendering for selected and hovered force nodes.
-// Three-tier highlight system: selection underlay
-// (filled halos + thick links) rendered BEFORE nodes, hover outline AFTER.
+// Selection is handled via fill color (getNodeFillColor),
+// hover is rendered as an outline ring after nodes.
 
 import { state } from '../../state.js';
-import { getForceLinks } from '../data/force-data.js';
-import { fillCircles, strokeRing, strokeSegments } from './detail-painter.js';
+import { strokeRing } from './detail-painter.js';
 import { colorState } from '../../color/color-state.js';
 import { getNodeColor } from '../../color/color-style.js';
 
-const HALO_THICKNESS = 2;
 const HOVER_SIZE = 2.4;
 const HOVER_THICKNESS = 0.3;
 
@@ -24,49 +22,11 @@ export function getNodeVisualState(node) {
     return null;
 }
 
-/** Returns the fill color for a force node, accounting for multi-selection. */
+/** Returns the fill color for a force node, accounting for selection. */
 export function getNodeFillColor(node) {
-    if (getNodeVisualState(node) === 'multi-selected') return colorState.highlightColor;
+    const vs = getNodeVisualState(node);
+    if (vs === 'selected' || vs === 'multi-selected') return colorState.highlightColor;
     return getNodeColor(node);
-}
-
-// Dirty-check cache: stores link *references* (not coordinates),
-// so positions update automatically as force nodes move.
-let cachedNode = null;
-let cachedLinks = [];
-
-export function drawSelectionHighlight(ctx, scaleFactor, opacity, svg = null) {
-    const selNode = state.selectedNode;
-    if (!selNode || selNode.x == null) return;
-
-    // Rebuild link reference cache on node change
-    if (selNode !== cachedNode) {
-        cachedNode = selNode;
-        cachedLinks = [];
-        for (const link of getForceLinks()) {
-            if (link.source === selNode || link.target === selNode) {
-                cachedLinks.push(link);
-            }
-        }
-    }
-
-    // Build segments from live positions each frame
-    const segs = [];
-    for (const link of cachedLinks) {
-        const s = link.source, t = link.target;
-        if (s.x != null && t.x != null) {
-            segs.push({ x1: s.x, y1: s.y, x2: t.x, y2: t.y });
-        }
-    }
-
-    // Draw link halos first (behind node halo)
-    if (segs.length > 0) {
-        strokeSegments(ctx, segs, colorState.selectedColor, HALO_THICKNESS * scaleFactor, opacity, svg);
-    }
-
-    // Draw node halo — filled circle larger than the node
-    const r = HALO_THICKNESS * scaleFactor * 0.5;
-    fillCircles(ctx, [{ x: selNode.x, y: selNode.y, r }], colorState.selectedColor, opacity, svg);
 }
 
 export function drawHoverHighlight(ctx, scaleFactor, opacity) {
@@ -76,9 +36,4 @@ export function drawHoverHighlight(ctx, scaleFactor, opacity) {
     strokeRing(ctx, hovNode.x, hovNode.y,
         HOVER_SIZE * scaleFactor,
         colorState.hoverColor, HOVER_THICKNESS * scaleFactor, opacity);
-}
-
-export function clearSelectionCache() {
-    cachedNode = null;
-    cachedLinks = [];
 }

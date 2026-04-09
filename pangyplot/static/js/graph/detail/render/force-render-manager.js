@@ -4,7 +4,7 @@ import { state } from '../../state.js';
 import { getForceNodes, getForceLinks } from '../data/force-data.js';
 import { fillCircles, strokeSegments } from './detail-painter.js';
 import { drawRotatedCross } from '../../render/painter-utils.js';
-import { drawSelectionHighlight, drawHoverHighlight, getNodeFillColor } from './highlight-painter.js';
+import { drawHoverHighlight, getNodeFillColor } from './highlight-painter.js';
 import { pcSettings, chargeStr } from '../engines/force-engine.js';
 import { getContainer, collectGeneRenderables } from '../model/model-manager.js';
 import { resolve as resolveSegment } from '../model/segment-registry.js';
@@ -139,10 +139,7 @@ export function drawForceGraph(ctx, baseWidth, svg = null, vp = null) {
         }
     }
 
-    // 4. Selection highlight underlay (red halo + connected link halos) — before nodes
-    drawSelectionHighlight(ctx, scaleFactor, opacity, svg);
-
-    // 6. Nodes
+    // 4. Nodes
     for (const [color, circles] of nodesByColor) {
         fillCircles(ctx, circles, color, opacity, svg);
     }

@@ -245,12 +245,19 @@ export function drawDetail(svg = null) {
         strokeRing(ctx, hb.x, hb.y, 2.4 * baseWidth, colorState.hoverColor, 0.3 * baseWidth, opacity);
     }
 
-    // 3. Selection highlight
-    if (state.selectedChains.size > 0) {
-        const selected = getSelectedPolylines();
-        if (selected.length > 0) {
-            strokePolylines(ctx, selected, colorState.highlightColor, Math.max(2.5, baseWidth * 1.5), 0.9 * opacity, svg);
+    // 3. Selection highlight (rect-select and click-select)
+    const selectedPls = getSelectedPolylines();
+    if (state.selectedNode?.polyline) {
+        const selContainer = getContainer(state.selectedNode.id);
+        if (selContainer) {
+            for (const seg of selContainer.segments) {
+                const pl = seg.getPolyline();
+                if (pl.length >= 2) selectedPls.push(pl);
+            }
         }
+    }
+    if (selectedPls.length > 0) {
+        strokePolylines(ctx, selectedPls, colorState.highlightColor, Math.max(2.5, baseWidth * 1.5), 0.9 * opacity, svg);
     }
 
 

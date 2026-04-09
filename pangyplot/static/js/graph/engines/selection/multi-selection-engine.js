@@ -6,7 +6,6 @@ import { hitTestChains, chainsInRect, hitTestBubbleCircles } from '../../detail/
 import { forceNodesInRect } from '../../detail/engines/node-hover-engine.js';
 import { popBubbleCircleV2 } from '../../detail/model/pop-handler.js';
 import { updateSelectionInfo, updateSelectionSummary, clearSelectionSummary } from '@ui/sections/tabs/information-panel.js';
-import { clearSelectionCache } from '../../detail/render/highlight-painter.js';
 import { showTooltip, hideTooltip } from '@ui/elements/tooltip.js';
 
 export function setupMultiSelection(canvas) {
@@ -124,7 +123,6 @@ export function setupMultiSelection(canvas) {
         }
         if (state.selectedNode) {
             state.selectedNode = null;
-            clearSelectionCache();
             updateSelectionInfo(null);
             changed = true;
         }
