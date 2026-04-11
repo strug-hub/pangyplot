@@ -28,7 +28,7 @@ for node s in nodes:
 
 def find_sb_alg(graph, s, direction, only_simple=False, only_super=False):
     """
-    takes the graph and a start node s and add a bubble to the chain 
+    takes the graph and a start node s and add a bubble to the chain
     if one is found if s was the source
     """
     # I tuples of node ids and the direction
@@ -36,75 +36,69 @@ def find_sb_alg(graph, s, direction, only_simple=False, only_super=False):
     visited = set()
     nodes_inside = []
     seen.add((s.id, direction))
-    # seen.add(s.id)
     S = {(s, direction)}
+    graph_nodes = graph.nodes
+
     while len(S) > 0:
 
         v = S.pop()
         v = (v[0], v[1])
-        visited.add(v[0].id)
+        v_id = v[0].id
+        visited.add(v_id)
 
-        nodes_inside.append(v[0])
+        # Don't append source node — we'll handle it outside the loop
+        if v_id != s.id:
+            nodes_inside.append(v[0])
 
         # it's visited so it's not in the seen list anymore
-        seen.remove((v[0].id, v[1]))
+        seen.remove((v_id, v[1]))
 
         # from which direction we are going we take those children
-        if v[1] == 0:
-            children = v[0].start
-        else:
-            children = v[0].end
+        children = v[0].start if v[1] == 0 else v[0].end
 
         if len(children) == 0:
             # it's a tip
             break
 
         for u in children:
+            u_id = u[0]
+            u_dir = u[1]
             # check where we entered to get children from the other side
-            if u[1] == 0:
+            u_node = graph_nodes[u_id]
+            if u_dir == 0:
                 u_child_direction = 1
-                u_parents = [x[0] for x in graph.nodes[u[0]].start]
-
+                u_parent_ids = u_node.start_parent_ids
             else:
                 u_child_direction = 0
-                u_parents = [x[0] for x in graph.nodes[u[0]].end]
+                u_parent_ids = u_node.end_parent_ids
 
-            if u[0] == s.id:
+            if u_id == s.id:
                 # we are in a loop
                 S = set()  # so I exit the outer loop too
                 break
 
             # adding child to seen
-            # seen.add(u[0])
-            if u[1] == 0:
-                seen.add((u[0], 1))
-            else:
-                seen.add((u[0], 0))
+            seen.add((u_id, 1 - u_dir))
 
-            if u[0] in visited:
+            if u_id in visited:
                 continue
-            
+
             # if all u_parents are visited then we push it into S
-            if all(graph.nodes[i].id in visited for i in u_parents):
-                S.add((graph.nodes[u[0]], u_child_direction))
+            if u_parent_ids <= visited:  # frozenset.issubset via <=
+                S.add((u_node, u_child_direction))
 
         # checking if we finished
         if (len(S) == 1) and (len(seen) == 1):
             t = S.pop()
-            nodes_inside.append(t[0])
 
-            if len(nodes_inside) == 2:
-                # it's an empty bubble
+            if len(nodes_inside) == 0:
+                # it's an empty bubble (source == only node before sink)
                 # this shouldn't happen if the graph is compacted
                 break
-
-            # t[0].visited = True
 
             # because I'm looking in both directions I end up finding each
             # bubble twice, so I can hash the id of source and sink
             # and see if I've already found it or not
-            nodes_inside.remove(s)
-            nodes_inside.remove(t[0])
             bubble = Bubble(source=s, sink=t[0], inside=nodes_inside)
 
             if only_simple:
@@ -128,7 +122,7 @@ def children_of_children(graph, children):
     """
 
     # I need to check that each branch has the same neighbors
-    # to make sure it's a simple bubble (the neighbors should be 
+    # to make sure it's a simple bubble (the neighbors should be
     # the source and sink)
     c_of_c1 = graph.nodes[children[0]].neighbors()
     c_of_c2 = graph.nodes[children[1]].neighbors()
@@ -178,6 +172,13 @@ def find_b_alg(graph, s, direction, chain):
             find_b_alg(graph, graph.nodes[c_of_c[0]], d, chain)
 
 
+def _precompute_parent_ids(graph):
+    """Precompute parent-ID frozensets for each node for fast subset checks."""
+    for node in graph.nodes.values():
+        node.start_parent_ids = frozenset(x[0] for x in node.start)
+        node.end_parent_ids = frozenset(x[0] for x in node.end)
+
+
 def find_bubbles(graph, only_simple=False, only_super=False, list_of_nodes=None):
     """
     main function for finding bubbles
@@ -188,21 +189,15 @@ def find_bubbles(graph, only_simple=False, only_super=False, list_of_nodes=None)
         print("You can't mix both only_super and only_simple, choose one or not add these arguments to detect both")
         sys.exit(1)
 
+    _precompute_parent_ids(graph)
+
     if list_of_nodes is None:
         list_of_nodes = graph.nodes.values()
 
-    # print("we are here and going into the loop")
-    # counter = 0
     for n in list_of_nodes:
-        # print(n.id)
-        # chain = BubbleChain()
-        # counter += 1
-        # if (counter % 10000) == 0:
-            # print(f"Process {counter} nodes for finding bubbles already")
         if not n.visited:
 
             for d in [0, 1]:  # looking in both direction for each node
-                # find_b_alg(graph, n, d, chain)
                 bubble = find_sb_alg(graph, n, d, only_simple, only_super)
 
                 if bubble is not None:

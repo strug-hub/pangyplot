@@ -10,13 +10,14 @@ import time
 def to_bubblegun_obj(segment_idx, link_idx):
 
     nodes = dict()
+    NodeClass = BubbleGunNode.Node
 
     for segment in segment_idx:
         sid = str(segment.id)
-        node = BubbleGunNode.Node(sid)
+        node = NodeClass(sid)
         node.seq = segment.seq
         node.seq_len = segment.length
-        info = {
+        node.optional_info = {
             "gc_count": segment.gc_count,
             "n_count": segment.n_count,
             "x1": segment.x1,
@@ -25,33 +26,30 @@ def to_bubblegun_obj(segment_idx, link_idx):
             "y2": segment.y2,
             "compacted": []
         }
-        node.optional_info = info
         nodes[sid] = node
 
+    # Pre-convert all link IDs to strings in bulk and cache local refs
     for link in link_idx:
-        from_id = str(link.from_id)
-        to_id = str(link.to_id)
+        fid = str(link.from_id)
+        tid = str(link.to_id)
+        from_node = nodes[fid]
+        to_node = nodes[tid]
 
-        from_strand = link.from_strand
-        to_strand = link.to_strand
-
-        overlap = 0
-        
-        from_start = (from_strand == "-")
-        to_end = (to_strand == "-")
+        from_start = (link.from_strand == "-")
+        to_end = (link.to_strand == "-")
 
         if not from_start and not to_end:  #  + +
-            nodes[from_id].end.add((to_id, 0, overlap))
-            nodes[to_id].start.add((from_id, 1, overlap))
+            from_node.end.add((tid, 0, 0))
+            to_node.start.add((fid, 1, 0))
         elif not from_start and to_end:  # + -
-            nodes[from_id].end.add((to_id, 1, overlap))
-            nodes[to_id].end.add((from_id, 1, overlap))
+            from_node.end.add((tid, 1, 0))
+            to_node.end.add((fid, 1, 0))
         elif from_start and not to_end:  # - +
-            nodes[from_id].start.add((to_id, 0, overlap))
-            nodes[to_id].start.add((from_id, 0, overlap))
-        elif from_start and to_end:  # - -
-            nodes[from_id].start.add((to_id, 1, overlap))
-            nodes[to_id].end.add((from_id, 0, overlap))
+            from_node.start.add((tid, 0, 0))
+            to_node.start.add((fid, 0, 0))
+        else:  # - -
+            from_node.start.add((tid, 1, 0))
+            to_node.end.add((fid, 0, 0))
 
     return nodes
 
@@ -75,6 +73,10 @@ def shoot(segment_idx, link_idx, chr_path, ref):
     print(f" Done. Took {round(end_time - start_time,1)} seconds.")
     print(f"      {before - after} segments were compacted.")
 
+    # Free sequence strings — only seq_len and optional_info are needed from here on
+    for node in graph.nodes.values():
+        node.seq = ""
+
     print("   ⛓️  Finding bubbles and chains...", end="", flush=True)
     start_time = time.time()
     BubbleGunFindBubbles.find_bubbles(graph)
@@ -87,7 +89,9 @@ def shoot(segment_idx, link_idx, chr_path, ref):
     print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
 
     print("   💾 Indexing bubbles...", end="", flush=True)
+    start_time = time.time()
     indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
-    print(f" Done.")
+    end_time = time.time()
+    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
 
     return graph

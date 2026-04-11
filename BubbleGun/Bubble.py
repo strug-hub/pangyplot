@@ -2,7 +2,7 @@ class Bubble:
     """
     Bubble object that has the important information about a bubble
     """
-    __slots__ = ['source', 'sink', 'inside', 'key', 'id', 'parent_chain', 'parent_sb', 'chain_id']
+    __slots__ = ['source', 'sink', 'inside', 'key', 'id', 'parent_chain', 'parent_sb', 'chain_id', '_type_cache']
 
     def __init__(self, source, sink, inside):
         """
@@ -16,7 +16,7 @@ class Bubble:
         self.parent_chain = 0
         self.parent_sb = 0
         self.chain_id = 0
-        # self.visited = False  # I need this when finding chains
+        self._type_cache = None  # cached: 'simple', 'insertion', or 'super'
 
     def __len__(self):
         """
@@ -67,73 +67,45 @@ class Bubble:
             total_seq += n.seq_len
         return total_seq
 
+    def _classify(self):
+        """Compute and cache the bubble type."""
+        if self._type_cache is not None:
+            return self._type_cache
+
+        # Check simple: exactly 2 inside nodes, each connected only to source+sink
+        if len(self.inside) == 2:
+            if {1} == set([len(self.inside[0].start), len(self.inside[0].end),
+                           len(self.inside[1].start), len(self.inside[1].end)]):
+                neighbors1 = self.inside[0].neighbors()
+                neighbors2 = self.inside[1].neighbors()
+                neighbors1.sort()
+                neighbors2.sort()
+                if neighbors1 == neighbors2:
+                    if self.source.id not in self.sink.neighbors() and self.sink.id not in self.source.neighbors():
+                        self._type_cache = 'simple'
+                        return self._type_cache
+
+        # Check insertion: exactly 1 inside node connected only to source+sink
+        if len(self.inside) == 1:
+            if {1} == set([len(self.inside[0].start), len(self.inside[0].end)]):
+                neighbors = self.inside[0].neighbors()
+                neighbors.sort()
+                tmp = sorted([self.source.id, self.sink.id])
+                if tmp == neighbors:
+                    self._type_cache = 'insertion'
+                    return self._type_cache
+
+        self._type_cache = 'super'
+        return self._type_cache
+
     def is_simple(self):
-        """
-        returns true if it's a simple bubble
-
-        I need to make sure it's just two disjoint paths, because the algorithm can still report a bubble with 2 nodes inside but having different directed edges.
-
-        note to self: to flip direction I can always do abs(direction - 1) if 1 it becomes 0, if 0 it becomes 1
-
-        - First check I need is to make sure the source and sink are not connected directly with each other
-        - check that middle nodes are only connected to source and sink
-        """
-        # checking that the nodes inside only connected to two nodes each (supposedly the source and sink)
-        if len(self.inside) != 2:
-            return False
-        if not {1} == set([len(self.inside[0].start), len(self.inside[0].end), len(self.inside[1].start), len(self.inside[1].end)]):
-            return False
-        # check that the nodes inside are only connected to source and sink
-        neighbors1 = self.inside[0].neighbors()
-        neighbors2 = self.inside[1].neighbors()
-        neighbors1.sort()
-        neighbors2.sort()
-        if not neighbors1 == neighbors2:
-            return False
-
-        # make sure source and sink are not connected
-        if self.source.id in self.sink.neighbors() or self.sink.id in self.source.neighbors():
-            return False
-
-        return True
-
-        # if len(self.inside) == 2:
-        #     return True
-        # return False
+        return self._classify() == 'simple'
 
     def is_insertion(self):
-        """
-        returns true if it's an insertion
-        i.e. bubble with one branch
-        """
-        if len(self.inside) != 1:
-            return False
-
-        if not {1} == set([len(self.inside[0].start), len(self.inside[0].end)]):
-            return False
-
-        neighbors = self.inside[0].neighbors()
-        neighbors.sort
-        tmp = [self.source.id, self.sink.id]
-        tmp.sort()
-        if tmp != neighbors:
-            return False
-        return True
-        # if len(self.inside) == 1:
-        #     return True
-        # return False
+        return self._classify() == 'insertion'
 
     def is_super(self):
-        """
-        returns true if it's a superbubble
-        """
-        if not self.is_simple():
-            if not self.is_insertion():
-                return True
-        return False
-        # if len(self.inside) > 2:
-        #     return True
-        # return False
+        return self._classify() == 'super'
 
     def set_as_visited(self):
         """

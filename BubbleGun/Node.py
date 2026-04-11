@@ -2,7 +2,8 @@ import sys
 
 
 class Node:
-    __slots__ = ['id', 'seq', 'seq_len', 'start', 'end', 'visited', 'optional_info']
+    __slots__ = ['id', 'seq', 'seq_len', 'start', 'end', 'visited', 'optional_info',
+                 'start_parent_ids', 'end_parent_ids']
 
     def __init__(self, identifier):
         self.id = identifier  # size is between 28 and 32 bytes
@@ -12,6 +13,8 @@ class Node:
         self.end = set()  # 96 bytes
         self.visited = False  # 28 bytes (used for bubble and superbubble detection)
         self.optional_info = ""
+        self.start_parent_ids = None
+        self.end_parent_ids = None
 
     def __sizeof__(self):
         size = self.id.__sizeof__() + self.seq_len.__sizeof__() + self.visited.__sizeof__()
