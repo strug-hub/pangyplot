@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 from sqlite3 import OperationalError
 
@@ -12,6 +13,7 @@ from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 
 def pangyplot_add(args):
+    start_time = time.time()
 
     datastore_path = os.path.join(args.dir, "graphs", args.db)
     
@@ -74,3 +76,10 @@ def pangyplot_add(args):
         print(f"polychain_index size:   {asizeof(polychain_index) / 1024**2:.2f} MB")
 
     generate_skeleton(chr_path, args.ref, args.chr)
+
+    elapsed = time.time() - start_time
+    minutes, seconds = divmod(elapsed, 60)
+    if minutes > 0:
+        print(f"\nCompleted in {int(minutes)}m {seconds:.1f}s")
+    else:
+        print(f"\nCompleted in {seconds:.1f}s")

@@ -219,9 +219,9 @@ def get_path_order(indexes, genome, chrom):
 
 
 def get_path_meta(indexes, chrom, sample):
-    """Return metadata for a sample's paths (no step data)."""
+    """Return metadata for a sample's paths with precomputed bp ranges."""
     gfaidx = indexes.gfa_index[chrom]
-    return gfaidx.path_index.get_path_meta(sample)
+    return gfaidx.path_index.get_path_meta_with_bp(sample)
 
 
 def get_path_raw(indexes, chrom, sample, file_index):

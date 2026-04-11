@@ -12,6 +12,15 @@ import { resolveAndBuildRenderData } from './path-trace-boundary-resolver.js';
 import { setupAnimationUi, resetAnimation } from './path-trace-animation.js';
 import { scheduleFrame } from '../../utils/frame-scheduler.js';
 import createSelectableTable from '@ui/components/selectable-table.js';
+import eventBus from '@event-bus';
+
+// Current viewport bp range (updated via event bus)
+let _viewportStart = null;
+let _viewportEnd = null;
+
+// Cached meta entries for the active sample (unfiltered)
+let _cachedMeta = null;
+let _cachedSample = null;
 
 // ---------------------------------------------------------------
 // Setup
@@ -41,6 +50,28 @@ export async function setupPathTraceEngine() {
         _fetchPathMeta(sample);
     });
 
+    // Viewport filter: re-filter table when viewport changes
+    const filterCheckbox = document.getElementById('path-viewport-filter');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', () => {
+            if (_cachedMeta && _cachedSample) {
+                _buildFilteredTable(_cachedMeta, _cachedSample);
+            }
+        });
+    }
+
+    let _filterTimer = null;
+    eventBus.subscribe('ui:coordinates-changed', (data) => {
+        _viewportStart = data.start;
+        _viewportEnd = data.end;
+        if (_cachedMeta && _cachedSample && _isFilterOn()) {
+            if (_filterTimer) clearTimeout(_filterTimer);
+            _filterTimer = setTimeout(() => {
+                _buildFilteredTable(_cachedMeta, _cachedSample);
+            }, 300);
+        }
+    });
+
 }
 
 // ---------------------------------------------------------------
@@ -65,8 +96,10 @@ async function _fetchPathMeta(sample) {
         return;
     }
 
+    _cachedMeta = meta;
+    _cachedSample = sample;
     setSubpaths(meta);
-    _createPathTable(meta, sample);
+    _buildFilteredTable(meta, sample);
 }
 
 /**
@@ -176,8 +209,8 @@ function _createPathTable(metaEntries, sample) {
         return;
     }
 
-    const tableData = metaEntries.map((entry, idx) => ({
-        item: { ...entry, _sample: sample, _fileIndex: idx },
+    const tableData = metaEntries.map((entry) => ({
+        item: { ...entry, _sample: sample, _fileIndex: entry._origIndex },
         label: entry.length != null
             ? `${entry.contig}:${entry.start}-${entry.start + entry.length}`
             : `${entry.contig}:${entry.start}`,
@@ -212,4 +245,28 @@ function _clearPathTable() {
     const animContainer = document.getElementById('path-animation-container');
     if (animContainer) animContainer.classList.add('hidden');
     _localActiveSubpath = null;
+}
+
+function _isFilterOn() {
+    const cb = document.getElementById('path-viewport-filter');
+    return cb && cb.checked;
+}
+
+function _buildFilteredTable(meta, sample) {
+    // Tag each entry with its original index for correct binary file lookup
+    const tagged = meta.map((entry, idx) => ({ ...entry, _origIndex: idx }));
+
+    if (!_isFilterOn() || _viewportStart === null || _viewportEnd === null) {
+        _createPathTable(tagged, sample);
+        return;
+    }
+
+    const filtered = tagged.filter(entry => {
+        const bpStart = entry.bp_start;
+        const bpEnd = entry.bp_end;
+        if (bpStart == null || bpEnd == null) return true; // no range info → keep
+        return bpEnd >= _viewportStart && bpStart <= _viewportEnd;
+    });
+
+    _createPathTable(filtered, sample);
 }

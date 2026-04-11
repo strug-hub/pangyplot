@@ -112,6 +112,9 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
             app.step_index[(chr, ref)], ref)
         print(f"polychain_index size:   {asizeof(app.polychain_index[chr]) / 1024**2:.2f} MB")
 
+        app.gfa_index[chr].path_index.compute_bp_ranges(app.step_index[(chr, ref)])
+        print(f"  ✓ Computed subpath bp ranges")
+
     print(f"gfa_index size total:      {asizeof(app.gfa_index) / 1024**2:.2f} MB")
     print(f"step_index size total:      {asizeof(app.step_index) / 1024**2:.2f} MB")
     print(f"bubble_index size total:      {asizeof(app.bubble_index) / 1024**2:.2f} MB")
