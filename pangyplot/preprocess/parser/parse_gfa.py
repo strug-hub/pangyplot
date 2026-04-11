@@ -79,9 +79,14 @@ def _parse_segments_and_links(gfa_file, layout_coords, path_idx, path_dict, dir)
             elif tag == "L":
                 link = parse_line_L(line)
 
-                # Compute haplotype bitmask inline
-                key = link.gfa_id()
-                key_rev = link.reverse_gfa_id()
+                # Compute haplotype bitmask inline (tuple keys match collapse_binary)
+                fwd = f"{link.from_id}{link.from_strand}"
+                rev_from = f"{link.from_id}{'-' if link.from_strand == '+' else '+'}"
+                twd = f"{link.to_id}{link.to_strand}"
+                rev_to = f"{link.to_id}{'-' if link.to_strand == '+' else '+'}"
+
+                key = (fwd, twd)
+                key_rev = (rev_to, rev_from)
                 mask = path_dict.get(key, 0) | path_dict.get(key_rev, 0)
                 haplotype = hex(mask)[2:]
                 frequency = bin(mask).count("1") / n_paths

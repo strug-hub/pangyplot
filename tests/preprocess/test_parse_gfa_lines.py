@@ -151,31 +151,31 @@ class TestParseLineW:
 
 class TestPathFromW:
     def test_single_forward_segment(self):
-        assert path_from_W(">1001") == ["+1001"]
+        assert path_from_W(">1001") == ["1001+"]
 
     def test_single_reverse_segment(self):
-        assert path_from_W("<1001") == ["-1001"]
+        assert path_from_W("<1001") == ["1001-"]
 
     def test_all_forward(self):
-        assert path_from_W(">1001>1002>1003") == ["+1001", "+1002", "+1003"]
+        assert path_from_W(">1001>1002>1003") == ["1001+", "1002+", "1003+"]
 
     def test_all_reverse(self):
-        assert path_from_W("<1001<1002<1003") == ["-1001", "-1002", "-1003"]
+        assert path_from_W("<1001<1002<1003") == ["1001-", "1002-", "1003-"]
 
     def test_mixed_orientations(self):
-        assert path_from_W(">1001<1002>1003") == ["+1001", "-1002", "+1003"]
+        assert path_from_W(">1001<1002>1003") == ["1001+", "1002-", "1003+"]
 
     def test_starts_with_reverse_then_forward(self):
-        assert path_from_W("<1001>1002>1003") == ["-1001", "+1002", "+1003"]
+        assert path_from_W("<1001>1002>1003") == ["1001-", "1002+", "1003+"]
 
     def test_two_segments_forward(self):
-        assert path_from_W(">1001>1002") == ["+1001", "+1002"]
+        assert path_from_W(">1001>1002") == ["1001+", "1002+"]
 
     def test_two_segments_reverse_then_forward(self):
-        assert path_from_W("<1001>1002") == ["-1001", "+1002"]
+        assert path_from_W("<1001>1002") == ["1001-", "1002+"]
 
     def test_four_segments_realistic(self):
-        assert path_from_W(">1001>1002>1004>1005") == ["+1001", "+1002", "+1004", "+1005"]
+        assert path_from_W(">1001>1002>1004>1005") == ["1001+", "1002+", "1004+", "1005+"]
 
     def test_mixed_four_segments(self):
-        assert path_from_W(">1001<1002>1003<1004") == ["+1001", "-1002", "+1003", "-1004"]
+        assert path_from_W(">1001<1002>1003<1004") == ["1001+", "1002-", "1003+", "1004-"]

@@ -1,8 +1,11 @@
 from collections import defaultdict
+import re
 import pangyplot.preprocess.parser.gfa.parse_utils as utils
 import pangyplot.db.sqlite.path_db as db
 from pangyplot.db.indexes.PathIndex import PathIndex
 from pangyplot.objects.Path import Path
+
+_W_STEP_RE = re.compile(r'([><])([^><]+)')
 
 def parse_line_P(line, path_sep=None):
     path = dict()
@@ -25,20 +28,8 @@ def parse_line_P(line, path_sep=None):
     return path
 
 def path_from_W(path_str):
-    path = []
-    pos = 0
-    for i, char in enumerate(path_str):
-        if char in "><":
-            if i != 0:
-                seg_id = path_str[pos:i]
-                strand = "+" if path_str[pos - 1] == ">" else "-"
-                path.append(strand + seg_id)
-            pos = i + 1
-    # Append last
-    seg_id = path_str[pos:]
-    strand = "+" if path_str[pos - 1] == ">" else "-"
-    path.append(strand + seg_id)
-    return path
+    return [seg_id + ('+' if d == '>' else '-')
+            for d, seg_id in _W_STEP_RE.findall(path_str)]
 
 def parse_line_W(line, path_sep=None):
     path = dict()
@@ -77,10 +68,11 @@ def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
         idx = sample_idx[pid]
 
         #compresses path links into a binary number stored as integer
+        bit = 1 << idx
         path_list = path.path
         for i in range(len(path_list) - 1):
-            key = path_list[i] + path_list[i + 1]
-            path_dict[key] |= (1 << idx)
+            key = (path_list[i], path_list[i + 1])
+            path_dict[key] |= bit
 
         return idx
 
