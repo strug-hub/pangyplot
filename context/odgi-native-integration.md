@@ -65,6 +65,117 @@ After:   GFA → odgi build → odgi sort → odgi layout → build overlay inde
 
 The two-pass Python GFA parser is eliminated. BubbleGun, haplotype bitmask computation, and step index construction would read from the `.og` graph object instead of parsing GFA text.
 
+## Odgi Python API
+
+odgi provides Python bindings via pybind11. `import odgi` requires odgi built from source with bindings enabled, or installed via conda (`conda install -c bioconda odgi`). There is no pip package — it's a compiled C++ `.so`.
+
+### Installation
+
+- **Conda** (recommended for genomics users): `conda install -c bioconda odgi`
+- **From source**: CMake build with `-DBUILD_PYTHON_BINDINGS=ON`
+- **No PyPI wheel** — system-level dependency, not pip-installable
+
+Should be treated as an **optional dependency**: `try: import odgi` at startup, fall back to current SQLite path if unavailable. Both paths produce the same `.npy` cache files.
+
+### API Reference
+
+Docs: https://odgi.readthedocs.io/en/latest/rst/binding/api.html
+
+**Graph loading**
+```python
+gr = odgi.graph()
+gr.load("graph.og")              # load from .og file
+gr.serialize("graph.og")         # save to .og file
+```
+
+**Node/segment access (O(1) by ID)**
+```python
+handle = gr.get_handle(seg_id)   # node ID → handle
+gr.get_id(handle)                # handle → node ID
+gr.get_length(handle)            # sequence length
+gr.get_sequence(handle)          # full DNA sequence
+gr.has_node(seg_id)              # existence check
+gr.get_node_count()              # total nodes
+gr.min_node_id()                 # ID range
+gr.max_node_id()
+```
+
+**Edge/link traversal**
+```python
+gr.follow_edges(handle, False, callback)  # iterate successors
+gr.follow_edges(handle, True, callback)   # iterate predecessors
+gr.get_degree(handle, False)              # out-degree
+gr.get_degree(handle, True)               # in-degree
+gr.has_edge(handle1, handle2)             # edge existence
+```
+
+**Bulk iteration**
+```python
+gr.for_each_handle(callback)                       # all nodes
+gr.for_each_handle(callback, parallel=True)        # parallel iteration
+gr.for_each_step_on_handle(handle, callback)       # all paths through a node
+```
+
+**Path access**
+```python
+gr.get_path_count()                                # total paths
+gr.has_path("GRCh38#chr1")                         # existence check
+path = gr.get_path_handle("GRCh38#chr1")           # name → path handle
+gr.get_path_name(path)                             # path handle → name
+gr.get_step_count(path)                            # steps in path
+gr.for_each_path_handle(callback)                  # iterate all paths
+```
+
+**Step iteration (sequential only)**
+```python
+gr.for_each_step_in_path(path, callback)           # iterate all steps
+step = gr.path_begin(path)                         # first step
+gr.get_handle_of_step(step)                        # step → node handle
+gr.get_next_step(step)                             # walk forward
+gr.get_previous_step(step)                         # walk backward
+gr.has_next_step(step)                             # bounds check
+gr.path_back(path)                                 # last step
+```
+
+**Handle orientation**
+```python
+gr.get_is_reverse(handle)        # reverse complement?
+gr.flip(handle)                  # get reverse orientation
+gr.forward(handle)               # get forward orientation
+```
+
+### API Gaps for PangyPlot
+
+The main limitation is **no random access on paths**. odgi only supports sequential step iteration (`get_next_step` / `get_previous_step`). PangyPlot needs:
+
+1. **bp → step lookup** (binary search) — currently `StepIndex`
+2. **Subpath extraction** (steps in a bp window) — currently `.binpath` lazy loading
+
+### Potential Fork / Upstream Contribution
+
+Adding random-access path queries to odgi would eliminate the need for `StepIndex` and `.binpath` overlays entirely. Target API additions:
+
+```python
+# Jump to a bp position without walking from the start
+gr.get_step_at_position(path, bp_offset)  → step_handle
+
+# Jump to the Nth step directly
+gr.get_step_at_index(path, step_index)    → step_handle
+
+# Return steps in a bp window
+gr.get_steps_in_range(path, start_bp, end_bp) → list[step_handle]
+```
+
+**Implementation feasibility**: odgi stores paths as compressed integer sequences internally. Adding a position index (sorted bp offsets per path) is a natural extension to the C++ internals — essentially what `StepIndex` does externally. The harder part is persisting the index in the `.og` serialization format so it survives `load()`/`serialize()` cycles.
+
+**Recommended approach**: open an issue on `pangenome/odgi` first. The maintainers (Erik Garrison et al.) may have existing plans or opinions. Could become an upstream contribution rather than requiring a full fork.
+
+If these APIs existed natively, the remaining PangyPlot overlays would reduce to just:
+- Bubble hierarchy (BubbleGun-specific)
+- Haplotype bitmasks (PangyPlot-specific)
+- Layout coordinates (separate `.lay` file)
+- Polychain decompositions (visualization-specific)
+
 ## Open Questions
 
 ### Performance: odgi Python bindings vs mmap'd numpy
@@ -88,14 +199,6 @@ Layout coordinates are in `.lay.tsv` (or binary `.lay`), not in `.og`. Options:
 1. Keep storing coordinates in a separate overlay (current approach, just drop SQLite)
 2. Investigate whether odgi's binary `.lay` format can be queried directly via bindings
 3. Store coordinates as numpy arrays indexed by odgi node rank
-
-### Path random access
-
-odgi paths are sequential-iteration only. PangyPlot needs:
-- Binary search on reference path (bp → step) — `StepIndex`
-- Lazy subpath loading (decode steps 500-600 without reading full path) — `.binpath`
-
-These access patterns don't map well to `for_each_step_in_path()`. The step index and binpath overlays would likely persist even with full odgi integration.
 
 ### BubbleGun interface
 
