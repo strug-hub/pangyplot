@@ -1,5 +1,7 @@
 import os
 import sys
+import glob
+import readline
 from datetime import datetime
 
 from pangyplot.version import __version__
@@ -26,28 +28,79 @@ SCRIPT_TEMPLATE_HEADER = """{shebang}# PangyPlot {version} preprocessing script
 # Generated: {datetime}
 
 THREADS={threads}
-OG="{og}"
+INPUT="{input_file}"
 OUTPUT_DIR="{output_dir}"
 PREFIX="${{OUTPUT_DIR}}/{prefix}"
 
 mkdir -p ${{OUTPUT_DIR}}
 """
 
+SCRIPT_GFA_TO_OG = """
+# --------------- CONVERT GFA → OG ----------------------------
+echo "Converting GFA to OG..."
+OG="${PREFIX}.unsorted.og"
+odgi build -t $THREADS -g $INPUT -o $OG -P
+"""
+
+SCRIPT_GUNZIP = """
+# --------------- DECOMPRESS ----------------------------
+echo "Decompressing ${INPUT}..."
+DECOMPRESSED="${PREFIX}.gfa"
+gunzip -k -c $INPUT > $DECOMPRESSED
+INPUT=$DECOMPRESSED
+"""
+
+SCRIPT_OG_INPUT = """
+OG="$INPUT"
+"""
+
 SCRIPT_SORT = """
 # --------------- SORT ----------------------------
+echo "Sorting graph..."
 SORTED="${{PREFIX}}.sorted.og"
 {paths_commands}odgi sort -t $THREADS --optimize -Y{paths_flag} -i $OG -o $SORTED -P
 {paths_cleanup}"""
 
 SCRIPT_LAYOUT = """
 # --------------- LAYOUT FILE ----------------------------
+echo "Computing layout..."
 odgi layout -t $THREADS -i ${{{input_var}}} --tsv ${{PREFIX}}.lay.tsv -o ${{PREFIX}}.lay{gpu_flag} -P
 """
 
 SCRIPT_GFA = """
 # --------------- GFA FILE ----------------------------
-odgi view -t $THREADS -i ${{{input_var}}} -g > ${{PREFIX}}.gfa
+echo "Exporting sorted GFA..."
+odgi view -t $THREADS -i ${{{input_var}}} -g > ${{PREFIX}}.sorted.gfa
 """
+
+
+def _path_completer(text, state):
+    # Expand ~ and glob for matches
+    expanded = os.path.expanduser(text)
+    matches = glob.glob(expanded + "*")
+    # Append / to directories so the user can keep tabbing
+    matches = [m + "/" if os.path.isdir(m) else m for m in matches]
+    return matches[state] if state < len(matches) else None
+
+
+class _path_completion:
+    """Context manager that enables file-path tab completion."""
+    def __enter__(self):
+        self._old_completer = readline.get_completer()
+        self._old_delims = readline.get_completer_delims()
+        readline.set_completer(_path_completer)
+        readline.set_completer_delims(" \t\n")
+        readline.parse_and_bind("tab: complete")
+        return self
+
+    def __exit__(self, *_):
+        readline.set_completer(self._old_completer)
+        readline.set_completer_delims(self._old_delims)
+
+
+def prompt_path(question, default=None):
+    with _path_completion():
+        return prompt_str(question, default)
 
 
 def prompt_yn(question, default=True):
@@ -89,14 +142,35 @@ def pangyplot_preprocess(args):
     print(f"{'=' * 50}{RESET}")
     print()
 
-    # OG file
-    og = prompt_str("Path to ODGI (.og) file")
-    if not os.path.isfile(og):
-        print(f"  {YELLOW}Warning: file not found: {og}{RESET}")
+    # Input format
+    print("Input format:")
+    print(f"  1) GFA {DIM}(default){RESET}")
+    print(f"  2) OG (ODGI)")
+    while True:
+        fmt_answer = input("Select format [1]: ").strip()
+        if fmt_answer in ("", "1"):
+            input_format = "gfa"
+            break
+        if fmt_answer == "2":
+            input_format = "og"
+            break
+        print("  Please enter 1 or 2.")
+    print()
+
+    # Input file
+    ext_hint = ".gfa" if input_format == "gfa" else ".og"
+    input_file = prompt_path(f"Path to input ({ext_hint}) file")
+    if not os.path.isfile(input_file):
+        print(f"  {YELLOW}Warning: file not found: {input_file}{RESET}")
         if not prompt_yn("  Continue anyway?", default=True):
             sys.exit(1)
 
-    prefix = os.path.splitext(os.path.basename(og))[0]
+    basename = os.path.basename(input_file)
+    # Strip known extensions (.gfa, .gfa.gz, .og, etc.)
+    prefix = basename
+    for ext in (".gz", ".gfa", ".og"):
+        if prefix.endswith(ext):
+            prefix = prefix[:-len(ext)]
     print()
 
     # Threads
@@ -112,7 +186,10 @@ def pangyplot_preprocess(args):
         print()
         print("Enter path names to prioritize during sort (in order).")
         print("Primary reference path should be first.")
-        print(f"  {DIM}Tip: run 'odgi paths -L -i {og}' to see available path names.{RESET}")
+        if input_format == "gfa":
+            print(f"  {DIM}Tip: run 'grep -E \"^[PW]\" {{file}} | cut -f2 | cut -d# -f1 | sort -u' to see available path names.{RESET}")
+        else:
+            print(f"  {DIM}Tip: run 'odgi paths -L -i {input_file}' to see available path names.{RESET}")
         print("Leave empty to skip.")
         i = 1
         while True:
@@ -172,10 +249,19 @@ def pangyplot_preprocess(args):
         version=__version__,
         datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         threads=threads,
-        og=og,
+        input_file=input_file,
         output_dir=output_dir,
         prefix=prefix,
     )
+
+    is_gzipped = input_file.endswith(".gz")
+    if is_gzipped:
+        script += SCRIPT_GUNZIP
+
+    if input_format == "gfa":
+        script += SCRIPT_GFA_TO_OG
+    else:
+        script += SCRIPT_OG_INPUT
 
     if do_sort:
         has_paths = len(paths) > 0
