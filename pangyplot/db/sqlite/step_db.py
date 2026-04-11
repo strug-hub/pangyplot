@@ -9,8 +9,12 @@ def write_step_index(segment_index, genome, path, dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
+    cur.execute("PRAGMA page_size = 8192")
     cur.execute("PRAGMA journal_mode = OFF")
     cur.execute("PRAGMA synchronous = OFF")
+    cur.execute("PRAGMA cache_size = -64000")
+    cur.execute("PRAGMA temp_store = MEMORY")
+    cur.execute("PRAGMA mmap_size = 268435456")
 
     cur.execute("""
         CREATE TABLE step_index (
@@ -33,7 +37,7 @@ def write_step_index(segment_index, genome, path, dir):
         batch.append((i, sid, start, end, genome))
         pos += length
 
-        if len(batch) >= 5000:
+        if len(batch) >= 20000:
             cur.executemany("INSERT INTO step_index (step, seg_id, start, end, genome) VALUES (?, ?, ?, ?, ?)", batch)
             batch = []
 
@@ -44,6 +48,8 @@ def write_step_index(segment_index, genome, path, dir):
     cur.execute("CREATE INDEX idx_genome ON step_index(genome, step);")
 
     conn.commit()
+    conn.execute("ANALYZE")
+    conn.execute("VACUUM")
     conn.close()
 
 def load_steps(dir, genome):

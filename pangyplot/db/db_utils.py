@@ -54,6 +54,8 @@ def get_connection(dir, filename, clear_existing=False):
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA mmap_size = 268435456")
+    conn.execute("PRAGMA cache_size = -64000")
     cache[db_path] = conn
     return conn
 

@@ -11,6 +11,13 @@ def create_annotation_table(dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
+    cur.execute("PRAGMA page_size = 8192")
+    cur.execute("PRAGMA journal_mode = OFF")
+    cur.execute("PRAGMA synchronous = OFF")
+    cur.execute("PRAGMA cache_size = -64000")
+    cur.execute("PRAGMA temp_store = MEMORY")
+    cur.execute("PRAGMA mmap_size = 268435456")
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS annotations (
             id TEXT PRIMARY KEY,
@@ -29,8 +36,6 @@ def create_annotation_table(dir):
         );
     """)
 
-    cur.execute("CREATE INDEX idx_gene_name ON annotations(gene_name, type)")
-    cur.execute("CREATE INDEX idx_chrom_start_end ON annotations(chrom, start, end)")
     conn.commit()
     return conn
 

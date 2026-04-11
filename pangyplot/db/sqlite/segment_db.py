@@ -12,8 +12,12 @@ def create_segment_table(dir, bulk=False):
     cur = conn.cursor()
 
     if bulk:
+        cur.execute("PRAGMA page_size = 8192")
         cur.execute("PRAGMA journal_mode = OFF")
         cur.execute("PRAGMA synchronous = OFF")
+        cur.execute("PRAGMA cache_size = -64000")
+        cur.execute("PRAGMA temp_store = MEMORY")
+        cur.execute("PRAGMA mmap_size = 268435456")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS segments (

@@ -12,6 +12,13 @@ def create_bubble_tables(dir):
     conn = utils.get_connection(dir, DB_NAME, clear_existing=True)
     cur = conn.cursor()
 
+    cur.execute("PRAGMA page_size = 8192")
+    cur.execute("PRAGMA journal_mode = OFF")
+    cur.execute("PRAGMA synchronous = OFF")
+    cur.execute("PRAGMA cache_size = -64000")
+    cur.execute("PRAGMA temp_store = MEMORY")
+    cur.execute("PRAGMA mmap_size = 268435456")
+
     cur.execute("""
         CREATE TABLE bubbles (
             id INTEGER PRIMARY KEY,
@@ -36,8 +43,6 @@ def create_bubble_tables(dir):
             link_data TEXT
         );
     """)
-
-    cur.execute("CREATE INDEX idx_bubble_chain ON bubbles(chain, chain_step)")
 
     conn.commit()
     return conn
@@ -99,7 +104,10 @@ def insert_bubbles(dir, bubbles):
     cur = conn.cursor()
     for bubble in bubbles:
         insert_bubble(cur, bubble)
+    cur.execute("CREATE INDEX idx_bubble_chain ON bubbles(chain, chain_step)")
     conn.commit()
+    conn.execute("ANALYZE")
+    conn.execute("VACUUM")
 
 def create_bubble(row, gfaidx):
     bubble = Bubble()

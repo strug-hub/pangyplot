@@ -12,7 +12,7 @@ import pangyplot.db.sqlite.link_db as link_db
 from pangyplot.db.indexes.SegmentIndex import SegmentIndex
 from pangyplot.db.indexes.LinkIndex import LinkIndex
 
-BATCH_SIZE = 5000
+BATCH_SIZE = 20000
 
 def get_reader(gfa_file):
     if gfa_file.endswith(".gz"):
@@ -50,6 +50,9 @@ def _parse_segments_and_links(gfa_file, layout_coords, path_idx, path_dict, dir)
     lnk_batch = []
     seg_count = 0
     lnk_count = 0
+
+    seg_conn.execute("BEGIN")
+    lnk_conn.execute("BEGIN")
 
     with get_reader(gfa_file) as gfa:
         for line in gfa:
@@ -103,10 +106,14 @@ def _parse_segments_and_links(gfa_file, layout_coords, path_idx, path_dict, dir)
         link_db.insert_links_batch(lnk_cur, lnk_batch)
 
     seg_conn.commit()
+    seg_conn.execute("ANALYZE")
+    seg_conn.execute("VACUUM")
     seg_conn.close()
 
     # Create link indexes after all data is loaded
     link_db.create_link_indexes(lnk_conn)
+    lnk_conn.execute("ANALYZE")
+    lnk_conn.execute("VACUUM")
     lnk_conn.close()
 
     segment_idx = SegmentIndex(dir)

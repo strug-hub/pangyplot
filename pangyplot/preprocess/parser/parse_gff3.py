@@ -89,5 +89,9 @@ def parse_gff3(gff3, dir):
             if annotation:
                 db.insert_annotation(cur, annotation)
 
+    cur.execute("CREATE INDEX idx_gene_name ON annotations(gene_name, type)")
+    cur.execute("CREATE INDEX idx_chrom_start_end ON annotations(chrom, start, end)")
     conn.commit()
+    conn.execute("ANALYZE")
+    conn.execute("VACUUM")
     conn.close()
