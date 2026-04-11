@@ -61,6 +61,7 @@ SORTED="${{PREFIX}}.sorted.og"
 {paths_commands}odgi sort -t $THREADS --optimize -Y{paths_flag} -i $OG -o $SORTED -P
 {paths_cleanup}"""
 
+
 SCRIPT_LAYOUT = """
 # --------------- LAYOUT FILE ----------------------------
 echo "Computing layout..."
@@ -201,7 +202,7 @@ def pangyplot_preprocess(args):
 
         for i, path in enumerate(paths):
             op = ">" if i == 0 else ">>"
-            paths_commands += f'odgi paths -L -i $OG | grep "{path}" {op} paths.txt\n'
+            paths_commands += f'odgi paths -L -i $OG | grep "{path}" {op} ${{PREFIX}}.paths.txt\n'
 
     print()
 
@@ -267,8 +268,8 @@ def pangyplot_preprocess(args):
         has_paths = len(paths) > 0
         script += SCRIPT_SORT.format(
             paths_commands=paths_commands,
-            paths_flag=" -H paths.txt" if has_paths else "",
-            paths_cleanup="rm -f paths.txt\n" if has_paths else "",
+            paths_flag=" -H ${PREFIX}.paths.txt" if has_paths else "",
+            paths_cleanup="rm -f ${PREFIX}.paths.txt\n" if has_paths else "",
         )
 
     script += SCRIPT_LAYOUT.format(
