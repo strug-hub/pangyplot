@@ -348,16 +348,18 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
     }
 
 
-def print_grid_levels(stats):
-    """Print the grid-levels table for a skeleton export."""
+def summarize_grid_levels(stats):
+    """Return a one-line summary of the skeleton grid levels."""
     total_segments = stats["total_segments"]
-    print(f"\n=== Grid Levels (finest → coarsest) ===")
-    print(f"{'Cell size':>12}  {'Nodes':>10}  {'Polylines':>10}  {'Reduction':>10}")
-    for label, node_count, pl_count in stats["level_summaries"]:
-        pct = (1 - node_count / total_segments) * 100
-        print(f"{label:>12}  {node_count:>10,}  "
-              f"{pl_count:>10,}  "
-              f"{pct:>9.1f}%")
+    levels = stats["level_summaries"]
+    if not levels:
+        return "0 grid levels."
+    finest_label, finest_nodes, _ = levels[0]
+    coarsest_label, coarsest_nodes, _ = levels[-1]
+    coarsest_pct = (1 - coarsest_nodes / total_segments) * 100 if total_segments else 0.0
+    return (f"{len(levels)} grid levels: {finest_label} ({finest_nodes:,}) "
+            f"→ {coarsest_label} ({coarsest_nodes:,}), "
+            f"up to {coarsest_pct:.1f}% reduction.")
 
 
 # ---------------------------------------------------------------------------
