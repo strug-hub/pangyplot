@@ -669,80 +669,166 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
         owner = bubbleidx.segment_in_bubble(seg_id)
         return owner is None or owner in _decomposed
 
-    # Collect naked segment IDs visited during BFS
-    naked_visited = set()
-    naked_seg_chains = {}  # naked seg_id → set of adjacent chain IDs
-    endpoint_reached = set()
-    chain_adj = {}  # chain_id → set of chain_ids
-
-    for cd in chains_data:
-        chain_id = cd["id"]
-        all_endpoints = (
-            list(cd.get("source_segs") or []) +
-            list(cd.get("sink_segs") or [])
+    # ---- Single-pass naked-subgraph analysis ----
+    #
+    # Original per-chain BFS flood-filled shared naked segs once per
+    # touching chain — O(chains × piece_size). Instead, compute connected
+    # components of the naked subgraph ONCE (treating naked endpoints as
+    # "cut" nodes that block other chains' BFSes from propagating through
+    # them) and derive naked_seg_chains / chain_adj / endpoint_reached
+    # from those pieces.
+    if max_hops is not None:
+        raise NotImplementedError(
+            "find_junction_graph: max_hops is no longer supported by the "
+            "component-based implementation."
         )
 
-        for start_seg in all_endpoints:
-            # If the chain's own boundary seg is naked, record it as a
-            # junction node adjacent to this chain.
-            if _is_naked(start_seg):
-                naked_visited.add(start_seg)
-                naked_seg_chains.setdefault(start_seg, set()).add(chain_id)
+    naked_endpoints = {e for e in endpoint_seg_to_chain if _is_naked(e)}
 
-            queue = deque([(start_seg, 0)])
-            visited = {start_seg}
+    # "Pieces" = connected components of the naked subgraph with naked
+    # endpoints removed. Any chain whose BFS enters a piece (via any of
+    # its endpoints adjacent to the piece) freely reaches every seg in it.
+    piece_of = {}  # naked non-EP seg -> piece idx
+    piece_members = []  # list[set[int]]
+    ep_piece_borders = {}  # endpoint_seg -> set(piece_idx) of bordering pieces
+    direct_endpoint_edges = set()  # frozenset((e1, e2)) for direct EP-EP GFA edges
 
-            while queue:
-                cur, hops = queue.popleft()
-                if max_hops is not None and hops > max_hops:
+    def _grow_piece(start_seg):
+        idx = len(piece_members)
+        members = set()
+        stack = [start_seg]
+        piece_of[start_seg] = idx
+        while stack:
+            cur = stack.pop()
+            members.add(cur)
+            for nxt in gfaidx.get_neighbors(cur):
+                if nxt in endpoint_seg_to_chain:
+                    ep_piece_borders.setdefault(nxt, set()).add(idx)
                     continue
+                if not _is_naked(nxt):
+                    continue
+                if nxt in piece_of:
+                    continue
+                piece_of[nxt] = idx
+                stack.append(nxt)
+        piece_members.append(members)
+        return idx
 
-                for nxt in gfaidx.get_neighbors(cur):
-                    if nxt in visited:
-                        continue
+    for e in endpoint_seg_to_chain:
+        for nxt in gfaidx.get_neighbors(e):
+            if nxt in endpoint_seg_to_chain:
+                if e != nxt:
+                    direct_endpoint_edges.add(frozenset((e, nxt)))
+                continue
+            if not _is_naked(nxt):
+                continue
+            if nxt not in piece_of:
+                _grow_piece(nxt)
+            ep_piece_borders.setdefault(e, set()).add(piece_of[nxt])
 
-                    # Reached a chain's endpoint — record adjacency
-                    # (includes self-links for deletion alleles)
-                    if nxt in endpoint_seg_to_chain:
-                        other_chain = endpoint_seg_to_chain[nxt]
-                        chain_adj.setdefault(chain_id, set()).add(other_chain)
-                        if other_chain != chain_id:
-                            chain_adj.setdefault(other_chain, set()).add(chain_id)
-                        endpoint_reached.add(nxt)
-                        if cur in endpoint_seg_to_chain:
-                            endpoint_reached.add(cur)
-                        # Tag naked segs that led here as adjacent to both chains
-                        if cur in naked_visited:
-                            naked_seg_chains.setdefault(cur, set()).add(chain_id)
-                            naked_seg_chains.setdefault(cur, set()).add(other_chain)
-                        # If the endpoint itself is naked, also register it as
-                        # a junction node so it gets activated alongside the
-                        # junction segs that link to it.
-                        if _is_naked(nxt):
-                            naked_visited.add(nxt)
-                            naked_seg_chains.setdefault(nxt, set()).add(chain_id)
-                            naked_seg_chains.setdefault(nxt, set()).add(other_chain)
-                        continue
+    # Chains that freely enter each piece: chain of any endpoint bordering it.
+    piece_chains = [set() for _ in piece_members]
+    for e, pieces in ep_piece_borders.items():
+        cid = endpoint_seg_to_chain[e]
+        for p in pieces:
+            piece_chains[p].add(cid)
 
-                    # Only traverse naked segments (not owned by any bubble,
-                    # or owned by a decomposed bubble)
-                    if not _is_naked(nxt):
-                        continue
+    # Initial naked_seg_chains for non-endpoint naked segs from their piece.
+    naked_visited = set()
+    naked_seg_chains = {}
+    for sid, pidx in piece_of.items():
+        naked_seg_chains[sid] = set(piece_chains[pidx])
+        naked_visited.add(sid)
 
-                    visited.add(nxt)
-                    naked_visited.add(nxt)
-                    # This naked seg is reachable from chain_id's endpoint
-                    naked_seg_chains.setdefault(nxt, set()).add(chain_id)
-                    queue.append((nxt, hops + 1))
+    # Naked endpoints: {own chain} ∪ chains whose BFS reaches e via any
+    # piece bordering e, plus direct EP-EP neighbors.
+    for e in naked_endpoints:
+        own = endpoint_seg_to_chain[e]
+        chains = {own}
+        for p in ep_piece_borders.get(e, ()):
+            for cid in piece_chains[p]:
+                if cid != own:
+                    chains.add(cid)
+        naked_seg_chains[e] = chains
+        naked_visited.add(e)
+    # Direct-edge contributions to naked-endpoint chain sets
+    for pair in direct_endpoint_edges:
+        a, b = tuple(pair)
+        ca = endpoint_seg_to_chain[a]
+        cb = endpoint_seg_to_chain[b]
+        if a in naked_endpoints and cb != ca:
+            naked_seg_chains[a].add(cb)
+        if b in naked_endpoints and ca != cb:
+            naked_seg_chains[b].add(ca)
 
-    # Prune dead-end stubs: naked segments reachable from only one chain
-    # are not true junctions (e.g. indels at a chain boundary).  Remove
-    # them from naked_visited so they don't appear as junction nodes.
+    # Stub prune: naked segs touched by fewer than 2 chains aren't
+    # junctions (e.g. indels at a chain boundary).
     _stubs = {sid for sid, chains in naked_seg_chains.items()
               if len(chains) < 2}
     naked_visited -= _stubs
     for sid in _stubs:
         naked_seg_chains.pop(sid, None)
+
+    # chain_adj: all distinct pairs of chains within each multi-chain
+    # piece. Self-loops (chain adjacent to itself) only when the same
+    # chain has ≥2 endpoints bordering the same piece (BFS from one of
+    # its endpoints can reach another of its own endpoints).
+    piece_chain_ep_count = [{} for _ in piece_members]
+    for e, pieces in ep_piece_borders.items():
+        cid = endpoint_seg_to_chain[e]
+        for p in pieces:
+            piece_chain_ep_count[p][cid] = piece_chain_ep_count[p].get(cid, 0) + 1
+
+    chain_adj = {}
+    for chains in piece_chains:
+        if len(chains) < 2:
+            continue
+        chains_t = tuple(chains)
+        for i in range(len(chains_t)):
+            a = chains_t[i]
+            bucket = chain_adj.setdefault(a, set())
+            for j in range(len(chains_t)):
+                if i != j:
+                    bucket.add(chains_t[j])
+    for counts in piece_chain_ep_count:
+        for cid, count in counts.items():
+            if count >= 2:
+                chain_adj.setdefault(cid, set()).add(cid)
+    # Naked endpoints: original BFS records adjacency only between the
+    # reaching chain and the endpoint's owning chain — NOT transitively
+    # between every chain that reached the same endpoint.
+    for e in naked_endpoints:
+        chains = naked_seg_chains.get(e)
+        if not chains:
+            continue
+        own = endpoint_seg_to_chain[e]
+        for c in chains:
+            if c == own:
+                continue
+            chain_adj.setdefault(c, set()).add(own)
+            chain_adj.setdefault(own, set()).add(c)
+
+    # endpoint_reached: endpoints touched by some other chain's flood
+    # (used to build direct EP-EP junction links below).
+    endpoint_reached = set()
+    for e, pieces in ep_piece_borders.items():
+        ce = endpoint_seg_to_chain[e]
+        for p in pieces:
+            chains_here = piece_chains[p]
+            if chains_here and (len(chains_here) > 1 or ce not in chains_here):
+                endpoint_reached.add(e)
+                break
+    for e in naked_endpoints:
+        if len(naked_seg_chains.get(e, ())) >= 2:
+            endpoint_reached.add(e)
+    for pair in direct_endpoint_edges:
+        a, b = tuple(pair)
+        ca = endpoint_seg_to_chain[a]
+        cb = endpoint_seg_to_chain[b]
+        chain_adj.setdefault(ca, set()).add(cb)
+        chain_adj.setdefault(cb, set()).add(ca)
+        endpoint_reached.add(a)
+        endpoint_reached.add(b)
 
     # Build junction nodes: centroid of each naked segment.
     # Chain endpoint segments are excluded — their geometry overlaps
