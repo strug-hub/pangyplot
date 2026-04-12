@@ -48,7 +48,7 @@ class TestGetDecomposition:
         chain_id = int(drb1_polychain_index.chain_ids[0])
         decomp = drb1_polychain_index.get_decomposition(chain_id)
         assert decomp is not None
-        for key in ("chains", "bubbles", "adjacency"):
+        for key in ("chains", "bubbles"):
             assert key in decomp
 
     def test_sub_chains_have_polylines(self, drb1_polychain_index):
@@ -104,7 +104,7 @@ class TestGetChainsInLayoutRange:
     def test_result_has_merge_keys(self, drb1_polychain_index):
         result = drb1_polychain_index.get_chains_in_layout_range(
             float('-inf'), float('inf'))
-        for key in ("chains", "bubbles", "adjacency", "bypass_links",
+        for key in ("chains", "bubbles", "bypass_links",
                     "bypass_seg_ids", "bypass_gfa_links", "decomposed_bubbles"):
             assert key in result
 

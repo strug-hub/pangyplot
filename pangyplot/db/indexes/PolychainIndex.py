@@ -92,7 +92,6 @@ class PolychainIndex:
                 decomp = {
                     "chains": r["chains"],
                     "bubbles": r["bubbles"],
-                    "adjacency": {k: sorted(v) for k, v in r.get("adjacency", {}).items()},
                     "bypass_links": r.get("bypass_links", []),
                     "bypass_seg_ids": sorted(r.get("bypass_seg_ids", set())),
                     "bypass_gfa_links": r.get("bypass_gfa_links", []),
@@ -210,7 +209,6 @@ class PolychainIndex:
         return {
             "chains": [{**cd} for cd in decomp["chains"]],
             "bubbles": list(decomp["bubbles"]),
-            "adjacency": {k: list(v) for k, v in decomp["adjacency"].items()},
             "bypass_links": list(decomp.get("bypass_links", [])),
             "bypass_seg_ids": set(decomp.get("bypass_seg_ids", [])),
             "bypass_gfa_links": list(decomp.get("bypass_gfa_links", [])),
@@ -228,7 +226,6 @@ class PolychainIndex:
 
         all_chains = []
         all_bubbles = []
-        all_adj = {}
         all_bypass_links = []
         all_bypass_seg_ids = set()
         all_bypass_gfa_links = []
@@ -254,13 +251,10 @@ class PolychainIndex:
                 all_bypass_seg_ids.update(decomp.get("bypass_seg_ids", []))
                 all_bypass_gfa_links.extend(decomp.get("bypass_gfa_links", []))
                 all_decomposed_bubbles.update(decomp.get("decomposed_bubbles", []))
-                for k, v in decomp.get("adjacency", {}).items():
-                    all_adj.setdefault(k, set()).update(v)
 
         return {
             "chains": all_chains,
             "bubbles": all_bubbles,
-            "adjacency": all_adj,
             "bypass_links": all_bypass_links,
             "bypass_seg_ids": all_bypass_seg_ids,
             "bypass_gfa_links": all_bypass_gfa_links,

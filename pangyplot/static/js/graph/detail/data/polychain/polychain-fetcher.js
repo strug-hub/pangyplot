@@ -19,7 +19,7 @@ import { getForceNodes } from '../force-data.js';
 import {
     hasPolychainDataCache, getChainsInRange,
     getJunctionNodesInRange, getJunctionLinksForNodes,
-    getJunctionSegChains, getJunctionLinkPairs, getChainAdjacency,
+    getJunctionLinkPairs,
 } from '../polychain-data-cache.js';
 
 let fetchController = null;
@@ -79,8 +79,6 @@ function processResponse(apiResponse) {
             segs: [l[2], l[3]],
         })),
         junctionGraph: apiResponse.junction_graph || { nodes: [], links: [] },
-        junctionSegChains: apiResponse.junction_seg_chains || {},
-        chainAdjacency: apiResponse.chain_adjacency || {},
     };
 }
 
@@ -130,7 +128,6 @@ function buildDataFromCache(minX, maxX, layoutToBp) {
     // Junction data: viewport-filtered nodes, construct graph from packed arrays
     const margin = (maxX - minX) * 0.2;
     const juncNodes = getJunctionNodesInRange(minX - margin, maxX + margin);
-    const visibleChainIds = new Set(chains.map(c => c.id));
     const nodeIdSet = new Set(juncNodes.map(n => n.id));
 
     // Build resolvable set for link filtering
@@ -148,11 +145,9 @@ function buildDataFromCache(minX, maxX, layoutToBp) {
         chains, totalBubbles,
         bpStart: bpLeft != null ? Math.max(0, Math.round(bpLeft)) : 0,
         bpEnd: bpRight != null ? Math.round(bpRight) : 0,
-        junctionNodes: [],  // not needed — packed arrays used instead
+        junctionNodes: [],
         junctionLinks: getJunctionLinkPairs(),
         junctionGraph: { nodes: juncNodes, links: juncGraphLinks },
-        junctionSegChains: getJunctionSegChains(visibleChainIds),
-        chainAdjacency: getChainAdjacency(),
     };
 }
 
@@ -180,7 +175,6 @@ function _recomputeJunctionData(mergedChains) {
 
     const margin = (maxX - minX) * 0.2;
     const juncNodes = getJunctionNodesInRange(minX - margin, maxX + margin);
-    const chainIds = new Set(mergedChains.map(c => c.id));
     const resolvableIds = new Set(juncNodes.map(n => n.id));
     for (const c of mergedChains) {
         for (const sid of (c.sourceSegs || [])) resolvableIds.add(sid);
@@ -189,7 +183,6 @@ function _recomputeJunctionData(mergedChains) {
 
     return {
         junctionGraph: { nodes: juncNodes, links: getJunctionLinksForNodes(resolvableIds) },
-        junctionSegChains: getJunctionSegChains(chainIds),
     };
 }
 

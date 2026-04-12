@@ -258,7 +258,7 @@ class TestDecomposeChainDRB1:
         chain = _find_chain(drb1_chains, 640)
         r = decompose_chain(chain, 1, None, bi, si, gfa.segment_index, gfa,
                             depth=0, max_depth=3)
-        for key in ("chains", "bubbles", "adjacency"):
+        for key in ("chains", "bubbles"):
             assert key in r
 
 
@@ -270,7 +270,7 @@ class TestFindJunctionGraphDRB1:
         chain = _find_chain(drb1_chains, 640)
         r = decompose_chain(chain, 1, None, bi, si, gfa.segment_index, gfa,
                             depth=0, max_depth=3)
-        nodes, links, adj, naked, seg_chains = find_junction_graph(
+        nodes, links, naked = find_junction_graph(
             r["chains"], gfa, bi, gfa.segment_index)
         return nodes, links
 

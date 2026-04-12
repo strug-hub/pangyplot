@@ -427,9 +427,7 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                     _ancestors=None):
     """Decompose a chain into sub-chains or individual bubbles.
 
-    Returns {"chains": [...], "bubbles": [...], "adjacency": {...}}
-    where adjacency maps chain_id → set of adjacent chain_ids discovered
-    from the interleaving of connectors and superbubble children.
+    Returns {"chains": [...], "bubbles": [...]}.
 
     Two thresholds control progressive detail:
     - expand_threshold: if any bubble exceeds this, replace the chain
@@ -448,13 +446,8 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
     if not should_decompose:
         return _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth)
 
-    # --- Single pass: interleave connectors and child chain groups ---
-    # Each group is {'chains': [chain_data...], 'super': bubble_or_None}
-    # Connector groups have super=None; children groups store the superbubble.
-    groups = []
     all_chains = []
     all_bubbles = []
-    all_adj = {}  # accumulated adjacency from recursive decompositions
     all_bypasses = []  # [[x1,y1],[x2,y2]] bypass polylines (deletion alleles)
     all_bypass_seg_ids = set()  # segment IDs from bypass flood fills
     all_bypass_links = []  # (from_id, to_id) GFA links between bypass segs
@@ -470,7 +463,6 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
         if not conn:
             return
         all_chains.append(conn)
-        groups.append({'chains': [conn], 'super': None})
 
     for b in chain.bubbles:
         if b.children:
@@ -503,9 +495,6 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                 all_bypasses.extend(r.get("bypass_links", []))
                 all_bypass_seg_ids.update(r.get("bypass_seg_ids", set()))
                 all_bypass_links.extend(r.get("bypass_gfa_links", []))
-                # Merge child adjacency and decomposed bubbles
-                for k, v in r.get("adjacency", {}).items():
-                    all_adj.setdefault(k, set()).update(v)
                 all_decomposed_bubbles.update(r.get("decomposed_bubbles", set()))
 
             # Check for bypass path (deletion allele) through superbubble
@@ -517,35 +506,11 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
                 all_bypass_links.extend(bypass["links"])
 
             all_chains.extend(group_chains)
-            groups.append({'chains': group_chains, 'super': b})
         else:
             leaf_run.append(b)
 
     # Trailing leaf run
     _flush_leaf_run(leaf_run)
-
-    # --- Connect consecutive groups via shared boundary segments ---
-    # Consecutive bubbles in a chain share boundary segments:
-    #   bubble[i].sink_segments == bubble[i+1].source_segments
-    # So a connector's sink_segs overlap with the next superbubble's
-    # entry child chains' source_segs, and vice versa.
-    #
-    # For consecutive children groups (no connector between them, leaf
-    # run of 0-1), we bridge through the superbubble boundaries:
-    # exit chains touch super.sink_segments, entry chains touch
-    # super.source_segments.
-    for i in range(len(groups) - 1):
-        g_a = groups[i]
-        g_b = groups[i + 1]
-
-        a_exits = _group_exit_chains(g_a)
-        b_entries = _group_entry_chains(g_b)
-
-        for ca_id in a_exits:
-            for cb_id in b_entries:
-                all_adj.setdefault(ca_id, set()).add(cb_id)
-                if ca_id != cb_id:
-                    all_adj.setdefault(cb_id, set()).add(ca_id)
 
     # Stamp parent_chain on all emitted chains that don't already have one.
     # Connectors and direct children point to this chain; deeper descendants
@@ -558,44 +523,20 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
         if "ancestors" not in c:
             c["ancestors"] = list(own_ancestors)
         # Derive parent_bubble/parent_subtype from immediate ancestor
-    return {"chains": all_chains, "bubbles": all_bubbles, "adjacency": all_adj,
+    return {"chains": all_chains, "bubbles": all_bubbles,
             "bypass_links": all_bypasses,
             "bypass_seg_ids": all_bypass_seg_ids,
             "bypass_gfa_links": all_bypass_links,
             "decomposed_bubbles": all_decomposed_bubbles}
 
 
-def _group_exit_chains(group):
-    """Chain IDs at the exit side of a group."""
-    if group['super'] is None:
-        # Connector group — the connector itself is the exit
-        return [c['id'] for c in group['chains']]
-    else:
-        # Children group — chains whose sink_segs touch super's sink
-        bridge = set(group['super'].sink_segments)
-        return [c['id'] for c in group['chains']
-                if set(c.get('sink_segs', [])) & bridge]
-
-
-def _group_entry_chains(group):
-    """Chain IDs at the entry side of a group."""
-    if group['super'] is None:
-        # Connector group — the connector itself is the entry
-        return [c['id'] for c in group['chains']]
-    else:
-        # Children group — chains whose source_segs touch super's source
-        bridge = set(group['super'].source_segments)
-        return [c['id'] for c in group['chains']
-                if set(c.get('source_segs', [])) & bridge]
-
-
 def _chain_as_polyline(chain, bubble_threshold, stepidx, seg_index, depth):
     """Return a chain as a single polyline (base case, no decomposition)."""
     entry = build_chain_polyline(chain, stepidx, seg_index)
     if entry is None:
-        return {"chains": [], "bubbles": [], "adjacency": {}}
+        return {"chains": [], "bubbles": []}
     entry["depth"] = depth
-    return {"chains": [entry], "bubbles": [], "adjacency": {}}
+    return {"chains": [entry], "bubbles": []}
 
 
 # ---------------------------------------------------------------
@@ -615,10 +556,8 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
         chains.  Segments owned by these bubbles are treated as naked
         (traversable) since the bubble no longer exists as a visible node.
 
-    Returns (junction_nodes, junction_links, chain_adjacency,
-             naked_visited, naked_seg_chains).
+    Returns (junction_nodes, junction_links, naked_visited).
     naked_visited: set of naked segment IDs found during BFS.
-    naked_seg_chains: dict mapping naked seg ID → set of adjacent chain IDs.
     """
 
     # Map: seg_id → chain_id (for ALL endpoint segs: source + sink)
@@ -733,80 +672,32 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
         for p in pieces:
             piece_chains[p].add(cid)
 
-    # Initial naked_seg_chains for non-endpoint naked segs from their piece.
+    # naked_visited: all naked segs whose piece is touched by ≥2 chains
+    # (stubs — pieces with <2 chains — aren't junctions).
     naked_visited = set()
-    naked_seg_chains = {}
     for sid, pidx in piece_of.items():
-        naked_seg_chains[sid] = set(piece_chains[pidx])
-        naked_visited.add(sid)
-
-    # Naked endpoints: {own chain} ∪ chains whose BFS reaches e via any
-    # piece bordering e, plus direct EP-EP neighbors.
+        if len(piece_chains[pidx]) >= 2:
+            naked_visited.add(sid)
+    # Naked endpoints: include if own chain + any piece's chain set
+    # together has ≥2 distinct chains, or reached via a direct EP-EP edge
+    # to a different chain.
     for e in naked_endpoints:
         own = endpoint_seg_to_chain[e]
-        chains = {own}
+        has_other = False
         for p in ep_piece_borders.get(e, ()):
-            for cid in piece_chains[p]:
-                if cid != own:
-                    chains.add(cid)
-        naked_seg_chains[e] = chains
-        naked_visited.add(e)
-    # Direct-edge contributions to naked-endpoint chain sets
+            if any(cid != own for cid in piece_chains[p]):
+                has_other = True
+                break
+        if has_other:
+            naked_visited.add(e)
     for pair in direct_endpoint_edges:
         a, b = tuple(pair)
         ca = endpoint_seg_to_chain[a]
         cb = endpoint_seg_to_chain[b]
         if a in naked_endpoints and cb != ca:
-            naked_seg_chains[a].add(cb)
+            naked_visited.add(a)
         if b in naked_endpoints and ca != cb:
-            naked_seg_chains[b].add(ca)
-
-    # Stub prune: naked segs touched by fewer than 2 chains aren't
-    # junctions (e.g. indels at a chain boundary).
-    _stubs = {sid for sid, chains in naked_seg_chains.items()
-              if len(chains) < 2}
-    naked_visited -= _stubs
-    for sid in _stubs:
-        naked_seg_chains.pop(sid, None)
-
-    # chain_adj: all distinct pairs of chains within each multi-chain
-    # piece. Self-loops (chain adjacent to itself) only when the same
-    # chain has ≥2 endpoints bordering the same piece (BFS from one of
-    # its endpoints can reach another of its own endpoints).
-    piece_chain_ep_count = [{} for _ in piece_members]
-    for e, pieces in ep_piece_borders.items():
-        cid = endpoint_seg_to_chain[e]
-        for p in pieces:
-            piece_chain_ep_count[p][cid] = piece_chain_ep_count[p].get(cid, 0) + 1
-
-    chain_adj = {}
-    for chains in piece_chains:
-        if len(chains) < 2:
-            continue
-        chains_t = tuple(chains)
-        for i in range(len(chains_t)):
-            a = chains_t[i]
-            bucket = chain_adj.setdefault(a, set())
-            for j in range(len(chains_t)):
-                if i != j:
-                    bucket.add(chains_t[j])
-    for counts in piece_chain_ep_count:
-        for cid, count in counts.items():
-            if count >= 2:
-                chain_adj.setdefault(cid, set()).add(cid)
-    # Naked endpoints: original BFS records adjacency only between the
-    # reaching chain and the endpoint's owning chain — NOT transitively
-    # between every chain that reached the same endpoint.
-    for e in naked_endpoints:
-        chains = naked_seg_chains.get(e)
-        if not chains:
-            continue
-        own = endpoint_seg_to_chain[e]
-        for c in chains:
-            if c == own:
-                continue
-            chain_adj.setdefault(c, set()).add(own)
-            chain_adj.setdefault(own, set()).add(c)
+            naked_visited.add(b)
 
     # endpoint_reached: endpoints touched by some other chain's flood
     # (used to build direct EP-EP junction links below).
@@ -819,14 +710,10 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
                 endpoint_reached.add(e)
                 break
     for e in naked_endpoints:
-        if len(naked_seg_chains.get(e, ())) >= 2:
+        if e in naked_visited:
             endpoint_reached.add(e)
     for pair in direct_endpoint_edges:
         a, b = tuple(pair)
-        ca = endpoint_seg_to_chain[a]
-        cb = endpoint_seg_to_chain[b]
-        chain_adj.setdefault(ca, set()).add(cb)
-        chain_adj.setdefault(cb, set()).add(ca)
         endpoint_reached.add(a)
         endpoint_reached.add(b)
 
@@ -901,9 +788,7 @@ def find_junction_graph(chains_data, gfaidx, bubbleidx, seg_index,
             junction_links.append([endpoint_centroids[sid], endpoint_centroids[nxt],
                                    sid, nxt])
 
-    chain_adjacency = {k: sorted(v) for k, v in chain_adj.items()}
-    return (junction_nodes, junction_links, chain_adjacency,
-            naked_visited, naked_seg_chains)
+    return junction_nodes, junction_links, naked_visited
 
 
 # ---------------------------------------------------------------

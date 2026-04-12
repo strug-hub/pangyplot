@@ -424,21 +424,16 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     bypass_seg_ids = merged["bypass_seg_ids"]
     bypass_gfa_links = merged["bypass_gfa_links"]
     decomposed_bubbles = merged["decomposed_bubbles"]
-    decomp_adj = merged["adjacency"]
     chain_result = {"chains": chain_results, "bubbles": bubble_results}
 
 
 
     _t['decompose'] = _time.perf_counter()
 
-    # --- Strip internal fields, build bubble→chain mapping ---
-    _bid_to_chain = {}
+    # --- Strip internal fields ---
     result_chains = []
     for chain_data in chain_result["chains"]:
         chain_data.pop("_layout_span", None)
-        bubble_ids = chain_data.get("bubble_ids", [])
-        for bid in bubble_ids:
-            _bid_to_chain[bid] = chain_data["id"]
         chain_data["popped"] = False
         chain_data["graph"] = None
         result_chains.append(chain_data)
@@ -448,11 +443,9 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
     _t['strip'] = _time.perf_counter()
 
     # --- Junction graph BFS ---
-    junction_nodes, junction_links, junction_adj, \
-        naked_visited, naked_seg_chains = \
-        find_junction_graph(
-            result_chains, gfaidx, bubbleidx, seg_index,
-            decomposed_bubbles=decomposed_bubbles)
+    junction_nodes, junction_links, naked_visited = find_junction_graph(
+        result_chains, gfaidx, bubbleidx, seg_index,
+        decomposed_bubbles=decomposed_bubbles)
 
     _t['junction_bfs'] = _time.perf_counter()
 
@@ -561,58 +554,8 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
             "nodes": jg_nodes,
             "links": [l.serialize() for l in jg_links],
         }
-        # Build junction_seg_chains: seg_id → list of chain IDs
-        # Merge bypass segs into naked_seg_chains (bypass segs connect to
-        # the chains whose source/sink segs are GFA-adjacent)
-        ep_to_chain = {}
-        for cd in result_chains:
-            for sid in (cd.get("source_segs") or []):
-                ep_to_chain[sid] = cd["id"]
-            for sid in (cd.get("sink_segs") or []):
-                ep_to_chain[sid] = cd["id"]
-        for sid in bypass_seg_ids:
-            for nxt in gfaidx.get_neighbors(sid):
-                cid = ep_to_chain.get(nxt)
-                if cid:
-                    naked_seg_chains.setdefault(sid, set()).add(cid)
-
-        # Map internal bubble segs that appear in junction graph links
-        # to their owning chain.  These segs are inside chain bubbles
-        # (not naked, not chain endpoints) but have GFA edges to junction
-        # nodes.  Without this mapping the frontend linkResolver can't
-        # resolve them to the correct chain.
-        for link in jg_links:
-            for seg_id in (link.from_id, link.to_id):
-                if seg_id in all_junction_seg_ids:
-                    continue
-                if seg_id in chain_endpoint_segs:
-                    continue
-                if seg_id in naked_seg_chains:
-                    continue
-                bub_id = bubbleidx.segment_in_bubble(seg_id)
-                if bub_id is None:
-                    continue
-                cid = _bid_to_chain.get(bub_id)
-                if cid:
-                    naked_seg_chains.setdefault(seg_id, set()).add(cid)
-
-        junction_seg_chains = {
-            f"s{k}": sorted(v) for k, v in naked_seg_chains.items()
-        }
     else:
         junction_graph = {"nodes": [], "links": []}
-        junction_seg_chains = {}
-
-
-
-    # --- Merge adjacency ---
-    chain_adjacency = {}
-    for src in (decomp_adj, junction_adj):
-        for k, v in src.items():
-            chain_adjacency.setdefault(k, set()).update(v)
-    chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
-
-
 
     _t['junction_serialize'] = _time.perf_counter()
 
@@ -642,8 +585,6 @@ def get_detail_tile(indexes, genome, chrom, start, end, ppbp,
         "junction_nodes": junction_nodes,
         "junction_links": junction_links,
         "junction_graph": junction_graph,
-        "junction_seg_chains": junction_seg_chains,
-        "chain_adjacency": chain_adjacency,
     }
 
     import json as _json

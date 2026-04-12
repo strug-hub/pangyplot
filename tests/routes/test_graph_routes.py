@@ -268,7 +268,7 @@ class TestDetailTilesRoute:
             f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
         data = resp.get_json()
         for key in ("chains", "junction_nodes", "junction_links",
-                    "junction_graph", "chain_adjacency"):
+                    "junction_graph"):
             assert key in data
 
     def test_full_range_chain_count(self, client):

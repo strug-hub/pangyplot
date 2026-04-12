@@ -78,21 +78,6 @@ export function getJunctionLinksForNodes(resolvableIdSet) {
 }
 
 /**
- * Return segChains mapping filtered to visible chains.
- */
-export function getJunctionSegChains(visibleChainIds) {
-    if (!_data || !_data.junction || !_data.junction.segChains) return {};
-    const result = {};
-    for (const [sidStr, chainIds] of Object.entries(_data.junction.segChains)) {
-        const filtered = chainIds.filter(cid => visibleChainIds.has(cid));
-        if (filtered.length > 0) {
-            result[sidStr] = filtered;
-        }
-    }
-    return result;
-}
-
-/**
  * Return the junction links (coordinate pairs) for the full chromosome.
  * Each: { coords: [[x1,y1],[x2,y2]], segs: [seg_a, seg_b] }
  */
@@ -102,13 +87,6 @@ export function getJunctionLinkPairs() {
         coords: [l[0], l[1]],
         segs: [l[2], l[3]],
     }));
-}
-
-/**
- * Return chain adjacency map.
- */
-export function getChainAdjacency() {
-    return _data?.chainAdjacency || {};
 }
 
 export function clearPolychainDataCache() {
