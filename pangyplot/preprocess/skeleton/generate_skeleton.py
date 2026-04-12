@@ -8,6 +8,7 @@ Public API:
 import gzip
 import os
 import re
+import time
 
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
@@ -38,47 +39,53 @@ def generate_skeleton(chr_dir, ref, chrom):
 
     print("→ Building skeleton.")
 
-    print("   🦴 Computing graph topology...", end="", flush=True)
+    def _step(msg):
+        print(f"   {msg}...", end="", flush=True)
+        return time.time()
+    def _done(t0):
+        print(f" Done. Took {time.time() - t0:.1f}s.")
+
+    t0 = _step("🦴 Computing graph topology")
     gfaidx = GFAIndex(chr_dir)
     segment_index = gfaidx.segment_index
     link_index = gfaidx.link_index
     degrees = compute_degrees(link_index)
     junctions = find_junctions(degrees)
     runs = find_linear_runs(gfaidx, junctions, segment_index)
-    print(" Done.")
+    _done(t0)
 
-    print("   📐 Building polylines...", end="", flush=True)
+    t0 = _step("📐 Building polylines")
     polylines = [run_to_polyline(run, segment_index) for run in runs]
-    print(" Done.")
+    _done(t0)
 
-    print("   🧬 Building reference spine...", end="", flush=True)
+    t0 = _step("🧬 Building reference spine")
     generate_spine(chr_dir, ref, segment_index, output_dir=skel_dir)
-    print(" Done.")
+    _done(t0)
 
-    print("   ⛓️  Annotating chains...", end="", flush=True)
+    t0 = _step("⛓️  Annotating chains")
     seg_to_bubble = load_segment_to_bubble(chr_dir)
     bubble_to_chain = bubble_db.get_bubble_chain_map(chr_dir)
     chain_stats = bubble_db.get_chain_stats(chr_dir)
     chain_ids = None
     if seg_to_bubble is not None and bubble_to_chain is not None:
         chain_ids = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
-    print(" Done.")
+    _done(t0)
 
-    print("   💾 Exporting skeleton...", end="", flush=True)
+    t0 = _step("💾 Exporting skeleton")
     grid_sizes = compute_grid_sizes(segment_index)
     export_binary(junctions, runs, segment_index, link_index, polylines,
                   grid_sizes, meta_path, bin_path, chromosome=chrom,
                   chain_ids=chain_ids, chain_stats=chain_stats)
-    print(" Done.")
+    _done(t0)
 
-    print("   🔗 Exporting polychain data...", end="", flush=True)
+    t0 = _step("🔗 Exporting polychain data")
     pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
     export_polychain_data(chr_dir, gfaidx, ref, pd_path)
-    print(" Done.")
+    _done(t0)
 
-    print("   📊 Computing graph metadata...", end="", flush=True)
+    t0 = _step("📊 Computing graph metadata")
     generate_meta(chr_dir, ref, chrom)
-    print(" Done.")
+    _done(t0)
 
 
 def _skeleton_version(meta_path):

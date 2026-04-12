@@ -267,22 +267,24 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
         # Filter polylines with <2 points, delta-encode coordinates
         point_counts = []
         level_chain_ids = []
-        coords = []  # flat [x0, y0, dx1, dy1, ...]
+        coord_chunks = []
         for j, pl in enumerate(grid_pls):
-            if len(pl) < 2:
+            n = len(pl)
+            if n < 2:
                 continue
-            point_counts.append(len(pl))
+            point_counts.append(n)
             if grid_chain_ids is not None:
                 level_chain_ids.append(int(grid_chain_ids[j]))
             else:
                 level_chain_ids.append(-1)
-            # First point absolute, rest delta-encoded
-            coords.append(int(round(pl[0][0])))
-            coords.append(int(round(pl[0][1])))
-            for k in range(1, len(pl)):
-                coords.append(int(round(pl[k][0] - pl[k-1][0])))
-                coords.append(int(round(pl[k][1] - pl[k-1][1])))
+            arr = np.asarray(pl, dtype=np.float64)
+            deltas = np.empty_like(arr)
+            deltas[0] = arr[0]
+            deltas[1:] = arr[1:] - arr[:-1]
+            coord_chunks.append(np.rint(deltas).astype(np.int32).ravel())
 
+        coords_arr = (np.concatenate(coord_chunks) if coord_chunks
+                      else np.empty(0, dtype=np.int32))
         total_nodes = sum(len(pl) for pl in grid_pls)
         num_polylines = len(point_counts)
         total_points = sum(point_counts)
@@ -294,7 +296,7 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
             "total_points": total_points,
             "point_counts": np.array(point_counts, dtype=np.uint32),
             "chain_ids": np.array(level_chain_ids, dtype=np.int32),
-            "coords": np.array(coords, dtype=np.int32),
+            "coords": coords_arr,
         })
         level_summaries.append((f"Grid {cell:,}", total_nodes, num_polylines))
 

@@ -8,9 +8,9 @@ to the scale and density of each graph.
 """
 
 import json
-import math
 import os
-import statistics
+
+import numpy as np
 
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 
@@ -47,30 +47,21 @@ def compute_meta(chr_dir, ref, chromosome=None):
     # -----------------------------------------------------------
     # Layout bounding box (from segment endpoints)
     # -----------------------------------------------------------
-    min_x, max_x = math.inf, -math.inf
-    min_y, max_y = math.inf, -math.inf
-    max_id = segment_index.max_id()
+    # Zero-copy numpy views over array.array
+    x1 = np.frombuffer(segment_index.x1, dtype=np.float32)
+    y1 = np.frombuffer(segment_index.y1, dtype=np.float32)
+    x2 = np.frombuffer(segment_index.x2, dtype=np.float32)
+    y2 = np.frombuffer(segment_index.y2, dtype=np.float32)
+    valid = np.frombuffer(segment_index.valid, dtype=np.uint8).astype(bool)
 
-    for sid in range(max_id + 1):
-        if sid >= len(segment_index.valid) or not segment_index.valid[sid]:
-            continue
-        for x in (segment_index.x1[sid], segment_index.x2[sid]):
-            if x < min_x:
-                min_x = x
-            if x > max_x:
-                max_x = x
-        for y in (segment_index.y1[sid], segment_index.y2[sid]):
-            if y < min_y:
-                min_y = y
-            if y > max_y:
-                max_y = y
-
-    if math.isfinite(min_x):
+    if valid.any():
+        vx1, vx2 = x1[valid], x2[valid]
+        vy1, vy2 = y1[valid], y2[valid]
         meta["layout_bbox"] = {
-            "min_x": round(float(min_x), 2),
-            "max_x": round(float(max_x), 2),
-            "min_y": round(float(min_y), 2),
-            "max_y": round(float(max_y), 2),
+            "min_x": round(float(min(vx1.min(), vx2.min())), 2),
+            "max_x": round(float(max(vx1.max(), vx2.max())), 2),
+            "min_y": round(float(min(vy1.min(), vy2.min())), 2),
+            "max_y": round(float(max(vy1.max(), vy2.max())), 2),
         }
 
     # -----------------------------------------------------------
@@ -79,23 +70,24 @@ def compute_meta(chr_dir, ref, chromosome=None):
     # Measures ODGI's local packing density — the characteristic
     # spacing the force simulation should scale to.
     # -----------------------------------------------------------
-    dists = []
-    for i in range(len(link_index.from_ids)):
-        s = link_index.from_ids[i]
-        t = link_index.to_ids[i]
-        if (s >= len(segment_index.valid) or not segment_index.valid[s] or
-                t >= len(segment_index.valid) or not segment_index.valid[t]):
-            continue
-        sx = (segment_index.x1[s] + segment_index.x2[s]) / 2
-        sy = (segment_index.y1[s] + segment_index.y2[s]) / 2
-        tx = (segment_index.x1[t] + segment_index.x2[t]) / 2
-        ty = (segment_index.y1[t] + segment_index.y2[t]) / 2
-        d = math.hypot(sx - tx, sy - ty)
-        if d > 0:
-            dists.append(d)
-
-    if dists:
-        meta["median_link_distance"] = round(statistics.median(dists), 2)
+    from_ids = np.frombuffer(link_index.from_ids, dtype=np.uint32)
+    to_ids = np.frombuffer(link_index.to_ids, dtype=np.uint32)
+    n_seg = len(valid)
+    link_ok = (from_ids < n_seg) & (to_ids < n_seg)
+    if link_ok.any():
+        s = from_ids[link_ok]
+        t = to_ids[link_ok]
+        both_valid = valid[s] & valid[t]
+        s, t = s[both_valid], t[both_valid]
+        if s.size:
+            mx_s = (x1[s] + x2[s]) * 0.5
+            my_s = (y1[s] + y2[s]) * 0.5
+            mx_t = (x1[t] + x2[t]) * 0.5
+            my_t = (y1[t] + y2[t]) * 0.5
+            d = np.hypot(mx_s - mx_t, my_s - my_t)
+            d = d[d > 0]
+            if d.size:
+                meta["median_link_distance"] = round(float(np.median(d)), 2)
 
     # -----------------------------------------------------------
     # Bubble stats (total count, max nesting depth)
