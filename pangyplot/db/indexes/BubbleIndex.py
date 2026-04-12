@@ -269,21 +269,35 @@ class BubbleIndex:
         for bubble in bubbles:
             chain_dict[bubble.chain].append(bubble)
 
-        chains = []
-        for chain_id in chain_dict:
-            visible_bids = {bubble.id for bubble in chain_dict[chain_id]}
+        # One SELECT for every chain's bubble ids, then one batched
+        # SELECT for the union of all missing bubbles.
+        chain_ids = list(chain_dict.keys())
+        chain_id_map = db.get_chain_bubble_ids_batch(self.dir, chain_ids)
 
-            all_ids = db.get_all_bubble_ids_from_chain(self.dir, chain_id)
-            missing_ids = [bid for bid in all_ids if bid not in visible_bids]
-            if missing_ids:
-                missing = db.get_bubbles_batch(self.dir, missing_ids, self.gfaidx)
-                for b in missing:
-                    self._cache_bubble(b.id, b)
-                chain_dict[chain_id].extend(missing)
-            chain = Chain(chain_id, chain_dict[chain_id],
-                          parent_bubble=parent_bubble, gfaidx=self.gfaidx)
-            chains.append(chain)
+        visible_by_chain = {
+            cid: {b.id for b in chain_dict[cid]} for cid in chain_ids
+        }
+        missing_union = []
+        for cid, all_ids in chain_id_map.items():
+            for bid in all_ids:
+                if bid not in visible_by_chain[cid]:
+                    missing_union.append(bid)
 
+        if missing_union:
+            fetched = db.get_bubbles_batch(self.dir, missing_union, self.gfaidx)
+            fetched_by_id = {b.id: b for b in fetched}
+            for b in fetched:
+                self._cache_bubble(b.id, b)
+            for cid, all_ids in chain_id_map.items():
+                for bid in all_ids:
+                    if bid not in visible_by_chain[cid] and bid in fetched_by_id:
+                        chain_dict[cid].append(fetched_by_id[bid])
+
+        chains = [
+            Chain(cid, chain_dict[cid],
+                  parent_bubble=parent_bubble, gfaidx=self.gfaidx)
+            for cid in chain_ids
+        ]
         return chains
 
     def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
