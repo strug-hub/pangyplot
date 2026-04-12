@@ -81,8 +81,7 @@ def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
     """
     # Collect segments owned by children
     child_segs = set()
-    for cid in superbubble.children:
-        cb = bubbleidx[cid]
+    for cb in bubbleidx._get_many(superbubble.children):
         child_segs.update(cb.source_segments + cb.sink_segments)
         child_segs.update(cb.inside)
 
@@ -481,7 +480,7 @@ def decompose_chain(chain, expand_threshold, bubble_threshold,
 
             # Recurse into superbubble's children
             all_decomposed_bubbles.add(b.id)
-            child_bubbles = [bubbleidx[cid] for cid in b.children]
+            child_bubbles = bubbleidx._get_many(b.children)
             child_chains_obj = bubbleidx.create_chains(child_bubbles, parent_bubble=b)
             group_chains = []
             for cc in child_chains_obj:
