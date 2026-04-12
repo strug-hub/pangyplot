@@ -20,7 +20,7 @@ ARRAYS = {
     "from_strands": np.uint8,
     "to_strands": np.uint8,
     "seg_index_offsets": np.uint32,
-    "seg_index_counts": np.uint8,
+    "seg_index_counts": np.uint32,
     "seg_index_flat": np.uint32,
 }
 
@@ -38,7 +38,7 @@ class LinkIndex:
             self.from_strands = bitarray()
             self.to_strands = bitarray()
             self.seg_index_offsets = array('I')
-            self.seg_index_counts = array('B')
+            self.seg_index_counts = array('I')
             self.seg_index_flat = array('I')
 
             self._load_links()
