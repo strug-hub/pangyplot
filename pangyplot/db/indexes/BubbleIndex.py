@@ -83,6 +83,29 @@ class BubbleIndex:
             self.cached_bubbles.pop(next(iter(self.cached_bubbles)))
         self.cached_bubbles[bubble_id] = bubble_obj
 
+    def _get_many(self, bubble_ids):
+        """Return Bubble objects for a list of ids, using the cache and
+        a single batched SQL fetch for misses. Preserves input order.
+
+        Does not rely on the LRU cache for correctness — fetched bubbles
+        may be evicted during caching if the request is larger than
+        `cache_size`, so we build the result from a local map.
+        """
+        if not bubble_ids:
+            return []
+        resolved = {}
+        missing = []
+        for bid in bubble_ids:
+            if bid in self.cached_bubbles:
+                resolved[bid] = self.cached_bubbles[bid]
+            else:
+                missing.append(bid)
+        if missing:
+            for b in db.get_bubbles_batch(self.dir, missing, self.gfaidx):
+                resolved[b.id] = b
+                self._cache_bubble(b.id, b)
+        return [resolved[bid] for bid in bubble_ids if bid in resolved]
+
     def _build_layout_arrays(self, parentless_bubbles):
         """Build layout_x1/x2/ids arrays sorted by layout_x1, plus prefix_max_x2."""
         layout_entries = []
@@ -264,16 +287,16 @@ class BubbleIndex:
         return chains
 
     def get_top_level_bubbles(self, min_step, max_step, as_chains=False):
-        bubbles = []
-
         start_index = bisect_left(self.end_steps, min_step)
+        top_ids = []
         for i in range(start_index, len(self.start_steps)):
             if self.start_steps[i] > max_step:
                 break
-            bubble_id = self.ids[i]
-            bubble = self[bubble_id]
-            bubble_results = self._traverse_descendants(bubble, min_step, max_step)
-            bubbles.extend(bubble_results)
+            top_ids.append(self.ids[i])
+
+        bubbles = []
+        for bubble in self._get_many(top_ids):
+            bubbles.extend(self._traverse_descendants(bubble, min_step, max_step))
 
         if as_chains:
             return self.create_chains(bubbles)
@@ -282,14 +305,11 @@ class BubbleIndex:
 
     def get_top_level_bubbles_by_layout(self, min_x, max_x, as_chains=False):
         """Return top-level bubbles whose layout bbox overlaps [min_x, max_x]."""
-        bubbles = []
-
         upper = bisect_right(self.layout_x1, max_x)
         lower = bisect_left(self.prefix_max_x2, min_x, 0, upper)
-        for i in range(lower, upper):
-            if self.layout_x2[i] >= min_x:
-                bubble_id = self.layout_ids[i]
-                bubbles.append(self[bubble_id])
+        top_ids = [self.layout_ids[i] for i in range(lower, upper)
+                   if self.layout_x2[i] >= min_x]
+        bubbles = self._get_many(top_ids)
 
         if as_chains:
             return self.create_chains(bubbles)

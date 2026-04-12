@@ -160,16 +160,21 @@ def get_all_bubble_ids_from_chain(dir, chain_id):
     rows = cur.fetchall()
     return [row["id"] for row in rows]
 
-def get_bubbles_batch(dir, bubble_ids, gfaidx):
-    """Load multiple Bubble objects in a single SQL query."""
+def get_bubbles_batch(dir, bubble_ids, gfaidx, chunk_size=500):
+    """Load multiple Bubble objects with chunked `WHERE id IN (...)` queries.
+
+    Chunked to stay under SQLite's default 999-parameter limit.
+    """
     if not bubble_ids:
         return []
     cur = get_connection(dir).cursor()
-    placeholders = ','.join('?' * len(bubble_ids))
-    cur.execute(f"SELECT * FROM bubbles WHERE id IN ({placeholders})", bubble_ids)
     row_map = {}
-    for row in cur.fetchall():
-        row_map[row["id"]] = create_bubble(row, gfaidx)
+    for i in range(0, len(bubble_ids), chunk_size):
+        chunk = bubble_ids[i:i + chunk_size]
+        placeholders = ','.join('?' * len(chunk))
+        cur.execute(f"SELECT * FROM bubbles WHERE id IN ({placeholders})", chunk)
+        for row in cur.fetchall():
+            row_map[row["id"]] = create_bubble(row, gfaidx)
     # Return in the order requested
     return [row_map[bid] for bid in bubble_ids if bid in row_map]
 
