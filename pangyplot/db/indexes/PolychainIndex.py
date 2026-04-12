@@ -50,8 +50,12 @@ class PolychainIndex:
         log.header("Building polychain index.")
 
         with log.step("🫧", "Loading top-level bubbles"):
-            all_chains = bubbleidx.get_top_level_bubbles_by_layout(
-                float('-inf'), float('inf'), as_chains=True)
+            bubbles = bubbleidx.get_top_level_bubbles_by_layout(
+                float('-inf'), float('inf'), as_chains=False)
+        log.summary(f"{len(bubbles)} top-level bubbles.")
+
+        with log.step("🔗", "Assembling chains"):
+            all_chains = bubbleidx.create_chains(bubbles)
         log.summary(f"{len(all_chains)} top-level chains.")
 
         entries = []  # (x1, x2, chain_id)
