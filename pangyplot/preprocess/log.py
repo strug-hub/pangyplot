@@ -1,14 +1,27 @@
 """Shared logger helpers for `pangyplot add` preprocessing output.
 
-Three shapes match the existing CLI hierarchy:
-  header(msg)         -> "→ {msg}"
-  info(emoji, msg)    -> "   {emoji} {msg}"            (no timing)
-  step(emoji, msg)    -> "   {emoji} {msg}... Done. Took {x:.1f} seconds."  (context manager)
-  summary(msg)        -> "      {msg}"                 (stat line, nested under a step)
+Four shapes match the CLI hierarchy:
+  section(msg)        -> "→ {msg}" + closing "← {msg}: total X.Xs" (context manager)
+  header(msg)         -> "→ {msg}"                              (no timing, no context)
+  info(emoji, msg)    -> "   {emoji} {msg}"                      (no timing)
+  step(emoji, msg)    -> "   {emoji} {msg}... Done. Took {x:.1f} seconds." (context manager)
+  summary(msg)        -> "      {msg}"                           (stat line under a step)
+
+Every `section` and `step` enter also records its duration into the
+module-level `_timings` list so callers can dump a timings.tsv via
+`write_timings(path)`. `reset_timings()` clears state for a new run.
 """
 
 import time
 from contextlib import contextmanager
+
+
+_timings = []        # list of (key, seconds) in order produced
+_section_stack = []  # list of active section names, for hierarchical keys
+
+
+def _key(name):
+    return "/".join(_section_stack + [name]) if _section_stack else name
 
 
 def header(msg):
@@ -24,10 +37,53 @@ def summary(msg):
 
 
 @contextmanager
-def step(emoji, msg):
-    print(f"   {emoji} {msg}...", end="", flush=True)
+def section(msg, key=None):
+    """Timed section. `key` is the short timing-file label (defaults to
+    a slug of `msg`)."""
+    print(f"→ {msg}", flush=True)
+    k = key or _slug(msg)
+    full_key = _key(k)
+    _section_stack.append(k)
     t0 = time.time()
     try:
         yield
     finally:
-        print(f" Done. Took {time.time() - t0:.1f} seconds.")
+        elapsed = time.time() - t0
+        _section_stack.pop()
+        _timings.append((full_key, elapsed))
+        label = msg.rstrip(".")
+        print(f"← {label}: total {elapsed:.1f}s.", flush=True)
+
+
+@contextmanager
+def step(emoji, msg, key=None):
+    print(f"   {emoji} {msg}...", end="", flush=True)
+    k = key or _slug(msg)
+    full_key = _key(k)
+    t0 = time.time()
+    try:
+        yield
+    finally:
+        elapsed = time.time() - t0
+        _timings.append((full_key, elapsed))
+        print(f" Done. Took {elapsed:.1f} seconds.")
+
+
+def _slug(msg):
+    """Turn a display message into a short, stable timing-key slug."""
+    s = msg.strip().rstrip(".").lower()
+    # Drop anything past the first colon (e.g. file paths in "Parsing GFA file: x.gfa")
+    s = s.split(":", 1)[0].strip()
+    return "_".join(s.split())
+
+
+def reset_timings():
+    _timings.clear()
+    _section_stack.clear()
+
+
+def write_timings(path):
+    """Dump recorded timings to `path` as key\\tvalue (seconds)."""
+    with open(path, "w") as f:
+        for k, v in _timings:
+            f.write(f"{k}\t{v:.3f}\n")

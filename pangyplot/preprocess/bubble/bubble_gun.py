@@ -54,32 +54,31 @@ def to_bubblegun_obj(segment_idx, link_idx):
     return nodes
 
 def shoot(segment_idx, link_idx, chr_path, ref):
-    log.header("Finding bubbles.")
+    with log.section("Finding bubbles."):
+        graph = BubbleGunGraph.Graph()
 
-    graph = BubbleGunGraph.Graph()
+        with log.step("🔫", "Loading BubbleGun"):
+            graph.nodes = to_bubblegun_obj(segment_idx, link_idx)
 
-    with log.step("🔫", "Loading BubbleGun"):
-        graph.nodes = to_bubblegun_obj(segment_idx, link_idx)
+        with log.step("🗜️ ", "Compacting graph"):
+            before = len(graph.nodes)
+            compacter.compact_graph(graph)
+            after = len(graph.nodes)
+        log.summary(f"{before - after} segments were compacted.")
 
-    with log.step("🗜️ ", "Compacting graph"):
-        before = len(graph.nodes)
-        compacter.compact_graph(graph)
-        after = len(graph.nodes)
-    log.summary(f"{before - after} segments were compacted.")
+        # Free sequence strings — only seq_len and optional_info are needed from here on
+        for node in graph.nodes.values():
+            node.seq = ""
 
-    # Free sequence strings — only seq_len and optional_info are needed from here on
-    for node in graph.nodes.values():
-        node.seq = ""
+        with log.step("⛓️ ", "Finding bubbles and chains"):
+            BubbleGunFindBubbles.find_bubbles(graph)
+            BubbleGunConnectBubbles.connect_bubbles(graph)
+            BubbleGunFindParents.find_parents(graph)
 
-    with log.step("⛓️ ", "Finding bubbles and chains"):
-        BubbleGunFindBubbles.find_bubbles(graph)
-        BubbleGunConnectBubbles.connect_bubbles(graph)
-        BubbleGunFindParents.find_parents(graph)
+        bubbleCount = graph.bubble_number()
+        log.summary(f"Simple Bubbles: {bubbleCount[0]}, Superbubbles: {bubbleCount[1]}, Insertions: {bubbleCount[2]}")
 
-    bubbleCount = graph.bubble_number()
-    log.summary(f"Simple Bubbles: {bubbleCount[0]}, Superbubbles: {bubbleCount[1]}, Insertions: {bubbleCount[2]}")
-
-    with log.step("💾", "Indexing bubbles"):
-        indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
+        with log.step("💾", "Indexing bubbles"):
+            indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
 
     return graph

@@ -3,17 +3,21 @@ import time
 import shutil
 from sqlite3 import OperationalError
 
+from pangyplot.preprocess import log
 from pangyplot.preprocess.parser.parse_gfa import parse_gfa
 from pangyplot.preprocess.parser.parse_layout import parse_layout
 import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
-from pangyplot.preprocess.skeleton.generate_skeleton import generate_skeleton
+from pangyplot.preprocess.skeleton.generate_skeleton import generate_skeleton, export_polychain_section
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 
+TIMINGS_FILENAME = "timings.tsv"
+
 def pangyplot_add(args):
     start_time = time.time()
+    log.reset_timings()
 
     datastore_path = os.path.join(args.dir, "graphs", args.db)
     
@@ -53,11 +57,17 @@ def pangyplot_add(args):
     gfa_index = GFAIndex(chr_path)
     step_index = StepIndex(chr_path, args.ref)
     bubble_index = BubbleIndex(chr_path, gfa_index)
-    polychain_index = PolychainIndex(chr_path, bubble_index, gfa_index, step_index, args.ref)
+
+    with log.section("Building polychain index."):
+        polychain_index = PolychainIndex(chr_path, bubble_index, gfa_index, step_index, args.ref)
+        export_polychain_section(chr_path, gfa_index, args.ref)
 
     generate_skeleton(chr_path, args.ref, args.chr)
 
     elapsed = time.time() - start_time
+    log._timings.append(("total", elapsed))
+    log.write_timings(os.path.join(chr_path, TIMINGS_FILENAME))
+
     minutes, seconds = divmod(elapsed, 60)
     if minutes > 0:
         print(f"\nCompleted in {int(minutes)}m {seconds:.1f}s")

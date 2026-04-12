@@ -47,8 +47,6 @@ class PolychainIndex:
 
         seg_index = gfaidx.segment_index
 
-        log.header("Building polychain index.")
-
         with log.step("🫧", "Loading top-level bubbles"):
             bubbles = bubbleidx.get_top_level_bubbles_by_layout(
                 float('-inf'), float('inf'), as_chains=False)

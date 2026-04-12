@@ -19,7 +19,7 @@ from pangyplot.preprocess.skeleton.skeleton_pipeline import (
     VIEWER_GRID_SIZES, compute_grid_sizes,
     compute_degrees, find_junctions, find_linear_runs, run_to_polyline,
     load_segment_to_bubble, compute_run_chain_ids,
-    export_binary, print_grid_levels,
+    export_binary, summarize_grid_levels,
 )
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
 from pangyplot.preprocess.spine.spine_builder import generate_spine, spine_filename
@@ -37,42 +37,47 @@ def generate_skeleton(chr_dir, ref, chrom):
     meta_path = os.path.join(skel_dir, SKELETON_META)
     bin_path = os.path.join(skel_dir, SKELETON_BIN)
 
-    log.header("Building skeleton.")
+    with log.section("Building skeleton."):
+        with log.step("🦴", "Computing graph topology"):
+            gfaidx = GFAIndex(chr_dir)
+            segment_index = gfaidx.segment_index
+            link_index = gfaidx.link_index
+            degrees = compute_degrees(link_index)
+            junctions = find_junctions(degrees)
+            runs = find_linear_runs(gfaidx, junctions, segment_index)
 
-    with log.step("🦴", "Computing graph topology"):
-        gfaidx = GFAIndex(chr_dir)
-        segment_index = gfaidx.segment_index
-        link_index = gfaidx.link_index
-        degrees = compute_degrees(link_index)
-        junctions = find_junctions(degrees)
-        runs = find_linear_runs(gfaidx, junctions, segment_index)
+        with log.step("📐", "Building polylines"):
+            polylines = [run_to_polyline(run, segment_index) for run in runs]
 
-    with log.step("📐", "Building polylines"):
-        polylines = [run_to_polyline(run, segment_index) for run in runs]
+        with log.step("🧬", "Building reference spine"):
+            num_steps, num_sampled = generate_spine(chr_dir, ref, segment_index, output_dir=skel_dir)
+        log.summary(f"Reference spine: {num_steps} steps → {num_sampled} sampled points")
 
-    with log.step("🧬", "Building reference spine"):
-        num_steps, num_sampled = generate_spine(chr_dir, ref, segment_index, output_dir=skel_dir)
-    log.summary(f"Reference spine: {num_steps} steps → {num_sampled} sampled points")
+        with log.step("⛓️ ", "Annotating chains"):
+            seg_to_bubble = load_segment_to_bubble(chr_dir)
+            bubble_to_chain = bubble_db.get_bubble_chain_map(chr_dir)
+            chain_stats = bubble_db.get_chain_stats(chr_dir)
+            chain_ids = None
+            mapped = 0
+            if seg_to_bubble is not None and bubble_to_chain is not None:
+                chain_ids, mapped = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
+        if chain_ids is not None:
+            log.summary(f"Chain annotation: {mapped}/{len(runs)} runs mapped ({100*mapped/max(1,len(runs)):.1f}%)")
 
-    with log.step("⛓️ ", "Annotating chains"):
-        seg_to_bubble = load_segment_to_bubble(chr_dir)
-        bubble_to_chain = bubble_db.get_bubble_chain_map(chr_dir)
-        chain_stats = bubble_db.get_chain_stats(chr_dir)
-        chain_ids = None
-        mapped = 0
-        if seg_to_bubble is not None and bubble_to_chain is not None:
-            chain_ids, mapped = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
-    if chain_ids is not None:
-        log.summary(f"Chain annotation: {mapped}/{len(runs)} runs mapped ({100*mapped/max(1,len(runs)):.1f}%)")
+        with log.step("💾", "Exporting skeleton"):
+            grid_sizes = compute_grid_sizes(segment_index)
+            export_stats = export_binary(junctions, runs, segment_index, link_index, polylines,
+                                         grid_sizes, meta_path, bin_path, chromosome=chrom,
+                                         chain_ids=chain_ids, chain_stats=chain_stats)
+        log.summary(summarize_grid_levels(export_stats))
 
-    with log.step("💾", "Exporting skeleton"):
-        grid_sizes = compute_grid_sizes(segment_index)
-        export_stats = export_binary(junctions, runs, segment_index, link_index, polylines,
-                                     grid_sizes, meta_path, bin_path, chromosome=chrom,
-                                     chain_ids=chain_ids, chain_stats=chain_stats)
-    print_grid_levels(export_stats)
+        with log.step("📊", "Computing graph metadata"):
+            generate_meta(chr_dir, ref, chrom)
 
-    with log.step("🔗", "Exporting polychain data"):
+
+def export_polychain_section(chr_dir, gfaidx, ref):
+    """Write polychain-data.json.gz as a step under `Building polychain index.`."""
+    with log.step("📤", "Exporting polychain data"):
         pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
         pc_stats = export_polychain_data(chr_dir, gfaidx, ref, pd_path)
     if pc_stats is None:
@@ -83,9 +88,6 @@ def generate_skeleton(chr_dir, ref, chrom):
         log.summary(f"{pc_stats['chains']} chains, "
                     f"{pc_stats['junc_segs']} junc segs, "
                     f"{pc_stats['junc_links']} junc links")
-
-    with log.step("📊", "Computing graph metadata"):
-        generate_meta(chr_dir, ref, chrom)
 
 
 def _skeleton_version(meta_path):

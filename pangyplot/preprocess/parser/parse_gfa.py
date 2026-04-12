@@ -126,29 +126,28 @@ def _parse_segments_and_links(gfa_file, layout_coords, path_idx, path_dict, dir)
     return segment_idx, link_idx, seg_count, lnk_count
 
 def parse_gfa(gfa_file, ref, path, ref_offset, path_sep, layout_coords, dir):
-    log.header(f"Parsing GFA file: {gfa_file}.")
+    with log.section(f"Parsing GFA file: {gfa_file}."):
+        if path:
+            log.info("🔍", f"Looking for path: {ref} (reference genome = {ref})")
+            ref_path = path
+        else:
+            log.info("🔎", f"Looking for reference path with name: {ref}")
+            ref_path = ref
 
-    if path:
-        log.info("🔍", f"Looking for path: {ref} (reference genome = {ref})")
-        ref_path = path
-    else:
-        log.info("🔎", f"Looking for reference path with name: {ref}")
-        ref_path = ref
+        # ==== PASS 1: PATHS ====
+        with log.step("🧵", "Gathering paths from GFA"):
+            path_idx, path_dict, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset, path_sep, dir)
+            reference_path, matching_refs = reference_info
+        verify_reference(reference_path, matching_refs)
 
-    # ==== PASS 1: PATHS ====
-    with log.step("🧵", "Gathering paths from GFA"):
-        path_idx, path_dict, reference_info = parse_paths(get_reader(gfa_file), ref_path, ref_offset, path_sep, dir)
-        reference_path, matching_refs = reference_info
-    verify_reference(reference_path, matching_refs)
+        # ==== PASS 2: SEGMENTS + LINKS (single file read) ====
+        with log.step("🍡", "Gathering segments and links from GFA"):
+            segment_idx, link_idx, seg_count, lnk_count = _parse_segments_and_links(
+                gfa_file, layout_coords, path_idx, path_dict, dir
+            )
+        log.summary(f"{seg_count} segments, {lnk_count} links total.")
 
-    # ==== PASS 2: SEGMENTS + LINKS (single file read) ====
-    with log.step("🍡", "Gathering segments and links from GFA"):
-        segment_idx, link_idx, seg_count, lnk_count = _parse_segments_and_links(
-            gfa_file, layout_coords, path_idx, path_dict, dir
-        )
-    log.summary(f"{seg_count} segments, {lnk_count} links total.")
-
-    # ==== STEP INDEX ====
-    write_step_index(segment_idx, ref, reference_path, dir)
+        # ==== STEP INDEX ====
+        write_step_index(segment_idx, ref, reference_path, dir)
 
     return path_idx, segment_idx, link_idx
