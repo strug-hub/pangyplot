@@ -3,6 +3,13 @@
 Loaded once at chromosome init; the frontend manages viewport filtering.
 Mirrors the data that get_detail_tile() produces per-request, but
 precomputed for the full chromosome.
+
+Two-pass to keep peak memory low: pass 1 reads only the lightweight
+fields needed to compute the junction graph (polyline endpoints, seg
+lists, bubble ids); pass 2 re-streams the decomp files directly into
+the output gzip without ever holding every chain's full polyline in
+memory at once. On chromosome-scale graphs this is the difference
+between a few hundred MB and tens of GB.
 """
 
 import gzip
@@ -13,6 +20,41 @@ import numpy as np
 
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
+
+
+# Fields stripped from chain dicts when writing the merged file
+_STRIP_FIELDS = (
+    "_layout_span",
+    "_start_seg",
+    "_end_seg",
+    "_min_step",
+    "_max_step",
+    "_bubble_ids",
+)
+
+
+def _iter_decomp_files(decomp_dir):
+    for fname in sorted(os.listdir(decomp_dir)):
+        if fname.endswith(".json.gz"):
+            yield os.path.join(decomp_dir, fname)
+
+
+def _summarize_chain(cd):
+    """Lightweight summary with just what find_junction_graph + the
+    bypass/junction packing read. The full polyline is replaced with a
+    two-point [first, last] stub so downstream code that accesses
+    `pl[0]`/`pl[-1]` works unchanged."""
+    pl = cd.get("polyline")
+    stub = [pl[0], pl[-1]] if pl and len(pl) >= 2 else None
+    return {
+        "id": cd.get("id"),
+        "source_segs": cd.get("source_segs") or [],
+        "sink_segs": cd.get("sink_segs") or [],
+        "_start_seg": cd.get("_start_seg"),
+        "_end_seg": cd.get("_end_seg"),
+        "polyline": stub,
+        "bubble_ids": cd.get("bubble_ids") or cd.get("_bubble_ids") or [],
+    }
 
 
 def export_polychain_data(chr_dir, gfaidx, ref, output_path):
@@ -28,45 +70,42 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
     step_index = StepIndex(chr_dir, ref)
     bubbleidx = BubbleIndex(chr_dir, gfaidx)
 
-    # --- 1. Merge ALL decomp files (entire chromosome) ---
     decomp_dir = os.path.join(chr_dir, "polychains.mmapindex", "decomp")
-    all_chains = []
+
+    # --- Pass 1: lightweight summaries ---------------------------------
+    chain_summaries = []
     all_bypass_seg_ids = set()
     all_bypass_gfa_links = []
     all_decomposed_bubbles = set()
     decomp_adj = {}
     bid_to_chain = {}
 
-    for fname in os.listdir(decomp_dir):
-        if not fname.endswith(".json.gz"):
-            continue
-        with gzip.open(os.path.join(decomp_dir, fname), 'rt') as f:
+    for path in _iter_decomp_files(decomp_dir):
+        with gzip.open(path, 'rt') as f:
             decomp = json.load(f)
         for cd in decomp.get("chains", []):
-            # Keep _pl_x_min/_pl_x_max for frontend viewport filtering
-            # Keep _start_seg/_end_seg for bypass merge
-            # Keep _bubble_ids for bid_to_chain mapping
             bubble_ids = cd.get("_bubble_ids") or cd.get("bubble_ids") or []
             for bid in bubble_ids:
                 bid_to_chain[bid] = cd.get("id")
-            all_chains.append(cd)
+            chain_summaries.append(_summarize_chain(cd))
         all_bypass_seg_ids.update(decomp.get("bypass_seg_ids", []))
         all_bypass_gfa_links.extend(decomp.get("bypass_gfa_links", []))
         all_decomposed_bubbles.update(decomp.get("decomposed_bubbles", []))
         for k, v in decomp.get("adjacency", {}).items():
             decomp_adj.setdefault(k, set()).update(v)
+        # decomp dict (including full polylines) drops out of scope here.
 
-    if not all_chains:
+    if not chain_summaries:
         return {"chains": 0, "junc_segs": 0, "junc_links": 0}
 
-    # --- 2. Run BFS for full junction graph ---
+    # --- Junction graph -------------------------------------------------
     junction_nodes, junction_links, junction_adj, \
         naked_visited, naked_seg_chains = \
         find_junction_graph(
-            all_chains, gfaidx, bubbleidx, seg_index,
+            chain_summaries, gfaidx, bubbleidx, seg_index,
             decomposed_bubbles=all_decomposed_bubbles)
 
-    # --- 3. Merge bypass segments ---
+    # --- Bypass segments -----------------------------------------------
     if all_bypass_seg_ids:
         bypass_centroids = {}
         existing_coords = {tuple(c) for c in junction_nodes}
@@ -80,7 +119,7 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
                     existing_coords.add(tuple(coord))
 
         endpoint_coords = {}
-        for cd in all_chains:
+        for cd in chain_summaries:
             pl = cd.get("polyline")
             if not pl or len(pl) < 2:
                 continue
@@ -90,10 +129,10 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
                 endpoint_coords[start_seg] = pl[0]
             if end_seg is not None:
                 endpoint_coords[end_seg] = pl[-1]
-            for sid in (cd.get("source_segs") or []):
+            for sid in cd.get("source_segs") or []:
                 if sid not in endpoint_coords:
                     endpoint_coords[sid] = pl[0]
-            for sid in (cd.get("sink_segs") or []):
+            for sid in cd.get("sink_segs") or []:
                 if sid not in endpoint_coords:
                     endpoint_coords[sid] = pl[-1]
 
@@ -126,9 +165,9 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
                 if cb:
                     _add_link(ca, cb, sid, nxt)
 
-    # --- 4. Pack junction segments as compact arrays ---
+    # --- Pack junction segments ----------------------------------------
     chain_endpoint_segs = set()
-    for cd in all_chains:
+    for cd in chain_summaries:
         chain_endpoint_segs.update(cd.get("source_segs") or [])
         chain_endpoint_segs.update(cd.get("sink_segs") or [])
     all_junction_seg_ids = (naked_visited | all_bypass_seg_ids) - chain_endpoint_segs
@@ -148,8 +187,7 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
         junc_gc.append(int(seg_index.gc_count[sid]))
         junc_id_set.add(sid)
 
-    # --- 4b. Add orphan segments (tips/dangles not in any bubble or chain) ---
-    orphan_count = 0
+    # Orphan segments (tips/dangles not in any bubble or chain)
     for sid in range(len(seg_index.valid)):
         if not seg_index.valid[sid]:
             continue
@@ -157,7 +195,6 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
             continue
         if bubbleidx.segment_in_bubble(sid, include_boundary=True) is not None:
             continue
-        # Orphan — add to junction arrays
         junc_ids.append(int(sid))
         junc_x1.append(round(float(seg_index.x1[sid]), 1))
         junc_y1.append(round(float(seg_index.y1[sid]), 1))
@@ -166,7 +203,6 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
         junc_lengths.append(int(seg_index.length[sid]))
         junc_gc.append(int(seg_index.gc_count[sid]))
         junc_id_set.add(sid)
-        orphan_count += 1
 
     # GFA links between junction segments
     junc_links = []
@@ -180,12 +216,12 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
                 junc_link_seen.add(key)
                 junc_links.append([int(from_id), int(to_id)])
 
-    # --- 5. Build junction_seg_chains ---
+    # --- junction_seg_chains -------------------------------------------
     ep_to_chain = {}
-    for cd in all_chains:
-        for sid in (cd.get("source_segs") or []):
+    for cd in chain_summaries:
+        for sid in cd.get("source_segs") or []:
             ep_to_chain[sid] = cd["id"]
-        for sid in (cd.get("sink_segs") or []):
+        for sid in cd.get("sink_segs") or []:
             ep_to_chain[sid] = cd["id"]
 
     for sid in all_bypass_seg_ids:
@@ -194,7 +230,6 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
             if cid:
                 naked_seg_chains.setdefault(sid, set()).add(cid)
 
-    # Map internal bubble segs in junction links to their chain
     for from_id, to_id in junc_links:
         for seg_id in (from_id, to_id):
             if seg_id in junc_id_set or seg_id in chain_endpoint_segs:
@@ -212,41 +247,19 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
         f"s{k}": sorted(v) for k, v in naked_seg_chains.items()
     }
 
-    # --- 6. Merge adjacency ---
+    # --- Merge adjacency -----------------------------------------------
     chain_adjacency = {}
     for src in (decomp_adj, junction_adj):
         for k, v in src.items():
             chain_adjacency.setdefault(k, set()).update(v)
     chain_adjacency = {k: sorted(v) for k, v in chain_adjacency.items()}
 
-    # --- 7. Strip internal fields from chains ---
-    for cd in all_chains:
-        cd.pop("_layout_span", None)
-        cd.pop("_start_seg", None)
-        cd.pop("_end_seg", None)
-        cd.pop("_min_step", None)
-        cd.pop("_max_step", None)
-        cd.pop("_bubble_ids", None)
-        # Keep _pl_x_min/_pl_x_max for frontend viewport filtering
-        cd["popped"] = False
-        cd["graph"] = None
+    # Free the big pass-1 scratch state before streaming pass 2.
+    n_chains = len(chain_summaries)
+    del chain_summaries, ep_to_chain, naked_seg_chains, naked_visited
+    del decomp_adj, junction_adj, bid_to_chain
 
-    # --- 8. Write output ---
-    data = {
-        "chains": all_chains,
-        "junction": {
-            "ids": junc_ids,
-            "x1": junc_x1, "y1": junc_y1,
-            "x2": junc_x2, "y2": junc_y2,
-            "lengths": junc_lengths, "gcCounts": junc_gc,
-            "links": junc_links,
-            "segChains": junction_seg_chains,
-        },
-        "junctionNodes": junction_nodes,
-        "junctionLinks": junction_links,
-        "chainAdjacency": chain_adjacency,
-    }
-
+    # --- Pass 2: stream chains from disk -> output --------------------
     def _default(obj):
         if isinstance(obj, (np.integer,)):
             return int(obj)
@@ -256,11 +269,43 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
             return sorted(obj)
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
-    with gzip.open(output_path, 'wt', encoding='utf-8') as f:
-        json.dump(data, f, default=_default)
+    junction = {
+        "ids": junc_ids,
+        "x1": junc_x1, "y1": junc_y1,
+        "x2": junc_x2, "y2": junc_y2,
+        "lengths": junc_lengths, "gcCounts": junc_gc,
+        "links": junc_links,
+        "segChains": junction_seg_chains,
+    }
+
+    with gzip.open(output_path, 'wt', encoding='utf-8') as fout:
+        fout.write('{"chains":[')
+        first = True
+        for path in _iter_decomp_files(decomp_dir):
+            with gzip.open(path, 'rt') as fin:
+                decomp = json.load(fin)
+            for cd in decomp.get("chains", []):
+                for k in _STRIP_FIELDS:
+                    cd.pop(k, None)
+                cd["popped"] = False
+                cd["graph"] = None
+                if not first:
+                    fout.write(',')
+                json.dump(cd, fout, default=_default)
+                first = False
+            # decomp drops out of scope each iteration → memory released.
+        fout.write('],"junction":')
+        json.dump(junction, fout, default=_default)
+        fout.write(',"junctionNodes":')
+        json.dump(junction_nodes, fout, default=_default)
+        fout.write(',"junctionLinks":')
+        json.dump(junction_links, fout, default=_default)
+        fout.write(',"chainAdjacency":')
+        json.dump(chain_adjacency, fout, default=_default)
+        fout.write('}')
 
     return {
-        "chains": len(all_chains),
+        "chains": n_chains,
         "junc_segs": len(junc_id_set),
         "junc_links": len(junction_links),
     }
