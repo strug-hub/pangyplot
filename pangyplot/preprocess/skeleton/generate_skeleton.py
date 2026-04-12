@@ -8,8 +8,8 @@ Public API:
 import gzip
 import os
 import re
-import time
 
+from pangyplot.preprocess import log
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.db.sqlite import bubble_db
@@ -19,7 +19,7 @@ from pangyplot.preprocess.skeleton.skeleton_pipeline import (
     VIEWER_GRID_SIZES, compute_grid_sizes,
     compute_degrees, find_junctions, find_linear_runs, run_to_polyline,
     load_segment_to_bubble, compute_run_chain_ids,
-    export_binary,
+    export_binary, print_grid_levels,
 )
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
 from pangyplot.preprocess.spine.spine_builder import generate_spine, spine_filename
@@ -37,55 +37,55 @@ def generate_skeleton(chr_dir, ref, chrom):
     meta_path = os.path.join(skel_dir, SKELETON_META)
     bin_path = os.path.join(skel_dir, SKELETON_BIN)
 
-    print("→ Building skeleton.")
+    log.header("Building skeleton.")
 
-    def _step(msg):
-        print(f"   {msg}...", end="", flush=True)
-        return time.time()
-    def _done(t0):
-        print(f" Done. Took {time.time() - t0:.1f}s.")
+    with log.step("🦴", "Computing graph topology"):
+        gfaidx = GFAIndex(chr_dir)
+        segment_index = gfaidx.segment_index
+        link_index = gfaidx.link_index
+        degrees = compute_degrees(link_index)
+        junctions = find_junctions(degrees)
+        runs = find_linear_runs(gfaidx, junctions, segment_index)
 
-    t0 = _step("🦴 Computing graph topology")
-    gfaidx = GFAIndex(chr_dir)
-    segment_index = gfaidx.segment_index
-    link_index = gfaidx.link_index
-    degrees = compute_degrees(link_index)
-    junctions = find_junctions(degrees)
-    runs = find_linear_runs(gfaidx, junctions, segment_index)
-    _done(t0)
+    with log.step("📐", "Building polylines"):
+        polylines = [run_to_polyline(run, segment_index) for run in runs]
 
-    t0 = _step("📐 Building polylines")
-    polylines = [run_to_polyline(run, segment_index) for run in runs]
-    _done(t0)
+    with log.step("🧬", "Building reference spine"):
+        num_steps, num_sampled = generate_spine(chr_dir, ref, segment_index, output_dir=skel_dir)
+    log.summary(f"Reference spine: {num_steps} steps → {num_sampled} sampled points")
 
-    t0 = _step("🧬 Building reference spine")
-    generate_spine(chr_dir, ref, segment_index, output_dir=skel_dir)
-    _done(t0)
+    with log.step("⛓️ ", "Annotating chains"):
+        seg_to_bubble = load_segment_to_bubble(chr_dir)
+        bubble_to_chain = bubble_db.get_bubble_chain_map(chr_dir)
+        chain_stats = bubble_db.get_chain_stats(chr_dir)
+        chain_ids = None
+        mapped = 0
+        if seg_to_bubble is not None and bubble_to_chain is not None:
+            chain_ids, mapped = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
+    if chain_ids is not None:
+        log.summary(f"Chain annotation: {mapped}/{len(runs)} runs mapped ({100*mapped/max(1,len(runs)):.1f}%)")
 
-    t0 = _step("⛓️  Annotating chains")
-    seg_to_bubble = load_segment_to_bubble(chr_dir)
-    bubble_to_chain = bubble_db.get_bubble_chain_map(chr_dir)
-    chain_stats = bubble_db.get_chain_stats(chr_dir)
-    chain_ids = None
-    if seg_to_bubble is not None and bubble_to_chain is not None:
-        chain_ids = compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats)
-    _done(t0)
+    with log.step("💾", "Exporting skeleton"):
+        grid_sizes = compute_grid_sizes(segment_index)
+        export_stats = export_binary(junctions, runs, segment_index, link_index, polylines,
+                                     grid_sizes, meta_path, bin_path, chromosome=chrom,
+                                     chain_ids=chain_ids, chain_stats=chain_stats)
+    print_grid_levels(export_stats)
 
-    t0 = _step("💾 Exporting skeleton")
-    grid_sizes = compute_grid_sizes(segment_index)
-    export_binary(junctions, runs, segment_index, link_index, polylines,
-                  grid_sizes, meta_path, bin_path, chromosome=chrom,
-                  chain_ids=chain_ids, chain_stats=chain_stats)
-    _done(t0)
+    with log.step("🔗", "Exporting polychain data"):
+        pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
+        pc_stats = export_polychain_data(chr_dir, gfaidx, ref, pd_path)
+    if pc_stats is None:
+        log.summary("(no PolychainIndex, skipping)")
+    elif pc_stats["chains"] == 0:
+        log.summary("(no chains)")
+    else:
+        log.summary(f"{pc_stats['chains']} chains, "
+                    f"{pc_stats['junc_segs']} junc segs, "
+                    f"{pc_stats['junc_links']} junc links")
 
-    t0 = _step("🔗 Exporting polychain data")
-    pd_path = os.path.join(chr_dir, POLYCHAIN_DATA_FILENAME)
-    export_polychain_data(chr_dir, gfaidx, ref, pd_path)
-    _done(t0)
-
-    t0 = _step("📊 Computing graph metadata")
-    generate_meta(chr_dir, ref, chrom)
-    _done(t0)
+    with log.step("📊", "Computing graph metadata"):
+        generate_meta(chr_dir, ref, chrom)
 
 
 def _skeleton_version(meta_path):

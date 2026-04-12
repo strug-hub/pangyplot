@@ -12,6 +12,7 @@ import os
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db import db_utils
 from pangyplot.version import __version__
+from pangyplot.preprocess import log
 
 
 def spine_filename(ref):
@@ -48,7 +49,6 @@ def build_reference_spine(step_index, segment_index, stride=50):
         if not spine or spine[-1] != last:
             spine.append(last)
 
-    print(f"Reference spine: {len(points)} steps → {len(spine)} sampled points")
     return spine
 
 
@@ -62,15 +62,17 @@ def export_spine(spine, output_path):
     with gzip.open(output_path, 'wt', encoding='utf-8') as f:
         f.write(encoder.encode(data))
 
-    size_kb = os.path.getsize(output_path) / 1024
-    print(f"Exported {output_path} ({size_kb:.0f} KB)")
-
 
 def generate_spine(chr_dir, ref, segment_index, output_dir=None):
-    """Build and export spine for a single chromosome + reference."""
+    """Build and export spine for a single chromosome + reference.
+
+    Returns (num_steps, num_sampled) for caller-side reporting.
+    """
     step_index = StepIndex(chr_dir, ref)
     spine = build_reference_spine(step_index, segment_index)
+    num_steps = sum(1 for sid in step_index.segments
+                    if sid < len(segment_index.valid) and segment_index.valid[sid])
     out = output_dir if output_dir is not None else chr_dir
     output_path = os.path.join(out, spine_filename(ref))
     export_spine(spine, output_path)
-    return spine
+    return num_steps, len(spine)

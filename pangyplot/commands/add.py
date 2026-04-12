@@ -50,30 +50,10 @@ def pangyplot_add(args):
 
     bubble_gun.shoot(segment_idx, link_idx, chr_path, args.ref)
 
-    try:
-        from pympler.asizeof import asizeof
-        have_pympler = True
-    except ImportError:
-        have_pympler = False
-        def asizeof(obj):  # fallback no-op
-            return 0
-
-    print(f"---")
     gfa_index = GFAIndex(chr_path)
-    if have_pympler:
-        print(f"gfa_index size:      {asizeof(gfa_index) / 1024**2:.2f} MB")
-    
     step_index = StepIndex(chr_path, args.ref)
-    if have_pympler:
-        print(f"step_index size:      {asizeof(step_index) / 1024**2:.2f} MB")
-    
     bubble_index = BubbleIndex(chr_path, gfa_index)
-    if have_pympler:
-        print(f"bubble_index size:      {asizeof(bubble_index) / 1024**2:.2f} MB")
-
     polychain_index = PolychainIndex(chr_path, bubble_index, gfa_index, step_index, args.ref)
-    if have_pympler:
-        print(f"polychain_index size:   {asizeof(polychain_index) / 1024**2:.2f} MB")
 
     generate_skeleton(chr_path, args.ref, args.chr)
 

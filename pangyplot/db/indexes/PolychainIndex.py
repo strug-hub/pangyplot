@@ -14,6 +14,7 @@ from functools import lru_cache
 import numpy as np
 
 import pangyplot.db.db_utils as utils
+from pangyplot.preprocess import log
 from pangyplot.version import __version__
 
 QUICK_INDEX = "polychains.quickindex.json"
@@ -46,65 +47,67 @@ class PolychainIndex:
 
         seg_index = gfaidx.segment_index
 
-        all_chains = bubbleidx.get_top_level_bubbles_by_layout(
-            float('-inf'), float('inf'), as_chains=True)
+        log.header("Building polychain index.")
 
-        print(f"  [PolychainIndex] Building from {len(all_chains)} top-level chains...")
+        with log.step("🫧", "Loading top-level bubbles"):
+            all_chains = bubbleidx.get_top_level_bubbles_by_layout(
+                float('-inf'), float('inf'), as_chains=True)
+        log.summary(f"{len(all_chains)} top-level chains.")
 
         entries = []  # (x1, x2, chain_id)
         self._decompositions = {}
 
-        for chain in all_chains:
-            r = decompose_chain(
-                chain, CANONICAL_EXPAND_THRESHOLD, None,
-                bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=5)
+        with log.step("🧩", "Decomposing chains"):
+            for chain in all_chains:
+                r = decompose_chain(
+                    chain, CANONICAL_EXPAND_THRESHOLD, None,
+                    bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=5)
 
-            if not r["chains"]:
-                continue
+                if not r["chains"]:
+                    continue
 
-            # Layout x range from bubble bboxes (matches BubbleIndex behavior)
-            chain_min_x = float('inf')
-            chain_max_x = float('-inf')
-            for b in chain.bubbles:
-                bx1 = min(b.x1, b.x2)
-                bx2 = max(b.x1, b.x2)
-                if bx1 < chain_min_x:
-                    chain_min_x = bx1
-                if bx2 > chain_max_x:
-                    chain_max_x = bx2
+                # Layout x range from bubble bboxes (matches BubbleIndex behavior)
+                chain_min_x = float('inf')
+                chain_max_x = float('-inf')
+                for b in chain.bubbles:
+                    bx1 = min(b.x1, b.x2)
+                    bx2 = max(b.x1, b.x2)
+                    if bx1 < chain_min_x:
+                        chain_min_x = bx1
+                    if bx2 > chain_max_x:
+                        chain_max_x = bx2
 
-            if chain_min_x == float('inf'):
-                continue
+                if chain_min_x == float('inf'):
+                    continue
 
-            # Precompute per-sub-chain x ranges for viewport filtering
-            for cd in r["chains"]:
-                pl = cd.get("polyline", [])
-                if pl:
-                    cd["_pl_x_min"] = min(pt[0] for pt in pl)
-                    cd["_pl_x_max"] = max(pt[0] for pt in pl)
+                # Precompute per-sub-chain x ranges for viewport filtering
+                for cd in r["chains"]:
+                    pl = cd.get("polyline", [])
+                    if pl:
+                        cd["_pl_x_min"] = min(pt[0] for pt in pl)
+                        cd["_pl_x_max"] = max(pt[0] for pt in pl)
 
-            decomp = {
-                "chains": r["chains"],
-                "bubbles": r["bubbles"],
-                "adjacency": {k: sorted(v) for k, v in r.get("adjacency", {}).items()},
-                "bypass_links": r.get("bypass_links", []),
-                "bypass_seg_ids": sorted(r.get("bypass_seg_ids", set())),
-                "bypass_gfa_links": r.get("bypass_gfa_links", []),
-                "decomposed_bubbles": sorted(r.get("decomposed_bubbles", set())),
-            }
+                decomp = {
+                    "chains": r["chains"],
+                    "bubbles": r["bubbles"],
+                    "adjacency": {k: sorted(v) for k, v in r.get("adjacency", {}).items()},
+                    "bypass_links": r.get("bypass_links", []),
+                    "bypass_seg_ids": sorted(r.get("bypass_seg_ids", set())),
+                    "bypass_gfa_links": r.get("bypass_gfa_links", []),
+                    "decomposed_bubbles": sorted(r.get("decomposed_bubbles", set())),
+                }
 
-            chain_id = chain.id
-            self._decompositions[chain_id] = decomp
-            entries.append((chain_min_x, chain_max_x, chain_id))
+                chain_id = chain.id
+                self._decompositions[chain_id] = decomp
+                entries.append((chain_min_x, chain_max_x, chain_id))
 
-        # Sort by x1 for bisect
-        entries.sort()
-        self.chain_x1 = [e[0] for e in entries]
-        self.chain_x2 = [e[1] for e in entries]
-        self.chain_ids = [e[2] for e in entries]
-        self._build_prefix_max()
-
-        print(f"  [PolychainIndex] Built {len(self.chain_ids)} chains")
+            # Sort by x1 for bisect
+            entries.sort()
+            self.chain_x1 = [e[0] for e in entries]
+            self.chain_x2 = [e[1] for e in entries]
+            self.chain_ids = [e[2] for e in entries]
+            self._build_prefix_max()
+        log.summary(f"{len(self.chain_ids)} chains built.")
 
     def _build_prefix_max(self):
         n = len(self.chain_x2)
@@ -119,31 +122,30 @@ class PolychainIndex:
     # -- mmap + per-chain file storage ------------------------------------
 
     def _save_mmap_index(self):
-        os.makedirs(self._decomp_dir, exist_ok=True)
+        with log.step("💾", "Saving polychain index"):
+            os.makedirs(self._decomp_dir, exist_ok=True)
 
-        # Flat arrays
-        for name, dtype in ARRAYS.items():
-            arr = getattr(self, name)
-            np.save(os.path.join(self._mmap_dir, f"{name}.npy"),
-                    np.array(arr, dtype=dtype))
+            # Flat arrays
+            for name, dtype in ARRAYS.items():
+                arr = getattr(self, name)
+                np.save(os.path.join(self._mmap_dir, f"{name}.npy"),
+                        np.array(arr, dtype=dtype))
 
-        # Per-chain decompositions
-        for chain_id, decomp in self._decompositions.items():
-            path = os.path.join(self._decomp_dir, f"{chain_id}.json.gz")
-            with gzip.open(path, 'wt', encoding='utf-8') as f:
-                json.dump(decomp, f, cls=utils.NumpyJSONEncoder)
+            # Per-chain decompositions
+            for chain_id, decomp in self._decompositions.items():
+                path = os.path.join(self._decomp_dir, f"{chain_id}.json.gz")
+                with gzip.open(path, 'wt', encoding='utf-8') as f:
+                    json.dump(decomp, f, cls=utils.NumpyJSONEncoder)
 
-        meta = {
-            "version": __version__,
-            "num_chains": len(self.chain_ids),
-        }
-        with open(os.path.join(self._mmap_dir, "meta.json"), "w") as f:
-            json.dump(meta, f)
+            meta = {
+                "version": __version__,
+                "num_chains": len(self.chain_ids),
+            }
+            with open(os.path.join(self._mmap_dir, "meta.json"), "w") as f:
+                json.dump(meta, f)
 
-        # Clear build-time dict — data is now on disk
-        self._decompositions = None
-
-        print(f"  [PolychainIndex] Saved {meta['num_chains']} chains to {self._mmap_dir}")
+            # Clear build-time dict — data is now on disk
+            self._decompositions = None
 
     def _load_mmap_index(self):
         meta_path = os.path.join(self._mmap_dir, "meta.json")
@@ -289,5 +291,5 @@ class PolychainIndex:
             for k, v in data["decompositions"].items()
         }
         self._build_prefix_max()
-        print(f"  [PolychainIndex] Loaded {len(self.chain_ids)} precomputed chains from cache")
+        log.info("🧩", f"Loaded {len(self.chain_ids)} precomputed polychains from cache.")
         return True

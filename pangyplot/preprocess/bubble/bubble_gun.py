@@ -5,7 +5,7 @@ import BubbleGun.connect_bubbles as BubbleGunConnectBubbles
 import BubbleGun.find_parents as BubbleGunFindParents
 import pangyplot.preprocess.bubble.compact_graph as compacter
 import pangyplot.preprocess.bubble.construct_bubble_index as indexer
-import time
+from pangyplot.preprocess import log
 
 def to_bubblegun_obj(segment_idx, link_idx):
 
@@ -54,44 +54,32 @@ def to_bubblegun_obj(segment_idx, link_idx):
     return nodes
 
 def shoot(segment_idx, link_idx, chr_path, ref):
-    print("→ Finding bubbles.")
+    log.header("Finding bubbles.")
 
     graph = BubbleGunGraph.Graph()
 
-    print("   🔫 Loading BubbleGun...", end="", flush=True)
-    start_time = time.time()
-    graph.nodes = to_bubblegun_obj(segment_idx, link_idx)
-    end_time = time.time()
-    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
+    with log.step("🔫", "Loading BubbleGun"):
+        graph.nodes = to_bubblegun_obj(segment_idx, link_idx)
 
-    print("   🗜️  Compacting graph...", end="", flush=True)
-    start_time = time.time()
-    before = len(graph.nodes)
-    compacter.compact_graph(graph)
-    after = len(graph.nodes)
-    end_time = time.time()
-    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
-    print(f"      {before - after} segments were compacted.")
+    with log.step("🗜️ ", "Compacting graph"):
+        before = len(graph.nodes)
+        compacter.compact_graph(graph)
+        after = len(graph.nodes)
+    log.summary(f"{before - after} segments were compacted.")
 
     # Free sequence strings — only seq_len and optional_info are needed from here on
     for node in graph.nodes.values():
         node.seq = ""
 
-    print("   ⛓️  Finding bubbles and chains...", end="", flush=True)
-    start_time = time.time()
-    BubbleGunFindBubbles.find_bubbles(graph)
-    BubbleGunConnectBubbles.connect_bubbles(graph)
-    BubbleGunFindParents.find_parents(graph)
-    end_time = time.time()
-    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
+    with log.step("⛓️ ", "Finding bubbles and chains"):
+        BubbleGunFindBubbles.find_bubbles(graph)
+        BubbleGunConnectBubbles.connect_bubbles(graph)
+        BubbleGunFindParents.find_parents(graph)
 
     bubbleCount = graph.bubble_number()
-    print("   🔘 Simple Bubbles: {}, Superbubbles: {}, Insertions: {}".format(bubbleCount[0], bubbleCount[1], bubbleCount[2]))    
+    log.info("🔘", f"Simple Bubbles: {bubbleCount[0]}, Superbubbles: {bubbleCount[1]}, Insertions: {bubbleCount[2]}")
 
-    print("   💾 Indexing bubbles...", end="", flush=True)
-    start_time = time.time()
-    indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
-    end_time = time.time()
-    print(f" Done. Took {round(end_time - start_time,1)} seconds.")
+    with log.step("💾", "Indexing bubbles"):
+        indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
 
     return graph

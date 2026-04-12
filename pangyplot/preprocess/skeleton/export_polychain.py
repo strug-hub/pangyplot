@@ -18,8 +18,7 @@ from pangyplot.db.indexes.StepIndex import StepIndex
 def export_polychain_data(chr_dir, gfaidx, ref, output_path):
     """Build and write polychain-data.json.gz for a single chromosome."""
     if not PolychainIndex.validate(chr_dir):
-        print(" (no PolychainIndex, skipping)")
-        return
+        return None
 
     from pangyplot.db.indexes.BubbleIndex import BubbleIndex
     from pangyplot.db.chain_polyline import find_junction_graph, _seg_centroid
@@ -58,10 +57,7 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
             decomp_adj.setdefault(k, set()).update(v)
 
     if not all_chains:
-        print(" (no chains)")
-        return
-
-    print(f" {len(all_chains)} chains...", end="", flush=True)
+        return {"chains": 0, "junc_segs": 0, "junc_links": 0}
 
     # --- 2. Run BFS for full junction graph ---
     junction_nodes, junction_links, junction_adj, \
@@ -263,5 +259,8 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
     with gzip.open(output_path, 'wt', encoding='utf-8') as f:
         json.dump(data, f, default=_default)
 
-    size_mb = os.path.getsize(output_path) / (1024 * 1024)
-    print(f" {len(junc_id_set)} junc segs, {len(junction_links)} junc links ({size_mb:.1f} MB)")
+    return {
+        "chains": len(all_chains),
+        "junc_segs": len(junc_id_set),
+        "junc_links": len(junction_links),
+    }

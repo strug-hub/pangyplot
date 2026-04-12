@@ -13,6 +13,7 @@ import numpy as np
 from pangyplot.db import db_utils
 from pangyplot.version import __version__
 from pangyplot.preprocess.skeleton.skeleton_geometry import grid_simplify
+from pangyplot.preprocess import log
 
 
 VIEWER_GRID_SIZES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000]
@@ -216,7 +217,7 @@ def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats=None
     chains. Instead, prefer the most deeply nested chain — it is the
     most specific annotation. Ties at the same depth break by vote count.
 
-    Returns list parallel to runs: chain_id or -1 if unmapped.
+    Returns (chain_ids, mapped_count) — chain_ids parallel to runs, -1 if unmapped.
     """
     depths = _compute_chain_depths(chain_stats) if chain_stats else {}
 
@@ -236,8 +237,7 @@ def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats=None
             mapped += 1
         else:
             chain_ids.append(-1)
-    print(f"Chain annotation: {mapped}/{len(runs)} runs mapped ({100*mapped/max(1,len(runs)):.1f}%)")
-    return chain_ids
+    return chain_ids, mapped
 
 
 # ---------------------------------------------------------------------------
@@ -335,9 +335,6 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
     with gzip.open(meta_path, 'wt', encoding='utf-8') as f:
         json.dump(header, f, cls=db_utils.NumpyJSONEncoder)
 
-    meta_mb = os.path.getsize(meta_path) / (1024 * 1024)
-    print(f"Exported {meta_path} ({meta_mb:.1f} MB)")
-
     # Write binary polylines
     with gzip.open(bin_path, 'wb') as f:
         for level in all_levels:
@@ -345,12 +342,18 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
             f.write(level["chain_ids"].tobytes())
             f.write(level["coords"].tobytes())
 
-    bin_mb = os.path.getsize(bin_path) / (1024 * 1024)
-    print(f"Exported {bin_path} ({bin_mb:.1f} MB)")
+    return {
+        "total_segments": total_segments,
+        "level_summaries": level_summaries,
+    }
 
+
+def print_grid_levels(stats):
+    """Print the grid-levels table for a skeleton export."""
+    total_segments = stats["total_segments"]
     print(f"\n=== Grid Levels (finest → coarsest) ===")
     print(f"{'Cell size':>12}  {'Nodes':>10}  {'Polylines':>10}  {'Reduction':>10}")
-    for label, node_count, pl_count in level_summaries:
+    for label, node_count, pl_count in stats["level_summaries"]:
         pct = (1 - node_count / total_segments) * 100
         print(f"{label:>12}  {node_count:>10,}  "
               f"{pl_count:>10,}  "
