@@ -77,7 +77,7 @@ def shoot(segment_idx, link_idx, chr_path, ref):
         BubbleGunFindParents.find_parents(graph)
 
     bubbleCount = graph.bubble_number()
-    log.info("🔘", f"Simple Bubbles: {bubbleCount[0]}, Superbubbles: {bubbleCount[1]}, Insertions: {bubbleCount[2]}")
+    log.summary(f"Simple Bubbles: {bubbleCount[0]}, Superbubbles: {bubbleCount[1]}, Insertions: {bubbleCount[2]}")
 
     with log.step("💾", "Indexing bubbles"):
         indexer.construct_bubble_index(link_idx, graph, chr_path, ref)
