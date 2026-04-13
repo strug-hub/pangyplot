@@ -1,7 +1,10 @@
+import json
 import os
 
 import pangyplot.db.sqlite.path_db as path_db
 from pangyplot.db.path_codec import read_binpath, read_path_index
+
+BP_RANGES_CACHE = "bp_ranges.json"
 
 
 class PathIndex:
@@ -11,11 +14,47 @@ class PathIndex:
         self.sample_idx = path_db.retrieve_sample_idx(dir)
         self._subpath_bp_ranges = {}  # {sample: [(bp_start, bp_end), ...]}
 
+    def _bp_ranges_cache_path(self):
+        return os.path.join(self.dir, path_db.DB_NAME, BP_RANGES_CACHE)
+
+    def _load_bp_ranges_cache(self):
+        path = self._bp_ranges_cache_path()
+        if not os.path.exists(path):
+            return False
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return False
+        self._subpath_bp_ranges = {
+            sample: [tuple(r) for r in ranges]
+            for sample, ranges in data.items()
+        }
+        return True
+
+    def _save_bp_ranges_cache(self):
+        path = self._bp_ranges_cache_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        serializable = {
+            sample: [list(r) for r in ranges]
+            for sample, ranges in self._subpath_bp_ranges.items()
+        }
+        with open(path, "w") as f:
+            json.dump(serializable, f)
+
     def compute_bp_ranges(self, step_index):
         """Precompute bp ranges for every subpath using the step index.
 
+        Cached to disk; rebuilt only if the cache file is missing.
         Call once after both PathIndex and StepIndex are loaded.
         """
+        paths_dir = os.path.join(self.dir, path_db.DB_NAME)
+        if not os.path.isdir(paths_dir):
+            return
+
+        if self._load_bp_ranges_cache():
+            return
+
         # Build segment_id → (min_bp, max_bp) from step index
         seg_to_bp = {}
         for i in range(len(step_index.starts)):
@@ -27,11 +66,6 @@ class PathIndex:
             else:
                 old_s, old_e = seg_to_bp[seg_id]
                 seg_to_bp[seg_id] = (min(old_s, bp_s), max(old_e, bp_e))
-
-        # For each sample's subpaths, decode segment IDs and find bp range
-        paths_dir = os.path.join(self.dir, path_db.DB_NAME)
-        if not os.path.isdir(paths_dir):
-            return
 
         index = read_path_index(paths_dir)
         all_paths = index.get("paths", {})
@@ -58,6 +92,8 @@ class PathIndex:
                             max_bp = e
                 ranges.append((min_bp, max_bp))
             self._subpath_bp_ranges[sample] = ranges
+
+        self._save_bp_ranges_cache()
 
     def get_samples(self):
         return [sample for sample in self.samples]

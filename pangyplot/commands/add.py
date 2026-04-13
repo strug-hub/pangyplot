@@ -62,10 +62,13 @@ def pangyplot_add(args):
         polychain_index = PolychainIndex(chr_path, bubble_index, gfa_index, step_index, args.ref)
         export_polychain_section(chr_path, gfa_index, args.ref)
 
+    with log.section("Computing subpath bp ranges."):
+        gfa_index.path_index.compute_bp_ranges(step_index)
+
     generate_skeleton(chr_path, args.ref, args.chr)
 
     elapsed = time.time() - start_time
-    log._timings.append(("total", elapsed))
+    log._timings.append(("total", elapsed, log._peak_gb()))
     log.write_timings(os.path.join(chr_path, TIMINGS_FILENAME))
 
     minutes, seconds = divmod(elapsed, 60)
