@@ -114,7 +114,10 @@ function updateGenomicCoordinates(rawText) {
     return;
   }
   const textBox = document.getElementById("go-chrom-start-end");
-  let input = rawText.replace(/\s+/g, "").replace(/,/g, "");
+  let input = rawText
+    .replace(/\s+/g, "")
+    .replace(/,/g, "")
+    .replace(/[‐-―−]/g, "-"); // normalize unicode dashes (en/em/minus/etc.) to ASCII hyphen
 
   // Accept "chr:start-end" or bare chromosome name
   const coordPattern = /^([^:]+):(\d+)-(\d+)$/;

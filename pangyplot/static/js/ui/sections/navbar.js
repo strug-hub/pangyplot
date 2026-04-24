@@ -40,12 +40,11 @@ eventBus.subscribe('app:debug-mode-changed', updateDebugIndicator);
 
 document.getElementById('navbar-button-example').addEventListener('click', function() {
 
-    //PRSS1-PRSS2
     const data = {
         genome: "GRCh38",
-        chromosome: "chr7",
-        start: 142746827,
-        end: 142776017,
+        chromosome: "chr6",
+        start: 29853568,
+        end: 29961942,
         source:"navbar-example"
     };
     eventBus.publish("ui:coordinates-changed", data);
@@ -53,12 +52,12 @@ document.getElementById('navbar-button-example').addEventListener('click', funct
 
 document.getElementById('navbar-button-example2').addEventListener('click', function() {
 
-    //EXOC3
+    //PRSS1-PRSS2
     const data = {
         genome: "GRCh38",
-        chromosome: "chr5",
-        start: 433522,
-        end: 491937,
+        chromosome: "chr7",
+        start: 142746827,
+        end: 142776017,
         source:"navbar-example"
     };
 
