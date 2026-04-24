@@ -38,7 +38,7 @@ This should launch a local web server at http://127.0.0.1:5700 with chrY data th
    
    The reference path (``--ref``) is used to specify the primary reference path. 
 
-   The optional gene annotation file (``--annotations``) is similarily loaded from ``datastore/annotations/{ref}/{annotations}`` (i.e. ``datastore/annotations/GRCh38/gencode48.chrY``).
+   The optional gene annotation file (``--annotations``) is similarly loaded from ``datastore/annotations/{ref}/{annotations}`` (i.e. ``datastore/annotations/GRCh38/gencode48.chrY``).
 
 Quick Start - Loading Prepared Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
