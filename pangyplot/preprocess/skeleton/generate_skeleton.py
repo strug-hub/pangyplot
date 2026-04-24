@@ -13,7 +13,7 @@ from pangyplot.preprocess import log
 from pangyplot.db.indexes.GFAIndex import GFAIndex
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.db.sqlite import bubble_db
-from pangyplot.version import __version__
+from pangyplot.version import __version__, is_compatible_version
 
 from pangyplot.preprocess.skeleton.skeleton_pipeline import (
     VIEWER_GRID_SIZES, compute_grid_sizes,
@@ -124,7 +124,7 @@ def ensure_skeleton(data_dir, db_name, ref):
         if not os.path.exists(meta_path) or not os.path.exists(bin_path):
             print(f"\n[Skeleton] Missing skeleton for {chrom}, generating...")
             generate_skeleton(chr_dir, ref, chrom)
-        elif _skeleton_version(meta_path) != __version__:
+        elif not is_compatible_version(_skeleton_version(meta_path)):
             print(f"\n[Skeleton] Rebuilding stale skeleton for {chrom} "
                   f"({_skeleton_version(meta_path)} → {__version__})...")
             generate_skeleton(chr_dir, ref, chrom)

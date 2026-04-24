@@ -14,7 +14,7 @@ from pangyplot.db.path_codec import (
     encode_steps, write_binpath, write_path_index,
     read_legacy_binpath, is_legacy_binpath, path_index_version,
 )
-from pangyplot.version import __version__
+from pangyplot.version import __version__, is_compatible_version
 
 
 PATHS_DIR = "paths"
@@ -50,7 +50,7 @@ def _needs_migration(paths_dir):
         return True
     if _find_legacy_binpath(paths_dir):
         return True
-    if path_index_version(paths_dir) != __version__:
+    if not is_compatible_version(path_index_version(paths_dir)):
         return True
     return False
 

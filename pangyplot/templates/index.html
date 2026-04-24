@@ -302,11 +302,6 @@
                 'Download SVG': {{ _('Download SVG')|tojson }},
             }
         };
-
-        // Dismiss the info modal that navbar opens by default
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('info-modal').style.display = 'none';
-        });
     </script>
     <script type="module" src="{{ url_for('static', filename='js/graph/color/color-manager.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/graph/app.js') }}"></script>
