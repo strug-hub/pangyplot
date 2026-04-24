@@ -1,0 +1,10 @@
+flask
+flask-babel
+numpy
+bitarray
+matplotlib
+pympler
+python-dotenv
+
+# Optional — production deployment
+# gunicorn

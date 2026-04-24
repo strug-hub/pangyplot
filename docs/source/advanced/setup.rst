@@ -23,41 +23,42 @@ The following variables are supported:
 Cytoband Settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- **ORGANISM** *(required)*  
-  Organism to use for cytoband reference. Must be one of:  
-  ``NO_ORGANISM``, ``CUSTOM_ORGANISM``, or a supported reference (e.g., GRCh38).  
-  Default: value of ``DEFAULT_ORGANISM`` in PangyPlot.
+- **ORGANISM** *(optional)*
+  Organism key used to select the cytoband reference. Must be one of the keys defined in ``pangyplot/organisms.py``:
+  ``human-hg38``, ``human-t2t``, ``mouse``, ``fruitfly``, ``zebrafish``, ``chicken``, ``rabbit``, ``dog``,
+  or the special values ``none`` (no cytoband) or ``custom`` (bring your own).
+  Default: ``human-hg38``.
 
-- **CYTOBAND_PATH** *(conditional)*  
-  Path to a custom cytoband file.  
-  Required only if ``ORGANISM=CUSTOM_ORGANISM``.  
-  Default: none
+- **CYTOBAND_PATH** *(conditional)*
+  Path to a custom cytoband file.
+  Required only if ``ORGANISM=custom``.
+  Default: none.
 
-- **CANONICAL_PATH** *(conditional)*  
-  Path to a canonical chromosome definition file.  
-  Required only if ``ORGANISM=CUSTOM_ORGANISM``.  
-  Default: none
+- **CANONICAL_PATH** *(conditional)*
+  Path to a canonical chromosome definition file.
+  Required only if ``ORGANISM=custom``.
+  Default: none.
 
 For Production Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- **PANGYPLOT_DATA** *(required)*  
-  Absolute path to the directory containing PangyPlot database files.  
-  Default: none [defaults to the datastore directory]
+- **PANGYPLOT_DATA** *(optional)*
+  Absolute path to the directory containing PangyPlot database files.
+  Default: the ``datastore/`` directory next to ``wsgi.py``.
 
-- **PANGYPLOT_DB** *(required)*  
-  Name of the PangyPlot database.  
-  Default: ``_default_``
+- **PANGYPLOT_DB** *(optional)*
+  Name of the PangyPlot database.
+  Default: ``_default_``.
 
-- **PANGYPLOT_ANNOTATION** *(optional)*  
-  Annotation dataset to load with the graph.  
-  Default: ``None``
+- **PANGYPLOT_ANNOTATION** *(optional)*
+  Annotation dataset to load with the graph.
+  Default: ``None``.
 
-- **PANGYPLOT_REF** *(optional)*  
-  Reference genome identifier used by the dataset.  
-  Default: ``None``
+- **PANGYPLOT_REF** *(optional)*
+  Reference genome identifier used by the dataset.
+  Default: ``None``.
 
-- **PANGYPLOT_PORT** *(required)*  
-  Port number for running the PangyPlot web application.  
-  Default: ``5700``
+- **PANGYPLOT_PORT** *(optional)*
+  Port number for running the PangyPlot web application.
+  Default: ``5700``.
 

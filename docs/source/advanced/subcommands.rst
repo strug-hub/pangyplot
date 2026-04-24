@@ -8,6 +8,7 @@ Subcommands
    :caption: PangyPlot subcommands
 
    subcommands/pangyplot-setup
+   subcommands/pangyplot-preprocess
    subcommands/pangyplot-add
    subcommands/pangyplot-annotate
    subcommands/pangyplot-status

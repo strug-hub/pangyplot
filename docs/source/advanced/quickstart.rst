@@ -7,14 +7,15 @@ Prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~
 
 - Python 3.11 or higher recommended.
-- Install the required Python packages: ``flask``, ``flask-babel``, ``numpy``, ``bitarray``, ``matplotlib``, ``pympler``, ``python-dotenv``
 - `odgi <https://github.com/pangenome/odgi>`_ required to prepare custom data.
-
 
 .. code-block:: bash
 
    git clone https://github.com/ScottMastro/pangyplot.git
    cd pangyplot
+   pip install -r requirements.txt
+
+``gunicorn`` is additionally recommended for production deployment but is not required for local development (Flask's built-in server is used in that case). See the commented line in ``requirements.txt``.
 
 
 Quick Start - Running PangyPlot
@@ -62,6 +63,13 @@ Quick Start - Loading Prepared Data
 
 Quick Start - Preparing Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. tip::
+   The steps below can be generated for you interactively with
+   :ref:`pangyplot-preprocess`, which writes a tailored shell (or SLURM)
+   script from a few prompts. The manual walkthrough below is kept for
+   reference and for cases where you want finer control over the
+   individual ``odgi`` invocations.
 
 .. code-block:: bash
 

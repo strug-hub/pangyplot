@@ -1,3 +1,5 @@
 sphinx_rtd_theme
 sphinx_copybutton
 sphinx_design
+sphinxcontrib-applehelp>=2.0
+sphinxcontrib-htmlhelp>=2.1

@@ -7,7 +7,7 @@ Calculating Bubbles
 These topological structures can be nested within each other, forming a hierarchical chain of superstructures.
 
 .. note::
-    BubbleGun is automatically run within PangyPlot. This section is for informational purposes.
+    BubbleGun is bundled with PangyPlot (vendored under ``BubbleGun/`` at the repo root) and is invoked automatically during ``pangyplot add``. You do not need to install it separately. This section is for informational purposes.
 
 Structure Definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~

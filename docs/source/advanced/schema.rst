@@ -1,20 +1,14 @@
 .. _schema:
 
-Storing Data with SQLite
+On-Disk Data Layout
 ==============================
 
-`SQLite <https://www.sqlite.org/>`_ is a lightweight, file-based database that is easy to set up and use.
-During setup of PangyPlot, Layout coordinates are parsed, a GFA file is parsed and the ``S``, ``L``, ``P``, ``W`` lines are extracted.
-``Bubble`` and ``Chain`` superstructures are enumerated by BubbleGun.
-are calculated by odgi. These are all fed into the SQLite databases.
+PangyPlot preprocesses a pangenome graph into a mix of `SQLite <https://www.sqlite.org/>`_ databases, memory-mapped numpy arrays, and compressed binary path files. The ``S``, ``L``, ``P``, and ``W`` lines from a GFA file are parsed into the SQLite tables described below, ``Bubble`` and ``Chain`` superstructures are enumerated by BubbleGun, and 2D coordinates come from an ODGI layout TSV.
 
+Directory Layout
+~~~~~~~~~~~~~~~~
 
-Schemas
-~~~~~~~
-
-By default, PangyPlot creates a database named ``_default_`` in a directory named ``datastore/graphs``.
-Inside this directory are chromosome-specific directories, for example ``datastore/graphs/_default_/chr1``.
-Inside each chromosome directory is a set of SQLite databases:
+By default, the database lives in ``datastore/graphs/_default_/``. Inside that directory are chromosome-specific subdirectories (e.g. ``datastore/graphs/_default_/chr1/``), each holding:
 
 .. raw:: html
 
@@ -23,32 +17,58 @@ Inside each chromosome directory is a set of SQLite databases:
       <i class="fa-regular fa-square"></i>
       <div class="icon-text">
         <div class="icon-label">segments.db</div>
-        <div class="icon-description">Contains <code>S</code> line information from GFA and layout coordinates.</div>
+        <div class="icon-description">SQLite — <code>S</code> line information from GFA and layout coordinates.</div>
       </div>
     </div>
     <div class="icon-item">
       <i class="fa-solid fa-chain"></i>
       <div class="icon-text">
         <div class="icon-label">links.db</div>
-        <div class="icon-description">Contains <code>L</code> line information from GFA.</div>
+        <div class="icon-description">SQLite — <code>L</code> line information from GFA.</div>
       </div>
     </div>
     <div class="icon-item">
       <i class="fa-regular fa-circle"></i>
       <div class="icon-text">
         <div class="icon-label">bubbles.db</div>
-        <div class="icon-description">Contains information about identified bubbles and their content.</div>
+        <div class="icon-description">SQLite — identified bubbles and their content.</div>
       </div>
     </div>
     <div class="icon-item">
       <i class="fa-solid fa-stairs"></i>
       <div class="icon-text">
         <div class="icon-label">step_index.db</div>
-        <div class="icon-description">Contains the path information for the primary reference.</div>
+        <div class="icon-description">SQLite — reference-path step information per genome.</div>
+      </div>
+    </div>
+    <div class="icon-item">
+      <i class="fa-solid fa-database"></i>
+      <div class="icon-text">
+        <div class="icon-label">*.mmapindex/</div>
+        <div class="icon-description">Memory-mapped numpy array indexes for fast startup.</div>
+      </div>
+    </div>
+    <div class="icon-item">
+      <i class="fa-solid fa-code-branch"></i>
+      <div class="icon-text">
+        <div class="icon-label">paths/</div>
+        <div class="icon-description">Compressed per-haplotype step sequences (<code>.binpath</code>) and a JSON index.</div>
+      </div>
+    </div>
+    <div class="icon-item">
+      <i class="fa-solid fa-bone"></i>
+      <div class="icon-text">
+        <div class="icon-label">skeleton/</div>
+        <div class="icon-description">Chromosome-scale polylines and spines (generated at server startup).</div>
       </div>
     </div>
   </div>
 
+
+SQLite Databases
+~~~~~~~~~~~~~~~~
+
+Four SQLite databases hold the authoritative data for each chromosome. Everything else in the chromosome directory is derived from these files plus the BubbleGun output.
 
 segments.db
 -----------
@@ -222,42 +242,107 @@ step_index.db
      - End coordinate of the segment on this genome path.
 
 
-Paths
-~~~~~~~~~~~~~
+Memory-Mapped Indexes (``*.mmapindex/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Inside each chromosome-specific directory is a directory named ``paths/``.
-This contains a set of JSON files, one per ``P`` or ``W`` line in the GFA file. 
-Each contains the path information in raw JSON.
+The hot subset of each SQLite table is replicated into a directory of
+numpy ``.npy`` files alongside a ``meta.json`` describing the dataset
+version and row counts. These arrays are memory-mapped at startup, so
+querying segment/link/bubble/step properties is O(1) without going
+through SQLite.
 
-.. note::
-  Future work may move this information into a more efficient structure.
+``segments.mmapindex/``
+    ``length``, ``gc_count``, ``x1``, ``y1``, ``x2``, ``y2``, ``valid``
+
+``links.mmapindex/``
+    ``from_ids``, ``to_ids``, ``from_strands``, ``to_strands``, plus a
+    CSR-style adjacency built from ``seg_index_flat``,
+    ``seg_index_offsets``, ``seg_index_counts`` for fast neighbor
+    lookups.
+
+``bubbles.mmapindex/``
+    ``ids``, ``start_steps``, ``end_steps``, ``bubble_to_parent``,
+    ``segment_to_bubble`` (reverse lookup), and a compact layout
+    representation in ``layout_ids``, ``layout_x1``, ``layout_x2``.
+
+``steps.mmapindex/``
+    ``starts``, ``ends``, ``segments`` — sorted arrays used for
+    basepair-to-segment lookup on the reference path.
+
+Each ``meta.json`` also records the PangyPlot ``version`` that wrote
+the index. Indexes stamped with versions listed in
+``pangyplot.version.COMPATIBLE_VERSIONS`` are accepted on load;
+otherwise the index is regenerated.
 
 
-Quick Indices
-~~~~~~~~~~~~~
+Paths (``paths/``)
+~~~~~~~~~~~~~~~~~~
 
-Inside each chromosome-specific directory is also set of JSON files that contain summarized information about each ``*.db`` file,
+Each chromosome directory has a ``paths/`` subdirectory containing one
+``.binpath`` file per ``P``/``W`` line from the GFA file. Each
+``.binpath`` is a gzipped delta-zigzag-varint payload of the segment
+steps along that haplotype — typically ~20× smaller than the JSON
+representation used in earlier versions. See
+``pangyplot/db/path_codec.py`` for the codec.
 
-For example, ``segments.quickindex.json`` contains: 
+Two JSON files sit alongside the ``.binpath`` files:
 
-- **length**
-- **x1**
-- **y1**
-- **x2**
-- **y2**
+``paths/index.json``
+    Metadata for all paths (file name, full ID, contig, start coordinate,
+    reference flag) keyed by sample name, plus the PangyPlot version
+    that wrote the index.
 
-for each segment. This enables quick lookup of segment positioning without needing to query the full database.
-These quick indices read and held in memory when starting up PangyPlot.
+``paths/sample_idx.json``
+    Compact sample-name-to-integer mapping used by the frontend for
+    color assignment.
+
+Legacy JSON path files and old ``.binpath`` files with embedded headers
+are auto-migrated on server startup by
+``pangyplot/preprocess/ensure_paths.py``.
+
+
+Skeleton and Polychain (``skeleton/`` and ``polychain.mmapindex/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unlike the files above — which are produced by ``pangyplot add`` — the
+skeleton pipeline runs automatically on the first ``pangyplot run``
+startup after a dataset is added or the PangyPlot version changes. The
+outputs support the chromosome-scale :ref:`chromosome-view`.
+
+``skeleton/polylines.bin.gz``
+    Gzipped binary encoding of chain polylines at multiple simplification
+    levels.
+
+``skeleton/meta.json.gz``
+    Metadata describing what is inside ``polylines.bin.gz``, including
+    the PangyPlot version used to generate it.
+
+``skeleton/spine-{ref}.json.gz``
+    Per-reference spine data — a linearized backbone through the graph
+    used to anchor chain polylines on the reference genome.
+
+``polychain-data.json.gz``
+    Decomposition of chains into polychains (runs of bubble-free
+    segments), used by the detail-tier force simulation.
+
+``polychain.mmapindex/``
+    Memory-mapped companion to ``polychain-data.json.gz`` for fast
+    lookups.
+
+See :ref:`rendering` for how these artifacts feed into the skeleton and
+detail rendering tiers.
+
 
 Annotations
-~~~~~~~~~~~~~
+~~~~~~~~~~~
 
-Annotations/genomic features (e.g., genes, transcripts, exons) are stored in genome-specific folders in ``datastore/annotations/``.
-Inside each genome directory is a SQLite database that roughly follows the GFF3 specification.
+Annotations/genomic features (e.g., genes, transcripts, exons) are
+stored in genome-specific folders under
+``datastore/annotations/{ref}/{name}/``. Inside each folder is a
+SQLite database that roughly follows the GFF3 specification.
 
 annotations.db
 ---------------
-
 
 .. list-table::
    :header-rows: 1

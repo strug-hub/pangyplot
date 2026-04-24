@@ -35,7 +35,7 @@ Optimizing Layout
 
 Visualizing pangenome graphs requires organizing the graph into two dimensions. 
 The initial x-coordinate and y-coordinate positions are computed in advance, see :ref:`layout`.
-Dynamic web-based graph rendering and physics are powered by a force-directed graph engine, see :ref:`forcegraph`.
+The graph is drawn on an HTML canvas, with a two-tier viewer (skeleton + detail) that uses d3-force for detail-tier layout, see :ref:`rendering`.
 
 Balancing Large and Small Variants
 ----------------------------------

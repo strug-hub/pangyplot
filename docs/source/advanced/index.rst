@@ -14,4 +14,4 @@ Advanced Usage
    layout
    bubblegun
    schema
-   forcegraph
+   rendering

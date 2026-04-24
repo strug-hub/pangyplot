@@ -22,7 +22,7 @@ As you zoom into a region, the skeleton fades and is replaced by a **detail laye
 Force-simulated nodes are anchored to their chain's polyline endpoints, keeping them visually connected to the surrounding context. Junction segments — naked GFA segments between chains — are also rendered to show inter-chain connectivity.
 
 
-Opening the Bubble View
-~~~~~~~~~~~~~~~~~~~~~~~~
+Inspecting Bubbles
+~~~~~~~~~~~~~~~~~~~
 
-To inspect a region at full resolution, hold **Shift** and drag to create a selection rectangle over one or more chains. From the selection popup, use the **Open Bubble View** action to switch to the force-directed graph viewer (see :ref:`visuals`) centered on the selected region, where individual bubbles can be popped to reveal their internal segment-level structure.
+Once chains are expanded into their bubble subgraphs in the detail view, individual bubbles can be **popped** to reveal their internal segment-level structure. To select a region, hold **Shift** and drag to draw a rectangle over one or more chains. From the context menu, use **Pop All Bubbles** to pop every bubble in the selection or **Pop Highlighted** to pop just the currently highlighted bubble. **Export GFA** saves the current viewport subgraph to a GFA file for external inspection.
