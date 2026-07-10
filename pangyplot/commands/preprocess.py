@@ -28,6 +28,12 @@ SCRIPT_TEMPLATE_HEADER = """{shebang}# PangyPlot {version} preprocessing script
 # Generated: {datetime}
 
 THREADS={threads}
+
+# odgi binaries — override via env if your build names them differently
+# (e.g. a container that ships a CPU `odgi` and a GPU-enabled `odgi_gpu`).
+ODGI="${{ODGI:-odgi}}"
+ODGI_GPU="${{ODGI_GPU:-odgi_gpu}}"
+
 INPUT="{input_file}"
 OUTPUT_DIR="{output_dir}"
 PREFIX="${{OUTPUT_DIR}}/{prefix}"
@@ -39,7 +45,7 @@ SCRIPT_GFA_TO_OG = """
 # --------------- CONVERT GFA → OG ----------------------------
 echo "Converting GFA to OG..."
 OG="${PREFIX}.unsorted.og"
-odgi build -t $THREADS -g $INPUT -o $OG -P
+$ODGI build -t $THREADS -g $INPUT -o $OG -P
 """
 
 SCRIPT_GUNZIP = """
@@ -58,20 +64,20 @@ SCRIPT_SORT = """
 # --------------- SORT ----------------------------
 echo "Sorting graph..."
 SORTED="${{PREFIX}}.sorted.og"
-{paths_commands}odgi sort -t $THREADS --optimize -Y{paths_flag} -i $OG -o $SORTED -P
+{paths_commands}$ODGI sort -t $THREADS --optimize -Y{paths_flag} -i $OG -o $SORTED -P
 {paths_cleanup}"""
 
 
 SCRIPT_LAYOUT = """
 # --------------- LAYOUT FILE ----------------------------
 echo "Computing layout..."
-odgi layout -t $THREADS -i ${{{input_var}}} --tsv ${{PREFIX}}.lay.tsv -o ${{PREFIX}}.lay{gpu_flag} -P
+{odgi_bin} layout -t $THREADS -i ${{{input_var}}} --tsv ${{PREFIX}}.lay.tsv -o ${{PREFIX}}.lay{gpu_flag} -P
 """
 
 SCRIPT_GFA = """
 # --------------- GFA FILE ----------------------------
 echo "Exporting sorted GFA..."
-odgi view -t $THREADS -i ${{{input_var}}} -g > ${{PREFIX}}.sorted.gfa
+$ODGI view -t $THREADS -i ${{{input_var}}} -g > ${{PREFIX}}.sorted.gfa
 """
 
 
@@ -202,7 +208,7 @@ def pangyplot_preprocess(args):
 
         for i, path in enumerate(paths):
             op = ">" if i == 0 else ">>"
-            paths_commands += f'odgi paths -L -i $OG | grep "{path}" {op} ${{PREFIX}}.paths.txt\n'
+            paths_commands += f'$ODGI paths -L -i $OG | grep "{path}" {op} ${{PREFIX}}.paths.txt\n'
 
     print()
 
@@ -275,6 +281,7 @@ def pangyplot_preprocess(args):
     script += SCRIPT_LAYOUT.format(
         input_var=input_var,
         gpu_flag=" --gpu" if use_gpu else "",
+        odgi_bin="$ODGI_GPU" if use_gpu else "$ODGI",
     )
 
     script += SCRIPT_GFA.format(input_var=input_var)
