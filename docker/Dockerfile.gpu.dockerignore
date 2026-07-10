@@ -1,0 +1,47 @@
+# Keep the build context small — exclude dev, test, and build artifacts.
+# NOTE: datastore/ is intentionally NOT ignored — the committed chrY demo data
+# is what makes the image runnable out of the box.
+
+.git
+.gitignore
+
+# Node / JS test tooling
+node_modules
+package-lock.json
+playwright.config.js
+vitest.config.js
+.playwright-mcp
+test-results
+playwright-report
+
+# Python caches / test caches
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+tests
+
+# Docs (built and source; readthedocs builds these separately)
+docs
+
+# Benchmarks and cluster job scripts
+benchmark_ingest.py
+benchmark_results
+run_*.slurm
+run_*.sh
+
+# Large graph inputs (never needed in the image)
+*.vg
+*.og
+*.gfa
+*.gbz
+
+# Local env / setup state
+.env
+.setup_state.json
+
+# Agent/editor scratch
+.claude
+context
+CLAUDE.md
+Trace-*.json

@@ -1,16 +1,14 @@
-# Convenience wrapper around the PangyPlot image.
+# Convenience wrapper around the PangyPlot images.
 #
-#   docker compose -f docker/docker-compose.yml up --build
+#   CPU (default):  docker compose -f docker/docker-compose.yml up --build
+#   GPU:            docker compose -f docker/docker-compose.yml --profile gpu up --build pangyplot-gpu
 #   # open http://localhost:5700/#chrY:23129355-23199010
-#
-# The image bundles both a CPU odgi and a GPU odgi_gpu. It runs on any host;
-# to use the GPU for layout, uncomment the `devices:` block below (requires an
-# NVIDIA host with the nvidia-container-toolkit installed).
 #
 # To serve your OWN preprocessed data instead of the bundled chrY demo,
 # uncomment the volume mount and point the env vars at your datastore.
 
 services:
+  # CPU image — small, runs anywhere.
   pangyplot:
     build:
       context: ..            # repo root — the image needs the app + datastore/
@@ -23,7 +21,25 @@ services:
       PANGYPLOT_REF: GRCh38
       PANGYPLOT_ANNOTATION: gencode48.chrY
       PANGYPLOT_PORT: "5700"
-    # devices:
-    #   - "nvidia.com/gpu=all"      # Docker CDI syntax; enables GPU odgi_gpu layout
+    # volumes:
+    #   - ./my-datastore:/app/datastore
+
+  # GPU image — bundles odgi_gpu for accelerated layout. Requires an NVIDIA host
+  # with nvidia-container-toolkit. Only started with: --profile gpu
+  pangyplot-gpu:
+    profiles: ["gpu"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gpu
+    image: pangyplot:gpu
+    ports:
+      - "5700:5700"
+    environment:
+      PANGYPLOT_DB: hprc.clip
+      PANGYPLOT_REF: GRCh38
+      PANGYPLOT_ANNOTATION: gencode48.chrY
+      PANGYPLOT_PORT: "5700"
+    devices:
+      - "nvidia.com/gpu=all"      # Docker CDI syntax (Docker 25+ / recent engines)
     # volumes:
     #   - ./my-datastore:/app/datastore

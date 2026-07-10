@@ -1,8 +1,10 @@
 name: Publish container to GHCR
 
-# Builds the PangyPlot image (CPU + GPU odgi) and pushes it to the GitHub
-# Container Registry so it can be pulled as ghcr.io/scottmastro/pangyplot.
-# Runs when a GitHub Release is published or a v* tag is pushed.
+# Builds BOTH PangyPlot images and pushes them to the GitHub Container Registry:
+#   ghcr.io/strug-hub/pangyplot:<ver>       CPU image  (small, runs anywhere)
+#   ghcr.io/strug-hub/pangyplot:<ver>-gpu   GPU image  (CUDA + odgi_gpu)
+# Moving tags: :latest -> newest CPU, :gpu -> newest GPU.
+# Runs on a published Release, a v* tag, or a manual dispatch (with a version).
 
 on:
   release:
@@ -12,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to tag the image, e.g. 0.2.0 (publishes :0.2.0, :v0.2.0, :latest)"
+        description: "Version to tag the images, e.g. 0.2.0 (publishes :0.2.0 and :0.2.0-gpu)"
         required: true
         default: "0.2.0"
 
@@ -26,6 +28,18 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false            # a CPU failure shouldn't cancel the GPU build (or vice versa)
+      matrix:
+        include:
+          - name: cpu
+            dockerfile: docker/Dockerfile
+            suffix: ""
+            moving: latest
+          - name: gpu
+            dockerfile: docker/Dockerfile.gpu
+            suffix: "-gpu"
+            moving: gpu
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -33,6 +47,7 @@ jobs:
       # The GPU image (CUDA base + odgi source build) is large; the default
       # runner only has ~14 GB free, so reclaim space first.
       - name: Free up runner disk space
+        if: matrix.name == 'gpu'
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
                       /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
@@ -54,23 +69,23 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=ref,event=tag
-            type=raw,value=latest
-            type=sha,format=short
-            # Manual runs: tag with the version you type (both 0.2.0 and v0.2.0)
-            type=raw,value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=raw,value=v${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=semver,pattern={{version}},suffix=${{ matrix.suffix }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.suffix }}
+            type=sha,format=short,suffix=${{ matrix.suffix }}
+            # Moving pointer: :latest for CPU, :gpu for GPU
+            type=raw,value=${{ matrix.moving }}
+            # Manual runs: tag with the version you type (e.g. 0.2.0 / 0.2.0-gpu, v0.2.0 / v0.2.0-gpu)
+            type=raw,value=${{ inputs.version }}${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=v${{ inputs.version }}${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
-      - name: Build and push
+      - name: Build and push (${{ matrix.name }})
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Layer cache via the GitHub Actions cache to speed up re-runs.
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Layer cache via the GitHub Actions cache, kept separate per variant.
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
