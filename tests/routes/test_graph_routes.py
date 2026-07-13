@@ -6,7 +6,10 @@ Specific pop test cases anchored to segments:
 """
 
 import shutil
+import io
+import json
 import tempfile
+import zipfile
 
 import pytest
 from flask import Flask
@@ -303,3 +306,84 @@ class TestDetailTilesRoute:
             f"&start={START}&end={END}&ppbp=0.01"
             f"&layout_min_x={LAYOUT_MIN_X}&layout_max_x={LAYOUT_MAX_X}")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /layout — the exported GFA and layout must ship together and agree
+# ---------------------------------------------------------------------------
+
+class TestLayoutRoute:
+
+    @pytest.fixture(scope="class")
+    def selection(self, client):
+        resp = client.get(
+            f"/select?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        nodes = resp.get_json()["nodes"]
+        return [int(n["id"][1:]) for n in nodes if n["id"].startswith("b")][:10]
+
+    @pytest.fixture(scope="class")
+    def archive(self, client, selection):
+        resp = client.post("/layout", json={
+            "genome": REFERENCE, "chromosome": CHROM,
+            "bubble_ids": selection, "segment_ids": [],
+        })
+        assert resp.status_code == 200
+        return zipfile.ZipFile(io.BytesIO(resp.data))
+
+    def test_archive_carries_the_graph_and_both_layouts(self, archive):
+        assert set(archive.namelist()) == {
+            f"{CHROM}_export.gfa",
+            f"{CHROM}_export.lay",
+            f"{CHROM}_export.layout",
+            "README.txt",
+        }
+
+    def test_layout_covers_every_segment_in_the_gfa(self, archive):
+        gfa = archive.read(f"{CHROM}_export.gfa").decode()
+        segment_ids = {int(line.split("\t")[1])
+                       for line in gfa.splitlines() if line.startswith("S")}
+
+        bandage = json.loads(archive.read(f"{CHROM}_export.layout"))
+
+        assert {int(k.rstrip("+")) for k in bandage} == segment_ids
+
+    def test_lay_is_not_empty(self, archive):
+        assert len(archive.read(f"{CHROM}_export.lay")) > 0
+
+    def test_missing_selection_400(self, client):
+        resp = client.post("/layout", json={
+            "genome": REFERENCE, "chromosome": CHROM,
+            "bubble_ids": [], "segment_ids": [],
+        })
+        assert resp.status_code == 400
+
+    def test_invalid_genome_404(self, client, selection):
+        resp = client.post("/layout", json={
+            "genome": "INVALID", "chromosome": CHROM,
+            "bubble_ids": selection, "segment_ids": [],
+        })
+        assert resp.status_code == 404
+
+
+class TestGfaRoute:
+    """The plain GFA export keeps the source graph's IDs; only /layout compacts."""
+
+    def test_export_keeps_source_ids(self, client):
+        resp = client.get(
+            f"/select?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        nodes = resp.get_json()["nodes"]
+        bubble_ids = [int(n["id"][1:]) for n in nodes if n["id"].startswith("b")][:10]
+
+        resp = client.post("/gfa", json={
+            "genome": REFERENCE, "chromosome": CHROM,
+            "bubble_ids": bubble_ids, "segment_ids": [],
+        })
+        assert resp.status_code == 200
+
+        s_lines = [line.split("\t") for line in resp.get_data(as_text=True).splitlines()
+                   if line.startswith("S")]
+        assert s_lines
+        # Not renumbered to 1..N, and carrying no ON:i: tag.
+        assert sorted(int(f[1]) for f in s_lines) != list(range(1, len(s_lines) + 1))
+        for fields in s_lines:
+            assert len(fields) == 3

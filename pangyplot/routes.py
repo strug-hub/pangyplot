@@ -1,6 +1,8 @@
 import gzip
+import io
 import os
 import re
+import zipfile
 from flask import Blueprint, current_app, render_template, request, jsonify, make_response, Response, abort
 from flask_babel import _,get_locale
 from dotenv import load_dotenv
@@ -439,6 +441,80 @@ def gfa():
         mimetype='text/plain',
         headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
+
+
+@bp.route('/layout', methods=["POST"])
+def layout():
+    """Export a region's layout, zipped together with the GFA it belongs to.
+
+    The two are only usable together -- odgi draw matches layout coordinates to
+    segments positionally -- so they are always shipped as one archive built
+    from a single resolution of the selection.
+    """
+    data = request.get_json(silent=True) or {}
+    genome = data.get("genome")
+    chromosome = data.get("chromosome")
+    bubble_ids = data.get("bubble_ids", [])
+    segment_ids = data.get("segment_ids", [])
+    polylines = data.get("polylines")
+
+    if not genome or not chromosome or (not bubble_ids and not segment_ids):
+        return jsonify({"error": "Missing genome, chromosome, or node IDs"}), 400
+
+    try:
+        subgraph = query.resolve_export_subgraph(
+            current_app, genome, chromosome, bubble_ids, segment_ids=segment_ids)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+    if subgraph is None:
+        return jsonify({"error": "Selection resolved to no segments"}), 404
+
+    gfa_text = "".join(query.generate_gfa(
+        current_app, genome, chromosome, bubble_ids, subgraph=subgraph, compact=True))
+    lay_bytes, bandage_json, stats = query.generate_layout(
+        current_app, genome, chromosome, bubble_ids,
+        polylines=polylines, subgraph=subgraph)
+
+    print(f"[layout export] {stats['segments']} segments, "
+          f"{stats['filled']} filled from stored odgi coordinates")
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(f"{chromosome}_export.gfa", gfa_text)
+        archive.writestr(f"{chromosome}_export.lay", lay_bytes)
+        archive.writestr(f"{chromosome}_export.layout", bandage_json)
+        archive.writestr("README.txt", _LAYOUT_README.format(
+            chromosome=chromosome, **stats))
+    buffer.seek(0)
+
+    filename = f"{chromosome}_export.zip"
+    return Response(
+        buffer.getvalue(),
+        mimetype='application/zip',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+
+_LAYOUT_README = """PangyPlot layout export
+=======================
+
+  {chromosome}_export.gfa     the subsetted graph
+  {chromosome}_export.lay     layout in odgi's binary format
+  {chromosome}_export.layout  layout in Bandage's format
+
+Render with odgi:
+
+  odgi build -g {chromosome}_export.gfa -o {chromosome}_export.og
+  odgi draw -i {chromosome}_export.og -c {chromosome}_export.lay -p out.png
+
+Segment IDs are compacted to 1..N, as odgi requires. Each S-line carries its
+ID in the source graph as an ON:i: tag.
+
+Segments: {segments}
+Positions taken from the viewer's layout: {refined}
+Positions filled from the stored odgi layout: {filled}
+"""
 
 # ---------------------------------------------------------------
 # Debug log endpoint — writes structured pop/undo events to session files

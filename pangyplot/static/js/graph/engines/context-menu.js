@@ -6,7 +6,7 @@ import { state } from '../state.js';
 import { flipChain } from '../detail/data/polychain/polychain-adapter.js';
 import { reheatSimulation } from '../detail/engines/force-engine.js';
 import { scheduleFrame } from '../utils/frame-scheduler.js';
-import { exportViewportGfa } from './selection/selection-popup.js';
+import { exportViewportGfa, exportViewportLayout } from './selection/selection-popup.js';
 import { popAllBubblesOnChain, popHighlightedBubbles } from '../detail/model/pop-handler.js';
 import { createCustomAnnotation } from '@graph-data/custom-annotation-data.js';
 import { isDebugMode, t } from '@app-state';
@@ -120,6 +120,9 @@ function showMenu(x, y) {
         if (state.detailData) {
             addRow(menu, 'file-export', t('Export GFA'), () => {
                 exportViewportGfa();
+            });
+            addRow(menu, 'file-export', t('Export GFA + Layout'), () => {
+                exportViewportLayout();
             });
         }
     }

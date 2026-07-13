@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/tab.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/search-dropdown.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/container.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui/elements/toast.css') }}">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/right-click.css') }}">
@@ -299,6 +300,12 @@
                 'Selection:': {{ _('Selection:')|tojson }},
                 'Pop Highlighted': {{ _('Pop Highlighted')|tojson }},
                 'Export GFA': {{ _('Export GFA')|tojson }},
+                'Export GFA + Layout': {{ _('Export GFA + Layout')|tojson }},
+                'GFA': {{ _('GFA')|tojson }},
+                'GFA + layout': {{ _('GFA + layout')|tojson }},
+                'Preparing {label}...': {{ _('Preparing {label}...')|tojson }},
+                'Downloaded {name}': {{ _('Downloaded {name}')|tojson }},
+                'Export failed': {{ _('Export failed')|tojson }},
                 'Export:': {{ _('Export:')|tojson }},
                 'Download PNG': {{ _('Download PNG')|tojson }},
                 'Download SVG': {{ _('Download SVG')|tojson }},

@@ -3,6 +3,7 @@ from pangyplot.db.chain_polyline import (
     _seg_centroid,
 )
 from pangyplot.db.sqlite import bubble_db as db
+from pangyplot.utils import layout_writer
 
 
 def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
@@ -302,16 +303,19 @@ def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
     return result
 
 
-def generate_gfa(indexes, genome, chrom, bubble_ids, segment_ids=None):
-    """Build GFA 1.0 lines for the subgraph defined by bubble and/or segment IDs.
+def resolve_export_subgraph(indexes, genome, chrom, bubble_ids, segment_ids=None):
+    """Resolve an export selection into its segments, links and paths.
 
-    Resolves bubbles → segments (recursive via get_descendant_ids),
-    merges in any explicitly requested segment IDs, fetches full
-    Segment objects with sequences, discovers links, and extracts
-    P-lines from haplotype paths.
+    Shared by the GFA and layout exports so both describe exactly the same
+    subgraph under exactly the same segment IDs.
 
-    All data is fetched eagerly (requires app context), then yields
-    formatted lines so Flask can stream the response.
+    Segment IDs are compacted to 1..N: ``odgi draw`` rejects graphs whose node
+    IDs are not compacted, and it addresses layout coordinates positionally, so
+    the GFA and its layout are only usable together if both are renumbered
+    through the same map. The original ID is preserved on each S-line as an
+    ``ON:i:`` tag.
+
+    All data is fetched eagerly, so the caller no longer needs an app context.
     """
     stepidx = indexes.step_index.get((chrom, genome), None)
     bubbleidx = indexes.bubble_index.get(chrom, None)
@@ -321,26 +325,25 @@ def generate_gfa(indexes, genome, chrom, bubble_ids, segment_ids=None):
         raise ValueError(
             f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
-    # 1. Resolve bubble IDs → segment IDs
     seg_ids = set()
     for bid in bubble_ids:
         bubble = bubbleidx[bid]
         if bubble is None:
-            print(f"[GFA export] WARNING: bubble {bid} not found in index, skipping")
+            print(f"[export] WARNING: bubble {bid} not found in index, skipping")
             continue
         seg_ids.update(bubbleidx.get_descendant_ids(bubble))
 
-    # 1b. Add explicitly requested segment IDs
     if segment_ids:
         seg_ids.update(segment_ids)
 
     if not seg_ids:
-        return iter([])
+        return None
 
-    # 2. Fetch segments (with sequences) and links — eager, needs app context
-    segments, raw_links = gfaidx.get_subgraph(seg_ids, stepidx)
+    # fast=True builds links from the in-memory arrays instead of one SQLite
+    # query per link. The export writes only L-line topology, so the haplotype
+    # and frequency fields the slow path fetches are never read.
+    segments, raw_links = gfaidx.get_subgraph(seg_ids, stepidx, fast=True)
 
-    # 3. Filter + deduplicate links
     seen_links = set()
     links = []
     for link in raw_links:
@@ -351,33 +354,134 @@ def generate_gfa(indexes, genome, chrom, bubble_ids, segment_ids=None):
             seen_links.add(key)
             links.append(link)
 
-    # 4. Collect P-line data from haplotype paths — eager, reads JSON files
-    p_lines = []
+    ordered_ids, id_map = layout_writer.build_id_map(seg.id for seg in segments)
+
+    paths = []
     for sample in gfaidx.get_samples():
         for path in gfaidx.get_paths(sample):
+            runs = []
             current_run = []
             for seg_id, strand in path:
-                if seg_id in seg_ids:
-                    current_run.append(f"{seg_id}{strand}")
-                else:
-                    if current_run:
-                        name = f"{path.sample}#{path.hap or '0'}#{path.contig}"
-                        p_lines.append(f"P\t{name}\t{','.join(current_run)}\t*\n")
-                        current_run = []
+                if seg_id in id_map:
+                    current_run.append((seg_id, strand))
+                elif current_run:
+                    runs.append(current_run)
+                    current_run = []
             if current_run:
+                runs.append(current_run)
+            if runs:
                 name = f"{path.sample}#{path.hap or '0'}#{path.contig}"
-                p_lines.append(f"P\t{name}\t{','.join(current_run)}\t*\n")
+                for run in runs:
+                    paths.append((name, run))
 
-    # 5. Yield formatted GFA lines (no app context needed from here)
+    return {
+        "segments": segments,
+        "links": links,
+        "ordered_ids": ordered_ids,
+        "id_map": id_map,
+        "paths": paths,
+    }
+
+
+def generate_gfa(indexes, genome, chrom, bubble_ids, segment_ids=None, subgraph=None,
+                 compact=False):
+    """Build GFA 1.0 lines for the subgraph defined by bubble and/or segment IDs.
+
+    Segment IDs are the ones from the source graph. ``compact`` renumbers them to
+    1..N and records the original on each S-line as an ``ON:i:`` tag -- required
+    only when the GFA is exported alongside a layout, since odgi rejects graphs
+    whose node IDs are not compacted.
+    """
+    if subgraph is None:
+        subgraph = resolve_export_subgraph(
+            indexes, genome, chrom, bubble_ids, segment_ids=segment_ids)
+    if subgraph is None:
+        return iter([])
+
+    id_map = subgraph["id_map"] if compact else None
+
+    def _sid(seg_id):
+        return id_map[seg_id] if id_map else seg_id
+
     def _lines():
         yield "H\tVN:Z:1.0\n"
-        for seg in segments:
-            yield f"S\t{seg.id}\t{seg.seq or '*'}\n"
-        for link in links:
-            yield f"L\t{link.from_id}\t{link.from_strand}\t{link.to_id}\t{link.to_strand}\t0M\n"
-        yield from p_lines
+        for seg in subgraph["segments"]:
+            tag = f"\tON:i:{seg.id}" if id_map else ""
+            yield f"S\t{_sid(seg.id)}\t{seg.seq or '*'}{tag}\n"
+        for link in subgraph["links"]:
+            yield (f"L\t{_sid(link.from_id)}\t{link.from_strand}"
+                   f"\t{_sid(link.to_id)}\t{link.to_strand}\t0M\n")
+        for name, run in subgraph["paths"]:
+            steps = ",".join(f"{_sid(seg_id)}{strand}" for seg_id, strand in run)
+            yield f"P\t{name}\t{steps}\t*\n"
 
     return _lines()
+
+
+def generate_layout(indexes, genome, chrom, bubble_ids, segment_ids=None,
+                    polylines=None, subgraph=None):
+    """Build the odgi .lay and Bandage layouts for an export selection.
+
+    ``polylines`` carries the viewer's refined geometry as
+    ``{segment_id: [[x, y], ...]}``. Segments it does not cover -- those hidden
+    inside an unpopped bubble, which the viewer draws as a single circle and so
+    has no per-segment position for -- are filled from the stored odgi
+    coordinates, mapped into the refined frame by a similarity transform fitted
+    on the segments present in both. With no ``polylines`` the export is the
+    stored odgi layout throughout.
+
+    Returns ``(lay_bytes, bandage_json, stats)``.
+    """
+    if subgraph is None:
+        subgraph = resolve_export_subgraph(
+            indexes, genome, chrom, bubble_ids, segment_ids=segment_ids)
+    if subgraph is None:
+        return b"", "{}", {"segments": 0, "refined": 0, "filled": 0}
+
+    id_map = subgraph["id_map"]
+    odgi_coords = {
+        seg.id: [(seg.x1, seg.y1), (seg.x2, seg.y2)]
+        for seg in subgraph["segments"]
+    }
+
+    refined = {}
+    if polylines:
+        for seg_id, points in polylines.items():
+            seg_id = int(str(seg_id).lstrip('s'))
+            if seg_id in id_map and points and len(points) >= 2:
+                refined[seg_id] = [(float(x), float(y)) for x, y in points]
+
+    filled = 0
+    if refined:
+        transform = layout_writer.fit_similarity(
+            [odgi_coords[s][0] for s in refined if s in odgi_coords],
+            [refined[s][0] for s in refined if s in odgi_coords],
+        )
+        for seg_id in id_map:
+            if seg_id in refined or seg_id not in odgi_coords:
+                continue
+            refined[seg_id] = [layout_writer.apply_similarity(transform, p)
+                               for p in odgi_coords[seg_id]]
+            filled += 1
+        coords = refined
+    else:
+        coords = odgi_coords
+
+    handles = []
+    polyline_out = {}
+    for seg_id in subgraph["ordered_ids"]:
+        points = coords.get(seg_id) or odgi_coords.get(seg_id) or [(0.0, 0.0), (0.0, 0.0)]
+        handles.append((points[0][0], points[0][1], points[-1][0], points[-1][1]))
+        polyline_out[id_map[seg_id]] = points
+
+    stats = {
+        "segments": len(subgraph["ordered_ids"]),
+        "refined": len(subgraph["ordered_ids"]) - filled if polylines else 0,
+        "filled": filled,
+    }
+    return (layout_writer.write_lay(handles),
+            layout_writer.write_bandage(polyline_out),
+            stats)
 
 
 CANONICAL_EXPAND_THRESHOLD = 100  # fixed layout-unit decomposition level
