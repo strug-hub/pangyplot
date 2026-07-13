@@ -25,7 +25,9 @@ A chromosome can be selected by clicking on it. Non-canonical chromosomes can be
 A cytoband view of the selected chromosome is rendered. Clicking and dragging along the chromosome will select a specific region.
 
 .. note::
-   Currently there is a limitation on the size of the region that can be viewed. Enabling arbitrarily large regions for viewing is a future goal.
+   To view an entire chromosome, select it without dragging to narrow the region.
+   Zoom in to move from the whole-chromosome view down to nucleotide resolution
+   (see :ref:`chromosome-view`).
 
 
 Selecting by Gene

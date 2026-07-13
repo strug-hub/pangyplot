@@ -105,74 +105,27 @@ Interactions
 Right-Click Menu
 ~~~~~~~~~~~~~~~~~~~
 
-.. warning::
-   "Download GFA" is currently broken.
+The right-click menu is context-sensitive: the available actions depend on what
+is under the cursor and whether you have a selection.
 
-Actions performed on the full subgraph:
-
-.. raw:: html
-
-   <div class="icon-list">
-      <div class="icon-item">
-         <i class="fa-solid fa-arrows-to-circle"></i>
-         <div class="icon-text">
-            <div class="icon-label">Recenter Graph</div>
-            <div class="icon-description">Zoom to fit the entire subgraph in view.</div>
-         </div>
-      </div>
-
-      <div class="icon-item">
-         <i class="fa-solid fa-file-export"></i>
-         <div class="icon-text">
-            <div class="icon-label">Download GFA</div>
-            <div class="icon-description">Export the current subgraph as a GFA file.</div>
-         </div>
-      </div>
-
-      <div class="icon-item">
-         <i class="fa-solid fa-download"></i>
-         <div class="icon-text">
-            <div class="icon-label">Download PNG</div>
-            <div class="icon-description">Export the current subgraph as a PNG image.</div>
-         </div>
-      </div>
-
-      <div class="icon-item">
-         <i class="fa-solid fa-download"></i>
-         <div class="icon-text">
-            <div class="icon-label">Download SVG</div>
-            <div class="icon-description">Export the current graph as an SVG vector image.</div>
-         </div>
-      </div>
-   </div>
-   <hr>
-
-Actions performed on a selected set of nodes:
+Right-click a chain to act on it:
 
 .. raw:: html
 
    <div class="icon-list">
+      <div class="icon-item">
+         <i class="fa-solid fa-right-left"></i>
+         <div class="icon-text">
+            <div class="icon-label">Flip Chain</div>
+            <div class="icon-description">Reverse the orientation of the chain.</div>
+         </div>
+      </div>
+
       <div class="icon-item">
          <i class="fa-solid fa-burst"></i>
          <div class="icon-text">
-            <div class="icon-label">Pop nodes</div>
-            <div class="icon-description">Pop selected bubbles.</div>
-         </div>
-      </div>
-
-      <div class="icon-item">
-         <i class="fa-solid fa-dna"></i>
-         <div class="icon-text">
-            <div class="icon-label">Show Sequence</div>
-            <div class="icon-description">Display truncated sequence for selected nodes.</div>
-         </div>
-      </div>
-
-      <div class="icon-item">
-         <i class="fa-solid fa-pen"></i>
-         <div class="icon-text">
-            <div class="icon-label">Add Custom Label</div>
-            <div class="icon-description">Assign a custom text label to selected nodes.</div>
+            <div class="icon-label">Pop All Bubbles</div>
+            <div class="icon-description">Expand every bubble along the chain.</div>
          </div>
       </div>
 
@@ -180,31 +133,61 @@ Actions performed on a selected set of nodes:
          <i class="fa-solid fa-tag"></i>
          <div class="icon-text">
             <div class="icon-label">Add Custom Annotation</div>
-            <div class="icon-description">Create a custom gene annotation on selected nodes.</div>
+            <div class="icon-description">Name and label the chain (or the current selection).</div>
+         </div>
+      </div>
+   </div>
+   <hr>
+
+With a set of chains highlighted (:code:`Shift`-drag to select), act on the selection:
+
+.. raw:: html
+
+   <div class="icon-list">
+      <div class="icon-item">
+         <i class="fa-solid fa-clipboard"></i>
+         <div class="icon-text">
+            <div class="icon-label">Copy Approx Coordinates</div>
+            <div class="icon-description">Copy the coordinate range spanned by the selection.</div>
          </div>
       </div>
 
       <div class="icon-item">
-         <i class="fa-solid fa-trash-can"></i>
+         <i class="fa-solid fa-burst"></i>
          <div class="icon-text">
-            <div class="icon-label">Clear Labels</div>
-            <div class="icon-description">Remove all custom text labels from nodes.</div>
+            <div class="icon-label">Pop Highlighted</div>
+            <div class="icon-description">Expand every bubble within the selection.</div>
          </div>
       </div>
 
       <div class="icon-item">
-         <i class="fa-solid fa-lock-open"></i>
+         <i class="fa-solid fa-file-export"></i>
          <div class="icon-text">
-            <div class="icon-label">Unlock nodes</div>
-            <div class="icon-description">Allow nodes to move freely again.</div>
+            <div class="icon-label">Export GFA</div>
+            <div class="icon-description">Export the selected region as a GFA file (detail view).</div>
+         </div>
+      </div>
+   </div>
+   <hr>
+
+Export the current view (always available):
+
+.. raw:: html
+
+   <div class="icon-list">
+      <div class="icon-item">
+         <i class="fa-solid fa-download"></i>
+         <div class="icon-text">
+            <div class="icon-label">Download PNG</div>
+            <div class="icon-description">Save the current view as a PNG image.</div>
          </div>
       </div>
 
       <div class="icon-item">
-         <i class="fa-solid fa-lock"></i>
+         <i class="fa-solid fa-download"></i>
          <div class="icon-text">
-            <div class="icon-label">Lock nodes</div>
-            <div class="icon-description">Fix node positions to their current coordinates.</div>
+            <div class="icon-label">Download SVG</div>
+            <div class="icon-description">Save the current view as an SVG vector image.</div>
          </div>
       </div>
    </div>
