@@ -1,6 +1,7 @@
 import gzip
 import os
-from flask import Blueprint, current_app, render_template, request, jsonify, make_response, Response
+import re
+from flask import Blueprint, current_app, render_template, request, jsonify, make_response, Response, abort
 from flask_babel import _,get_locale
 from dotenv import load_dotenv
 from pangyplot.version import __version__,__version_name__
@@ -8,6 +9,31 @@ import pangyplot.organisms as organisms
 import pangyplot.db.query as query
 
 bp = Blueprint("routes", __name__)
+
+# Tokens that are interpolated into filesystem paths (a reference genome name,
+# a client session id). Anything outside this set could smuggle a path
+# separator or a parent-directory reference and escape the datastore.
+_SAFE_TOKEN = re.compile(r"[A-Za-z0-9._-]+")
+
+
+def _safe_chrom(chrom):
+    """Validate a client-supplied chromosome against the loaded set.
+
+    The value flows into ``os.path.join`` for several file-serving routes, so
+    an unchecked ``../..`` would read files outside the datastore. Restricting
+    it to a known chromosome is airtight because the valid set is finite and
+    already in memory.
+    """
+    if not chrom or chrom not in current_app.chromosomes:
+        abort(400, description="Unknown or missing chromosome")
+    return chrom
+
+
+def _safe_ref(ref):
+    """Validate a reference-genome name that is interpolated into a filename."""
+    if not ref or ".." in ref or not _SAFE_TOKEN.fullmatch(ref):
+        abort(400, description="Invalid reference genome")
+    return ref
 
 @bp.route('/')
 def index():
@@ -121,9 +147,7 @@ def search():
 
 @bp.route('/skeleton')
 def skeleton():
-    chrom = request.args.get('chromosome')
-    if not chrom:
-        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    chrom = _safe_chrom(request.args.get('chromosome'))
     skel_dir = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton")
     meta_path = os.path.join(skel_dir, "meta.json.gz")
     if not os.path.exists(meta_path):
@@ -135,9 +159,7 @@ def skeleton():
 
 @bp.route('/skeleton-bin')
 def skeleton_bin():
-    chrom = request.args.get('chromosome')
-    if not chrom:
-        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    chrom = _safe_chrom(request.args.get('chromosome'))
     bin_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton", "polylines.bin.gz")
     if not os.path.exists(bin_path):
         return jsonify({"error": "No precomputed skeleton data for this chromosome."}), 404
@@ -148,10 +170,8 @@ def skeleton_bin():
 
 @bp.route('/spine')
 def spine():
-    chrom = request.args.get('chromosome')
-    ref = request.args.get('ref', current_app.genome)
-    if not chrom:
-        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    chrom = _safe_chrom(request.args.get('chromosome'))
+    ref = _safe_ref(request.args.get('ref', current_app.genome))
     from pangyplot.preprocess.spine.spine_builder import spine_filename
     skel_dir = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "skeleton")
     gz_path = os.path.join(skel_dir, spine_filename(ref))
@@ -164,9 +184,7 @@ def spine():
 
 @bp.route('/polychain-data')
 def polychain_data_file():
-    chrom = request.args.get('chromosome')
-    if not chrom:
-        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    chrom = _safe_chrom(request.args.get('chromosome'))
     gz_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "polychain-data.json.gz")
     if not os.path.exists(gz_path):
         return jsonify({}), 200
@@ -177,9 +195,7 @@ def polychain_data_file():
 
 @bp.route('/graph-meta')
 def graph_meta():
-    chrom = request.args.get('chromosome')
-    if not chrom:
-        return jsonify({"error": "Missing required parameter: chromosome"}), 400
+    chrom = _safe_chrom(request.args.get('chromosome'))
     meta_path = os.path.join(current_app.data_dir, "graphs", current_app.db_name, chrom, "meta.json")
     if not os.path.exists(meta_path):
         return jsonify({}), 200
@@ -431,10 +447,16 @@ _DEBUG_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 
 
 @bp.route('/debug-log', methods=["POST"])
 def debug_log():
+    # Developer-only: never accept unsolicited disk writes on a public server.
+    if not current_app.debug_mode:
+        abort(404)
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"ok": False}), 400
-    session_id = data.pop('sessionId', 'unknown')
+    # The session id becomes a filename; strip it to a safe token so it cannot
+    # traverse out of the log directory.
+    raw_session = str(data.pop('sessionId', 'unknown'))
+    session_id = "".join(_SAFE_TOKEN.findall(raw_session)).replace("..", "")[:64] or 'unknown'
     os.makedirs(_DEBUG_LOG_DIR, exist_ok=True)
     import json, time
     line = json.dumps({"ts": time.time(), **data})
