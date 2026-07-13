@@ -202,7 +202,9 @@
 
     <!--<select id="db-selection"> </select>-->
 
-    {% include 'sections/cytoband-template.html' %}
+    {% if organism != 'none' %}
+        {% include 'sections/cytoband-template.html' %}
+    {% endif %}
 
     <div class="flex-row fixed-height-1">
 

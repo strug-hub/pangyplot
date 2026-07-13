@@ -38,15 +38,18 @@ def pangyplot_setup(args):
 
     # Cytoband setup
     valid_organisms = organisms.VALID_ORGANISMS.keys()
+    choices = [organisms.NO_ORGANISM, organisms.CUSTOM_ORGANISM, *valid_organisms]
 
-    new_env_values["ORGANISM"] = None
-    while new_env_values["ORGANISM"] is None:
-        prompt_env_var("ORGANISM",
-                       f"Choose organism: [{organisms.NO_ORGANISM}, {organisms.CUSTOM_ORGANISM}, {', '.join(valid_organisms)}]: ",
-                       default=organisms.DEFAULT_ORGANISM)
-        if new_env_values["ORGANISM"] not in valid_organisms:
-            new_env_values["ORGANISM"] = None
-            print(f"Invalid organism. Please choose one of from list")
+    # Prompted directly rather than through prompt_env_var(), which drops any
+    # value equal to "none" -- and "none" is a legitimate ORGANISM here.
+    while new_env_values.get("ORGANISM") is None:
+        existing = os.getenv("ORGANISM")
+        default = existing or organisms.DEFAULT_ORGANISM
+        value = input(f"Choose organism: [{', '.join(choices)}] [{default}]: ").strip() or default
+        if value not in choices:
+            print("Invalid organism. Please choose one of from list")
+            continue
+        new_env_values["ORGANISM"] = value
 
     if new_env_values["ORGANISM"] == organisms.CUSTOM_ORGANISM:
         prompt_env_var("CYTOBAND_PATH", "Path to custom cytoband file")

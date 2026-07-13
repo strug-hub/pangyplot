@@ -1,7 +1,7 @@
 import { buildUrl, fetchData } from "../../../../utils/network-utils.js";
 import { highlightGenomeCytoband } from "./selector.js";
 import { drawGenomeCytoband } from "./painter.js";
-import { fetchAndDrawChromosomeData } from "../chromosome/cytoband-chromosome.js";
+import { fetchAndDrawChromosomeData, clearChromosomeCytoband } from "../chromosome/cytoband-chromosome.js";
 
 import eventBus from '@event-bus';
 
@@ -30,6 +30,8 @@ export async function fetchAndDrawGenome(initialChrom) {
       if (initialChrom != null) {
         return fetchAndDrawChromosomeData(initialChrom);
       }
+
+      clearChromosomeCytoband();
     })
 }
 

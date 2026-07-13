@@ -40,6 +40,12 @@ export function fetchAndDrawChromosomeData(chromosome, start, end) {
     });
 }
 
+// No cytoband to show at all (e.g. ORGANISM=none): render the "no info" state
+// rather than leaving a stale or blank panel.
+export function clearChromosomeCytoband() {
+  updateChromosomeCytoband(null, null);
+}
+
 function updateChromosomeCytoband(chromData, chromosome, start, end) {
   const canvasContainer = document.getElementById("cytoband-chromosome-canvas-container");
   const missingInfo = document.getElementById("cytoband-chromosome-no-info");

@@ -126,26 +126,47 @@ def setup_cytoband(app):
     organism = os.getenv("ORGANISM", organisms.DEFAULT_ORGANISM)
     cytoband_path = os.getenv("CYTOBAND_PATH", None)
     canonical_path = os.getenv("CANONICAL_PATH", None)
-    
-    if organism == "custom":
+
+    if organism == organisms.CUSTOM_ORGANISM:
         if not cytoband_path or not canonical_path:
             print("A 'custom' organism was specified, but no information about CYTOBAND_PATH or CANONICAL_PATH was found in .env")
             print(f"Using default organism: {organisms.DEFAULT_ORGANISM}")
             organism = organisms.DEFAULT_ORGANISM
+            cytoband_path = None
+            canonical_path = None
+        else:
+            missing = [p for p in (cytoband_path, canonical_path) if not os.path.isfile(p)]
+            if missing:
+                for path in missing:
+                    print(f"Custom cytoband file not found: {path}")
+                print(f"Continuing without an ideogram (ORGANISM={organisms.NO_ORGANISM})")
+                organism = organisms.NO_ORGANISM
     else:
         cytoband_path = None
         canonical_path = None
 
+        if organism != organisms.NO_ORGANISM and organism not in organisms.ORGANISM_TO_GENOME:
+            print(f"Unrecognized ORGANISM '{organism}'. Valid values: "
+                  f"{organisms.NO_ORGANISM}, {organisms.CUSTOM_ORGANISM}, "
+                  f"{', '.join(organisms.VALID_ORGANISMS)}")
+            print(f"Continuing without an ideogram (ORGANISM={organisms.NO_ORGANISM})")
+            organism = organisms.NO_ORGANISM
+
     app.cytoband['organism'] = organism
-    genome = organisms.ORGANISM_TO_GENOME.get(organism, None)
-    app.cytoband['genome'] = genome
+    app.cytoband['genome'] = organisms.ORGANISM_TO_GENOME.get(organism, None)
+
+    # No ideogram: the app boots with an empty chromosome list and no bands.
+    # Do not synthesize a fake organism to fill the gap.
+    if organism == organisms.NO_ORGANISM:
+        app.cytoband["chromosomes"] = []
+        app.cytoband["cytobands"] = dict()
+        return
 
     if not cytoband_path:
-        genome = organisms.ORGANISM_TO_GENOME.get(organism, None)
-        if genome:
-            script_dir = os.path.dirname(os.path.realpath(__file__))
-            cytoband_path = os.path.join(script_dir, "static", "cytoband", f"{genome}.cytoBand.txt")
-            canonical_path = os.path.join(script_dir, "static", "cytoband", f"{genome}.canonical.txt")
+        genome = app.cytoband['genome']
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        cytoband_path = os.path.join(script_dir, "static", "cytoband", f"{genome}.cytoBand.txt")
+        canonical_path = os.path.join(script_dir, "static", "cytoband", f"{genome}.canonical.txt")
 
     app.cytoband["chromosomes"] = cytoband_parser.parse_chromosome_list(canonical_path)
     app.cytoband["cytobands"] = cytoband_parser.parse_cytoband(cytoband_path, app.cytoband["chromosomes"])

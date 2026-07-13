@@ -11,6 +11,7 @@ Subcommands
    subcommands/pangyplot-preprocess
    subcommands/pangyplot-add
    subcommands/pangyplot-annotate
+   subcommands/pangyplot-cytoband
    subcommands/pangyplot-status
    subcommands/pangyplot-run
    subcommands/pangyplot-version

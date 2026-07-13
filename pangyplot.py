@@ -2,12 +2,14 @@ import argparse
 import os
 
 from pangyplot.commands import add
+from pangyplot.commands import cytoband
 from pangyplot.commands import run
 from pangyplot.commands import setup
 from pangyplot.commands import status
 from pangyplot.commands import annotate
 from pangyplot.commands import reindex
 from pangyplot.commands import preprocess
+from pangyplot.preprocess import cytoband_generator
 from pangyplot.version import __version__,__version_name__
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -58,6 +60,17 @@ def parse_args():
     parser_annotate.add_argument('--name', help='Name for the annotation set', default=None, required=True)
     parser_annotate.add_argument('--dir', help='Directory to store database files', default=DEFAULT_DB_FOLDER)
 
+    parser_cytoband = subparsers.add_parser('cytoband', help='Generate a pseudo-cytoband from chromosome lengths (for organisms with no UCSC cytoband).')
+    parser_cytoband.add_argument('--fai', help='Path to a FASTA .fai index (or any TSV whose first two columns are name and length)', default=None, required=True)
+    parser_cytoband.add_argument('--out-dir', help='Directory to write the cytoband and canonical files into', default=os.getcwd())
+    parser_cytoband.add_argument('--genome', help='Genome name used for the output filenames (default: derived from --fai)', default=None)
+    parser_cytoband.add_argument('--band-size', help='Subdivide each chromosome into bands of this many bp (default: one solid band per chromosome)', default=None, type=int)
+    parser_cytoband.add_argument('--num-bands', help='Subdivide each chromosome into this many bands, as an alternative to --band-size', default=None, type=int)
+    parser_cytoband.add_argument('--min-length', help=f'Drop sequences shorter than this many bp (default: {cytoband_generator.DEFAULT_MIN_LENGTH}; use 0 to keep all)', default=cytoband_generator.DEFAULT_MIN_LENGTH, type=int)
+    parser_cytoband.add_argument('--chromosomes', help='Comma-separated list of sequences to keep, in this order (overrides --min-length and --pattern)', default=None)
+    parser_cytoband.add_argument('--pattern', help='Keep only sequences whose name matches this regex', default=None)
+    parser_cytoband.add_argument('--force', help='Overwrite existing files without asking', action='store_true')
+
     parser_version = subparsers.add_parser('version', help='Show version information.')
 
     #TODO: create metadata file and use to reindex 
@@ -93,6 +106,9 @@ def parse_args():
 
     if args.command == 'annotate':
         annotate.pangyplot_annotate(args)
+
+    if args.command == 'cytoband':
+        cytoband.pangyplot_cytoband(args)
 
     if args.command == 'version':
         print(f"PangyPlot {__version__} ({__version_name__})")

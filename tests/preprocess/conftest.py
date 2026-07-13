@@ -22,3 +22,9 @@ def empty_name_file():
 @pytest.fixture
 def three_chrom_canonical():
     return CYTOBAND_FIXTURES / "three_chrom.canonical.txt"
+
+
+@pytest.fixture
+def nonmodel_fai():
+    """A .fai for an organism with no UCSC cytoband: 3 chromosomes + 2 scaffolds."""
+    return CYTOBAND_FIXTURES / "nonmodel.fai"

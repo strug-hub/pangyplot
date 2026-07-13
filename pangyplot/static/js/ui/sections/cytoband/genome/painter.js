@@ -1,6 +1,9 @@
 import { genomeCytobandDimensions } from "./constants.js";
 import eventBus from '@event-bus';
 
+// A human-sized genome. Genomes with at least this many chromosomes are unaffected.
+const MIN_VIEWBOX_CHROMOSOMES = 24;
+
 var dim = null;
 
 export function drawGenomeCytoband(genomeData, chromOrder) {
@@ -22,7 +25,13 @@ export function drawGenomeCytoband(genomeData, chromOrder) {
 }
 
 function createSvgCanvas() {
-    const viewBoxValue = `0 0 ${dim.width} ${dim.height}`;
+    // The SVG is width:100% height:auto, so its rendered height is
+    // containerWidth * viewBoxHeight / viewBoxWidth. viewBox width grows with
+    // chromosome count while its height is fixed, so a genome with few
+    // chromosomes would stretch the SVG vertically -- 17000px for zero. Clamp the
+    // viewBox width to a full-size genome; fewer chromosomes just leave slack.
+    const viewBoxWidth = Math.max(dim.width, genomeCytobandDimensions(MIN_VIEWBOX_CHROMOSOMES).width);
+    const viewBoxValue = `0 0 ${viewBoxWidth} ${dim.height}`;
     return d3.select("#cytoband-genome-canvas-container")
         .append("svg")
         .attr("id", "cytoband-genome-canvas")

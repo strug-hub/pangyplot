@@ -26,7 +26,7 @@ Cytoband Settings
 - **ORGANISM** *(optional)*
   Organism key used to select the cytoband reference. Must be one of the keys defined in ``pangyplot/organisms.py``:
   ``human-hg38``, ``human-t2t``, ``mouse``, ``fruitfly``, ``zebrafish``, ``chicken``, ``rabbit``, ``dog``,
-  or the special values ``none`` (no cytoband) or ``custom`` (bring your own).
+  or the special values ``custom`` (bring your own cytoband) or ``none`` (no cytoband).
   Default: ``human-hg38``.
 
 - **CYTOBAND_PATH** *(conditional)*
@@ -35,9 +35,16 @@ Cytoband Settings
   Default: none.
 
 - **CANONICAL_PATH** *(conditional)*
-  Path to a canonical chromosome definition file.
+  Path to a canonical chromosome definition file (one chromosome name per line).
   Required only if ``ORGANISM=custom``.
   Default: none.
+
+.. note::
+
+   If your organism is not one of the built-ins, ``pangyplot cytoband`` generates a
+   :ref:`dummy cytoband <pseudo-cytoband>` from a reference FASTA index, giving you
+   the two files above. Setting ``ORGANISM=none`` runs PangyPlot
+   :ref:`without a cytoband <no-cytoband>`.
 
 For Production Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
