@@ -12,12 +12,22 @@ module-level `_timings` list so callers can dump a timings.tsv via
 `write_timings(path)`. `reset_timings()` clears state for a new run.
 """
 
+import resource
 import time
 from contextlib import contextmanager
 
 
-_timings = []        # list of (key, seconds) in order produced
+_timings = []        # list of (key, seconds[, peak_gb]) in order produced
 _section_stack = []  # list of active section names, for hierarchical keys
+
+
+def _peak_gb():
+    """Peak resident set size of this process and its children, in GB."""
+    peak_kb = max(
+        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss,
+    )
+    return peak_kb / (1024 ** 2)
 
 
 def _key(name):
@@ -83,7 +93,12 @@ def reset_timings():
 
 
 def write_timings(path):
-    """Dump recorded timings to `path` as key\\tvalue (seconds)."""
+    """Dump recorded timings to `path` as key\\tseconds, with an optional
+    third peak-memory (GB) column on entries that recorded one."""
     with open(path, "w") as f:
-        for k, v in _timings:
-            f.write(f"{k}\t{v:.3f}\n")
+        for entry in _timings:
+            key, seconds = entry[0], entry[1]
+            row = f"{key}\t{seconds:.3f}"
+            if len(entry) > 2:
+                row += f"\t{entry[2]:.3f}"
+            f.write(row + "\n")
