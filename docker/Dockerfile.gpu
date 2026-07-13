@@ -71,6 +71,15 @@ RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest \
     && micromamba clean --all --yes
 ENV PATH=${MAMBA_ROOT_PREFIX}/bin:${PATH}
 
+# vg — needed to convert HPRC's per-chromosome .vg graphs into the P-line GFA
+# odgi can read (odgi cannot parse W-lines, hence --no-wline). Upstream ships a
+# static binary, so there is nothing to build and no runtime deps to install.
+ARG VG_VERSION=v1.69.0
+RUN curl -fsSL -o /usr/local/bin/vg \
+        https://github.com/vgteam/vg/releases/download/${VG_VERSION}/vg \
+    && chmod +x /usr/local/bin/vg \
+    && vg version
+
 WORKDIR /app
 
 # Python deps first for layer caching.
