@@ -85,23 +85,47 @@ is `np.unique` or one int-keyed dict instead of a hash of a string pair.
 accumulates every domain `Bubble` into one `bubbles` list before
 `db.insert_bubbles`. Chunk it.
 
-## What it's worth — and what it is not
+## What it was worth — measured
 
-Projected peak on v2 chrY: **3.23 G → ~1.9 G**. The 2.06 G BubbleGun delta
-collapses to roughly 0.3 G, and the new ceiling is whatever the parse phase
-leaves resident (1.59 G) contested by the skeleton phase (1.67 G).
+Done. Same-machine A/B on v2 chrY, both under a memory-capped cgroup:
 
-**This alone does not make v2 chr1 fit on a 15 GB box.** It removes the single
-largest node-proportional term, but the ~1.2–1.6 G floor that survives the bubble
-phase is a *separate* problem, and I have not decomposed its node-vs-step
-scaling — `SegmentIndex`/`LinkIndex` are already flat numpy (~25 B/segment), so
-that floor is parse-time transients plus allocator retention, not fat objects.
-Attack it only after this, and only with a measurement first.
+| | legacy | flat |
+|---|---|---|
+| **peak RSS** | **3.22 G** | **1.68 G** |
+| `Finding bubbles` section Δ | +2.22 G | **+0.39 G** |
+| ↳ build the graph | +1.06 G | +0.28 G |
+| ↳ find bubbles and chains | +0.54 G | +0.04 G |
+| peak lives in | `Indexing bubbles` | `Exporting skeleton` |
+| section wall-clock | 79.9 s | 73.9 s |
 
-Order of operations, if chr1 is the goal:
-1. this — the biggest, best-understood, node-proportional term
-2. re-run `benchmark_memory.py` on v2 chrY and re-fit the slope
-3. *then* decide whether the parse floor needs work, or Rust, or neither
+`bubbles.db` is **byte-identical**: fingerprint `8bf22997c2fdc5d1`, 308,507
+bubbles, both paths. The whole test suite passes against either.
+
+The bubble phase is no longer the peak — it is not even close. Memory now tops
+out in the skeleton export, and the slope against node count roughly halves:
+
+| | B/node | v2 chrY | chr22 (2.18M nodes) | chr1 @ 6M | chr1 @ 10M |
+|---|---|---|---|---|---|
+| legacy | 3041 | 3.22 G | 6.4 G | 17.2 G | 28.6 G |
+| flat | **1448** | **1.68 G** | **3.2 G** | **8.4 G** | 13.8 G |
+
+chr22 was already going to fit; it now fits with room to spare. The real change
+is **chr1**, which moves from impossible on a 15 GB box to plausible — the answer
+now hinges on its node count, which is one `odgi stats -S` away and cannot be
+guessed from the 30 GB file size (that tracks steps, not nodes).
+
+## What is left
+
+The remaining peak is the skeleton/polychain phases and whatever the parse leaves
+resident (1.59 G at this scale). That floor is *not* fat objects --
+`SegmentIndex`/`LinkIndex` are already flat numpy -- so it is parse-time
+transients plus allocator retention, and its node-vs-step scaling is still
+undecomposed. Measure before touching it.
+
+`Indexing bubbles` (+0.31 G) could still be streamed: `construct_bubble_index`
+holds every domain `Bubble` at once because `find_children` links parents to
+children across the whole set and `Chain` assigns siblings across a chain.
+Restructuring both would let it write to SQLite incrementally.
 
 ## Validating it
 
