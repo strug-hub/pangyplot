@@ -104,7 +104,19 @@ def insert_bubbles(dir, bubbles):
     cur = conn.cursor()
     for bubble in bubbles:
         insert_bubble(cur, bubble)
-    cur.execute("CREATE INDEX idx_bubble_chain ON bubbles(chain, chain_step)")
+    finalize_bubbles(conn)
+
+
+def insert_bubbles_batch(cur, bubbles):
+    """Insert a chunk of bubbles. Lets a caller write as it goes rather than
+    holding every domain Bubble at once -- 308 K of them at 1,267 B each."""
+    for bubble in bubbles:
+        insert_bubble(cur, bubble)
+
+
+def finalize_bubbles(conn):
+    """Index, commit and compact. Call once, after the last batch."""
+    conn.execute("CREATE INDEX idx_bubble_chain ON bubbles(chain, chain_step)")
     conn.commit()
     conn.execute("ANALYZE")
     conn.execute("VACUUM")
