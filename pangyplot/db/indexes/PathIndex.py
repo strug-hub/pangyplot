@@ -1,8 +1,12 @@
 import json
 import os
 
+import numpy as np
+
 import pangyplot.db.sqlite.path_db as path_db
-from pangyplot.db.path_codec import read_binpath, read_path_index
+from pangyplot.db.path_codec import (
+    read_binpath, read_binpath_combined, read_path_index,
+)
 
 BP_RANGES_CACHE = "bp_ranges.json"
 
@@ -55,17 +59,19 @@ class PathIndex:
         if self._load_bp_ranges_cache():
             return
 
-        # Build segment_id → (min_bp, max_bp) from step index
-        seg_to_bp = {}
-        for i in range(len(step_index.starts)):
-            seg_id = int(step_index.segments[i])
-            bp_s = int(step_index.starts[i])
-            bp_e = int(step_index.ends[i])
-            if seg_id not in seg_to_bp:
-                seg_to_bp[seg_id] = (bp_s, bp_e)
-            else:
-                old_s, old_e = seg_to_bp[seg_id]
-                seg_to_bp[seg_id] = (min(old_s, bp_s), max(old_e, bp_e))
+        # segment_id -> (min_bp, max_bp), as arrays indexed by segment id so the
+        # per-path lookup below is a vectorized gather rather than a dict probe
+        # per step. A path can carry tens of millions of steps.
+        segments = np.asarray(step_index.segments, dtype=np.int64)
+        starts = np.asarray(step_index.starts, dtype=np.int64)
+        ends = np.asarray(step_index.ends, dtype=np.int64)
+
+        size = int(segments.max()) + 1 if segments.size else 0
+        seg_min = np.full(size, np.iinfo(np.int64).max, dtype=np.int64)
+        seg_max = np.full(size, np.iinfo(np.int64).min, dtype=np.int64)
+        np.minimum.at(seg_min, segments, starts)
+        np.maximum.at(seg_max, segments, ends)
+        known = seg_min != np.iinfo(np.int64).max
 
         index = read_path_index(paths_dir)
         all_paths = index.get("paths", {})
@@ -75,22 +81,21 @@ class PathIndex:
             for entry in entries:
                 filepath = os.path.join(paths_dir, entry["file"])
                 try:
-                    steps = read_binpath(filepath)
+                    combined = read_binpath_combined(filepath)
                 except Exception:
                     ranges.append((None, None))
                     continue
 
-                min_bp = None
-                max_bp = None
-                for step_str in steps:
-                    seg_id = int(step_str[:-1])
-                    if seg_id in seg_to_bp:
-                        s, e = seg_to_bp[seg_id]
-                        if min_bp is None or s < min_bp:
-                            min_bp = s
-                        if max_bp is None or e > max_bp:
-                            max_bp = e
-                ranges.append((min_bp, max_bp))
+                seg_ids = combined >> 1
+                seg_ids = seg_ids[(seg_ids >= 0) & (seg_ids < size)]
+                seg_ids = seg_ids[known[seg_ids]]
+
+                if seg_ids.size == 0:
+                    ranges.append((None, None))
+                    continue
+
+                ranges.append((int(seg_min[seg_ids].min()),
+                               int(seg_max[seg_ids].max())))
             self._subpath_bp_ranges[sample] = ranges
 
         self._save_bp_ranges_cache()

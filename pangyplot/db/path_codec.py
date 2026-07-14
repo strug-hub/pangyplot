@@ -13,6 +13,8 @@ import gzip
 import json
 import os
 
+import numpy as np
+
 from pangyplot.version import __version__
 
 from pangyplot.db.db_utils import GZIP_LEVEL
@@ -105,6 +107,39 @@ def encode_steps(steps):
     return gzip.compress(bytes(buf), GZIP_LEVEL)
 
 
+def decode_combined(data):
+    """Decode a .binpath payload to an int64 array of combined values.
+
+    combined = (segment_id << 1) | dir_bit, i.e. the on-disk representation
+    before it is rendered as "123+" strings. Consumers that only want segment
+    ids should use this: decode_steps() builds one Python string per step,
+    which on a chromosome-scale graph means tens of millions of allocations.
+
+    Vectorized: bytes are grouped by continuation bit and summed per value
+    with add.reduceat, so no Python-level loop runs over the steps.
+    """
+    raw = np.frombuffer(gzip.decompress(data), dtype=np.uint8)
+    if raw.size == 0:
+        return np.empty(0, dtype=np.int64)
+
+    is_last = (raw & 0x80) == 0
+
+    # Byte i belongs to value grp[i]; starts[g] is that value's first byte.
+    grp = np.empty(raw.size, dtype=np.int64)
+    grp[0] = 0
+    np.cumsum(is_last[:-1], out=grp[1:])
+    starts = np.flatnonzero(np.concatenate(([True], is_last[:-1])))
+
+    shift = 7 * (np.arange(raw.size, dtype=np.int64) - starts[grp])
+    contrib = (raw & 0x7F).astype(np.int64) << shift
+    values = np.add.reduceat(contrib, starts)
+
+    # First value is written raw; the rest are zigzag deltas.
+    deltas = (values >> 1) ^ -(values & 1)
+    deltas[0] = values[0]
+    return np.cumsum(deltas)
+
+
 def decode_steps(data):
     """Decode gzipped delta-zigzag-varint bytes back to step strings.
 
@@ -154,6 +189,12 @@ def read_binpath(filepath):
     """Read a .binpath file. Returns list of step strings."""
     with open(filepath, 'rb') as f:
         return decode_steps(f.read())
+
+
+def read_binpath_combined(filepath):
+    """Read a .binpath file. Returns an int64 array of combined values."""
+    with open(filepath, 'rb') as f:
+        return decode_combined(f.read())
 
 
 def read_binpath_raw(filepath):
