@@ -33,15 +33,20 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     sink_ids = [int(sink_node.id)] + sink_compacted_ids
     bubble.sink_segments = sink_ids
 
-    # Inside nodes + compacted
-    nodes = raw_bubble.inside
-    compacted_dict = defaultdict(list)
-    for node in nodes:
-        if node.optional_info.get("compacted"):
-            compacted_dict[int(node.id)].extend(node.optional_info["compacted"])
-    compacted_nodes = [n for nodes in compacted_dict.values() for n in nodes]
+    # The bubble's interior: the nodes BubbleGun kept, plus every node compaction
+    # absorbed into them. merge_node() moves an absorbed node's edges into its
+    # absorber but not its bases, so the absorber's seq_len still describes only
+    # itself. Summing over the surviving nodes alone therefore drops the absorbed
+    # sequence entirely, even though the absorbed ids do land in bubble.inside --
+    # on HPRC v2 chrY that understated 937 bubbles, the worst by ~77x.
+    # Keyed by id so a node counted once as itself is not counted again.
+    interior = {int(n.id): n for n in raw_bubble.inside}
+    for node in raw_bubble.inside:
+        for absorbed in node.optional_info.get("compacted", []):
+            interior[int(absorbed.id)] = absorbed
 
-    bubble.inside = {int(n.id) for n in nodes + compacted_nodes}
+    nodes = raw_bubble.inside
+    bubble.inside = set(interior)
 
     # Step range
     def get_steps(seg_ids):
@@ -75,12 +80,16 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     bubble.range_exclusive = collapse_ranges(inside_steps)
     bubble.range_inclusive = collapse_ranges(inside_steps.union(source_steps, sink_steps))
 
-    # Length and base content
-    bubble.length = sum(n.seq_len for n in nodes)
-    bubble.gc_count = sum(n.optional_info.get("gc_count", 0) for n in nodes)
-    bubble.n_count = sum(n.optional_info.get("n_count", 0) for n in nodes)
+    # Length and base content, over the whole interior -- so these always agree
+    # with the segments listed in bubble.inside.
+    bubble.length = sum(n.seq_len for n in interior.values())
+    bubble.gc_count = sum(n.optional_info.get("gc_count", 0) for n in interior.values())
+    bubble.n_count = sum(n.optional_info.get("n_count", 0) for n in interior.values())
 
     # Bounding box logic (x1/x2/y1/y2)
+    # Deliberately over the surviving nodes only, not `interior`: widening the box
+    # to cover absorbed nodes would move where bubbles are drawn, which is a layout
+    # change rather than a data-correctness one. Same root cause; left alone here.
     x1s, x2s, y1s, y2s = [], [], [], []
     for node in nodes:
         info = node.optional_info
