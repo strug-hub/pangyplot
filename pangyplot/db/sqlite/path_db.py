@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from pangyplot.objects.Path import Path
 from pangyplot.db.path_codec import (
-    write_binpath, read_binpath, read_binpath_raw,
+    write_binpath, write_binpath_combined, read_binpath, read_binpath_raw,
     write_path_index, read_path_index, INDEX_FILENAME,
 )
 
@@ -34,8 +34,13 @@ def retrieve_sample_idx(dir):
 # Accumulates metadata during preprocessing for finalize_paths()
 _pending_metadata = {}
 
-def store_path(dir, path):
-    """Store a path as a pure .binpath file. Call finalize_paths() after all paths stored."""
+def store_path(dir, path, combined=None):
+    """Store a path as a pure .binpath file. Call finalize_paths() after all paths stored.
+
+    `combined` is the packed step array, if the caller already derived it --
+    parse_paths does, to key path_dict, and deriving it twice is the single most
+    expensive thing in that phase.
+    """
     sample = path.sample_name()
     db_path = os.path.join(dir, DB_NAME)
     if not os.path.exists(db_path):
@@ -44,7 +49,10 @@ def store_path(dir, path):
     filepath = get_filename(db_path, sample)
     filename = os.path.basename(filepath)
 
-    write_binpath(filepath, path.path)
+    if combined is None:
+        write_binpath(filepath, path.path)
+    else:
+        write_binpath_combined(filepath, combined)
 
     # Accumulate metadata for index.json
     key = db_path

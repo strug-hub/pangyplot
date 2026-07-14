@@ -6,7 +6,7 @@ from pangyplot.preprocess import log
 from pangyplot.db.sqlite.step_db import write_step_index
 from pangyplot.preprocess.parser.gfa.parse_segments import parse_segments, parse_line_S
 from pangyplot.preprocess.parser.gfa.parse_links import parse_links, parse_line_L
-from pangyplot.preprocess.parser.gfa.parse_paths import parse_paths
+from pangyplot.preprocess.parser.gfa.parse_paths import parse_paths, edge_key
 import pangyplot.db.sqlite.segment_db as segment_db
 import pangyplot.db.sqlite.link_db as link_db
 from pangyplot.db.indexes.SegmentIndex import SegmentIndex
@@ -79,14 +79,15 @@ def _parse_segments_and_links(gfa_file, layout_coords, path_idx, path_dict, dir)
             elif tag == "L":
                 link = parse_line_L(line)
 
-                # Compute haplotype bitmask inline (tuple keys match collapse_binary)
-                fwd = f"{link.from_id}{link.from_strand}"
-                rev_from = f"{link.from_id}{'-' if link.from_strand == '+' else '+'}"
-                twd = f"{link.to_id}{link.to_strand}"
-                rev_to = f"{link.to_id}{'-' if link.to_strand == '+' else '+'}"
+                # Haplotype bitmask, keyed the way collapse_binary packed it:
+                # one int64 per step pair, not a tuple of two strings.
+                from_rev = link.from_strand == '-'
+                to_rev = link.to_strand == '-'
 
-                key = (fwd, twd)
-                key_rev = (rev_to, rev_from)
+                key = edge_key(link.from_id, from_rev, link.to_id, to_rev)
+                # the same edge walked the other way: both ends flip orientation
+                # and swap places
+                key_rev = edge_key(link.to_id, not to_rev, link.from_id, not from_rev)
                 mask = path_dict.get(key, 0) | path_dict.get(key_rev, 0)
                 haplotype = hex(mask)[2:]
                 frequency = bin(mask).count("1") / n_paths

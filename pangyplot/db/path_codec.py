@@ -162,8 +162,17 @@ def encode_steps(steps):
     """
     if not steps:
         return gzip.compress(b'', GZIP_LEVEL, mtime=0)
+    return encode_combined(_combine_steps(steps))
 
-    combined = _combine_steps(steps)
+
+def encode_combined(combined):
+    """Encode an already-combined int64 array. See encode_steps.
+
+    Split out so a caller that already has the combined values does not pay to
+    derive them twice -- parse_paths needs them anyway to key path_dict.
+    """
+    if combined.size == 0:
+        return gzip.compress(b'', GZIP_LEVEL, mtime=0)
 
     # first value raw, the rest as zigzagged deltas
     payload = np.empty(combined.size, dtype=np.int64)
@@ -256,6 +265,12 @@ def write_binpath(filepath, steps):
     """Write a .binpath file (pure gzipped varint bytes)."""
     with open(filepath, 'wb') as f:
         f.write(encode_steps(steps))
+
+
+def write_binpath_combined(filepath, combined):
+    """Write a .binpath file from an already-combined int64 array."""
+    with open(filepath, 'wb') as f:
+        f.write(encode_combined(combined))
 
 
 def read_binpath(filepath):

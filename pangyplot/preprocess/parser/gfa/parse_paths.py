@@ -1,9 +1,27 @@
 from collections import defaultdict
 import re
+
+import numpy as np
+
 import pangyplot.preprocess.parser.gfa.parse_utils as utils
 import pangyplot.db.sqlite.path_db as db
 from pangyplot.db.indexes.PathIndex import PathIndex
+from pangyplot.db.path_codec import _combine_steps
 from pangyplot.objects.Path import Path
+
+# path_dict is keyed on a consecutive pair of steps. A step packs into
+# (segment_id << 1) | orientation_bit, and a pair packs into one int64 with
+# EDGE_SHIFT between them -- so the key is a single int instead of a tuple of two
+# strings, which cost 152 B an entry against ~32 B here (0.26 G on v2 chrY, held
+# live all the way through segment parsing).
+EDGE_SHIFT = 32
+
+
+def edge_key(a_id, a_reverse, b_id, b_reverse):
+    """Pack a step pair into the int64 key path_dict is built on."""
+    a = (int(a_id) << 1) | (1 if a_reverse else 0)
+    b = (int(b_id) << 1) | (1 if b_reverse else 0)
+    return (a << EDGE_SHIFT) | b
 
 _W_STEP_RE = re.compile(r'([><])([^><]+)')
 
@@ -57,7 +75,7 @@ def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
     path_dict = defaultdict(int)
     matching_refs = []
 
-    def collapse_binary(path):
+    def collapse_binary(path, combined):
         nonlocal next_idx
 
         pid = path.sample_name()
@@ -67,11 +85,15 @@ def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
             next_idx += 1
         idx = sample_idx[pid]
 
-        #compresses path links into a binary number stored as integer
+        # compresses path links into a binary number stored as integer
         bit = 1 << idx
-        path_list = path.path
-        for i in range(len(path_list) - 1):
-            key = (path_list[i], path_list[i + 1])
+        if combined.size < 2:
+            return idx
+
+        keys = (combined[:-1] << EDGE_SHIFT) | combined[1:]
+        # |= is idempotent, so a path that walks the same edge twice only needs
+        # to touch the dict once
+        for key in np.unique(keys).tolist():
             path_dict[key] |= bit
 
         return idx
@@ -82,7 +104,11 @@ def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
         if line[0] in "PW":
             path = parse_line_P(line, path_sep) if line[0] == "P" else parse_line_W(line, path_sep)
 
-            collapse_binary(path)
+            # derived once and shared: collapse_binary keys on it, and the
+            # .binpath encoder writes it
+            combined = (_combine_steps(path.path) if path.path
+                        else np.empty(0, dtype=np.int64))
+            collapse_binary(path, combined)
 
             path.is_ref = False
             if path.id_like(ref_path):
@@ -92,7 +118,7 @@ def parse_paths(gfa, ref_path, ref_offset, path_sep, dir):
                 reference_path = path
                 path.is_ref = True
 
-            db.store_path(dir, path)
+            db.store_path(dir, path, combined=combined)
 
     db.finalize_paths(dir)
     db.store_sample_idx(dir, sample_idx)
