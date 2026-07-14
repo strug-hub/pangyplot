@@ -7,6 +7,13 @@ import threading
 import numpy as np
 
 
+# gzip's default (9) is a DEFLATE worst case on the repetitive data written here
+# (delta-varint step streams, JSON index dumps): it costs an order of magnitude
+# more CPU than level 4 to shave ~1% off the payload. Level 4 is the knee of the
+# size/time curve. Not part of any file format — files stay readable at any level.
+GZIP_LEVEL = 4
+
+
 class NumpyJSONEncoder(json.JSONEncoder):
     """JSON encoder that handles numpy scalar types."""
     def default(self, obj):
@@ -62,7 +69,7 @@ def get_connection(dir, filename, clear_existing=False):
 def dump_json(data, file_path):
     if not file_path.endswith(".gz"):
         file_path += ".gz"
-    with gzip.open(file_path, 'wt', encoding='utf-8') as f:
+    with gzip.open(file_path, 'wt', encoding='utf-8', compresslevel=GZIP_LEVEL) as f:
         json.dump(data, f, indent=4, cls=NumpyJSONEncoder)
 
 def load_json(file_path):

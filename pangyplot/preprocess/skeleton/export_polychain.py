@@ -18,6 +18,7 @@ import os
 
 import numpy as np
 
+from pangyplot.db.db_utils import GZIP_LEVEL
 from pangyplot.db.indexes.PolychainIndex import PolychainIndex
 from pangyplot.db.indexes.StepIndex import StepIndex
 
@@ -229,7 +230,7 @@ def export_polychain_data(chr_dir, gfaidx, ref, output_path):
         "links": junc_links,
     }
 
-    with gzip.open(output_path, 'wt', encoding='utf-8') as fout:
+    with gzip.open(output_path, 'wt', encoding='utf-8', compresslevel=GZIP_LEVEL) as fout:
         fout.write('{"chains":[')
         first = True
         for path in _iter_decomp_files(decomp_dir):

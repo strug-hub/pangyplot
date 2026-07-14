@@ -13,6 +13,9 @@ consecutive groups is emitted from the interleaving order.
 import math
 from bisect import bisect_right
 from collections import Counter, defaultdict, deque
+
+import numpy as np
+
 from pangyplot.objects.Chain import Chain
 from pangyplot.preprocess.skeleton.skeleton_geometry import rdp_simplify
 
@@ -65,6 +68,47 @@ def _project_onto_polyline(point, polyline, cum_arc):
             best_dist = dist
             best_arc = cum_arc[i] + t_seg * (cum_arc[i + 1] - cum_arc[i])
     return best_arc
+
+
+# Points are chunked so the (points x segments) intermediate stays bounded on
+# chains with long polylines.
+_PROJECT_CHUNK = 1024
+
+
+def _project_points_onto_polyline(points, polyline, cum_arc):
+    """Vectorized _project_onto_polyline over many points sharing one polyline.
+
+    Ties resolve to the earliest segment, matching the scalar version.
+    """
+    P = np.asarray(polyline, dtype=np.float64)
+    A = P[:-1]
+    D = P[1:] - A
+    seg_len_sq = np.einsum('ij,ij->i', D, D)
+    nonzero = seg_len_sq != 0.0
+
+    cum = np.asarray(cum_arc, dtype=np.float64)
+    d_cum = cum[1:] - cum[:-1]
+
+    Q = np.asarray(points, dtype=np.float64)
+    out = np.empty(len(Q), dtype=np.float64)
+
+    for s in range(0, len(Q), _PROJECT_CHUNK):
+        q = Q[s:s + _PROJECT_CHUNK]
+        rel = q[:, None, :] - A[None, :, :]
+        t = np.einsum('mkj,kj->mk', rel, D)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            t = np.where(nonzero, t / seg_len_sq, 0.0)
+        np.clip(t, 0.0, 1.0, out=t)
+
+        delta = rel - t[:, :, None] * D[None, :, :]
+        dist = np.einsum('mkj,mkj->mk', delta, delta)
+
+        best = np.argmin(dist, axis=1)
+        rows = np.arange(len(q))
+        t_best = t[rows, best]
+        out[s:s + _PROJECT_CHUNK] = cum[best] + t_best * d_cum[best]
+
+    return out
 
 
 def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
@@ -300,12 +344,9 @@ def build_chain_polyline(chain, stepidx, seg_index):
     if n_bubbles == 1:
         bubble_t = [0.5]
     else:
-        bubble_t = []
-        for b in chain.bubbles:
-            cx = (b.x1 + b.x2) / 2.0
-            cy = (b.y1 + b.y2) / 2.0
-            arc = _project_onto_polyline((cx, cy), raw_polyline, cum_arc)
-            bubble_t.append(arc / total_arc)
+        centroids = [((b.x1 + b.x2) / 2.0, (b.y1 + b.y2) / 2.0) for b in chain.bubbles]
+        arcs = _project_points_onto_polyline(centroids, raw_polyline, cum_arc)
+        bubble_t = [arc / total_arc for arc in arcs]
 
         # Enforce monotonicity (bubbles are ordered by chain_step)
         for i in range(1, len(bubble_t)):

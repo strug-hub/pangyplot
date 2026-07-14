@@ -332,11 +332,11 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
         })
 
     # Write meta JSON
-    with gzip.open(meta_path, 'wt', encoding='utf-8') as f:
+    with gzip.open(meta_path, 'wt', encoding='utf-8', compresslevel=db_utils.GZIP_LEVEL) as f:
         json.dump(header, f, cls=db_utils.NumpyJSONEncoder)
 
     # Write binary polylines
-    with gzip.open(bin_path, 'wb') as f:
+    with gzip.open(bin_path, 'wb', compresslevel=db_utils.GZIP_LEVEL) as f:
         for level in all_levels:
             f.write(level["point_counts"].tobytes())
             f.write(level["chain_ids"].tobytes())

@@ -135,7 +135,7 @@ class PolychainIndex:
             # Per-chain decompositions
             for chain_id, decomp in self._decompositions.items():
                 path = os.path.join(self._decomp_dir, f"{chain_id}.json.gz")
-                with gzip.open(path, 'wt', encoding='utf-8') as f:
+                with gzip.open(path, 'wt', encoding='utf-8', compresslevel=utils.GZIP_LEVEL) as f:
                     json.dump(decomp, f, cls=utils.NumpyJSONEncoder)
 
             meta = {

@@ -15,6 +15,8 @@ import os
 
 from pangyplot.version import __version__
 
+from pangyplot.db.db_utils import GZIP_LEVEL
+
 INDEX_FILENAME = "index.json"
 
 
@@ -83,7 +85,7 @@ def encode_steps(steps):
         bytes — gzip-compressed varint stream
     """
     if not steps:
-        return gzip.compress(b'')
+        return gzip.compress(b'', GZIP_LEVEL)
 
     buf = bytearray()
     prev = 0
@@ -100,7 +102,7 @@ def encode_steps(steps):
 
         prev = combined
 
-    return gzip.compress(bytes(buf))
+    return gzip.compress(bytes(buf), GZIP_LEVEL)
 
 
 def decode_steps(data):

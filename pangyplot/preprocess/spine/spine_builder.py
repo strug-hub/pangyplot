@@ -59,7 +59,7 @@ def export_spine(spine, output_path):
         "meta": {"version": __version__},
         "spine": spine,
     }
-    with gzip.open(output_path, 'wt', encoding='utf-8') as f:
+    with gzip.open(output_path, 'wt', encoding='utf-8', compresslevel=db_utils.GZIP_LEVEL) as f:
         f.write(encoder.encode(data))
 
 
