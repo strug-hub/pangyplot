@@ -7,6 +7,7 @@ from pangyplot.utils.plot_bubbles import plot_bubbles
 from collections import defaultdict
 from pangyplot.objects.Bubble import Bubble
 from pangyplot.objects.Chain import Chain
+from pangyplot.preprocess.bubble.bubble_index_common import collapse_ranges, find_children
 
 def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     bubble = Bubble()
@@ -59,24 +60,6 @@ def create_bubble_object(raw_bubble, chain_id, chain_step, step_dict):
     sink_steps = get_steps(sink_ids)
     inside_steps = get_steps(bubble.inside)
 
-    def collapse_ranges(steps):
-        if not steps:
-            return []
-
-        sorted_steps = sorted([int(s) for s in steps])
-        ranges = []
-        start = prev = sorted_steps[0]
-
-        for step in sorted_steps[1:]:
-            if step == prev + 1:
-                prev = step
-            else:
-                ranges.append((start, prev))
-                start = prev = step
-
-        ranges.append((start, prev))
-        return ranges
-
     bubble.range_exclusive = collapse_ranges(inside_steps)
     bubble.range_inclusive = collapse_ranges(inside_steps.union(source_steps, sink_steps))
 
@@ -127,14 +110,6 @@ def create_chain_object(raw_chain, step_dict):
     chain = Chain(chain_id, chain_bubbles)
 
     return chain
-
-def find_children(bubbles):
-    bubble_dict = {bubble.id: bubble for bubble in bubbles}
-
-    for bubble in bubbles:
-        if bubble.parent:
-            bubble_parent = bubble_dict[bubble.parent]
-            bubble_parent.add_child(bubble, bubble_dict)
 
 def construct_bubble_index(link_idx, graph, chr_dir, ref, plot=False):
     step_index = StepIndex(chr_dir, ref)

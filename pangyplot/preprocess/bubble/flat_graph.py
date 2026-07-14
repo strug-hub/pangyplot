@@ -24,7 +24,8 @@ START, END = 0, 1
 class FlatGraph:
     __slots__ = ["n", "seg_id", "seq_len", "gc_count", "n_count",
                  "x1", "x2", "y1", "y2", "ptr", "nbr", "nbr_side",
-                 "comp_ptr", "comp_seg"]
+                 "comp_ptr", "comp_seg", "comp_seq_len", "comp_gc_count",
+                 "comp_n_count"]
 
     def __init__(self, n):
         self.n = n
@@ -32,17 +33,26 @@ class FlatGraph:
         self.seq_len = np.zeros(n, dtype=np.int32)
         self.gc_count = np.zeros(n, dtype=np.int32)
         self.n_count = np.zeros(n, dtype=np.int32)
-        self.x1 = np.zeros(n, dtype=np.float32)
-        self.x2 = np.zeros(n, dtype=np.float32)
-        self.y1 = np.zeros(n, dtype=np.float32)
-        self.y2 = np.zeros(n, dtype=np.float32)
+        # float64, not float32: the layout coords arrive from parse_layout as
+        # Python floats and reach bubbles.db through the bubble bounding box.
+        # Narrowing them here shifts the box in the 4th decimal, which is a real
+        # datastore diff for 16 more bytes a node.
+        self.x1 = np.zeros(n, dtype=np.float64)
+        self.x2 = np.zeros(n, dtype=np.float64)
+        self.y1 = np.zeros(n, dtype=np.float64)
+        self.y2 = np.zeros(n, dtype=np.float64)
         # CSR adjacency, one per side
         self.ptr = [np.zeros(n + 1, dtype=np.int64), np.zeros(n + 1, dtype=np.int64)]
         self.nbr = [np.zeros(0, dtype=np.int32), np.zeros(0, dtype=np.int32)]
         self.nbr_side = [np.zeros(0, dtype=np.uint8), np.zeros(0, dtype=np.uint8)]
-        # segment ids absorbed into each node by compaction, as CSR
+        # Segments absorbed into each node by compaction, as CSR. Their bases are
+        # carried alongside because compaction drops the nodes themselves, and
+        # bubble.length has to count them (they are listed in bubble.inside).
         self.comp_ptr = np.zeros(n + 1, dtype=np.int64)
         self.comp_seg = np.zeros(0, dtype=np.int32)
+        self.comp_seq_len = np.zeros(0, dtype=np.int32)
+        self.comp_gc_count = np.zeros(0, dtype=np.int32)
+        self.comp_n_count = np.zeros(0, dtype=np.int32)
 
     def adj(self, i, side):
         """(neighbor indices, neighbor sides) reachable from node i's given side."""
@@ -261,11 +271,19 @@ def compact(g):
     for s in (START, END):
         out.ptr[s], out.nbr[s], out.nbr_side[s] = _csr_from_pairs(m, rows[s], cols[s], sids[s])
 
-    # compacted membership, carried as original segment ids
-    comp = [sorted(int(g.seg_id[x]) for x in members.get(i, [])) for i in keep.tolist()]
+    # Compacted membership, as original segment ids. Their bases travel with them:
+    # the absorbed nodes are gone from the graph after this, but they still appear
+    # in bubble.inside, so bubble.length has to be able to count them.
+    comp = [sorted(members.get(i, []), key=lambda x: int(g.seg_id[x]))
+            for i in keep.tolist()]
     counts = np.array([len(c) for c in comp], dtype=np.int64)
     out.comp_ptr = np.zeros(m + 1, dtype=np.int64)
     np.cumsum(counts, out=out.comp_ptr[1:])
-    out.comp_seg = np.array([s for c in comp for s in c], dtype=np.int32)
+    absorbed = np.array([x for c in comp for x in c], dtype=np.int64)
+    if absorbed.size:
+        out.comp_seg = g.seg_id[absorbed].astype(np.int32)
+        out.comp_seq_len = g.seq_len[absorbed].astype(np.int32)
+        out.comp_gc_count = g.gc_count[absorbed].astype(np.int32)
+        out.comp_n_count = g.n_count[absorbed].astype(np.int32)
 
     return out
