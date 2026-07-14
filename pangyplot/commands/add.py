@@ -50,11 +50,10 @@ def pangyplot_add(args):
         segment_idx, link_idx  = gfa_index.segment_index, gfa_index.link_index
         print("→ Reusing existing GFA index.")
     except OperationalError:
-        layout_coords = parse_layout(args.layout)
+        with log.section("Parsing layout."):
+            layout_coords = parse_layout(args.layout)
         path_idx, segment_idx, link_idx = parse_gfa(args.gfa, args.ref, args.path, args.offset, args.sep, layout_coords, chr_path)
-        # Nothing past parse reads the layout; the segments carry their own
-        # coords from here on. Dropping it, and handing the parse arenas back,
-        # lowers the floor every later phase stacks on -- and the peak with it.
+        # Keep: the layout sits underneath every later peak if it stays in scope.
         del layout_coords
         memory.release()
 
