@@ -4,6 +4,18 @@ import pdb
 from collections import Counter
 
 
+def node_sort_key(node_id):
+    """Total order over node ids, numeric where possible.
+
+    Node ids are strings, so plain sorting puts "10" before "9". Used to give
+    chains a stable order before ids are assigned to them.
+    """
+    try:
+        return (0, int(node_id), "")
+    except (TypeError, ValueError):
+        return (1, 0, str(node_id))
+
+
 class BubbleChain:
     """
     BubbleChain object which is a set of bubble objects
@@ -101,7 +113,13 @@ class BubbleChain:
 
         todo maybe add the ends while constructing the chain in find_sb_alg
         """
-        self.ends = [k for k, v in Counter([b.source.id for b in self.bubbles] + [b.sink.id for b in self.bubbles]).items() if v == 1]
+        ends = [k for k, v in Counter([b.source.id for b in self.bubbles] + [b.sink.id for b in self.bubbles]).items() if v == 1]
+        # self.bubbles is a set, so which end lands first here — and hence which
+        # end sort() walks from, and the source/sink orientation of every bubble
+        # in the chain — is PYTHONHASHSEED dependent. Sort for a stable walk.
+        # Descending: matches the direction the hash-ordered code happened to
+        # pick, so bubble source/sink orientation is unchanged from before.
+        self.ends = sorted(ends, key=node_sort_key, reverse=True)
 
     def sort(self):
         """

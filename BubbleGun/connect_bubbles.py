@@ -1,6 +1,6 @@
 import logging
 import pdb
-from BubbleGun.BubbleChain import BubbleChain
+from BubbleGun.BubbleChain import BubbleChain, node_sort_key
 
 
 def connect_bubbles(graph):
@@ -67,9 +67,17 @@ def connect_bubbles(graph):
             graph.add_chain(chain)  # get sorted and ends found when added to graph
 
     # filling bubbles and chains ids
+    # graph.b_chains is a set of chains hashed on their end node-id strings, so
+    # iterating it directly numbers the chains in a PYTHONHASHSEED-dependent
+    # order: the same graph produces different bubble/chain ids on every build.
+    # Chains are uniquely identified by their (sorted) ends, so that is a stable
+    # total order.
     b_counter = 1
     chain_counter = 1
-    for chain in graph.b_chains:
+    # sorted() on the ends too: their order within c.ends comes from a set as
+    # well, and only the pair identifies the chain — not which end came first.
+    for chain in sorted(graph.b_chains,
+                        key=lambda c: sorted(node_sort_key(e) for e in c.ends)):
         chain.id = chain_counter
 
         for b in chain.sorted:
