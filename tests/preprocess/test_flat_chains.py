@@ -117,3 +117,23 @@ def test_parents_were_actually_assigned(both):
     """Otherwise test_same_bubble_facts would pass with parent=0 everywhere."""
     assigned = sum(1 for v in both["legacy_bubbles"].values() if v["parent"])
     assert assigned > 0, "no bubble got a parent; the parent comparison is vacuous"
+
+
+def test_flat_is_the_default():
+    """The flat path ships on. PANGYPLOT_FLAT_BUBBLES=0 is the escape hatch.
+
+    Pinned because the whole point of the port is that it runs by default; a
+    silent revert would show up only as a memory regression on a big chromosome.
+    """
+    import os
+    import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
+
+    prior = os.environ.pop("PANGYPLOT_FLAT_BUBBLES", None)
+    try:
+        assert bubble_gun.use_flat() is True
+        os.environ["PANGYPLOT_FLAT_BUBBLES"] = "0"
+        assert bubble_gun.use_flat() is False
+    finally:
+        os.environ.pop("PANGYPLOT_FLAT_BUBBLES", None)
+        if prior is not None:
+            os.environ["PANGYPLOT_FLAT_BUBBLES"] = prior

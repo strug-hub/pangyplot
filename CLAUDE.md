@@ -113,3 +113,7 @@ Supported organisms and their genome assemblies are defined in `pangyplot/organi
 - `CYTOBAND_PATH` / `CANONICAL_PATH` — required when `ORGANISM=custom`
 - `GA_TAG_ID` — optional Google Analytics tag
 - `PANGYPLOT_DATA/DB/ANNOTATION/REF/PORT` — production deployment config
+- `PANGYPLOT_FLAT_BUBBLES` — bubble detection backend, on by default. Set to `0`
+  to fall back to the vendored BubbleGun. Both produce a byte-identical
+  `bubbles.db`; the flat path uses roughly half the peak RSS. Diff the two with
+  `python tools/fingerprint_bubbles.py <chr_dir_a> <chr_dir_b>`.

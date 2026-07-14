@@ -62,11 +62,15 @@ def to_bubblegun_obj(segment_idx, link_idx):
 def use_flat():
     """Whether to run bubble detection on the flat arrays instead of BubbleGun.
 
-    Off by default while the two are being diffed. Set PANGYPLOT_FLAT_BUBBLES=1
-    to build a datastore with the flat path, then compare the two with
-    tools/fingerprint_bubbles.py -- they must be identical.
+    On by default. The two produce a byte-identical bubbles.db -- verified on v2
+    chrY, fingerprint 8bf22997c2fdc5d1 across 308,507 bubbles -- while the flat
+    path takes peak RSS from 3.22 G to 1.68 G.
+
+    PANGYPLOT_FLAT_BUBBLES=0 falls back to BubbleGun. Kept as an escape hatch
+    until the flat path has been through a chromosome larger than chrY; diff the
+    two with tools/fingerprint_bubbles.py, which is what proved them equivalent.
     """
-    return os.environ.get("PANGYPLOT_FLAT_BUBBLES", "").lower() in ("1", "true", "yes")
+    return os.environ.get("PANGYPLOT_FLAT_BUBBLES", "1").lower() not in ("0", "false", "no")
 
 
 def shoot_flat(segment_idx, link_idx, chr_path, ref):
