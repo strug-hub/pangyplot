@@ -2,6 +2,7 @@ import os
 import sqlite3
 import json
 import gzip
+import io
 import threading
 
 import numpy as np
@@ -69,8 +70,14 @@ def get_connection(dir, filename, clear_existing=False):
 def dump_json(data, file_path):
     if not file_path.endswith(".gz"):
         file_path += ".gz"
-    with gzip.open(file_path, 'wt', encoding='utf-8', compresslevel=GZIP_LEVEL) as f:
-        json.dump(data, f, indent=4, cls=NumpyJSONEncoder)
+    # mtime=0 so the same data compresses to the same bytes. gzip stamps the
+    # current time into its header by default, which makes every build of a
+    # datastore differ from every other and defeats diffing one against another.
+    with open(file_path, 'wb') as raw:
+        with gzip.GzipFile(filename='', mode='wb', fileobj=raw,
+                           compresslevel=GZIP_LEVEL, mtime=0) as gz:
+            with io.TextIOWrapper(gz, encoding='utf-8') as f:
+                json.dump(data, f, indent=4, cls=NumpyJSONEncoder)
 
 def load_json(file_path):
     if not file_path.endswith(".gz"):

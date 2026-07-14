@@ -77,6 +77,74 @@ def _uncombine(combined):
     return combined >> 1, '+' if (combined & 1) == 0 else '-'
 
 
+_POW10 = np.power(10, np.arange(19), dtype=np.int64)
+
+
+def _combine_steps(steps):
+    """["1+", "305-"] -> int64 array of (seg_id << 1) | dir_bit.
+
+    Goes through one joined byte buffer rather than touching each step: at
+    chromosome scale this runs tens of millions of times, and both int(s[:-1])
+    per step (scalar) and np.array(steps, dtype="S") (which converts each Python
+    string individually) were more expensive than the arithmetic they fed.
+    ",".join is a single C-level concat and frombuffer is a view, so the strings
+    are only walked once, by C.
+    """
+    n = len(steps)
+    buf = np.frombuffer(",".join(steps).encode(), dtype=np.uint8)
+
+    # Every step is digits then one orientation byte, so the commas locate
+    # everything. Work only in n-sized arrays: routing through the 9 MB byte
+    # stream (masking it, selecting from it, np.repeat over it) costs more than
+    # the digits are worth -- a handful of passes over n beats one pass over the
+    # buffer.
+    comma = np.flatnonzero(buf == 0x2C)
+
+    sign_at = np.empty(n, dtype=np.int64)     # index of each step's +/- byte
+    sign_at[:n - 1] = comma - 1
+    sign_at[n - 1] = buf.size - 1
+
+    starts = np.empty(n, dtype=np.int64)
+    starts[0] = 0
+    starts[1:] = comma + 1
+
+    ndigits = sign_at - starts
+
+    seg = np.zeros(n, dtype=np.int64)
+    for k in range(int(ndigits.max())):       # k-th digit from the right
+        live = ndigits > k
+        idx = np.where(live, sign_at - 1 - k, 0)
+        digit = buf[idx].astype(np.int64) - 0x30
+        seg += np.where(live, digit * _POW10[k], 0)
+
+    return (seg << 1) | (buf[sign_at] == 0x2D)        # '-' -> 1, '+' -> 0
+
+
+def _encode_varints(values):
+    """uint64 array -> concatenated LEB128 varints, as one uint8 array."""
+    v = values.astype(np.uint64)
+
+    # how many 7-bit groups each value needs (at least one)
+    nbytes = np.ones(v.size, dtype=np.int64)
+    for k in range(1, 10):
+        nbytes += v >= (np.uint64(1) << np.uint64(7 * k))
+
+    ends = np.cumsum(nbytes)
+    starts = ends - nbytes
+    out = np.zeros(int(ends[-1]), dtype=np.uint8)
+
+    for k in range(10):
+        sel = nbytes > k
+        if not sel.any():
+            break
+        group = ((v[sel] >> np.uint64(7 * k)) & np.uint64(0x7F)).astype(np.uint8)
+        # continuation bit on every group but the value's last
+        more = nbytes[sel] > k + 1
+        out[starts[sel] + k] = np.where(more, group | np.uint8(0x80), group)
+
+    return out
+
+
 def encode_steps(steps):
     """Encode a list of step strings into gzipped delta-zigzag-varint bytes.
 
@@ -85,26 +153,31 @@ def encode_steps(steps):
 
     Returns:
         bytes — gzip-compressed varint stream
+
+    Vectorized, and byte-for-byte identical to the scalar version it replaced:
+    the per-step loop called five functions (_parse_step, _combine,
+    _zigzag_encode, _write_varint, bytearray.append) tens of millions of times
+    and was 80% of the path-parsing phase. The decode side already worked this
+    way; the encoder had simply never been done.
     """
     if not steps:
-        return gzip.compress(b'', GZIP_LEVEL)
+        return gzip.compress(b'', GZIP_LEVEL, mtime=0)
 
-    buf = bytearray()
-    prev = 0
+    combined = _combine_steps(steps)
 
-    for i, step in enumerate(steps):
-        seg_id, direction = _parse_step(step)
-        combined = _combine(seg_id, direction)
+    # first value raw, the rest as zigzagged deltas
+    payload = np.empty(combined.size, dtype=np.int64)
+    payload[0] = combined[0]
+    if combined.size > 1:
+        deltas = combined[1:] - combined[:-1]
+        payload[1:] = (deltas << 1) ^ (deltas >> 63)   # zigzag; >> is arithmetic
 
-        if i == 0:
-            _write_varint(buf, combined)
-        else:
-            delta = combined - prev
-            _write_varint(buf, _zigzag_encode(delta))
-
-        prev = combined
-
-    return gzip.compress(bytes(buf), GZIP_LEVEL)
+    buf = _encode_varints(payload)
+    # mtime=0: gzip stamps the current time into its header by default, so two
+    # identical builds produced different .binpath bytes. That is invisible to
+    # readers but it means a datastore cannot be diffed against another, which
+    # is exactly how the flat bubble port was validated.
+    return gzip.compress(buf.tobytes(), GZIP_LEVEL, mtime=0)
 
 
 def decode_combined(data):
