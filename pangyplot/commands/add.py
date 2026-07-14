@@ -6,6 +6,7 @@ from sqlite3 import OperationalError
 from pangyplot.preprocess import log
 from pangyplot.preprocess.parser.parse_gfa import parse_gfa
 from pangyplot.preprocess.parser.parse_layout import parse_layout
+from pangyplot.preprocess import memory
 import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 from pangyplot.preprocess.skeleton.generate_skeleton import generate_skeleton, export_polychain_section
 from pangyplot.db.indexes.GFAIndex import GFAIndex
@@ -51,6 +52,11 @@ def pangyplot_add(args):
     except OperationalError:
         layout_coords = parse_layout(args.layout)
         path_idx, segment_idx, link_idx = parse_gfa(args.gfa, args.ref, args.path, args.offset, args.sep, layout_coords, chr_path)
+        # Nothing past parse reads the layout; the segments carry their own
+        # coords from here on. Dropping it, and handing the parse arenas back,
+        # lowers the floor every later phase stacks on -- and the peak with it.
+        del layout_coords
+        memory.release()
 
     bubble_gun.shoot(segment_idx, link_idx, chr_path, args.ref)
 
