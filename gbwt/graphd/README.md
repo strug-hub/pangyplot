@@ -1,24 +1,24 @@
-# gbwt-sidecar
+# gbwt-graphd
 
 A persistent path-service for PangyPlot's GBWT path engine. It loads one
 per-chromosome index and answers path queries over localhost HTTP; Flask proxies
 these and does region filtering + varint encoding in Python.
 
 ```sh
-pangyplot-gbwt-sidecar <graph.gbwt|graph.gbz> [addr]   # addr default 127.0.0.1:5701
+pangyplot-graphd <graph.gbwt|graph.gbz> [addr]   # addr default 127.0.0.1:5701
 ```
 
 The index is served **memory-mapped** from disk, so resident memory scales with
 the working set of active queries rather than the whole file — a 5.4 GB
 whole-genome GBZ serves at a few hundred MB resident. See `IMPLEMENTATION.md` for
-how the sidecar is built.
+how the graphd is built.
 
 Two index formats are accepted behind one wire contract (auto-detected by file
 tag):
 
 - **`graph.gbwt`** — a compact GBWT where node id == segment id (no translation).
 - **`graph.gbz`** — a GBZ, which may be *chopped* (long segments split across
-  several node ids) and therefore carries a node→segment translation. The sidecar
+  several node ids) and therefore carries a node→segment translation. The graphd
   parses that translation and collapses chopped node runs back to segment ids, so
   its walks are identical to those from a `graph.gbwt` for the same graph.
 
@@ -33,12 +33,12 @@ it per environment; `GbwtManager` (`pangyplot/db/gbwt_manager.py`) reads:
 | env var | meaning |
 |---|---|
 | `PANGYPLOT_GBWT` | `1`/`true` to enable the GBWT path engine |
-| `PANGYPLOT_GBWT_BIN` | sidecar binary path (default `gbwt/sidecar/pangyplot-gbwt-sidecar`) |
+| `PANGYPLOT_GBWT_BIN` | graphd binary path (default `gbwt/graphd/pangyplot-graphd`) |
 | `PANGYPLOT_GBWT_GBZ` | per-chr GBZ filename inside each chr dir (default `graph.gbz`) |
-| `PANGYPLOT_GBWT_URLS` | JSON `{chrom: base_url}` for externally-managed sidecars (no spawn) |
+| `PANGYPLOT_GBWT_URLS` | JSON `{chrom: base_url}` for externally-managed graph daemons (no spawn) |
 
-Dev spawns one sidecar per chromosome on a free localhost port and tears them
-down at exit. Production sets `PANGYPLOT_GBWT_URLS` and runs the sidecars itself.
+Dev spawns one graphd per chromosome on a free localhost port and tears them
+down at exit. Production sets `PANGYPLOT_GBWT_URLS` and runs the graph daemons itself.
 A missing index / binary is a warning, not a crash — that chromosome keeps the
 binpath engine.
 
@@ -57,7 +57,7 @@ little-endian binary for bulk. No language-specific serialization.
 | `GET /count` | `node=<usize>` | `text/plain` decimal: haplotype occurrence count at the node |
 
 `/walk` values are always PangyPlot segment ids. For a `graph.gbwt` the node
-handle already is the segment id; for a chopped GBZ the sidecar applies the
+handle already is the segment id; for a chopped GBZ the graphd applies the
 node→segment translation and collapses each chopped run into one segment step.
 Verified byte-identical to the binpath format by `tests/db/test_gbz_parity.py`
 and `tests/db/test_gbz_ingest.py`.

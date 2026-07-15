@@ -5,7 +5,7 @@
 These tests prove the adopt->serve loop is byte-identical to binpaths, building a
 throwaway GBZ *in the test harness* (not in PangyPlot) to feed the adopt path.
 
-Skipped unless the sidecar binary is available; the end-to-end test also needs vg.
+Skipped unless the graphd binary is available; the end-to-end test also needs vg.
 """
 import os
 import shutil
@@ -25,8 +25,8 @@ from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
-    REPO, "gbwt", "sidecar", "pangyplot-gbwt-sidecar")
+DAEMON = os.environ.get("PANGYPLOT_GRAPHD_BIN") or os.path.join(
+    REPO, "gbwt", "graphd", "pangyplot-graphd")
 
 
 def _free_port():
@@ -45,7 +45,7 @@ def _walks_from_index(index):
 
 
 @pytest.mark.skipif(shutil.which("vg") is None, reason="vg not installed")
-@pytest.mark.skipif(not os.path.exists(SIDECAR), reason="gbwt-sidecar not built")
+@pytest.mark.skipif(not os.path.exists(DAEMON), reason="gbwt-graphd not built")
 def test_adopted_gbz_serves_binpath_identical_walks(fixtures_dir):
     chr_dir = tempfile.mkdtemp()
 
@@ -66,7 +66,7 @@ def test_adopted_gbz_serves_binpath_identical_walks(fixtures_dir):
 
     # Serve the adopted graph.gbz and compare walk sets.
     port = _free_port()
-    proc = subprocess.Popen([SIDECAR, out, f"127.0.0.1:{port}"],
+    proc = subprocess.Popen([DAEMON, out, f"127.0.0.1:{port}"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         client = GbwtClient(f"http://127.0.0.1:{port}")
@@ -75,7 +75,7 @@ def test_adopted_gbz_serves_binpath_identical_walks(fixtures_dir):
                 break
             time.sleep(0.1)
         else:
-            raise RuntimeError("sidecar did not become ready")
+            raise RuntimeError("graphd did not become ready")
 
         gbwt_walks = _walks_from_index(GbwtPathIndex(client))
         assert gbwt_walks == binpath_walks

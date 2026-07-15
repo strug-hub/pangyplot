@@ -1,8 +1,8 @@
-"""HTTP client for the GBWT sidecar (GBWT migration Stage 3).
+"""HTTP client for the GBWT graphd (GBWT migration Stage 3).
 
-Thin wrapper over the sidecar's localhost wire protocol
-(see gbwt/sidecar/README.md). The protocol — not this class — is the
-boundary, so the sidecar can be reimplemented (e.g. C++) without touching callers.
+Thin wrapper over the graphd's localhost wire protocol
+(see gbwt/graphd/README.md). The protocol — not this class — is the
+boundary, so the graphd can be reimplemented (e.g. C++) without touching callers.
 
 Walks come back as PangyPlot `combined` int64 arrays:
     combined = (segment_id << 1) | orientation_bit   (+ = 0, - = 1)
@@ -30,7 +30,7 @@ class GbwtClient:
             with urllib.request.urlopen(url, timeout=self.timeout) as r:
                 return r.read()
         except Exception as e:  # noqa: BLE001 - surface any transport error uniformly
-            raise GbwtClientError(f"sidecar request failed: {url}: {e}") from e
+            raise GbwtClientError(f"graphd request failed: {url}: {e}") from e
 
     def health(self):
         try:

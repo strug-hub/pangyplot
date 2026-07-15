@@ -2,10 +2,10 @@
 
 Proves the vg-free path: PangyPlot emits a pathdata intermediate from the paths
 it parsed, the native Rust `gbwt-build` turns it into a compact graph.gbwt, and
-the sidecar serves walks byte-identical to the binpaths. node = segment, no
+the graphd serves walks byte-identical to the binpaths. node = segment, no
 translation (asserted), no vg anywhere.
 
-Skipped unless both binaries are built (gbwt-build + gbwt-sidecar).
+Skipped unless both binaries are built (gbwt-build + gbwt-graphd).
 """
 import os
 import socket
@@ -25,12 +25,12 @@ from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
-    REPO, "gbwt", "sidecar", "pangyplot-gbwt-sidecar")
+DAEMON = os.environ.get("PANGYPLOT_GRAPHD_BIN") or os.path.join(
+    REPO, "gbwt", "graphd", "pangyplot-graphd")
 BUILDER = os.path.join(REPO, "gbwt", "build", "gbwt-build")
 
 pytestmark = [
-    pytest.mark.skipif(not os.path.exists(SIDECAR), reason="gbwt-sidecar not built"),
+    pytest.mark.skipif(not os.path.exists(DAEMON), reason="gbwt-graphd not built"),
     pytest.mark.skipif(not os.path.exists(BUILDER), reason="gbwt-build not built"),
 ]
 
@@ -70,7 +70,7 @@ def test_native_gbwt_serves_binpath_identical_walks(drb1_chr_dir):
     assert not os.path.exists(os.path.join(drb1_chr_dir, gbwt_build.PATHDATA_NAME))
 
     port = _free_port()
-    proc = subprocess.Popen([SIDECAR, out, f"127.0.0.1:{port}"],
+    proc = subprocess.Popen([DAEMON, out, f"127.0.0.1:{port}"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         client = GbwtClient(f"http://127.0.0.1:{port}")
@@ -79,7 +79,7 @@ def test_native_gbwt_serves_binpath_identical_walks(drb1_chr_dir):
                 break
             time.sleep(0.1)
         else:
-            raise RuntimeError("sidecar did not become ready")
+            raise RuntimeError("graphd did not become ready")
 
         meta = client.meta()
         # Native build is compact: node = segment, so NO translation.
@@ -106,7 +106,7 @@ def test_native_metadata_matches_legacy(drb1_chr_dir):
 
     out = gbwt_build.build_gbwt(drb1_chr_dir, builder_bin=BUILDER)
     port = _free_port()
-    proc = subprocess.Popen([SIDECAR, out, f"127.0.0.1:{port}"],
+    proc = subprocess.Popen([DAEMON, out, f"127.0.0.1:{port}"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         client = GbwtClient(f"http://127.0.0.1:{port}")
@@ -115,7 +115,7 @@ def test_native_metadata_matches_legacy(drb1_chr_dir):
                 break
             time.sleep(0.1)
         else:
-            raise RuntimeError("sidecar did not become ready")
+            raise RuntimeError("graphd did not become ready")
 
         gbwt = GbwtPathIndex(client)
         gbwt.compute_bp_ranges(step_index)

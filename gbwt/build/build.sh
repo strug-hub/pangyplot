@@ -2,8 +2,8 @@
 # Build the native C++ GBWT builder (gbwt/build-cpp/gbwt-build).
 #
 # Links against the C++ gbwt library (the gbwt-mmap fork) + the vgteam sdsl-lite
-# install -- the same toolchain the C++ sidecar uses. Both are built separately
-# (see gbwt/sidecar/IMPLEMENTATION.md). Override their locations with
+# install -- the same toolchain the C++ graphd uses. Both are built separately
+# (see gbwt/graphd/IMPLEMENTATION.md). Override their locations with
 # GBWT_FORK / SDSL_PREFIX if they aren't in the default sibling layout.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"

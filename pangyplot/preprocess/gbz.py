@@ -9,7 +9,7 @@ legacy binpath engine.
 
 THE CONTRACT (see context/gbwt-migration.md): the GBZ must expose PangyPlot's
 compact segment ids at the segment level. vg chops long segments but records a
-node->segment translation, and the sidecar walks via `segment_path`, so a GBZ
+node->segment translation, and the graphd walks via `segment_path`, so a GBZ
 built from the *same* GFA whose segments/links/bubbles were ingested satisfies
 the contract. A user-supplied GBZ must carry integer segment names (chopped
 GBZs always do; unchopped means node = segment).

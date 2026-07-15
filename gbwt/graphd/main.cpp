@@ -1,6 +1,6 @@
-// C++ GBWT path-service sidecar for PangyPlot.
+// C++ GBWT path-service graphd for PangyPlot.
 //
-// Honours the localhost wire contract in gbwt/sidecar/README.md, so nothing above
+// Honours the localhost wire contract in gbwt/graphd/README.md, so nothing above
 // the HTTP boundary changes. The point of the C++ implementation is MEMORY: it
 // serves the GBWT **memory-mapped** from disk
 // (fork github.com/ScottMastro/gbwt-mmap), so resident memory scales with the
@@ -8,7 +8,7 @@
 // samples are skipped at load (with_da=false) since only `locate` needs them and
 // the wire contract exposes only count/walk.
 //
-// Endpoints (see gbwt/sidecar/README.md -- the protocol is the boundary):
+// Endpoints (see gbwt/graphd/README.md -- the protocol is the boundary):
 //   GET /health          -> "ok"
 //   GET /meta            -> JSON: nodes, paths, has_metadata, has_translation,
 //                           samples[], path_list[{id,sample,contig,phase,fragment}]
@@ -16,7 +16,7 @@
 //                           value = (segment_id << 1) | orientation_bit
 //   GET /count?node=<id> -> text: haplotype occurrence count at the node
 //
-// Usage: pangyplot-gbwt-sidecar <graph.gbwt|graph.gbz> [addr]   (default 127.0.0.1:5701)
+// Usage: pangyplot-graphd <graph.gbwt|graph.gbz> [addr]   (default 127.0.0.1:5701)
 //
 // NOTE: native `graph.gbwt` (PangyPlot's build: node id == segment id) is fully
 // supported. A chopped GBZ carries a node->segment translation in its GBWTGraph
@@ -266,7 +266,7 @@ void segment_seq_stats(gbwt::size_type start, gbwt::size_type limit,
 // Segment id is the translation's segment name (or the node id, unchopped).
 // Coordinates are NOT here -- they come from the layout file, not the GBZ.
 Response handle_segments() {
-  if (!g_graph_mode) return {400, "text/plain", "sidecar not in graph mode (--graph)"};
+  if (!g_graph_mode) return {400, "text/plain", "graphd not in graph mode (--graph)"};
   if (g_sequences.size() == 0)
     return {400, "text/plain", "no node sequences (graph mode needs a GBZ)"};
 
@@ -322,7 +322,7 @@ std::int64_t node_segment(gbwt::size_type nid, std::size_t& rank) {
 // the rest are deduped. GBWT edges are bidirectional, so this emits each link and
 // its reverse-complement twin -- deduping keeps both distinct forms.
 Response handle_links() {
-  if (!g_graph_mode) return {400, "text/plain", "sidecar not in graph mode (--graph)"};
+  if (!g_graph_mode) return {400, "text/plain", "graphd not in graph mode (--graph)"};
 
   std::string body;
   std::unordered_set<std::string> seen;
@@ -425,16 +425,16 @@ int run_server(const std::string& host, int port, int workers) {
   addr.sin_family = AF_INET;
   addr.sin_port = htons(static_cast<uint16_t>(port));
   if (::inet_pton(AF_INET, host.c_str(), &addr.sin_addr) != 1) {
-    std::cerr << "[gbwt-sidecar] bad host " << host << "\n"; return 1;
+    std::cerr << "[gbwt-graphd] bad host " << host << "\n"; return 1;
   }
   if (::bind(listen_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) { std::perror("bind"); return 1; }
   if (::listen(listen_fd, 128) != 0) { std::perror("listen"); return 1; }
 
-  std::cerr << "[gbwt-sidecar] listening on http://" << host << ":" << port
+  std::cerr << "[gbwt-graphd] listening on http://" << host << ":" << port
             << " (" << workers << " workers)\n";
 
   // Each worker accepts + handles independently; the index is read-only and
-  // shared, so no locking (matches the Rust sidecar and the lock-free design).
+  // shared, so no locking (matches the Rust path service and the lock-free design).
   std::vector<std::thread> pool;
   for (int i = 0; i < workers; i++) {
     pool.emplace_back([listen_fd] {
@@ -494,7 +494,7 @@ void load_sequences(std::istream& in, std::uint32_t version) {
 void load_translation(std::istream& in) {
   GBWTGraphHeader gh = sdsl::simple_sds::load_value<GBWTGraphHeader>(in);
   if (gh.tag != GBWTGRAPH_TAG) {
-    std::cerr << "[gbwt-sidecar] GBWTGraph tag 0x" << std::hex << gh.tag << std::dec
+    std::cerr << "[gbwt-graphd] GBWTGraph tag 0x" << std::hex << gh.tag << std::dec
               << " unrecognized; serving raw node ids\n";
     return;
   }
@@ -567,29 +567,29 @@ int main(int argc, char** argv) {
   { size_t c = addr.rfind(':');
     if (c != std::string::npos) { host = addr.substr(0, c); port = std::stoi(addr.substr(c + 1)); } }
 
-  std::cerr << "[gbwt-sidecar] loading " << filename << "\n";
+  std::cerr << "[gbwt-graphd] loading " << filename << "\n";
   std::uint32_t tag = peek_tag(filename);
   try {
     if (tag == GBZ_TAG) {
       // Serve the GBWT embedded in the GBZ (mmap'd) and parse the following
       // GBWTGraph's node->segment translation, so a chopped GBZ returns
       // segment-level walks (see load_translation / handle_walk).
-      std::cerr << "[gbwt-sidecar] GBZ detected; serving embedded GBWT\n";
+      std::cerr << "[gbwt-graphd] GBZ detected; serving embedded GBWT\n";
       if (!load_mmapped(filename, gbz_gbwt_offset(filename), /*read_translation=*/true))
         return 1;
     } else if (tag == GBWT_TAG) {
       if (!load_mmapped(filename, 0, /*read_translation=*/false)) return 1;
     } else {
-      std::cerr << "[gbwt-sidecar] unrecognized file tag 0x" << std::hex << tag << "\n";
+      std::cerr << "[gbwt-graphd] unrecognized file tag 0x" << std::hex << tag << "\n";
       return 1;
     }
   } catch (const std::exception& e) {
-    std::cerr << "[gbwt-sidecar] load failed: " << e.what() << "\n";
+    std::cerr << "[gbwt-graphd] load failed: " << e.what() << "\n";
     return 1;
   }
 
   gbwt::size_type npaths = g_index.hasMetadata() ? g_index.metadata.paths() : 0;
-  std::cerr << "[gbwt-sidecar] loaded: " << npaths << " paths (mmap'd, DA skipped)\n";
+  std::cerr << "[gbwt-graphd] loaded: " << npaths << " paths (mmap'd, DA skipped)\n";
 
   unsigned hw = std::thread::hardware_concurrency();
   int workers = static_cast<int>(hw ? (hw < 2 ? 2 : (hw > 8 ? 8 : hw)) : 4);

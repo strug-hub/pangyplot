@@ -83,7 +83,7 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
     # GBWT path engine (opt-in via PANGYPLOT_GBWT). Off by default -> legacy
     # binpath PathIndex. When on, each chr's path_index is swapped for a
-    # GbwtPathIndex backed by a per-chr sidecar (see GbwtManager).
+    # GbwtPathIndex backed by a per-chr graphd (see GbwtManager).
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     app.gbwt_manager = GbwtManager(repo_root=repo_root)
 

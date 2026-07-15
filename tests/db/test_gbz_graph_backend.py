@@ -25,8 +25,8 @@ import pangyplot.db.sqlite.link_db as link_db
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DAEMON = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
-    REPO, "gbwt", "sidecar", "pangyplot-gbwt-sidecar")
+DAEMON = os.environ.get("PANGYPLOT_GRAPHD_BIN") or os.path.join(
+    REPO, "gbwt", "graphd", "pangyplot-graphd")
 STRAND = {"+": 1, "-": 0}
 
 
@@ -49,7 +49,7 @@ def gfa_dir(fixtures_dir):
 @pytest.fixture(scope="module")
 def graph_daemon(fixtures_dir):
     if not os.path.exists(DAEMON):
-        pytest.skip("graph daemon binary not built (make -C gbwt/sidecar)")
+        pytest.skip("graph daemon binary not built (make -C gbwt/graphd)")
     port = _free_port()
     proc = subprocess.Popen(
         [DAEMON, str(fixtures_dir / "DRB1-3123.gbz"), f"127.0.0.1:{port}", "--graph"],

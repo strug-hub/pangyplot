@@ -5,11 +5,11 @@ intermediate emitted by `pangyplot/preprocess/gbwt_build.py` and writes a compac
 `graph.gbwt` (simple-sds format) via `gbwt::GBWTBuilder`. **No vg, no chopping.**
 
 Replaces the Rust `gbwt/build` — this is the ingest half of the full-C++ pivot
-(the serving half is the memory-mapped C++ sidecar). Kept in `build-cpp/` until
+(the serving half is the memory-mapped C++ graphd). Kept in `build-cpp/` until
 the Rust `gbwt/build` is retired, then it moves into place.
 
 ```sh
-./build.sh                       # links the gbwt fork + sdsl (see gbwt/sidecar/IMPLEMENTATION.md)
+./build.sh                       # links the gbwt fork + sdsl (see gbwt/graphd/IMPLEMENTATION.md)
 gbwt-build <input.pathdata> <output.gbwt>
 ```
 

@@ -3,7 +3,7 @@
 **Status:** in progress (branch `atlas-flow-pages`). Phase 1 underway.
 **Goal:** the `graph.gbz` becomes PangyPlot's primary on-disk graph object. The
 Python index classes stay as-is in API but read *from the GBZ* (via the C++
-sidecar) instead of SQLite/binpaths. This retires, per chromosome:
+graphd) instead of SQLite/binpaths. This retires, per chromosome:
 
 - `segments.db`  (SQLite)
 - `links.db`     (SQLite)
@@ -21,7 +21,7 @@ layout file (the gbz→`.lay.tsv` tool is done; PangyPlot just consumes the TSV)
 | segment coords (x1,y1,x2,y2) | **layout file** (user-managed), merged into the npy cache |
 | segment DNA (`seq`) | on demand from the mmap'd GBZ (see sequence-memory note) |
 | links (from/to + strands) | `GBWT::edges()`, collapsed to segment level via the translation |
-| segment / link frequency | `find(node).size()` — the `/count` the sidecar already serves |
+| segment / link frequency | `find(node).size()` — the `/count` the graphd already serves |
 | paths / walks | GBWT `/walk` (already live via `GbwtPathIndex`) |
 | **bubbles / chains** | still PangyPlot-computed → `bubbles.db` (stays) |
 | steps (ref bp→segment) | derived from the reference walk + segment lengths |
@@ -31,11 +31,11 @@ layout file (the gbz→`.lay.tsv` tool is done; PangyPlot just consumes the TSV)
 
 `SegmentIndex` / `LinkIndex` already run at query time off small mmap'd **npy
 arrays** (`segments.mmapindex/`, `links.mmapindex/`), not SQLite — SQLite is only
-their *build source*. `PathIndex` is already a pure interface over the sidecar
+their *build source*. `PathIndex` is already a pure interface over the graphd
 (`GbwtPathIndex` → `/walk`, no binpaths). So the change is narrow:
 
 - Add a sibling **`_build_from_gbz`** that fills the *same* npy arrays from the
-  sidecar's bulk export + the layout file. (`length`, `gc_count`, coords, `valid`
+  graphd's bulk export + the layout file. (`length`, `gc_count`, coords, `valid`
   for segments; adjacency for links.) The array runtime + accessors are unchanged.
 - Re-point the still-SQLite paths — `SegmentIndex.__getitem__` / `__iter__` (the
   bubble builder iterates this, *with sequences*) / `segment_gc_n_count` n_count,
@@ -54,7 +54,7 @@ the same way the fork already did for the BWT (`RecordArray` → `ByteView`). Un
 then, graph mode loads sequences resident (fine for small graphs / preprocessing).
 Everything else is `gbwt`-only — no gbwtgraph, no handlegraph, no vg.
 
-## Sidecar additions (the "Stage 5" bulk endpoints)
+## graphd additions (the "Stage 5" bulk endpoints)
 
 Opt-in **graph mode** (`--graph`), so pure path-serving stays lean:
 
@@ -71,7 +71,7 @@ translation (unchopped GBZ) each node id is its own segment.
 
 ## Phases (each fixture-gated on DRB1: GBZ-built == GFA-built)
 
-1. **Sidecar `/segments` + `/links`** (graph mode) — parity: sets match the
+1. **graphd `/segments` + `/links`** (graph mode) — parity: sets match the
    GFA-built `segments.db` / `links.db` scalars.  ← current
 2. **`SegmentIndex`/`LinkIndex` `_build_from_gbz`** behind the same API — parity:
    `GFAIndex` queries identical whether sourced from GFA or GBZ.

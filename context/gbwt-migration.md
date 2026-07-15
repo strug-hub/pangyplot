@@ -7,12 +7,12 @@
 > binpaths (Stage 4)" plan is **cancelled**: both the Rust and C++ GBWT load fully
 > into RAM, and a whole-genome resident GBWT is untenable against PangyPlot's
 > low-memory requirement. GBWT is opt-in (`PANGYPLOT_GBWT`); resident-lean
-> presence is provided by the **memory-mapped C++ sidecar** in `gbwt/sidecar/`
-> (see `gbwt/sidecar/IMPLEMENTATION.md`). Stages 1–3 (dead-mask removal,
+> presence is provided by the **memory-mapped C++ graphd** in `gbwt/graphd/`
+> (see `gbwt/graphd/IMPLEMENTATION.md`). Stages 1–3 (dead-mask removal,
 > region-scoped trace, the working GBWT engine + native builder) stand.
 >
 > **Status (2026-07-15):** Stages 1–2 landed + monotonicity hardening + Stage 3
-> spike run and decided (Rust sidecar; extract+counts+metadata all proven on a
+> spike run and decided (Rust path service; extract+counts+metadata all proven on a
 > v2 GBZ) + Stage 3 serving plumbing wired (below). Branch `gbwt-migration`.
 >
 > **Stage 3 plumbing landed (2026-07-15):** the GBWT path engine is now a live,
@@ -20,9 +20,9 @@
 > `get_samples`/`get_sample_idx` (`/pathorder`), `get_path_meta_with_bp` with
 > real contig/start/length + `compute_bp_ranges` from walk+StepIndex (`/path-meta`),
 > `get_path_raw`/`get_path_combined` whole + region-sliced (`/path-data`).
-> `GbwtManager` owns per-chr sidecar lifecycle (spawn on the chr GBZ / connect to
+> `GbwtManager` owns per-chr graphd lifecycle (spawn on the chr GBZ / connect to
 > an external URL / gracefully fall back to binpaths), toggled by `PANGYPLOT_GBWT`.
-> `app.py` swaps `path_index` per chr when a sidecar comes up. Parity tests extended:
+> `app.py` swaps `path_index` per chr when a graphd comes up. Parity tests extended:
 > bp-range parity vs binpaths + sample-idx bijection + manager spawn/health/teardown.
 > 737 pytest green. **Deferred:** `get_paths()` (core-viewer `/path` + `/export`,
 > iterable Path objects) raises under GBWT mode — outside the simplify-viewer seam.
@@ -36,7 +36,7 @@
 > (`encode_node = 2*id+orient`), node id = segment id with **no chopping, no
 > translation, no vg**. Pieces: `gbwt/build/` (Rust: pathdata → compact
 > `graph.gbwt`); `preprocess/gbwt_build.py` (emits the pathdata intermediate from
-> parsed paths, runs the builder, cleans up); sidecar loads **GBWT or GBZ** behind
+> parsed paths, runs the builder, cleans up); graphd loads **GBWT or GBZ** behind
 > one wire contract (`Backend` enum; GBWT walk = `sequence(2*pid)`, count =
 > `find(2*nid).len()`); `GbwtManager` serves `graph.gbwt` (preferred) else
 > `graph.gbz`; `pangyplot add --build-gbwt` (native) / `--gbz` (adopt a foreign
@@ -49,7 +49,7 @@
 > optional *adopt* input. **Ahead:** Stage 4 binpath retirement; metadata parity
 > (sample-key reconciliation); GBZ-only input is the separate layout project.
 >
-> **OPEN — resident memory: mmap investigation (DECIDED direction).** The sidecar
+> **OPEN — resident memory: mmap investigation (DECIDED direction).** The graphd
 > loads the whole GBWT/GBZ into RAM and holds it for the process lifetime — one
 > process per chromosome. This regresses PangyPlot's memory-lean design (binpaths
 > are on-disk, ~zero resident path memory). Per-chr it's ~107 MB (1614-hap chrY);
@@ -64,9 +64,9 @@
 > do Stage 4 (retiring binpaths) as previously planned; it would break the memory
 > constraint. (2) The GBWT stays **opt-in** (already is: `PANGYPLOT_GBWT` off →
 > binpaths). (3) Resident-lean presence comes from **memory-mapped serving in a
-> C++ sidecar** (sdsl mmap primitives; `gbwt`/`gbwtgraph` the reference; also sets
-> up Stage 5), now implemented in `gbwt/sidecar/` (see
-> `gbwt/sidecar/IMPLEMENTATION.md`). The wire contract makes the sidecar a drop-in
+> C++ graphd** (sdsl mmap primitives; `gbwt`/`gbwtgraph` the reference; also sets
+> up Stage 5), now implemented in `gbwt/graphd/` (see
+> `gbwt/graphd/IMPLEMENTATION.md`). The wire contract makes the graphd a drop-in
 > — nothing above the HTTP boundary changes.
 >
 > **mmap PROVEN — GO (2026-07-15).** The forked C++ `gbwt` (mmap-backed
@@ -80,12 +80,12 @@
 > win. Fork: `github.com/ScottMastro/gbwt-mmap` (`mmap-serving`). Full data in the
 > investigation doc's STEP 1–3 findings.
 > **Remaining, split in parallel:** (a) *contract side* — wrap the mmap library in
-> a C++ HTTP sidecar honoring the wire contract (other agent); (b) *PangyPlot
-> side* — parity tests are already env-swappable (`PANGYPLOT_GBWT_SIDECAR_BIN`)
+> a C++ HTTP graphd honoring the wire contract (other agent); (b) *PangyPlot
+> side* — parity tests are already env-swappable (`PANGYPLOT_GRAPHD_BIN`)
 > and the launch contract is documented in `gbwt_manager`; once the C++ binary
 > passes parity, point `PANGYPLOT_GBWT_BIN` at it and retire the Rust
-> `gbwt/sidecar`. Ship model: optional external binary, gracefully skipped if
-> absent (same as the Rust sidecar; GBWT mode is opt-in).
+> `gbwt/graphd`. Ship model: optional external binary, gracefully skipped if
+> absent (same as the Rust path service; GBWT mode is opt-in).
 >
 > **NOTE — Stage 4 is cancelled** (was: retire binpaths). Binpaths are the
 > memory-lean default and must stay. `get_paths()` (core-viewer `/path`/`/export`)
@@ -101,15 +101,15 @@
 > **no document-array (`DA`) / no `locate`**. The which-samples (set-membership)
 > path was explicitly DEAD and removed in Stage 1 (`haplotype`/`reverse` masks, read
 > nowhere). "Which samples are in view" (locate/DA) is speculative — not required by
-> any current or plumbed feature. The sidecar's `/count` already covers the real
+> any current or plumbed feature. The graphd's `/count` already covers the real
 > need and is likewise unwired (no route/frontend consumer yet). The C++ mmap agent
 > is mapping the DA anyway as reclaimable insurance for a possible future `locate`,
 > at no correctness cost — but the DA is not needed for anything today.
 >
 > **Stage 3 file layout (2026-07-15):** the two native crates moved out of
-> `tools/` into a top-level `gbwt/` **Cargo workspace** (`gbwt/sidecar/`,
+> `tools/` into a top-level `gbwt/` **Cargo workspace** (`gbwt/graphd/`,
 > `gbwt/build/`) — one lockfile + `target/`, `gbz`/`simple-sds` compile once,
-> workspace deps hoisted. Binaries now at `gbwt/target/release/{gbwt-sidecar,
+> workspace deps hoisted. Binaries now at `gbwt/target/release/{gbwt-graphd,
 > gbwt-build}`. The throwaway spike was deleted (numbers preserved in this doc).
 > Python glue stays idiomatic (`db/indexes/GbwtPathIndex`, `db/gbwt_*`,
 > `preprocess/gbwt_build`, `preprocess/gbz`).
@@ -123,7 +123,7 @@
 >
 > **Stage 3 spike ran (2026-07-15):** on a v2 chrY GBZ (1614 haplotypes),
 > presence-counts are ~57 ns/node, depth-independent (30 µs–1.1 ms/viewport),
-> 107 MB RSS. Decisions: adopt GBWT for **Query A** counts as a **Rust sidecar**;
+> 107 MB RSS. Decisions: adopt GBWT for **Query A** counts as a **Rust path service**;
 > keep **Query B** on Stage 2's pure-Python slice; no C++ `locate` needed. See
 > the Stage 3 RESULTS block.
 >
@@ -365,10 +365,10 @@ BETWEEN, `StepIndex` bp-bisects (safe unless fed into an id-range), all
 array-sizing `range(max_id+1)` (sparse indexing). **Blast radius for no-sort GBZ:
 small — fix `/path` (Stage 2) + `_find_ends` ordering, remove dead `get_between`.**
 
-### Stage 3 — GBWT *becomes* the path engine (Rust sidecar) — DECIDED
+### Stage 3 — GBWT *becomes* the path engine (Rust path service) — DECIDED
 
 **Goal (the actual target):** replace the bespoke path engine wholesale. The GBZ
-becomes the single source of truth for haplotype paths; a **Rust sidecar** over
+becomes the single source of truth for haplotype paths; a **Rust path service** over
 `gbwt-rs` serves every path operation. Not "GBWT adds presence" — GBWT *is* the
 engine. The spike de-risked this (see RESULTS): extract + counts + metadata all
 work on a real 1614-haplotype v2 GBZ, sub-ms, 107 MB RSS.
@@ -389,7 +389,7 @@ C++ `locate` on a DA-sampled GBZ. Building the GBZ stays a `vg gbwt` subprocess
 - Stage 2's `get_path_region_raw` binpath slice — but `region_segment_ids` is
   **kept**: it now bounds the GBWT extract instead of a binpath.
 
-**Sidecar query surface (Rust over the GBZ):**
+**graphd query surface (Rust over the GBZ):**
 - **Trace (Query B):** `GBZ::path(sample)` → filter to the viewport's node set
   (`region_segment_ids`) → re-encode to the **same delta-zigzag-varint gzip** and
   return bytes.
@@ -397,7 +397,7 @@ C++ `locate` on a DA-sampled GBZ. Building the GBZ stays a `vg gbwt` subprocess
 - **Metadata:** sample list / subpath meta / ordering from GBWT `Metadata`;
   recompute `bp_ranges` from the GBWT walk + `StepIndex`.
 
-**Frontend seam — unchanged by design.** Flask proxies the sidecar's varint bytes
+**Frontend seam — unchanged by design.** Flask proxies the graphd's varint bytes
 under the existing `/path-data` / `/path-meta` / `/pathorder` contracts, so
 `path-codec.js`, `path-trace-engine`, and the viewer are untouched — the bytes
 just come from GBWT. `StepIndex` stays (coordinate index for `/select`/bubbles,
@@ -414,7 +414,7 @@ node→segment **translation** for exactly this; `/walk` uses `segment_path` (wh
 `segment.name` is the GFA segment id) to collapse chopped nodes back to compact
 segments. The earlier "node = segment, drop the translation" assumption was
 WRONG and produced mismatched walks. Cross-validated by
-`tests/db/test_gbz_parity.py`: PangyPlot binpaths and the GBZ (via the sidecar)
+`tests/db/test_gbz_parity.py`: PangyPlot binpaths and the GBZ (via the graphd)
 built from the same DRB1 GFA yield **byte-identical** walk sets — the load-bearing
 correctness guarantee for the whole migration. Works for user-supplied GBZs too
 (they may be chopped; the translation handles it). No need to disable chopping.
@@ -441,9 +441,9 @@ view and does NOT conflate them; we always use the segment-level one.
 - **Foreign-GBZ requirement:** the GBZ must carry the translation (chopped ones
   always do; unchopped means node = segment). Always satisfiable.
 
-**Sidecar built forward-compatible (from the start, costs nothing now):**
+**graphd built forward-compatible (from the start, costs nothing now):**
 - **The wire protocol is the boundary, not the language.** Documented as a
-  neutral contract (`gbwt/sidecar/README.md`): plain HTTP, JSON metadata,
+  neutral contract (`gbwt/graphd/README.md`): plain HTTP, JSON metadata,
   explicit LE-binary bulk. The C++ stack (`jltsiren/gbwt` + `gbwtgraph`) has the
   same ops, so a C++ swap is a drop-in behind the Python client — nothing above
   changes. This is what keeps the Rust-vs-C++ decision reversible.
@@ -453,18 +453,18 @@ view and does NOT conflate them; we always use the segment-level one.
 - **Transport swappable** (Unix socket / shm) behind the client if HTTP framing
   ever profiles hot.
 
-**Real tradeoff:** the sidecar is now **load-bearing** (no trace if it's down) —
-hence sidecar (crash-isolated; Flask degrades to "trace unavailable") over
+**Real tradeoff:** the graphd is now **load-bearing** (no trace if it's down) —
+hence graphd (crash-isolated; Flask degrades to "trace unavailable") over
 in-process. Set-membership stays count/lazy.
 
-**Validate:** sidecar trace bytes == Stage 2 binpath slice for the same
+**Validate:** graphd trace bytes == Stage 2 binpath slice for the same
 sample+window (byte-identical, since same varint codec); `/path-meta` parity;
 presence counts sanity-checked.
 
 #### Stage 3 spike — runbook (do BEFORE any integration; memory-heavy, run when free)
 
 Purpose: produce the numbers that decide (i) whether GBWT is worth adopting at
-all, (ii) sidecar vs in-process (§7b), (iii) whether set-membership needs C++
+all, (ii) graphd vs in-process (§7b), (iii) whether set-membership needs C++
 `locate` or the count+lazy-resolve workaround (§7a option 3).
 
 Inputs: one real chromosome's `.gbz` (HPRC v2 GBZ on the NAS, or `vg` a v1 GFA →
@@ -498,7 +498,7 @@ Run in this order (cheapest + most decisive first); each has a go/no-go:
    that's the one signal for C++ `locate` (needs a GBZ built WITH DA samples —
    check the source GBZ carries them).
 4. **Wire-shape sanity** — from 2+3, estimate per-request latency inline vs one
-   IPC hop. Decision: feeds sidecar (isolation) vs in-process PyO3 (latency)
+   IPC hop. Decision: feeds graphd (isolation) vs in-process PyO3 (latency)
    in §7b. Query A stays debounced/view-triggered, so a hop is likely fine.
 
 Harness: `gbwt/`s throwaway spike (since removed) (Rust, `gbz` v0.6.1). Built + run 2026-07-15.
@@ -528,7 +528,7 @@ Realistic Query-A viewport presence-counts (v2 chrY, 1614 haplotypes):
    binpath slice. No latency reason to replace it; use GBWT for Query A only.
    Shrinks the native serving surface.
 3. **Memory — trivial.** 107 MB RSS for a 41 M v2-chrY GBZ.
-4. **§7b wire-shape → SIDECAR.** Query A is µs–1 ms and debounced, so an IPC
+4. **§7b wire-shape → DAEMON.** Query A is µs–1 ms and debounced, so an IPC
    hop (~0.1 ms) is negligible; in-process PyO3 buys nothing meaningful here, so
    isolation wins. Decided.
 5. **§7a set-membership → count-only path is viable; no C++ `locate` needed.**
@@ -539,16 +539,16 @@ Realistic Query-A viewport presence-counts (v2 chrY, 1614 haplotypes):
    A full binpath-vs-GBWT comparison still needs a v2 `pangyplot add`, but the
    presence-mask win was already banked in Stage 1, so storage isn't deciding.
 
-Net: **adopt GBWT for Query A as a Rust sidecar; leave Query B on Stage 2.**
+Net: **adopt GBWT for Query A as a Rust path service; leave Query B on Stage 2.**
 Remaining open item: a v2-scale `pangyplot add` to complete the storage number.
 
 ### Stage 4 — Delete the old path engine
-Once the sidecar serves trace+metadata at parity (Stage 3 validated), remove the
+Once the graphd serves trace+metadata at parity (Stage 3 validated), remove the
 now-dead binpath code: `path_codec.py` encode side, `path_db.py` binpath storage,
 binpath paths in `PathIndex`, `ensure_paths.py`, and binpath emission in
-`pangyplot add`. `region_segment_ids` and the frontend codec **stay** (the sidecar
+`pangyplot add`. `region_segment_ids` and the frontend codec **stay** (the graphd
 speaks the same varint). Re-ingest drops `paths/*.binpath` from datastores.
-- **Validate:** full suites; trace works end-to-end via the sidecar only; no
+- **Validate:** full suites; trace works end-to-end via the graphd only; no
   references to removed binpath modules.
 
 ### Stage 5 — node/link engine on GBZ (LATER / POSSIBLE — not committed)
@@ -569,10 +569,10 @@ Derived indexes (bubbles, steps, skeleton) also stay; they'd source topology
 from the GBZ instead of the parsed GFA.
 
 **Why it's a separate, gated stage:** unlike paths (optional trace), node/link is
-the **`/select` hot path**. Gate on a benchmark of a new sidecar **`/subgraph`**
+the **`/select` hot path**. Gate on a benchmark of a new graphd **`/subgraph`**
 endpoint (given a segment set → nodes+edges+seq+freq in ONE call) vs today's
 in-memory mmap arrays. Spike says topology ops ~50 ns, so one call per `/select`
-should be fine — but prove it before committing. The sidecar extends naturally
+should be fine — but prove it before committing. The graphd extends naturally
 (add `/subgraph`, `/node`, `/edges`).
 
 Retires: `segments.db` (esp. sequences), `links.db`, parse-time frequency.
@@ -643,7 +643,7 @@ this is not a "one merged codebase in two languages" burden.
 
 ### (b) Boundary shape
 
-| | Preprocessing CLI only | Persistent sidecar | In-process binding |
+| | Preprocessing CLI only | Persistent graphd | In-process binding |
 |---|---|---|---|
 | Native code location | separate binary, `add`-time | separate long-lived process | inside Flask process |
 | Python purity | 100% pure | pure (talks over IPC) | native code in the wheel |
@@ -655,10 +655,10 @@ this is not a "one merged codebase in two languages" burden.
 
 The catch: **preprocessing-CLI-only cannot do query-time presence
 reconstruction** (Query A live), so it can't fully deliver the Stage 3 thesis —
-it re-bakes derived data instead. Sidecar and in-process both can.
+it re-bakes derived data instead. graphd and in-process both can.
 
 ### Leaning — DECIDED by the spike (2026-07-15)
-**Rust sidecar for Query A presence-counts; Query B stays on Stage 2's
+**Rust path service for Query A presence-counts; Query B stays on Stage 2's
 pure-Python slice.** The spike (see Stage 3 RESULTS) showed presence counts are
 ~57 ns/node and depth-independent (30 µs–1.1 ms per viewport, debounced), so the
 IPC hop is negligible and process isolation wins over in-process PyO3.

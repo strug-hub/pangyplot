@@ -1,7 +1,7 @@
-"""GbwtManager: sidecar lifecycle for the GBWT path engine (Stage 3 plumbing).
+"""GbwtManager: graphd lifecycle for the GBWT path engine (Stage 3 plumbing).
 
 Verifies the opt-in switch and the spawn/health-check/terminate cycle against the
-real sidecar binary (skipped if it isn't built). GBWT mode is off by default, so
+real graphd binary (skipped if it isn't built). GBWT mode is off by default, so
 these tests set PANGYPLOT_GBWT explicitly and restore the environment after.
 """
 import os
@@ -12,8 +12,8 @@ import pytest
 from pangyplot.db.gbwt_manager import GbwtManager
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
-    REPO, "gbwt", "sidecar", "pangyplot-gbwt-sidecar")
+DAEMON = os.environ.get("PANGYPLOT_GRAPHD_BIN") or os.path.join(
+    REPO, "gbwt", "graphd", "pangyplot-graphd")
 
 
 @pytest.fixture
@@ -39,8 +39,8 @@ def test_enabled_but_missing_gbz_falls_back(clean_env, tmp_path):
 
 
 def test_spawns_and_serves(clean_env, tmp_path, fixtures_dir):
-    if not os.path.exists(SIDECAR):
-        pytest.skip("gbwt-sidecar binary not built")
+    if not os.path.exists(DAEMON):
+        pytest.skip("gbwt-graphd binary not built")
     clean_env.setenv("PANGYPLOT_GBWT", "1")
 
     chr_dir = tmp_path / "chrDRB1"

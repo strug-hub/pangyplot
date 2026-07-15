@@ -1,35 +1,35 @@
-"""Sidecar lifecycle for the GBWT path engine (GBWT migration Stage 3).
+"""graphd lifecycle for the GBWT path engine (GBWT migration Stage 3).
 
-Owns the per-chromosome GBWT sidecar processes and hands back a GbwtClient for
+Owns the per-chromosome GBWT graphd processes and hands back a GbwtClient for
 each. GBWT mode is opt-in and reversible: when it is off (the default) the app
 uses the legacy binpath PathIndex and this module does nothing.
 
 Configuration (env vars, read at startup — matches the rest of app.py):
 
     PANGYPLOT_GBWT       "1"/"true" to enable the GBWT path engine (default off)
-    PANGYPLOT_GBWT_BIN   path to the gbwt-sidecar binary
-                         (default: gbwt/sidecar/pangyplot-gbwt-sidecar)
+    PANGYPLOT_GBWT_BIN   path to the gbwt-graphd binary
+                         (default: gbwt/graphd/pangyplot-graphd)
     PANGYPLOT_GBWT_GBZ   per-chr GBZ filename inside each chr dir (default graph.gbz)
     PANGYPLOT_GBWT_URLS  optional JSON {chrom: base_url} — point at externally
-                         managed sidecars instead of spawning. Production sets
-                         this and runs the sidecars however it likes; Flask never
+                         managed graph daemons instead of spawning. Production sets
+                         this and runs the graph daemons however it likes; Flask never
                          spawns a subprocess.
 
-Each chromosome's GBZ is a separate in-memory index, so it gets its own sidecar
+Each chromosome's GBZ is a separate in-memory index, so it gets its own graphd
 on its own localhost port (the wire contract is one-GBZ-per-service). Spawned
 processes are terminated on shutdown (atexit + explicit shutdown()).
 
-LAUNCH CONTRACT (any sidecar binary must honor this so the manager spawns it
-unchanged — the memory-mapped C++ `gbwt/sidecar`, or a wire-compatible swap):
+LAUNCH CONTRACT (any graphd binary must honor this so the manager spawns it
+unchanged — the memory-mapped C++ `gbwt/graphd`, or a wire-compatible swap):
 
     <binary>  <index-file: graph.gbwt|graph.gbz>  <addr: 127.0.0.1:PORT>
 
 positional args, and it must answer the HTTP wire contract in
-`gbwt/sidecar/README.md` (/health, /meta, /walk, /count). The DA/document-array
+`gbwt/graphd/README.md` (/health, /meta, /walk, /count). The DA/document-array
 is loaded OFF by default (count/walk never need it; only a future `locate`
-would). The C++ mmap sidecar is therefore a drop-in: build it separately and set
+would). The C++ mmap graphd is therefore a drop-in: build it separately and set
 PANGYPLOT_GBWT_BIN to its path — same "optional external binary, gracefully
-skipped if absent" model as the Rust sidecar, since GBWT mode is opt-in anyway.
+skipped if absent" model as the Rust path service, since GBWT mode is opt-in anyway.
 """
 import atexit
 import json
@@ -40,7 +40,7 @@ import time
 
 from pangyplot.db.gbwt_client import GbwtClient
 
-DEFAULT_BIN = os.path.join("gbwt", "sidecar", "pangyplot-gbwt-sidecar")
+DEFAULT_BIN = os.path.join("gbwt", "graphd", "pangyplot-graphd")
 GBWT_NATIVE_NAME = "graph.gbwt"
 DEFAULT_GBZ_NAME = "graph.gbz"
 _TRUE = {"1", "true", "yes", "on"}
@@ -53,7 +53,7 @@ def _free_port():
 
 
 class GbwtManager:
-    """Starts/stops GBWT sidecars and vends clients, one per chromosome."""
+    """Starts/stops GBWT graph daemons and vends clients, one per chromosome."""
 
     def __init__(self, repo_root=None):
         self.enabled = os.getenv("PANGYPLOT_GBWT", "").lower() in _TRUE
@@ -65,7 +65,7 @@ class GbwtManager:
         self.bin_path = bin_path
 
         # Serve graph.gbwt (native compact build) if present, else graph.gbz
-        # (adopted, possibly chopped). The sidecar auto-detects the format.
+        # (adopted, possibly chopped). The graphd auto-detects the format.
         self.index_names = [GBWT_NATIVE_NAME, os.getenv("PANGYPLOT_GBWT_GBZ", DEFAULT_GBZ_NAME)]
 
         urls = os.getenv("PANGYPLOT_GBWT_URLS")
@@ -77,7 +77,7 @@ class GbwtManager:
     def client_for_chrom(self, chrom, chr_dir):
         """Return a GbwtClient for `chrom`, or None to keep the legacy engine.
 
-        Order: external URL (no spawn) -> spawn a sidecar on the chr index
+        Order: external URL (no spawn) -> spawn a graphd on the chr index
         (graph.gbwt preferred, else graph.gbz) -> None (GBWT off, or no index).
         A missing index under GBWT mode is a warning, not a crash: the app boots
         on the binpath engine for that chr.
@@ -89,7 +89,7 @@ class GbwtManager:
             client = GbwtClient(self.external_urls[chrom])
             if client.health():
                 return client
-            print(f"  ⚠️  GBWT sidecar for {chrom} at {self.external_urls[chrom]} "
+            print(f"  ⚠️  GBWT graphd for {chrom} at {self.external_urls[chrom]} "
                   f"is not responding; using the legacy path engine.")
             return None
 
@@ -100,7 +100,7 @@ class GbwtManager:
                   f"using the legacy path engine for {chrom}.")
             return None
         if not os.path.exists(self.bin_path):
-            print(f"  ⚠️  gbwt-sidecar binary not found at {self.bin_path}; "
+            print(f"  ⚠️  gbwt-graphd binary not found at {self.bin_path}; "
                   f"using the legacy path engine for {chrom}.")
             return None
 
@@ -116,15 +116,15 @@ class GbwtManager:
         client = GbwtClient(f"http://{addr}")
         for _ in range(100):  # ~10s: GBZ load can take a few hundred ms
             if proc.poll() is not None:
-                print(f"  ⚠️  gbwt-sidecar for {chrom} exited "
+                print(f"  ⚠️  gbwt-graphd for {chrom} exited "
                       f"(code {proc.returncode}); using the legacy path engine.")
                 return None
             if client.health():
-                print(f"  🧬 GBWT sidecar for {chrom} ready on {addr}")
+                print(f"  🧬 GBWT graphd for {chrom} ready on {addr}")
                 return client
             time.sleep(0.1)
 
-        print(f"  ⚠️  gbwt-sidecar for {chrom} did not become ready; "
+        print(f"  ⚠️  gbwt-graphd for {chrom} did not become ready; "
               f"using the legacy path engine.")
         self._terminate(proc)
         return None

@@ -1,7 +1,7 @@
 """GBWT-backed path source (GBWT migration Stage 3).
 
-Drop-in for PathIndex, but sourced from the GBWT sidecar instead of binpath
-files. Groups the sidecar's /meta path list into PangyPlot's sample -> [subpath]
+Drop-in for PathIndex, but sourced from the GBWT graphd instead of binpath
+files. Groups the graphd's /meta path list into PangyPlot's sample -> [subpath]
 shape and serves each subpath's `combined` array via /walk, so region filtering
 + varint encoding (Stage 2) are reused unchanged. Byte-identical to binpaths
 (tests/db/test_gbz_parity.py).
@@ -146,7 +146,7 @@ class GbwtPathIndex:
         return meta
 
     def get_path_combined(self, sample, file_index):
-        """Return the subpath's combined int64 array (via the sidecar /walk)."""
+        """Return the subpath's combined int64 array (via the graphd /walk)."""
         entries = self._by_sample.get(sample, [])
         if file_index < 0 or file_index >= len(entries):
             return None
@@ -155,7 +155,7 @@ class GbwtPathIndex:
     def get_path_raw(self, sample, file_index):
         """Whole-subpath gzipped varint bytes (for /path-data without a region).
 
-        Re-encodes the sidecar walk with the same codec the frontend decodes, so
+        Re-encodes the graphd walk with the same codec the frontend decodes, so
         the wire format is identical to the binpath one it replaces.
         """
         combined = self.get_path_combined(sample, file_index)

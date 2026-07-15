@@ -1,13 +1,13 @@
-"""Parity: the GBWT sidecar's path walks == PangyPlot's custom binpath storage.
+"""Parity: the GBWT graphd's path walks == PangyPlot's custom binpath storage.
 
 This is the load-bearing correctness test for the GBWT path-engine migration:
 serving paths from a GBZ must return byte-identical walks to the binpath format
 it replaces. It caught a real bug (vg chops long segments on GFA->GBZ, so raw
-node ids != segment ids; the sidecar must use the node->segment translation).
+node ids != segment ids; the graphd must use the node->segment translation).
 
 Integration test: builds PangyPlot binpaths from the DRB1 fixture GFA, starts the
-C++ sidecar on the matching (chopped) DRB1 GBZ fixture, and compares the full set
-of walks. Skipped if the sidecar binary hasn't been built.
+C++ graphd on the matching (chopped) DRB1 GBZ fixture, and compares the full set
+of walks. Skipped if the graphd binary hasn't been built.
 """
 import json
 import os
@@ -26,8 +26,8 @@ from pangyplot.db.indexes.PathIndex import PathIndex
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
-    REPO, "gbwt", "sidecar", "pangyplot-gbwt-sidecar")
+DAEMON = os.environ.get("PANGYPLOT_GRAPHD_BIN") or os.path.join(
+    REPO, "gbwt", "graphd", "pangyplot-graphd")
 
 
 def _free_port():
@@ -42,13 +42,13 @@ def _get(url, binary=False):
 
 
 @pytest.fixture(scope="module")
-def sidecar(fixtures_dir):
-    if not os.path.exists(SIDECAR):
-        pytest.skip("gbwt-sidecar binary not built "
-                    "(build it: make -C gbwt/sidecar)")
+def graphd(fixtures_dir):
+    if not os.path.exists(DAEMON):
+        pytest.skip("gbwt-graphd binary not built "
+                    "(build it: make -C gbwt/graphd)")
     gbz = str(fixtures_dir / "DRB1-3123.gbz")
     port = _free_port()
-    proc = subprocess.Popen([SIDECAR, gbz, f"127.0.0.1:{port}"],
+    proc = subprocess.Popen([DAEMON, gbz, f"127.0.0.1:{port}"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     base = f"http://127.0.0.1:{port}"
     try:
@@ -59,7 +59,7 @@ def sidecar(fixtures_dir):
             except Exception:
                 time.sleep(0.1)
         else:
-            raise RuntimeError("sidecar did not become ready")
+            raise RuntimeError("graphd did not become ready")
         yield base
     finally:
         proc.terminate()
@@ -93,8 +93,8 @@ def _pangyplot_walks(pi):
 
 
 class TestGbzBinpathParity:
-    def test_walks_are_identical(self, sidecar, pangyplot_paths):
-        gbz_walks, meta = _gbz_walks(sidecar)
+    def test_walks_are_identical(self, graphd, pangyplot_paths):
+        gbz_walks, meta = _gbz_walks(graphd)
         pp_walks = _pangyplot_walks(pangyplot_paths)
         assert gbz_walks, "no walks from GBZ"
         assert pp_walks, "no walks from PangyPlot"
@@ -105,16 +105,16 @@ class TestGbzBinpathParity:
             f"only in PangyPlot={len(pp_walks - gbz_walks)}"
         )
 
-    def test_chopped_gbz_uses_translation(self, sidecar):
+    def test_chopped_gbz_uses_translation(self, graphd):
         # The DRB1 GBZ is chopped (has a node->segment translation); parity above
-        # therefore proves the sidecar collapses chopped nodes via segment_path.
-        _, meta = _gbz_walks(sidecar)
+        # therefore proves the graphd collapses chopped nodes via segment_path.
+        _, meta = _gbz_walks(graphd)
         assert meta["has_translation"] is True
 
-    def test_region_slice_parity_through_query(self, sidecar, drb1_gfa_index,
+    def test_region_slice_parity_through_query(self, graphd, drb1_gfa_index,
                                                drb1_step_index, drb1_bubble_index):
         # The Flask seam: query.get_path_region_raw must yield identical region
-        # slices whether paths come from binpaths or the GBWT sidecar. Topology
+        # slices whether paths come from binpaths or the GBWT graphd. Topology
         # (steps/bubbles) is the compact GFA; only the path source is swapped.
         from pangyplot.db import query
         from pangyplot.db.path_codec import decode_combined
@@ -145,7 +145,7 @@ class TestGbzBinpathParity:
         binpath_slices = region_slices(drb1_gfa_index.path_index)
 
         orig = drb1_gfa_index.path_index
-        drb1_gfa_index.path_index = GbwtPathIndex(GbwtClient(sidecar))
+        drb1_gfa_index.path_index = GbwtPathIndex(GbwtClient(graphd))
         try:
             gbwt_slices = region_slices(drb1_gfa_index.path_index)
         finally:
@@ -153,16 +153,16 @@ class TestGbzBinpathParity:
 
         assert binpath_slices == gbwt_slices
 
-    def test_bp_ranges_match_binpaths(self, sidecar, pangyplot_paths, drb1_step_index):
+    def test_bp_ranges_match_binpaths(self, graphd, pangyplot_paths, drb1_step_index):
         # compute_bp_ranges must yield the same (bp_start, bp_end) per subpath
-        # whether the walk comes from binpaths or the GBWT sidecar -- both read
+        # whether the walk comes from binpaths or the GBWT graphd -- both read
         # the identical walk and the identical StepIndex, so /path-meta labels and
         # region windows agree across the two engines.
         from pangyplot.db.gbwt_client import GbwtClient
         from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
         pangyplot_paths.compute_bp_ranges(drb1_step_index)
-        gpi = GbwtPathIndex(GbwtClient(sidecar))
+        gpi = GbwtPathIndex(GbwtClient(graphd))
         gpi.compute_bp_ranges(drb1_step_index)
 
         # Compare the multiset of bp ranges (sample keying differs between the
@@ -176,24 +176,24 @@ class TestGbzBinpathParity:
 
         assert ranges_of(gpi) == ranges_of(pangyplot_paths)
 
-    def test_sample_idx_is_a_stable_bijection(self, sidecar):
+    def test_sample_idx_is_a_stable_bijection(self, graphd):
         # /pathorder needs a sample -> contiguous index map. Every sample present
         # gets exactly one index, and the indices are 0..N-1 with no gaps.
         from pangyplot.db.gbwt_client import GbwtClient
         from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
-        gpi = GbwtPathIndex(GbwtClient(sidecar))
+        gpi = GbwtPathIndex(GbwtClient(graphd))
         idx = gpi.get_sample_idx()
         assert set(idx.keys()) == set(gpi.get_samples())
         assert sorted(idx.values()) == list(range(len(gpi.get_samples())))
 
-    def test_python_path_source_matches_binpaths(self, sidecar, pangyplot_paths):
+    def test_python_path_source_matches_binpaths(self, graphd, pangyplot_paths):
         # Route through the real Python stack: GbwtClient -> GbwtPathIndex ->
         # get_path_combined, exactly as serving will. Walk set must still match.
         from pangyplot.db.gbwt_client import GbwtClient
         from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
-        gpi = GbwtPathIndex(GbwtClient(sidecar))
+        gpi = GbwtPathIndex(GbwtClient(graphd))
         gbwt_walks = set()
         for sample in gpi.get_samples():
             for i, _ in enumerate(gpi.get_path_meta(sample)):

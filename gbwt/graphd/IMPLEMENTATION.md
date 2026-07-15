@@ -1,7 +1,7 @@
-# pangyplot-gbwt-sidecar (C++, memory-mapped)
+# pangyplot-graphd (C++, memory-mapped)
 
-Implementation notes for the C++ sidecar. It honours the localhost wire contract
-in `gbwt/sidecar/README.md`, so nothing above the HTTP boundary depends on any of
+Implementation notes for the C++ graphd. It honours the localhost wire contract
+in `gbwt/graphd/README.md`, so nothing above the HTTP boundary depends on any of
 this — the Python client, `GbwtManager`, and `GbwtPathIndex` see only the
 contract.
 
@@ -22,18 +22,18 @@ make                        # uses ../../../gbwt-mmap and ../../../local by defa
 make GBWT_DIR=/path/to/gbwt-mmap SDSL_PREFIX=/path/to/local   # or override
 ```
 
-Produces `pangyplot-gbwt-sidecar`.
+Produces `pangyplot-graphd`.
 
 ## Run
 
 ```sh
-pangyplot-gbwt-sidecar <graph.gbwt|graph.gbz> [127.0.0.1:PORT]   # default :5701
+pangyplot-graphd <graph.gbwt|graph.gbz> [127.0.0.1:PORT]   # default :5701
 ```
 
 Positional args exactly match what `GbwtManager` spawns (the launch contract), so
 wiring it in is a one-line change: point `PANGYPLOT_GBWT_BIN` at this binary.
 
-## Endpoints (the wire contract — see gbwt/sidecar/README.md)
+## Endpoints (the wire contract — see gbwt/graphd/README.md)
 
 | endpoint | response |
 |---|---|
@@ -43,7 +43,7 @@ wiring it in is a one-line change: point `PANGYPLOT_GBWT_BIN` at this binary.
 | `GET /count?node=<id>` | text decimal: haplotype occurrence count at the node |
 
 Verified by `tests/db/test_gbwt_native_build.py` (run with
-`PANGYPLOT_GBWT_SIDECAR_BIN=$(pwd)/pangyplot-gbwt-sidecar`).
+`PANGYPLOT_GRAPHD_BIN=$(pwd)/pangyplot-graphd`).
 
 ## Design notes
 
