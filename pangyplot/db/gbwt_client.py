@@ -51,3 +51,16 @@ class GbwtClient:
     def count(self, node_id):
         """Return the haplotype occurrence count at a node (segment)."""
         return int(self._get(f"/count?node={int(node_id)}"))
+
+    def segments(self):
+        """Return an (N, 4) int64 array of segment scalars: columns id, length,
+        gc, n. Graph mode only (the graphd must be started with --graph)."""
+        raw = self._get("/segments")
+        return np.frombuffer(raw, dtype="<i8").reshape(-1, 4)
+
+    def links(self):
+        """Return an (M, 4) int64 array of segment-level links: columns from_id,
+        from_strand, to_id, to_strand (strand 1='+' / 0='-'). Bidirectional: each
+        link appears with its reverse-complement twin. Graph mode only."""
+        raw = self._get("/links")
+        return np.frombuffer(raw, dtype="<i8").reshape(-1, 4)

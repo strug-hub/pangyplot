@@ -108,7 +108,7 @@ class TestSegmentIndexSerialization:
 
     def test_serialize_has_expected_keys(self, drb1_segment_index):
         data = drb1_segment_index.serialize()
-        expected = {"length", "gc_count", "x1", "y1", "x2", "y2", "valid"}
+        expected = {"length", "gc_count", "n_count", "x1", "y1", "x2", "y2", "valid"}
         assert set(data.keys()) == expected
 
     def test_serialize_arrays_same_length(self, drb1_segment_index):

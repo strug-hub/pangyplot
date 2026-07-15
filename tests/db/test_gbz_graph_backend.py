@@ -84,6 +84,25 @@ def test_segments_scalars_match_sqlite(graph_daemon, gfa_dir):
     assert gbz == gfa
 
 
+def test_segment_index_from_gbz_matches_sqlite(graph_daemon, gfa_dir):
+    # A SegmentIndex hydrated from the GBZ must carry the same scalar arrays as
+    # one built from segments.db (length / gc / n / valid). Coords come from the
+    # layout file, not the GBZ, so they are excluded here.
+    import numpy as np
+    from pangyplot.db.gbwt_client import GbwtClient
+    from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+
+    sqlite_idx = SegmentIndex(gfa_dir)                       # from segments.db
+
+    gbz_dir = tempfile.mkdtemp()                             # fresh dir: no mmap cache
+    gbz_idx = SegmentIndex(gbz_dir, client=GbwtClient(graph_daemon))
+
+    assert len(gbz_idx) == len(sqlite_idx)
+    for name in ("length", "gc_count", "n_count", "valid"):
+        assert np.array_equal(np.asarray(getattr(gbz_idx, name)),
+                              np.asarray(getattr(sqlite_idx, name))), name
+
+
 def test_links_are_the_gfa_bidirected_edge_set(graph_daemon, gfa_dir):
     # GFA stores each link once; the GBWT is bidirectional and emits each link
     # AND its reverse-complement twin. The daemon's set must be exactly the GFA

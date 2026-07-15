@@ -14,6 +14,7 @@ MMAP_DIR = "segments.mmapindex"
 ARRAYS = {
     "length": np.uint32,
     "gc_count": np.uint32,
+    "n_count": np.uint32,
     "x1": np.float32,
     "y1": np.float32,
     "x2": np.float32,
@@ -23,35 +24,66 @@ ARRAYS = {
 
 
 class SegmentIndex:
-    def __init__(self, dir):
+    def __init__(self, dir, client=None, coords=None):
         self.dir = dir
 
+        # `client` (a GbwtClient in graph mode) sources the scalars from the GBZ
+        # instead of segments.db; `coords` maps segment id -> (x1,y1,x2,y2) from
+        # the layout file (the GBZ has no 2D coordinates). Without a client this
+        # is the legacy SQLite-backed build. Either way the mmap cache wins first.
         if not self.load_mmap_index():
-            self._build_from_sqlite()
+            if client is not None:
+                self._build_from_gbz(client, coords)
+            else:
+                self._build_from_sqlite()
             self.save_mmap_index()
 
-    def _build_from_sqlite(self):
-        max_id = db.get_max_id(self.dir)
-
+    def _alloc(self, max_id):
         self.length = array('I', [0] * (max_id + 1))
         self.gc_count = array('I', [0] * (max_id + 1))
+        self.n_count = array('I', [0] * (max_id + 1))
         self.x1 = array('f', [0.0] * (max_id + 1))
         self.y1 = array('f', [0.0] * (max_id + 1))
         self.x2 = array('f', [0.0] * (max_id + 1))
         self.y2 = array('f', [0.0] * (max_id + 1))
         self.valid = array('B', [0] * (max_id + 1))
 
+    def _build_from_sqlite(self):
+        self._alloc(db.get_max_id(self.dir))
+
         for row in db.get_index_info(self.dir):
             sid = row["id"]
             self.valid[sid] = 1
             self.length[sid] = row["length"]
             self.gc_count[sid] = row["gc_count"]
+            self.n_count[sid] = row["n_count"]
             self.x1[sid] = row["x1"]
             self.y1[sid] = row["y1"]
             self.x2[sid] = row["x2"]
             self.y2[sid] = row["y2"]
 
         self._count = int(sum(self.valid))
+
+    def _build_from_gbz(self, client, coords=None):
+        """Fill the scalar arrays from the graphd's /segments (length, gc, n) plus
+        the layout `coords` (segment id -> (x1,y1,x2,y2)); the GBZ carries no
+        coordinates. `coords` may be a dict or any object indexable by segment id.
+        """
+        rows = client.segments()  # (N, 4): id, length, gc, n
+        max_id = int(rows[:, 0].max()) if len(rows) else 0
+        self._alloc(max_id)
+
+        for sid, length, gc, n in rows.tolist():
+            self.valid[sid] = 1
+            self.length[sid] = length
+            self.gc_count[sid] = gc
+            self.n_count[sid] = n
+            if coords is not None:
+                c = coords[sid] if sid in coords else None
+                if c is not None:
+                    self.x1[sid], self.y1[sid], self.x2[sid], self.y2[sid] = c
+
+        self._count = len(rows)
 
     def __getitem__(self, seg_id):
         return db.get_segment(self.dir, seg_id)
@@ -70,7 +102,7 @@ class SegmentIndex:
 
     def segment_gc_n_count(self, seg_id):
         if seg_id < len(self.gc_count):
-            return [int(self.gc_count[seg_id]), db.get_segment_gc_n_count(self.dir, seg_id)[1]]
+            return [int(self.gc_count[seg_id]), int(self.n_count[seg_id])]
         return db.get_segment_gc_n_count(self.dir, seg_id)
 
     # -- mmap binary index ------------------------------------------------
@@ -137,6 +169,7 @@ class SegmentIndex:
         return {
             "length": self.length.tolist(),
             "gc_count": self.gc_count.tolist(),
+            "n_count": self.n_count.tolist(),
             "x1": self.x1.tolist(),
             "y1": self.y1.tolist(),
             "x2": self.x2.tolist(),
@@ -154,6 +187,7 @@ class SegmentIndex:
 
         self.length = array('I', quick_index["length"])
         self.gc_count = array('I', quick_index.get("gc_count", [0] * len(quick_index["length"])))
+        self.n_count = array('I', quick_index.get("n_count", [0] * len(quick_index["length"])))
         self.x1 = array('f', quick_index["x1"])
         self.y1 = array('f', quick_index["y1"])
         self.x2 = array('f', quick_index["x2"])

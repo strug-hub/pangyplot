@@ -65,6 +65,7 @@ def test_segment_mmap_index_roundtrip():
         original.dir = tempdir
         original.length = array('I', [i * 3 for i in range(n)])
         original.gc_count = array('I', [i * 2 for i in range(n)])
+        original.n_count = array('I', [i for i in range(n)])
         original.x1 = array('f', [float(i) for i in range(n)])
         original.y1 = array('f', [float(i) + 0.5 for i in range(n)])
         original.x2 = array('f', [float(i) + 1.0 for i in range(n)])
@@ -110,6 +111,7 @@ def test_segment_mmap_validate():
         idx.dir = tempdir
         idx.length = array('I', [10, 20, 30])
         idx.gc_count = array('I', [5, 10, 15])
+        idx.n_count = array('I', [0, 1, 2])
         idx.x1 = array('f', [1.0, 2.0, 3.0])
         idx.y1 = array('f', [1.0, 2.0, 3.0])
         idx.x2 = array('f', [1.0, 2.0, 3.0])
