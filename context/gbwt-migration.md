@@ -1,9 +1,15 @@
 # GBWT path model — migration plan
 
-> **GOAL:** replace PangyPlot's bespoke path engine (binpaths + codec + PathIndex
-> serving) with GBWT. The GBZ becomes the single source of truth for haplotype
-> paths, served by a **Rust sidecar** (decided — see Stage 3 / §7). Staged so
-> each step ships independently.
+> **GOAL (revised — see the OPEN memory note below):** add a GBWT path backend
+> for what GBWT is uniquely good at (region-scoped, all-haplotype **presence**
+> queries), *alongside* PangyPlot's memory-lean on-disk binpath engine — which
+> **stays the default**. The original "GBWT replaces the path engine, retire
+> binpaths (Stage 4)" plan is **cancelled**: both the Rust and C++ GBWT load fully
+> into RAM, and a whole-genome resident GBWT is untenable against PangyPlot's
+> low-memory requirement. GBWT is opt-in (`PANGYPLOT_GBWT`); resident-lean
+> presence requires **memory-mapped serving**, which is the next investigation
+> (C++ sidecar — `context/gbwt-mmap-cpp-investigation.md`). Stages 1–3 (dead-mask
+> removal, region-scoped trace, the working GBWT engine + native builder) stand.
 >
 > **Status (2026-07-15):** Stages 1–2 landed + monotonicity hardening + Stage 3
 > spike run and decided (Rust sidecar; extract+counts+metadata all proven on a
@@ -43,15 +49,29 @@
 > optional *adopt* input. **Ahead:** Stage 4 binpath retirement; metadata parity
 > (sample-key reconciliation); GBZ-only input is the separate layout project.
 >
-> **OPEN — resident memory / process model (revisit).** The sidecar loads the
-> whole GBWT/GBZ into RAM (`serialize::load_from`) and holds it Arc-shared for the
-> process lifetime — one sidecar *process per chromosome*. This is a change from
-> binpaths (on-disk, fetched per-request, ~zero resident path memory) to
-> fully-resident-but-compressed. Per-chr it's cheap (spike: 1614-haplotype chrY =
-> 107 MB; a native `graph.gbwt` is smaller than a GBZ — no node DNA). The concern
-> is **whole-genome**: ~24 resident sidecars ≈ sum-of-per-chr RAM + N process
-> overheads. Options if it bites: one sidecar holding multiple chromosomes'
-> indexes, or lazy load/evict. Current wire contract is one-index-per-service.
+> **OPEN — resident memory: mmap investigation (DECIDED direction).** The sidecar
+> loads the whole GBWT/GBZ into RAM and holds it for the process lifetime — one
+> process per chromosome. This regresses PangyPlot's memory-lean design (binpaths
+> are on-disk, ~zero resident path memory). Per-chr it's ~107 MB (1614-hap chrY);
+> **whole-genome resident across ~24 processes is several GB — untenable**, and
+> users query multiple chrs at once so all must be ready.
+> **Investigation found neither gbwt-rs (Rust) nor `gbwt`/`gbwtgraph` (C++) mmaps
+> the index — both load fully into RAM.** So this is not a language choice; mmap
+> must be built. What the resident GBWT uniquely buys is **Query A presence**
+> ("which/how-many haplotypes here"); **Query B trace is already served
+> resident-lean on-disk by Stage 2 binpaths** and gains nothing from the GBWT.
+> **Decisions:** (1) keep the on-disk **binpath engine as the default** — do NOT
+> do Stage 4 (retiring binpaths) as previously planned; it would break the memory
+> constraint. (2) The GBWT stays **opt-in** (already is: `PANGYPLOT_GBWT` off →
+> binpaths). (3) To get resident-lean presence, build **memory-mapped serving in a
+> C++ sidecar** (sdsl has the richest mmap primitives; `gbwt`/`gbwtgraph` are the
+> mature reference; also sets up Stage 5). Full task brief:
+> **`context/gbwt-mmap-cpp-investigation.md`**. The wire contract makes the C++
+> sidecar a drop-in — nothing above the HTTP boundary changes.
+>
+> **NOTE — Stage 4 is cancelled** (was: retire binpaths). Binpaths are the
+> memory-lean default and must stay. `get_paths()` (core-viewer `/path`/`/export`)
+> remains served by the binpath engine; no need to port it under GBWT mode.
 >
 > **Stage 3 file layout (2026-07-15):** the two native crates moved out of
 > `tools/` into a top-level `gbwt/` **Cargo workspace** (`gbwt/sidecar/`,
