@@ -24,7 +24,10 @@ def store_sample_idx(dir, sample_idx):
 
 def retrieve_sample_idx(dir):
     db_path = os.path.join(dir, DB_NAME)
-    with open(os.path.join(db_path, SAMPLE_IDX), "r") as f:
+    idx_path = os.path.join(db_path, SAMPLE_IDX)
+    if not os.path.exists(idx_path):  # no binpaths (e.g. a GBZ-native dataset)
+        return {}
+    with open(idx_path, "r") as f:
         return json.load(f)
 
 # -------------------------------------------------------------------
@@ -187,6 +190,10 @@ def summarize(dir):
             for entry in entries:
                 summary[sample].append(entry["file"])
         return summary
+
+    # No binpaths at all (e.g. a GBZ-native dataset) -> no samples.
+    if not os.path.isdir(db_path):
+        return {}
 
     # Fallback: scan directory
     summary = defaultdict(list)

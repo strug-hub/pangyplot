@@ -2,12 +2,17 @@ from collections import deque
 from pangyplot.db.indexes.LinkIndex import LinkIndex
 from pangyplot.db.indexes.SegmentIndex import SegmentIndex
 from pangyplot.db.indexes.PathIndex import PathIndex
+from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
 class GFAIndex:
-    def __init__(self, db_dir):
-        self.segment_index = SegmentIndex(db_dir)
-        self.link_index = LinkIndex(db_dir)
-        self.path_index = PathIndex(db_dir)
+    def __init__(self, db_dir, client=None, coords=None):
+        # `client` (a GbwtClient in graph mode) backs the sub-indexes with the GBZ
+        # instead of SQLite/binpaths (GBZ-native); `coords` supplies segment
+        # coordinates from the layout file. Without a client this is the legacy
+        # SQLite/binpath build.
+        self.segment_index = SegmentIndex(db_dir, client=client, coords=coords)
+        self.link_index = LinkIndex(db_dir, client=client)
+        self.path_index = GbwtPathIndex(client) if client is not None else PathIndex(db_dir)
 
     def __getitem__(self, segment_id):
         return self.segment_index[segment_id]

@@ -222,6 +222,52 @@ def test_flat_bubbles_from_gbz_match_gfa(graph_daemon, gfa_dir):
                 assert abs(da[c] - db[c]) < 0.5, (bid, c, da[c], db[c])
 
 
+def test_add_from_gbz_end_to_end(graph_daemon, fixtures_dir):
+    # The whole `pangyplot add --gbz` orchestration: adopt the GBZ, serve it in
+    # graph mode, build every on-disk artifact from it, and produce a bubbles.db
+    # structurally identical to a full GFA ingest.
+    import types
+    import importlib.util
+    from pangyplot.commands.add import _add_from_gbz
+    from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+    from pangyplot.db.indexes.LinkIndex import LinkIndex
+    import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
+
+    spec = importlib.util.spec_from_file_location(
+        "fingerprint_bubbles", os.path.join(REPO, "tools", "fingerprint_bubbles.py"))
+    fp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fp)
+
+    # Ground-truth GFA ingest (its own dir) -> bubbles.db.
+    gfa = tempfile.mkdtemp()
+    layout = parse_layout(str(fixtures_dir / "DRB1-3123.lay.tsv"))
+    parse_gfa(gfa_file=str(fixtures_dir / "DRB1-3123.gfa"), ref=REFERENCE, path=None,
+              ref_offset=0, path_sep=None, layout_coords=layout, dir=gfa)
+    bubble_gun.shoot(SegmentIndex(gfa), LinkIndex(gfa), gfa, REFERENCE)
+
+    # GBZ-native ingest through the real command path.
+    chr_path = tempfile.mkdtemp()
+    args = types.SimpleNamespace(
+        gbz=str(fixtures_dir / "DRB1-3123.gbz"),
+        layout=str(fixtures_dir / "DRB1-3123.lay.tsv"),
+        ref=REFERENCE, chr="drb1")
+    _add_from_gbz(args, chr_path)
+
+    # It produced the artifacts, and bubbles match structurally.
+    assert os.path.exists(os.path.join(chr_path, "graph.gbz"))
+    assert os.path.exists(os.path.join(chr_path, "bubbles.db"))
+    assert os.path.isdir(os.path.join(chr_path, "segments.mmapindex"))
+
+    import json
+    COORDS = ("x1", "x2", "y1", "y2")
+    a = {b: json.loads(v) for b, v in fp.canonical_rows(os.path.join(gfa, "bubbles.db"))}
+    b = {b: json.loads(v) for b, v in fp.canonical_rows(os.path.join(chr_path, "bubbles.db"))}
+    assert set(a) == set(b)
+    for bid in a:
+        assert {k: v for k, v in a[bid].items() if k not in COORDS} == \
+               {k: v for k, v in b[bid].items() if k not in COORDS}
+
+
 def _side_pair_edges(link_index):
     """The set of bidirected edges a LinkIndex encodes, as unordered pairs of
     (segment_id, side). This is RC-invariant: a link and its reverse-complement

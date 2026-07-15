@@ -107,9 +107,19 @@ translation (unchopped GBZ) each node id is its own segment.
      (children/inside/source/sink/ranges/counts all exact); coords agree to float32
      precision (the GBZ index is float32 vs float64 SQLite — a non-issue in real
      GBZ-native ingest where coords are float32 throughout).
-   - Then: `add --gbz` orchestration (adopt GBZ → spawn graphd `--graph` → build
-     GBZ-backed indexes + layout → bubbles → skeleton) + layout keying (node-layout
-     → per-segment coords via the translation) + skeleton parity.  ← next
+   - **`add --gbz` orchestration ✅** — `--gbz` with no `--gfa` runs a GBZ-native
+     ingest (`_add_from_gbz`): adopt the GBZ, serve it in graph mode
+     (`preprocess/graphd.serve_graph`), build the GBZ-backed `GFAIndex` + steps +
+     bubbles + polychain, then skeleton. `GFAIndex(dir, client, coords)` threads the
+     client through; `PathIndex`/`path_db` are tolerant of an absent binpaths dir so
+     the skeleton's plain `GFAIndex(dir)` works. End-to-end tested: bubbles.db
+     structurally identical to a GFA ingest.
+   - **Layout keying** (interim): `layout_coords_by_id` aligns a positional odgi
+     layout to the graphd's segment-enumeration order (both node-id ordered);
+     bandage layouts are keyed by id directly. A chopped-node layout → per-segment
+     coords via the translation is still open (the user manages layout).
+   - Remaining in Phase 3: **skeleton parity** (structural equality vs GFA, beyond
+     "it runs").
 4. **Retire** `segments.db` / `links.db` / `*.binpath` for GBZ-native datasets
    (GFA-native stays as the legacy loader). Mmap the `sequences` StringArray.
 
