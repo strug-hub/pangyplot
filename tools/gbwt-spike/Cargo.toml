@@ -1,0 +1,15 @@
+[package]
+name = "gbwt-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# GBWT Stage 3 spike harness. Throwaway benchmark bin for the GBWT migration
+# (see ../../context/gbwt-migration.md, "Stage 3 spike"). Not part of the app.
+#
+# gbwt-rs is imported as `gbz` (its lib name); the package is `gbwt`. Pinned to
+# the upstream repo so we don't guess a crates.io version until build time.
+
+[dependencies]
+gbwt = { git = "https://github.com/jltsiren/gbwt-rs" }
+simple-sds = { git = "https://github.com/jltsiren/simple-sds" }

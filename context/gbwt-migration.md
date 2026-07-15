@@ -305,6 +305,9 @@ Run in this order (cheapest + most decisive first); each has a go/no-go:
    IPC hop. Decision: feeds sidecar (isolation) vs in-process PyO3 (latency)
    in §7b. Query A stays debounced/view-triggered, so a hop is likely fine.
 
+Harness: `tools/gbwt-spike/` (Rust, `gbwt-rs`) implements steps (2) and (3) —
+written, not yet built/run. `cargo run --release -- <chrN.gbz> [lo hi]`.
+
 Deliverable: a short numbers table appended here, then the §7 decisions get made
 from data instead of priors.
 
