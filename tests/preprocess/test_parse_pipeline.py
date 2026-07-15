@@ -121,14 +121,6 @@ class TestLinkIndex:
         outgoing = [l for l in links if l.from_id == 4]
         assert {l.to_id for l in outgoing} == {5, 6}
 
-    def test_link_haplotype_grch38_only(self, pipeline_output):
-        # Link 1→2 appears in GRCh38 only (sample index 0 → bitmask 0b01 = 1 = "1")
-        links = pipeline_output["link_idx"][1]
-        link_to_2 = next(l for l in links if (l.from_id == 1 and l.to_id == 2) or
-                                              (l.to_id == 1 and l.from_id == 2))
-        hap_int = int(link_to_2.haplotype, 16)
-        assert bin(hap_int).count("1") == 1  # only one sample
-
     def test_link_frequency_single_sample(self, pipeline_output):
         # Link 1→2 appears in 1 of 2 samples → frequency 0.5
         links = pipeline_output["link_idx"][1]

@@ -119,7 +119,6 @@ export async function popBubbleCircleV2(hit) {
                         chainId: l.chainId, isDel: l.isDel,
                         length: l.length, width: l.width,
                         contained: l.contained, frequency: l.frequency,
-                        haplotype: l.haplotype,
                     });
                 }
             }
@@ -292,7 +291,6 @@ export async function popBubbleCircleV2(hit) {
             length: linkLen, width: 1,
             contained: rawLink.contained || [],
             frequency: rawLink.frequency || 0,
-            haplotype: rawLink.haplotype || null,
         });
     }
 

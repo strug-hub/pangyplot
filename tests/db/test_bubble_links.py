@@ -15,8 +15,6 @@ Graph topology (mini_bubble.gfa) — a two-bubble chain:
 
 All segments are 4 bp. Seg 4 = "GGGG", gc_count=4.
 """
-import pytest
-
 from pangyplot.objects.Bubble import Bubble
 from pangyplot.objects.Chain import Chain
 from pangyplot.objects.Link import Link
@@ -27,14 +25,13 @@ from pangyplot.objects.Link import Link
 # ---------------------------------------------------------------------------
 
 def make_link(from_id, to_id, from_strand="+", to_strand="+",
-              haplotype="1", frequency=1.0, gc_count=10, n_count=2,
+              frequency=1.0, gc_count=10, n_count=2,
               length=100, from_type="s", to_type="s", link_type="link"):
     link = Link()
     link.from_id = from_id
     link.to_id = to_id
     link.from_strand = from_strand
     link.to_strand = to_strand
-    link.haplotype = haplotype
     link.frequency = frequency
     link.gc_count = gc_count
     link.n_count = n_count
@@ -69,7 +66,6 @@ class TestLinkClone:
         assert clone.to_id == 2
         assert clone.from_strand == "+"
         assert clone.to_strand == "+"
-        assert clone.haplotype == "1"
         assert clone.frequency == 1.0
         assert clone.length == 50
 
@@ -110,52 +106,6 @@ class TestLinkClone:
         assert clone.from_type == "b"
         assert clone.to_type == "b"
         assert clone.link_type == "chain"
-
-class TestLinkCombine:
-    def test_haplotype_or(self):
-        link1 = make_link(1, 2, haplotype="1")  # 0b01 — sample 0
-        link2 = make_link(1, 2, haplotype="2")  # 0b10 — sample 1
-        link1.combine_links(link2)
-        assert link1.haplotype == "3"            # 0b11 — both samples
-
-    def test_haplotype_or_same_sample(self):
-        link1 = make_link(1, 2, haplotype="1")
-        link2 = make_link(1, 2, haplotype="1")
-        link1.combine_links(link2)
-        assert link1.haplotype == "1"
-
-    def test_frequency_accumulates(self):
-        link1 = make_link(1, 2, frequency=0.5)
-        link2 = make_link(1, 2, frequency=0.5)
-        link1.combine_links(link2)
-        assert link1.frequency == pytest.approx(1.0)
-
-    def test_gc_count_accumulates(self):
-        link1 = make_link(1, 2, gc_count=4)
-        link2 = make_link(1, 2, gc_count=6)
-        link1.combine_links(link2)
-        assert link1.gc_count == 10
-
-    def test_n_count_accumulates(self):
-        link1 = make_link(1, 2, n_count=1)
-        link2 = make_link(1, 2, n_count=2)
-        link1.combine_links(link2)
-        assert link1.n_count == 3
-
-    def test_length_accumulates(self):
-        link1 = make_link(1, 2, length=100)
-        link2 = make_link(1, 2, length=200)
-        link1.combine_links(link2)
-        assert link1.length == 300
-
-    def test_contained_merges(self):
-        link1 = make_link(1, 2)
-        link1.contained = [10]
-        link2 = make_link(1, 2)
-        link2.contained = [20]
-        link1.combine_links(link2)
-        assert set(link1.contained) == {10, 20}
-
 
 class TestLinkSerialize:
     def test_source_target_format(self):

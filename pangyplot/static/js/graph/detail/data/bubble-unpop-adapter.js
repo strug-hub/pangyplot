@@ -110,7 +110,6 @@ export function unpopLastBubble() {
             length: meta.length || 10, width: meta.width || 1,
             contained: meta.contained || [],
             frequency: meta.frequency || 0,
-            haplotype: meta.haplotype || null,
         });
     }
 

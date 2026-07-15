@@ -261,7 +261,6 @@ function _makeGfaLink(fromNode, toNode, fromSegId, toSegId, rawLink) {
         length: linkLen, width: 1,
         contained: rawLink.contained || [],
         frequency: rawLink.frequency || 0,
-        haplotype: rawLink.haplotype || null,
         fromStrand: rawLink.from_strand || '+',
         toStrand: rawLink.to_strand || '+',
     };

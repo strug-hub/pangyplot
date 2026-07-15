@@ -4,8 +4,6 @@ class Link:
         self.to_id = None
         self.from_strand = "+"
         self.to_strand = "+"
-        self.haplotype = None
-        self.reverse = None
         self.frequency = 0
         self.from_type = "s"
         self.to_type = "s"
@@ -23,8 +21,6 @@ class Link:
             "target": f"{self.to_type}{self.to_id}",
             "from_strand": self.from_strand,
             "to_strand": self.to_strand,
-            "haplotype": self.haplotype,
-            "reverse": self.reverse,
             "frequency": self.frequency,
             "contained": self.contained,
             "length": self.length,
@@ -38,8 +34,6 @@ class Link:
         link.to_id = self.to_id
         link.from_strand = self.from_strand
         link.to_strand = self.to_strand
-        link.haplotype = self.haplotype
-        link.reverse = self.reverse
         link.frequency = self.frequency
         link.from_type = self.from_type
         link.to_type = self.to_type
@@ -112,26 +106,6 @@ class Link:
         self.to_type = "b"
         self.from_strand = "+"
         self.to_strand = "+"
-        
-    def get_haplotype_presence(self, sample_idx):
-        #todo: test and verify
-        hap_int = int(self.haplotype, 16)
-        return ((hap_int >> sample_idx) & 1) == 1
-
-    def combine_links(self, other):
-        # haplotypes: bitwise OR
-        hap_self = int(self.haplotype, 16) if self.haplotype else 0
-        hap_other = int(other.haplotype, 16) if other.haplotype else 0
-        combined = hap_self | hap_other
-        self.haplotype = hex(combined)[2:]
-
-        self.frequency += other.frequency
-
-        # structural fields
-        self.contained.extend(other.contained)
-        self.length += other.length
-        self.gc_count += other.gc_count
-        self.n_count += other.n_count
 
     def __str__(self):
         return f"Link(id={self.id()}, from={self.from_id}{self.from_strand}, to={self.to_id}{self.to_strand})"
