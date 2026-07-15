@@ -19,8 +19,16 @@
 > `app.py` swaps `path_index` per chr when a sidecar comes up. Parity tests extended:
 > bp-range parity vs binpaths + sample-idx bijection + manager spawn/health/teardown.
 > 737 pytest green. **Deferred:** `get_paths()` (core-viewer `/path` + `/export`,
-> iterable Path objects) raises under GBWT mode — outside the simplify-viewer seam;
-> ingest (build/adopt the per-chr GBZ) and Stage 4 binpath retirement still ahead.
+> iterable Path objects) raises under GBWT mode — outside the simplify-viewer seam.
+>
+> **Stage 3 ingest landed (2026-07-15):** `pangyplot add` can now produce the
+> per-chr `graph.gbz` the engine serves. `preprocess/gbz.py`: `build_gbz_from_gfa`
+> (`vg gbwt -G <gfa> --gbz-format -g graph.gbz`) and `adopt_gbz` (copy a supplied
+> GBZ). CLI: `--build-gbz` / `--gbz <path>` / `--vg-bin`; opt-in, so ingest is
+> unchanged without them and the app runs on binpaths. End-to-end test proves a
+> *built* (not fixture) GBZ serves walks byte-identical to the binpaths from the
+> same GFA — closing the ingest→serve loop. 740 pytest green. **Ahead:** Stage 4
+> binpath retirement; GBZ-only input (no GFA) is the separate layout project.
 >
 > **Stage 1 landed (2026-07-15):** per-link `haplotype`/`reverse` masks dropped
 > from schema, inserts, `Link`, serialization, and 4 frontend passthroughs;

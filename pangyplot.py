@@ -51,6 +51,9 @@ def parse_args():
     parser_add.add_argument('--retry', help='Attempt to use existing GFA index', action='store_true')
     parser_add.add_argument('--offset', help='Suggest bp offset for reference path', default=0, required=False, type=int)
     parser_add.add_argument('--sep', help='Character separator for path name (prefix taken as path name)', default=None, required=False)
+    parser_add.add_argument('--build-gbz', help='Build a per-chr graph.gbz from the GFA via vg (for the GBWT path engine)', action='store_true')
+    parser_add.add_argument('--gbz', help='Adopt a pre-built GBZ as this chr graph.gbz instead of building one', default=None, required=False)
+    parser_add.add_argument('--vg-bin', help='Path to the vg binary used by --build-gbz', default='vg', required=False)
 
     parser_annotate = subparsers.add_parser('annotate', help='Add annotation dataset.')
     parser_annotate.add_argument('--ref', help='Reference genome name', default=None, required=True)
