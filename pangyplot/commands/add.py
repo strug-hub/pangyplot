@@ -8,6 +8,7 @@ from pangyplot.preprocess.parser.parse_gfa import parse_gfa
 from pangyplot.preprocess.parser.parse_layout import parse_layout
 from pangyplot.preprocess import memory
 from pangyplot.preprocess import gbz as gbz_build
+from pangyplot.preprocess import gbwt_build
 import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
 from pangyplot.preprocess.skeleton.generate_skeleton import generate_skeleton, export_polychain_section
 from pangyplot.db.indexes.GFAIndex import GFAIndex
@@ -71,17 +72,18 @@ def pangyplot_add(args):
     with log.section("Computing subpath bp ranges."):
         gfa_index.path_index.compute_bp_ranges(step_index)
 
-    # GBWT path engine (opt-in): produce <chr>/graph.gbz that GbwtManager serves.
-    # Adopt a supplied GBZ, else build one from the GFA via vg. Neither -> the
-    # app runs on the legacy binpath engine for this chr.
-    if getattr(args, "gbz", None):
+    # GBWT path engine (opt-in): produce the index GbwtManager serves. Prefer the
+    # native compact graph.gbwt (no vg); adopt a foreign GBZ if given instead.
+    # Without either, the app runs on the legacy binpath engine for this chr.
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if getattr(args, "build_gbwt", False):
+        with log.section("Building native GBWT."):
+            out = gbwt_build.build_gbwt(chr_path, repo_root=repo_root)
+            print(f"  🧬 Built GBWT -> {out}")
+    elif getattr(args, "gbz", None):
         with log.section("Adopting GBZ."):
             out = gbz_build.adopt_gbz(args.gbz, chr_path)
             print(f"  🧬 Adopted GBZ -> {out}")
-    elif getattr(args, "build_gbz", False):
-        with log.section("Building GBZ (vg gbwt)."):
-            out = gbz_build.build_gbz_from_gfa(args.gfa, chr_path, vg_bin=args.vg_bin)
-            print(f"  🧬 Built GBZ -> {out}")
 
     generate_skeleton(chr_path, args.ref, args.chr)
 

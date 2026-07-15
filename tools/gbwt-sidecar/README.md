@@ -5,8 +5,17 @@ per-chromosome GBZ into memory and answers path queries over localhost HTTP.
 Flask proxies these and does region filtering + varint encoding in Python.
 
 ```sh
-gbwt-sidecar <graph.gbz> [addr]     # addr default 127.0.0.1:5701
+gbwt-sidecar <graph.gbwt|graph.gbz> [addr]   # addr default 127.0.0.1:5701
 ```
+
+Loads **either** format behind one wire contract (auto-detected):
+
+- **`graph.gbwt`** — a native compact GBWT built by `tools/gbwt-build` from
+  PangyPlot's own paths. node id == segment id, no translation, no vg. The
+  default production format (`pangyplot add --build-gbwt`).
+- **`graph.gbz`** — a GBZ (e.g. from `vg gbwt`), adopted via `add --gbz`. May be
+  chopped, so it carries a node→segment translation and walks go through
+  `segment_path`.
 
 ## Turning it on in PangyPlot (opt-in)
 

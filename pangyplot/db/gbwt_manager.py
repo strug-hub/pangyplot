@@ -29,6 +29,7 @@ import time
 from pangyplot.db.gbwt_client import GbwtClient
 
 DEFAULT_BIN = os.path.join("tools", "gbwt-sidecar", "target", "release", "gbwt-sidecar")
+GBWT_NATIVE_NAME = "graph.gbwt"
 DEFAULT_GBZ_NAME = "graph.gbz"
 _TRUE = {"1", "true", "yes", "on"}
 
@@ -51,7 +52,9 @@ class GbwtManager:
             bin_path = os.path.join(self.repo_root, bin_path)
         self.bin_path = bin_path
 
-        self.gbz_name = os.getenv("PANGYPLOT_GBWT_GBZ", DEFAULT_GBZ_NAME)
+        # Serve graph.gbwt (native compact build) if present, else graph.gbz
+        # (adopted, possibly chopped). The sidecar auto-detects the format.
+        self.index_names = [GBWT_NATIVE_NAME, os.getenv("PANGYPLOT_GBWT_GBZ", DEFAULT_GBZ_NAME)]
 
         urls = os.getenv("PANGYPLOT_GBWT_URLS")
         self.external_urls = json.loads(urls) if urls else {}
@@ -62,9 +65,10 @@ class GbwtManager:
     def client_for_chrom(self, chrom, chr_dir):
         """Return a GbwtClient for `chrom`, or None to keep the legacy engine.
 
-        Order: external URL (no spawn) -> spawn a sidecar on the chr GBZ ->
-        None (GBWT off, or GBZ missing). A missing GBZ under GBWT mode is a
-        warning, not a crash: the app boots on the binpath engine for that chr.
+        Order: external URL (no spawn) -> spawn a sidecar on the chr index
+        (graph.gbwt preferred, else graph.gbz) -> None (GBWT off, or no index).
+        A missing index under GBWT mode is a warning, not a crash: the app boots
+        on the binpath engine for that chr.
         """
         if not self.enabled:
             return None
@@ -77,9 +81,10 @@ class GbwtManager:
                   f"is not responding; using the legacy path engine.")
             return None
 
-        gbz = os.path.join(chr_dir, self.gbz_name)
-        if not os.path.exists(gbz):
-            print(f"  ⚠️  GBWT mode on but no {self.gbz_name} in {chr_dir}; "
+        index = next((os.path.join(chr_dir, n) for n in self.index_names
+                      if os.path.exists(os.path.join(chr_dir, n))), None)
+        if index is None:
+            print(f"  ⚠️  GBWT mode on but none of {self.index_names} in {chr_dir}; "
                   f"using the legacy path engine for {chrom}.")
             return None
         if not os.path.exists(self.bin_path):
@@ -87,12 +92,12 @@ class GbwtManager:
                   f"using the legacy path engine for {chrom}.")
             return None
 
-        return self._spawn(chrom, gbz)
+        return self._spawn(chrom, index)
 
-    def _spawn(self, chrom, gbz):
+    def _spawn(self, chrom, index):
         port = _free_port()
         addr = f"127.0.0.1:{port}"
-        proc = subprocess.Popen([self.bin_path, gbz, addr],
+        proc = subprocess.Popen([self.bin_path, index, addr],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._procs.append(proc)
 

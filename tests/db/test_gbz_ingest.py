@@ -1,11 +1,11 @@
 """Ingest -> serve loop for the GBWT path engine (Stage 3).
 
-Proves that a GBZ *built by the ingest module* (`vg gbwt`, not a checked-in
-fixture) serves walks byte-identical to the binpaths built from the same GFA.
-This closes the loop the fixture-based parity test can't: it exercises the actual
-`pangyplot add` GBZ production path.
+`pangyplot add --gbz` adopts a user-supplied GBZ. PangyPlot does not build GBZs
+(construction is a vg/C++ concern); the user brings one built from the same GFA.
+These tests prove the adopt->serve loop is byte-identical to binpaths, building a
+throwaway GBZ *in the test harness* (not in PangyPlot) to feed the adopt path.
 
-Skipped unless both vg and the sidecar binary are available.
+Skipped unless the sidecar binary is available; the end-to-end test also needs vg.
 """
 import os
 import shutil
@@ -14,7 +14,6 @@ import subprocess
 import tempfile
 import time
 
-import numpy as np
 import pytest
 
 from pangyplot.preprocess import gbz as gbz_build
@@ -46,7 +45,7 @@ def _walks_from_index(index):
 
 @pytest.mark.skipif(shutil.which("vg") is None, reason="vg not installed")
 @pytest.mark.skipif(not os.path.exists(SIDECAR), reason="gbwt-sidecar not built")
-def test_built_gbz_serves_binpath_identical_walks(fixtures_dir):
+def test_adopted_gbz_serves_binpath_identical_walks(fixtures_dir):
     chr_dir = tempfile.mkdtemp()
 
     # Binpaths from the GFA (the engine we must match).
@@ -55,12 +54,16 @@ def test_built_gbz_serves_binpath_identical_walks(fixtures_dir):
               ref_offset=0, path_sep=None, layout_coords=layout, dir=chr_dir)
     binpath_walks = _walks_from_index(PathIndex(chr_dir))
 
-    # GBZ built by the ingest module from the same GFA, dropped as graph.gbz.
-    out = gbz_build.build_gbz_from_gfa(str(fixtures_dir / "DRB1-3123.gfa"), chr_dir)
+    # A GBZ built OUTSIDE PangyPlot (as a user would), then adopted by ingest.
+    built = os.path.join(chr_dir, "user_built.gbz")
+    subprocess.run(["vg", "gbwt", "-G", str(fixtures_dir / "DRB1-3123.gfa"),
+                    "--gbz-format", "-g", built],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    out = gbz_build.adopt_gbz(built, chr_dir)
     assert out == gbz_build.gbz_path(chr_dir)
     assert os.path.exists(out)
 
-    # Serve it and compare walk sets.
+    # Serve the adopted graph.gbz and compare walk sets.
     port = _free_port()
     proc = subprocess.Popen([SIDECAR, out, f"127.0.0.1:{port}"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -90,8 +93,7 @@ def test_adopt_gbz_copies_to_graph_gbz(fixtures_dir):
             == open(str(fixtures_dir / "DRB1-3123.gbz"), "rb").read())
 
 
-def test_build_gbz_missing_vg_raises(fixtures_dir):
+def test_adopt_missing_gbz_raises(fixtures_dir):
     chr_dir = tempfile.mkdtemp()
     with pytest.raises(RuntimeError, match="not found"):
-        gbz_build.build_gbz_from_gfa(str(fixtures_dir / "DRB1-3123.gfa"),
-                                     chr_dir, vg_bin="definitely-not-vg-binary")
+        gbz_build.adopt_gbz(os.path.join(chr_dir, "nope.gbz"), chr_dir)

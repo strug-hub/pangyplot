@@ -21,14 +21,27 @@
 > 737 pytest green. **Deferred:** `get_paths()` (core-viewer `/path` + `/export`,
 > iterable Path objects) raises under GBWT mode — outside the simplify-viewer seam.
 >
-> **Stage 3 ingest landed (2026-07-15):** `pangyplot add` can now produce the
-> per-chr `graph.gbz` the engine serves. `preprocess/gbz.py`: `build_gbz_from_gfa`
-> (`vg gbwt -G <gfa> --gbz-format -g graph.gbz`) and `adopt_gbz` (copy a supplied
-> GBZ). CLI: `--build-gbz` / `--gbz <path>` / `--vg-bin`; opt-in, so ingest is
-> unchanged without them and the app runs on binpaths. End-to-end test proves a
-> *built* (not fixture) GBZ serves walks byte-identical to the binpaths from the
-> same GFA — closing the ingest→serve loop. 740 pytest green. **Ahead:** Stage 4
-> binpath retirement; GBZ-only input (no GFA) is the separate layout project.
+> **Stage 3 ingest landed (2026-07-15) — NATIVE builder, no vg:** the decisive
+> finding is that gbwt-rs (`GBWTBuilder`) can build a **GBWT** natively, and
+> PangyPlot needs nothing more: a GBWT already encodes graph topology (edges live
+> in its records) and PangyPlot already owns every segment's DNA in SegmentIndex,
+> so a **compact GBWT + SegmentIndex ≈ a compact GBZ**. And because PangyPlot's
+> `combined = (seg<<1)|orient` value **is** the GBWT node handle
+> (`encode_node = 2*id+orient`), node id = segment id with **no chopping, no
+> translation, no vg**. Pieces: `tools/gbwt-build/` (Rust: pathdata → compact
+> `graph.gbwt`); `preprocess/gbwt_build.py` (emits the pathdata intermediate from
+> parsed paths, runs the builder, cleans up); sidecar loads **GBWT or GBZ** behind
+> one wire contract (`Backend` enum; GBWT walk = `sequence(2*pid)`, count =
+> `find(2*nid).len()`); `GbwtManager` serves `graph.gbwt` (preferred) else
+> `graph.gbz`; `pangyplot add --build-gbwt` (native) / `--gbz` (adopt a foreign
+> vg GBZ). End-to-end test: native `graph.gbwt` serves walks byte-identical to
+> binpaths, `has_translation == False`. 742 pytest green. **Why not a Stage-5
+> lock-in:** the GBWT is a strict subset of a future compact GBZ (same node
+> space); node/link serving can come from GBWT-topology + SegmentIndex-DNA. The
+> id-space trap to avoid — mixing a native-compact GBWT with a vg-chopped GBZ —
+> is avoided by keeping native (compact) the production path and vg GBZ a separate
+> optional *adopt* input. **Ahead:** Stage 4 binpath retirement; metadata parity
+> (sample-key reconciliation); GBZ-only input is the separate layout project.
 >
 > **Stage 1 landed (2026-07-15):** per-link `haplotype`/`reverse` masks dropped
 > from schema, inserts, `Link`, serialization, and 4 frontend passthroughs;
