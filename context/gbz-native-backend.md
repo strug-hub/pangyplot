@@ -86,8 +86,22 @@ translation (unchopped GBZ) each node id is its own segment.
    - Still SQLite-backed (Phase 4 / needs `/sequence`): `SegmentIndex.__iter__` /
      `__getitem__` (bubble builder reads these *with DNA*). `GFAIndex`/`add` don't
      yet pass a client — the wiring is Phase 3.
-3. **`add --gbz-native`**: adopt GBZ + layout → run bubbles/skeleton unchanged off
-   the GBZ-backed indexes; parity on `bubbles.db` + skeleton.
+3. **`add --gbz`** (GBZ-native ingest): adopt GBZ + layout → run bubbles/skeleton
+   off the GBZ-backed indexes.  ← in progress
+   - GBZ-backed **iteration** ✅ — `SegmentIndex.__iter__`/`__getitem__` and
+     `LinkIndex.__iter__`/`__getitem__` now yield `Segment`/`Link` objects from the
+     resident arrays when a client is set (no `segments.db`/`links.db`). The flat
+     bubble backend (default) reads only length/gc/n/coords + link topology, so it
+     runs off these; `Segment.seq` is None (the BubbleGun backend, which needs DNA,
+     needs a `/sequence` endpoint — deferred). Bubble *detection* already matches
+     the GFA exactly (599/234/41 on DRB1).
+   - **StepIndex from the GBZ** ← next. Bubble *indexing* builds `StepIndex(chr_dir,
+     ref).segment_map()` (reference bp→step ranges land in `bubbles.db`), which a
+     GBZ dir lacks. Derive steps from the reference path walk (`/walk`) + segment
+     lengths + ref offset. Unblocks full `bubbles.db` parity.
+   - Then: `add --gbz` orchestration (adopt GBZ → spawn graphd `--graph` → build
+     GBZ-backed indexes + layout → bubbles → skeleton), layout keying (node-layout
+     → per-segment coords via the translation), and `bubbles.db`/skeleton parity.
 4. **Retire** `segments.db` / `links.db` / `*.binpath` for GBZ-native datasets
    (GFA-native stays as the legacy loader). Mmap the `sequences` StringArray.
 

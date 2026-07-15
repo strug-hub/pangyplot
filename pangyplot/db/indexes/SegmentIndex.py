@@ -27,10 +27,13 @@ class SegmentIndex:
     def __init__(self, dir, client=None, coords=None):
         self.dir = dir
 
-        # `client` (a GbwtClient in graph mode) sources the scalars from the GBZ
+        # `client` (a GbwtClient in graph mode) sources segments from the GBZ
         # instead of segments.db; `coords` maps segment id -> (x1,y1,x2,y2) from
         # the layout file (the GBZ has no 2D coordinates). Without a client this
         # is the legacy SQLite-backed build. Either way the mmap cache wins first.
+        # `client` is retained so __iter__/__getitem__ can build Segment objects
+        # from the resident arrays when there is no segments.db (GBZ-native).
+        self._client = client
         if not self.load_mmap_index():
             if client is not None:
                 self._build_from_gbz(client, coords)
@@ -86,16 +89,47 @@ class SegmentIndex:
         self._count = len(rows)
 
     def __getitem__(self, seg_id):
+        if self._client is not None:
+            return self._segment_from_arrays(seg_id)
         return db.get_segment(self.dir, seg_id)
 
     def __len__(self):
         return self._count
 
     def __iter__(self):
+        if self._client is not None:
+            return self._iter_from_arrays()
         return db.get_all(self.dir)
 
     def max_id(self):
+        if self._client is not None:
+            return len(self.valid) - 1
         return db.get_max_id(self.dir)
+
+    # -- GBZ-native Segment objects (from the resident arrays; no segments.db) --
+    #
+    # The flat bubble backend (the default) reads only length/gc/n/coords, so a
+    # Segment built from the arrays is sufficient. `seq` is None here -- the
+    # BubbleGun backend, which needs DNA, isn't supported for GBZ-native input
+    # until the graphd serves per-segment sequences.
+
+    def _segment_from_arrays(self, seg_id):
+        from pangyplot.objects.Segment import Segment
+        seg = Segment()
+        seg.id = seg_id
+        seg.length = int(self.length[seg_id])
+        seg.gc_count = int(self.gc_count[seg_id])
+        seg.n_count = int(self.n_count[seg_id])
+        seg.x1 = float(self.x1[seg_id])
+        seg.y1 = float(self.y1[seg_id])
+        seg.x2 = float(self.x2[seg_id])
+        seg.y2 = float(self.y2[seg_id])
+        return seg
+
+    def _iter_from_arrays(self):
+        for seg_id in range(len(self.valid)):
+            if self.valid[seg_id]:
+                yield self._segment_from_arrays(seg_id)
 
     def segment_length(self, seg_id):
         return self.length[seg_id] if seg_id < len(self.length) else 0

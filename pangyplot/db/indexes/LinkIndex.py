@@ -34,7 +34,9 @@ class LinkIndex:
 
         # `client` (a GbwtClient in graph mode) sources links from the GBZ instead
         # of links.db; without one this is the legacy SQLite build. The mmap cache
-        # wins first either way.
+        # wins first either way. `client` is retained so __iter__/__getitem__ build
+        # Link objects from the resident arrays when there is no links.db.
+        self._client = client
         if not self.load_mmap_index():
             self.from_ids = array('I')
             self.to_ids = array('I')
@@ -51,19 +53,28 @@ class LinkIndex:
             self.save_mmap_index()
 
     def __iter__(self):
+        # GBZ-native: no links.db, so build Link objects from the resident arrays
+        # (topology only -- from/to ids + strands, which is all the bubble builder
+        # and subgraph discovery read).
+        if self._client is not None:
+            return (self.get_link_by_index_fast(i) for i in range(len(self.from_ids)))
         return db.get_all(self.dir)
 
     def __getitem__(self, key):
+        by_segment = self.get_links_by_segment_fast if self._client is not None \
+            else self.get_links_by_segment
         if isinstance(key, tuple) and len(key) == 2:
             from_id, to_id = key
             results = []
-            for link in self.get_links_by_segment(from_id):
+            for link in by_segment(from_id):
                 if link.from_id == from_id and link.to_id == to_id:
                     results.append(link)
             return results
         elif isinstance(key, int):
-            return self.get_links_by_segment(key)
+            return by_segment(key)
         elif isinstance(key, str):
+            if self._client is not None:
+                raise NotImplementedError("link-by-id lookup needs links.db (not GBZ-native)")
             return db.get_link(self.dir, key)
         else:
             raise TypeError("Key must be int or tuple of two ints or a link id")

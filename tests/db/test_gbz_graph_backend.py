@@ -103,6 +103,49 @@ def test_segment_index_from_gbz_matches_sqlite(graph_daemon, gfa_dir):
                               np.asarray(getattr(sqlite_idx, name))), name
 
 
+def test_segment_and_link_iteration_from_gbz(graph_daemon, gfa_dir):
+    # The bubble builder consumes SegmentIndex/LinkIndex by *iteration* (Segment
+    # and Link objects), not just the scalar arrays. A GBZ-backed index (no
+    # segments.db/links.db) must yield objects the flat builder can read: segments
+    # with id/length/gc/n/coords, links with from/to ids + strands. Coords are
+    # held equal by feeding the GBZ index the GFA's per-segment coords.
+    from pangyplot.db.gbwt_client import GbwtClient
+    from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+    from pangyplot.db.indexes.LinkIndex import LinkIndex
+    import pangyplot.db.sqlite.segment_db as segment_db
+
+    coords = {r["id"]: (r["x1"], r["y1"], r["x2"], r["y2"])
+              for r in segment_db.get_index_info(gfa_dir)}
+    client = GbwtClient(graph_daemon)
+    seg = SegmentIndex(tempfile.mkdtemp(), client=client, coords=coords)
+    link = LinkIndex(tempfile.mkdtemp(), client=client)
+
+    # Segments: iterated objects carry the same scalars as the SQLite build.
+    sqlite_seg = {s.id: s for s in segment_db.get_all(gfa_dir)}
+    n = 0
+    for s in seg:
+        g = sqlite_seg[s.id]
+        assert (s.length, s.gc_count, s.n_count) == (g.length, g.gc_count, g.n_count)
+        # coords are float32 in the resident arrays vs float64 from SQLite
+        assert abs(s.x1 - g.x1) < 0.01 and abs(s.y1 - g.y1) < 0.01
+        assert abs(s.x2 - g.x2) < 0.01 and abs(s.y2 - g.y2) < 0.01
+        n += 1
+    assert n == len(sqlite_seg)
+
+    # Links: the bidirected edge set from the iterated Link objects matches.
+    def edges_from_iter(link_index):
+        out = set()
+        for l in link_index:
+            fs = 1 if l.from_strand == "+" else 0
+            ts = 1 if l.to_strand == "+" else 0
+            f_side = "E" if fs == 1 else "S"
+            t_side = "S" if ts == 1 else "E"
+            out.add(frozenset({(l.from_id, f_side), (l.to_id, t_side)}))
+        return out
+
+    assert edges_from_iter(link) == _side_pair_edges(LinkIndex(gfa_dir))
+
+
 def _side_pair_edges(link_index):
     """The set of bidirected edges a LinkIndex encodes, as unordered pairs of
     (segment_id, side). This is RC-invariant: a link and its reverse-complement
