@@ -400,6 +400,33 @@ speaks the same varint). Re-ingest drops `paths/*.binpath` from datastores.
 - **Validate:** full suites; trace works end-to-end via the sidecar only; no
   references to removed binpath modules.
 
+### Stage 5 — node/link engine on GBZ (LATER / POSSIBLE — not committed)
+
+Direction, captured so it isn't lost; **do not start until the path engine
+(Stages 3–4) is done.** The GBZ already holds everything the node/link engines
+need, so `segments.db` + `links.db` could retire too:
+- node **sequence** → `gbz.sequence(id)` (the bulk of `segments.db`)
+- node length / gc / n → derived from the sequence
+- **links** → `gbz.successors/predecessors`
+- **link frequency** → a GBWT edge-count query (completes the Stage-1 mask
+  removal: the count we deleted, regenerated on demand)
+
+**Hard limit — coordinates never move.** The GBZ has no 2D layout; PangyPlot
+always keeps a compact per-segment `(x1,y1,x2,y2)` structure (a float array by
+segment id — what `SegmentIndex` mmap already is once seq+topology leave).
+Derived indexes (bubbles, steps, skeleton) also stay; they'd source topology
+from the GBZ instead of the parsed GFA.
+
+**Why it's a separate, gated stage:** unlike paths (optional trace), node/link is
+the **`/select` hot path**. Gate on a benchmark of a new sidecar **`/subgraph`**
+endpoint (given a segment set → nodes+edges+seq+freq in ONE call) vs today's
+in-memory mmap arrays. Spike says topology ops ~50 ns, so one call per `/select`
+should be fine — but prove it before committing. The sidecar extends naturally
+(add `/subgraph`, `/node`, `/edges`).
+
+Retires: `segments.db` (esp. sequences), `links.db`, parse-time frequency.
+Keeps: coordinate structure + derived bubble/step/skeleton indexes.
+
 ## 6. Validation strategy (fixtures)
 
 Mirror the bubblegun-migration approach: fixture-validate on a size ladder —
