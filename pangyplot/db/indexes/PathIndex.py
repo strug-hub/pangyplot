@@ -130,6 +130,10 @@ class PathIndex:
         """Return raw compressed bytes for a specific path file."""
         return path_db.retrieve_path_raw(self.dir, sample, file_index)
 
+    def get_path_combined(self, sample, file_index):
+        """Return the decoded combined int64 array for a specific path file."""
+        return path_db.retrieve_path_combined(self.dir, sample, file_index)
+
     def __len__(self):
         return len(self.samples)
 

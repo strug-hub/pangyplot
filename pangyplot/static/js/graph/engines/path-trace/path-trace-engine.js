@@ -4,7 +4,7 @@ import { fetchData, buildUrl } from '../../../utils/network-utils.js';
 import { state } from '../../state.js';
 import {
     setActiveSample, setSubpaths, setActiveSubpath,
-    setDecodedPaths, getDecodedPath,
+    setDecodedPath, getDecodedPath,
     setRenderData, clearPathTrace,
 } from './path-trace-state.js';
 import { decodeSteps } from './path-codec.js';
@@ -61,6 +61,7 @@ export async function setupPathTraceEngine() {
     }
 
     let _filterTimer = null;
+    let _regionTimer = null;
     eventBus.subscribe('ui:coordinates-changed', (data) => {
         _viewportStart = data.start;
         _viewportEnd = data.end;
@@ -70,8 +71,28 @@ export async function setupPathTraceEngine() {
                 _buildFilteredTable(_cachedMeta, _cachedSample);
             }, 300);
         }
+
+        // Region-scoped trace: the active subpath's on-screen portion changed
+        // with the viewport, so re-fetch it for the new window and re-resolve.
+        if (_localActiveSubpath) {
+            if (_regionTimer) clearTimeout(_regionTimer);
+            _regionTimer = setTimeout(() => { _refetchActiveSubpath(); }, 300);
+        }
     });
 
+}
+
+/**
+ * Re-fetch the active subpath for the current viewport and re-resolve it.
+ * Called (debounced) when the viewport changes so the trace tracks the window.
+ */
+async function _refetchActiveSubpath() {
+    const item = _localActiveSubpath;
+    if (!item) return;
+    const steps = await _fetchAndDecodePath(item._sample, item._fileIndex);
+    if (!steps) return;
+    item._steps = steps;
+    resolveAndBuild(item);
 }
 
 // ---------------------------------------------------------------
@@ -104,11 +125,23 @@ async function _fetchPathMeta(sample) {
 
 /**
  * Fetch and decode a specific path's binary data.
- * Caches the decoded result.
+ *
+ * When a viewport window is known, the subpath is fetched region-scoped: the
+ * server slices it to the segments in the window and re-encodes it, so we
+ * download and decode only the on-screen portion instead of the whole walk.
+ * Falls back to the whole subpath when no viewport/genome is available.
+ * Caches the decoded result, keyed by region.
  */
 async function _fetchAndDecodePath(sample, fileIndex) {
-    // Check cache
-    const cached = getDecodedPath(sample, fileIndex);
+    const rStart = _viewportStart;
+    const rEnd = _viewportEnd;
+    const useRegion = rStart != null && rEnd != null && !!state.GENOME;
+
+    const cacheKey = useRegion
+        ? `${sample}:${fileIndex}:${Math.round(rStart)}-${Math.round(rEnd)}`
+        : `${sample}:${fileIndex}:full`;
+
+    const cached = getDecodedPath(cacheKey);
     if (cached) return cached;
 
     const params = {
@@ -116,6 +149,11 @@ async function _fetchAndDecodePath(sample, fileIndex) {
         chromosome: state.chromosome,
         index: fileIndex,
     };
+    if (useRegion) {
+        params.genome = state.GENOME;
+        params.start = Math.round(rStart);
+        params.end = Math.round(rEnd);
+    }
 
     try {
         const url = buildUrl('/path-data', params);
@@ -126,14 +164,7 @@ async function _fetchAndDecodePath(sample, fileIndex) {
         const buffer = await response.arrayBuffer();
         const steps = decodeSteps(new Uint8Array(buffer));
 
-        // Cache
-        const { decodedPaths } = await import('./path-trace-state.js');
-        if (!decodedPaths.has(sample)) {
-            setDecodedPaths(sample, []);
-        }
-        const paths = decodedPaths.get(sample);
-        paths[fileIndex] = steps;
-
+        setDecodedPath(cacheKey, steps);
         return steps;
     } catch (e) {
         console.warn('[path-trace] binary fetch/decode failed:', e);

@@ -390,8 +390,20 @@ def path_data():
     sample = request.args.get("sample")
     file_index = int(request.args.get("index", 0))
 
+    # Optional region window. When genome+start+end are all present the subpath
+    # is sliced server-side to the segments in that bp window (region-scoped
+    # trace); otherwise the whole subpath's raw bytes are shipped unchanged.
+    genome = request.args.get("genome")
+    start = request.args.get("start")
+    end = request.args.get("end")
+
     try:
-        raw = query.get_path_raw(current_app, chrom, sample, file_index)
+        if genome and start is not None and end is not None:
+            raw = query.get_path_region_raw(
+                current_app, genome, chrom, sample, file_index,
+                int(start), int(end))
+        else:
+            raw = query.get_path_raw(current_app, chrom, sample, file_index)
     except (ValueError, KeyError) as e:
         return jsonify({"error": str(e)}), 404
 

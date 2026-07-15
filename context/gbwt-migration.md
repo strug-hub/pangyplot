@@ -11,6 +11,15 @@
 > removed; `frequency` (mask popcount) preserved. 721 pytest + 256 vitest green;
 > new code reads old-schema datastores (re-ingest for a clean schema). Net
 > −165 / +9 lines across 9 files.
+>
+> **Stage 2 landed (2026-07-15):** region-scoped trace via `/path-data` +
+> `start`/`end` (Option A). `query.region_segment_ids` (step-range + full bubble
+> closure, ID-order-independent) + `get_path_region_raw` slice/re-encode;
+> dead `get_between`/`get_segment_range` removed. This is also the `/path`
+> monotonicity fix. Tests: DRB1 integration + non-monotonic-ID regression
+> (pytest) + resolver-invariance (vitest). 727 pytest + 259 vitest green.
+> Verified end-to-end on chrY: 50 kb window → 113 steps/72 B vs whole-path
+> 78 341 steps/18 478 B.
 
 ## 1. Thesis — what GBWT is actually for here
 
@@ -165,22 +174,81 @@ and check `tests/ui/color-events.test.js` (may be `Array.reverse`, not the field
 - **Risk:** low, reversible. The only gotcha is the frequency-from-popcount
   coupling above — don't remove `path_dict`/`mask` in this stage.
 
-### Stage 2 — Region-scoped query model on existing data (pure Python)
-- **Query A, cheap version:** expose "samples present in view." Interim source
-  while Stage 1 removes the mask: compute presence during preprocessing into a
-  compact per-region structure, OR keep just enough (frequency + a coarse
-  presence summary). Decision: whether Query A ships in Stage 2 at all, or waits
-  for Stage 3's GBWT — since Stage 1 removes its only current data source.
-  **Likely: Query A is a Stage 3 feature; Stage 2 is Query B only.**
-- **Query B:** serve the trace **region-scoped** by slicing server-side from the
-  existing `.binpath` (the legacy `/path` `subset_path` already does exactly
-  this over a segment range) instead of shipping the whole path. Frontend stops
-  downloading+discarding whole walks.
-- **Win:** proves the UX pivot (scale work to viewport) with no C++.
-- **Validate:** trace renders identically for a region that fits on screen;
-  payload shrinks with zoom; animation frames unchanged.
-- **Risk:** medium — re-introduces per-request server decode for Query B
-  (acceptable: it's the optional trace feature, not `/select`).
+### Stage 2 — Region-scoped trace + the /path monotonicity fix (pure Python)
+
+Query A ("samples in view") is deferred to Stage 3 — Stage 1 removed its only
+data source (the mask) and its clean home is the GBWT presence index. **Stage 2
+is Query B (trace) only.**
+
+**Dual purpose:** Stage 2 is not just a perf win — it is *also* the correctness
+fix for the one serving path that breaks under non-monotonic segment IDs (see the
+Monotonic-ID Audit below). It replaces `subset_path`'s `start_id <= id <= end_id`
+window with a position-safe basis, which is what a no-sort GBZ importer needs.
+
+**Do NOT reuse `subset_path`'s id-range** — it assumes IDs are ordered by
+position (Path.py:71), the exact thing we're eliminating.
+
+**Correct basis (already in the codebase):** the viewport's segment set =
+`stepidx.query_coordinates(start,end)` → `bubbleidx.get_top_level_bubbles(...)` →
+union of each bubble's `source_segments + sink_segments + inside`
+(query.py:18-19, 52-53). Slice the haplotype to steps whose segID ∈ that set.
+**Pop-independent** (keys off the genomic region, not render state) and
+**ID-order-independent**. Whole edge-straddling bubbles are included intact, so a
+chain's entry/exit steps aren't clipped mid-traversal.
+
+**Design — Option A (chosen): extend `/path-data` with optional `start`/`end`:**
+- No range → current behavior (whole subpath, raw gzip bytes, zero decode).
+- With range → server decodes the binpath, keeps steps whose segID ∈ region set,
+  **re-encodes to the same varint format**, ships gzip. Frontend codec + decode
+  path unchanged; it just receives fewer steps. (Trade-off: server-side decode
+  for the trace only — acceptable, it's optional, not `/select`.)
+- Rejected: **B** new JSON `/path-region` (diverges from codec + decode path);
+  **C** fix `/path`/`get_path` (carries bubble annotation, wrong response shape).
+
+**Frontend (minimal):** `_fetchAndDecodePath` passes viewport `start`/`end`;
+cache key becomes `(sample, fileIndex, regionStart, regionEnd)`; re-fetch on the
+existing debounced `ui:coordinates-changed`. Boundary resolver **untouched** (it
+already tolerates a step subset).
+
+**Test plan:**
+- Backend unit: slice == steps with segID ∈ region set; edge-straddling bubble
+  included whole; empty region → empty.
+- **First-class regression:** a fixture graph with segment IDs *non-monotonic*
+  with position — assert the set-membership slice is correct where `subset_path`'s
+  id-range would be wrong. This is the guard for the whole GBZ-importer effort.
+- Containment: region slice ⊂ whole-path decode; full-span region == whole path.
+- Frontend vitest: `/path-data` request carries the range; cache keyed by region;
+  resolver yields identical `chainOverlays` for full-path vs slice on an in-view
+  region.
+- `verify` end-to-end: trace a sample, zoom in — identical render, smaller payload.
+- Full pytest + vitest.
+
+- **Win:** UX pivot (work scales to viewport) **and** removes the one broken
+  serving path — no C++.
+- **Risk:** medium — per-request server decode for the trace (optional feature);
+  region-set recompute per fetch (reuses `/select` machinery; cacheable).
+
+### Monotonic-ID Audit (2026-07-15) — foundational for the GBZ importer
+
+The GBZ-native importer (`GBZ_LAYOUT_PROJECT.md`) skips `odgi sort`, which is
+what makes segment IDs increase with reference position. Audited the codebase for
+code that treats segment ID as a position proxy. **Result: localized, not
+pervasive.** The core serving surface (`/select`, `/pop`, `/chains`,
+`/detail-tiles`) is already **step/layout-coordinate based** and safe.
+
+Real dependencies (only 1 on a live serving path):
+| site | kind | note |
+|---|---|---|
+| `Path.subset_path` (Path.py:71) + `query.get_path` (`/path`) | **Serving** | Fixed by Stage 2 (segment-set basis). |
+| `flat_chains._find_ends` (:49) — chain orientation by max ID | Preprocess | Real; may be cosmetic if `chain_step` direction isn't load-bearing. Reorder ends by step/bp. |
+| `chain_polyline.py:167` — fallback polyline in ID order | Cosmetic | Only when BFS finds no path. Order by layout x / step. |
+| `segment_db.get_segment_range` (`id BETWEEN`) + `SegmentIndex.get_between` | **Dead** | No callers. Fix-or-remove before wiring to any region query. |
+
+Safe (checked): `BubbleIndex` range queries (step-order), `bubble_db` chain_step
+BETWEEN, `StepIndex` bp-bisects (safe unless fed into an id-range), all
+`sorted(key=int(seg_id))` sites (deterministic packing / renumber, not position),
+array-sizing `range(max_id+1)` (sparse indexing). **Blast radius for no-sort GBZ:
+small — fix `/path` (Stage 2) + `_find_ends` ordering, remove dead `get_between`.**
 
 ### Stage 3 — GBWT backs Query A + Query B (C++ enters) — GATED on §7 decision
 - **Goal:** stand up the GBWT query surface; wire Query A (presence via locate)

@@ -166,6 +166,3 @@ class SegmentIndex:
 
     def get_by_ids(self, seg_ids, step_index=None):
         return [db.get_segment(self.dir, seg_id, step_index) for seg_id in seg_ids if seg_id < len(self.valid) and self.valid[seg_id]]
-
-    def get_between(self, start_id, end_id, step_index=None):
-        return db.get_segment_range(self.dir, start_id, end_id, step_index)

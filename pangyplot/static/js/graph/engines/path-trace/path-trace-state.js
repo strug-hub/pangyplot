@@ -47,11 +47,13 @@ export function setActiveSample(sample) { activeSample = sample; }
 
 export function setSubpaths(paths) { subpaths = paths; }
 
-export function setDecodedPaths(sample, paths) { decodedPaths.set(sample, paths); }
+// Decoded-step cache. Keyed by a composite string that includes the region
+// window, because a region-scoped subpath's decoded steps depend on the
+// viewport, not just (sample, index).
+export function setDecodedPath(key, steps) { decodedPaths.set(key, steps); }
 
-export function getDecodedPath(sample, index) {
-    const paths = decodedPaths.get(sample);
-    return paths ? paths[index] : null;
+export function getDecodedPath(key) {
+    return decodedPaths.has(key) ? decodedPaths.get(key) : null;
 }
 
 export function setActiveSubpath(sp) { activeSubpath = sp; }

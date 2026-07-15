@@ -4,7 +4,7 @@ from collections import defaultdict
 from pangyplot.objects.Path import Path
 from pangyplot.db.path_codec import (
     write_binpath, write_binpath_combined, read_binpath, read_binpath_raw,
-    write_path_index, read_path_index, INDEX_FILENAME,
+    read_binpath_combined, write_path_index, read_path_index, INDEX_FILENAME,
 )
 
 DB_NAME = "paths"
@@ -136,6 +136,23 @@ def retrieve_path_raw(dir, sample, file_index):
 
     filepath = os.path.join(db_path, sample_entries[file_index]["file"])
     return read_binpath_raw(filepath)
+
+
+def retrieve_path_combined(dir, sample, file_index):
+    """Return the decoded combined int64 array for a specific path file.
+
+    combined = (segment_id << 1) | dir_bit. Returns None if out of range.
+    Used by region-scoped slicing, which needs segment ids to test membership.
+    """
+    db_path = os.path.join(dir, DB_NAME)
+    index = read_path_index(db_path)
+    sample_entries = index.get("paths", {}).get(sample, [])
+
+    if file_index < 0 or file_index >= len(sample_entries):
+        return None
+
+    filepath = os.path.join(db_path, sample_entries[file_index]["file"])
+    return read_binpath_combined(filepath)
 
 
 # -------------------------------------------------------------------

@@ -106,12 +106,6 @@ def get_segment_gc_n_count(dir, seg_id):
     return [0,0]
 
 
-def get_segment_range(dir, start_id, end_id, step_index=None):
-    cur = get_connection(dir).cursor()
-    cur.execute("SELECT * FROM segments WHERE id BETWEEN ? AND ?", (start_id, end_id))
-    rows = cur.fetchall()
-    return [create_segment(row, step_index) for row in rows]
-
 def count_segments(dir):
     cur = get_connection(dir).cursor()
     cur.execute("SELECT COUNT(*) FROM segments")

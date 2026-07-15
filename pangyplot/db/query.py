@@ -1,3 +1,5 @@
+import numpy as np
+
 from pangyplot.db.chain_polyline import (
     decompose_chain, find_junction_graph,
     _seg_centroid,
@@ -229,6 +231,66 @@ def get_path_raw(indexes, chrom, sample, file_index):
     """Return raw compressed bytes for a specific path file."""
     gfaidx = indexes.gfa_index[chrom]
     return gfaidx.path_index.get_path_raw(sample, file_index)
+
+
+def region_segment_ids(indexes, genome, chrom, start, end):
+    """Return the set of segment ids spanned by the bp window [start, end].
+
+    Position-safe and ID-order-independent: derived from the reference step
+    range plus the full segment closure of every top-level bubble overlapping
+    that range -- the same basis /select uses. Does NOT assume segment ids are
+    ordered by genomic position, so it is correct on graphs that skipped
+    ``odgi sort`` (e.g. a GBZ-native import).
+    """
+    stepidx = indexes.step_index.get((chrom, genome), None)
+    bubbleidx = indexes.bubble_index.get(chrom, None)
+    if stepidx is None or bubbleidx is None:
+        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found.")
+
+    start_step, end_step = stepidx.query_coordinates(start, end)
+    if start_step > end_step:
+        start_step, end_step = end_step, start_step
+
+    seg_ids = set()
+
+    # Reference-backbone segments in the step range (covers spine segments that
+    # sit between bubbles and belong to no bubble).
+    segments = stepidx.segments
+    for step in range(start_step, end_step + 1):
+        seg_ids.add(int(segments[step]))
+
+    # Every segment inside a top-level bubble overlapping the range, fully
+    # expanded through nested children (get_descendant_ids recurses).
+    for bubble in bubbleidx.get_top_level_bubbles(start_step, end_step):
+        seg_ids.update(int(s) for s in bubbleidx.get_descendant_ids(bubble))
+        seg_ids.update(int(s) for s in bubble.source_segments)
+        seg_ids.update(int(s) for s in bubble.sink_segments)
+
+    return seg_ids
+
+
+def get_path_region_raw(indexes, genome, chrom, sample, file_index, start, end):
+    """Return gzipped .binpath bytes for a subpath, sliced to the bp window.
+
+    Keeps only the steps whose segment id falls in the window's segment set
+    (see region_segment_ids) and re-encodes them in the same varint format the
+    whole-path endpoint ships, so the frontend decoder is unchanged -- it just
+    receives fewer steps. Returns None if the subpath does not exist.
+    """
+    from pangyplot.db.path_codec import encode_combined
+
+    gfaidx = indexes.gfa_index[chrom]
+    combined = gfaidx.path_index.get_path_combined(sample, file_index)
+    if combined is None:
+        return None
+
+    region = region_segment_ids(indexes, genome, chrom, start, end)
+
+    # combined = (seg_id << 1) | dir_bit; the segment id is the high bits.
+    seg_of_step = combined >> 1
+    region_arr = np.fromiter(region, dtype=np.int64, count=len(region))
+    mask = np.isin(seg_of_step, region_arr)
+    return encode_combined(combined[mask])
 
 
 def get_bubble_meta(indexes, genome, chrom, raw_chain_id):
