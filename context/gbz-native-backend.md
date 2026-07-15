@@ -95,13 +95,21 @@ translation (unchopped GBZ) each node id is its own segment.
      runs off these; `Segment.seq` is None (the BubbleGun backend, which needs DNA,
      needs a `/sequence` endpoint — deferred). Bubble *detection* already matches
      the GFA exactly (599/234/41 on DRB1).
-   - **StepIndex from the GBZ** ← next. Bubble *indexing* builds `StepIndex(chr_dir,
-     ref).segment_map()` (reference bp→step ranges land in `bubbles.db`), which a
-     GBZ dir lacks. Derive steps from the reference path walk (`/walk`) + segment
-     lengths + ref offset. Unblocks full `bubbles.db` parity.
+   - **StepIndex from the GBZ** ✅ — `StepIndex(dir, ref, client, segment_index)`
+     builds `starts/ends/segments` from the reference path walk (`/walk`) the same
+     way `write_step_index` does: identify the ref path by `parse_id_string(contig)
+     ["genome"] == ref`, take its bp offset from the contig `:start-end` range, and
+     accumulate `pos += segment_length`. Caches to `steps.mmapindex/`, so the
+     bubble indexer's `StepIndex(dir, ref)` loads it with no client. `segment_map`
+     / `query_segment` array-backed. Steps match `write_step_index` exactly.
+   - **Full `bubbles.db` parity ✅** — a complete bubbles.db built entirely off the
+     GBZ (segments + links + steps) is structurally identical to the GFA build
+     (children/inside/source/sink/ranges/counts all exact); coords agree to float32
+     precision (the GBZ index is float32 vs float64 SQLite — a non-issue in real
+     GBZ-native ingest where coords are float32 throughout).
    - Then: `add --gbz` orchestration (adopt GBZ → spawn graphd `--graph` → build
-     GBZ-backed indexes + layout → bubbles → skeleton), layout keying (node-layout
-     → per-segment coords via the translation), and `bubbles.db`/skeleton parity.
+     GBZ-backed indexes + layout → bubbles → skeleton) + layout keying (node-layout
+     → per-segment coords via the translation) + skeleton parity.  ← next
 4. **Retire** `segments.db` / `links.db` / `*.binpath` for GBZ-native datasets
    (GFA-native stays as the legacy loader). Mmap the `sequences` StringArray.
 

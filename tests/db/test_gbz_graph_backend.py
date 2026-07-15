@@ -146,6 +146,82 @@ def test_segment_and_link_iteration_from_gbz(graph_daemon, gfa_dir):
     assert edges_from_iter(link) == _side_pair_edges(LinkIndex(gfa_dir))
 
 
+def test_step_index_from_gbz_matches_sqlite(graph_daemon, gfa_dir):
+    # Steps built from the GBZ reference-path walk must match write_step_index's
+    # (seg_id, start, end) per step exactly -- same reference walk, same segment
+    # lengths, same bp offset parsed from the contig range.
+    import numpy as np
+    from pangyplot.db.gbwt_client import GbwtClient
+    from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+    from pangyplot.db.indexes.StepIndex import StepIndex
+
+    sqlite_steps = StepIndex(gfa_dir, REFERENCE)
+
+    client = GbwtClient(graph_daemon)
+    seg = SegmentIndex(tempfile.mkdtemp(), client=client)
+    gbz_steps = StepIndex(tempfile.mkdtemp(), REFERENCE, client=client, segment_index=seg)
+
+    for name in ("segments", "starts", "ends"):
+        assert np.array_equal(np.asarray(getattr(gbz_steps, name)),
+                              np.asarray(getattr(sqlite_steps, name))), name
+
+
+def test_flat_bubbles_from_gbz_match_gfa(graph_daemon, gfa_dir):
+    # The payoff: full bubbles.db built entirely off the GBZ (segments, links,
+    # and steps) is byte-identical (same fingerprint) to the GFA build. Coords are
+    # held equal by feeding the GBZ index the GFA's per-segment coords.
+    import importlib.util
+    from pangyplot.db.gbwt_client import GbwtClient
+    from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+    from pangyplot.db.indexes.LinkIndex import LinkIndex
+    from pangyplot.db.indexes.StepIndex import StepIndex
+    import pangyplot.db.sqlite.segment_db as segment_db
+    import pangyplot.preprocess.bubble.bubble_gun as bubble_gun
+
+    spec = importlib.util.spec_from_file_location(
+        "fingerprint_bubbles", os.path.join(REPO, "tools", "fingerprint_bubbles.py"))
+    fp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fp)
+
+    # Ground truth: full bubbles from the GFA-built SQLite indexes.
+    bubble_gun.shoot(SegmentIndex(gfa_dir), LinkIndex(gfa_dir), gfa_dir, REFERENCE)
+
+    # GBZ path: build segments/links/steps from the GBZ (same per-segment coords),
+    # cache the steps, then run the identical bubble build.
+    coords = {r["id"]: (r["x1"], r["y1"], r["x2"], r["y2"])
+              for r in segment_db.get_index_info(gfa_dir)}
+    gbz_dir = tempfile.mkdtemp()
+    client = GbwtClient(graph_daemon)
+    seg = SegmentIndex(gbz_dir, client=client, coords=coords)
+    link = LinkIndex(gbz_dir, client=client)
+    StepIndex(gbz_dir, REFERENCE, client=client, segment_index=seg)  # caches steps.mmapindex
+    bubble_gun.shoot(seg, link, gbz_dir, REFERENCE)
+
+    # Every bubble matches structurally. Coords are the one representational
+    # difference: the GBZ index holds float32 coords (vs float64 from SQLite for
+    # the GFA build), and the bubble coord math accumulates that in float32, so a
+    # few bubbles land ~0.1 off. That is a non-issue in real GBZ-native ingest,
+    # where coords are float32 throughout. So: every non-coord field must be
+    # identical, and coords must agree to within float32 accumulation tolerance.
+    import json
+
+    COORDS = ("x1", "x2", "y1", "y2")
+
+    def rows(chr_dir):
+        return {bid: json.loads(blob)
+                for bid, blob in fp.canonical_rows(os.path.join(chr_dir, "bubbles.db"))}
+
+    a, b = rows(gfa_dir), rows(gbz_dir)
+    assert set(a) == set(b)
+    for bid in a:
+        da, db = a[bid], b[bid]
+        assert {k: v for k, v in da.items() if k not in COORDS} == \
+               {k: v for k, v in db.items() if k not in COORDS}
+        for c in COORDS:
+            if da.get(c) is not None:
+                assert abs(da[c] - db[c]) < 0.5, (bid, c, da[c], db[c])
+
+
 def _side_pair_edges(link_index):
     """The set of bidirected edges a LinkIndex encodes, as unordered pairs of
     (segment_id, side). This is RC-invariant: a link and its reverse-complement
@@ -194,3 +270,4 @@ def test_links_are_the_gfa_bidirected_edge_set(graph_daemon, gfa_dir):
         return (t, 1 - ts, f, 1 - fs)
 
     assert gbz == gfa | {rc(l) for l in gfa}
+

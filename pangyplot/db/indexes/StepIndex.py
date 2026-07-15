@@ -21,12 +21,21 @@ ARRAYS = {
 
 
 class StepIndex:
-    def __init__(self, dir, genome):
+    def __init__(self, dir, genome, client=None, segment_index=None, ref_offset=0):
         self.dir = dir
         self.genome = genome
+        self._client = client
 
+        # `client` (a GbwtClient) + `segment_index` build the steps from the GBZ's
+        # reference path walk instead of step_db. Without them this is the legacy
+        # SQLite build. The mmap cache wins first either way -- so once the GBZ
+        # build has run and cached, downstream `StepIndex(dir, ref)` (e.g. the
+        # bubble indexer) loads the cache with no client needed.
         if not self.load_mmap_index():
-            self._build_from_db()
+            if client is not None:
+                self._build_from_gbz(client, segment_index, ref_offset)
+            else:
+                self._build_from_db()
             self.save_mmap_index()
 
     def _build_from_db(self):
@@ -38,6 +47,42 @@ class StepIndex:
             self.segments.append(row["seg_id"])
             self.starts.append(row["start"])
             self.ends.append(row["end"])
+
+    def _build_from_gbz(self, client, segment_index, ref_offset=0):
+        """Build the step arrays from the GBZ's reference path walk.
+
+        Mirrors write_step_index exactly: walk the reference path, and for each
+        step emit (seg_id, start=pos+1, end=pos+length) accumulating pos by the
+        segment length. The reference path is the GBWT path whose contig parses to
+        `genome`; its genomic offset comes from the contig's `:start-end` range
+        (like the GFA path name), plus `ref_offset`. A reference split into several
+        subpaths is walked in genomic-start order.
+        """
+        from pangyplot.preprocess.parser.gfa.parse_utils import parse_id_string
+
+        if segment_index is None:
+            raise ValueError("StepIndex GBZ build needs a segment_index for lengths")
+
+        self.starts = array('I')
+        self.ends = array('I')
+        self.segments = array('I')
+
+        subpaths = []
+        for p in client.meta().get("path_list", []):
+            info = parse_id_string(p.get("contig") or "")
+            if info["genome"] == self.genome:
+                subpaths.append((info["start"] + ref_offset, p["id"]))
+        subpaths.sort()
+
+        for start_offset, path_id in subpaths:
+            combined = client.walk(path_id)
+            pos = start_offset
+            for sid in (combined >> 1).tolist():
+                length = segment_index.segment_length(sid)
+                self.starts.append(pos + 1)
+                self.ends.append(pos + length)
+                self.segments.append(sid)
+                pos += length
 
     def __getitem__(self, step):
         if step < 0 or step >= len(self.segments):
@@ -120,6 +165,10 @@ class StepIndex:
     # -- query methods -----------------------------------------------------
 
     def query_segment(self, seg_id):
+        if self._client is not None:
+            if not hasattr(self, "_seg_steps"):
+                self._seg_steps = self.segment_map()
+            return list(self._seg_steps.get(seg_id, []))
         return db.get_segment_steps(self.dir, seg_id, self.genome)
 
     def query_bp(self, bp_position, exact=False):
