@@ -26,7 +26,7 @@ from pangyplot.db.indexes.PathIndex import PathIndex
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.path.join(REPO, "tools", "gbwt-sidecar", "target", "release", "gbwt-sidecar")
+SIDECAR = os.path.join(REPO, "gbwt", "target", "release", "gbwt-sidecar")
 
 
 def _free_port():
@@ -44,7 +44,7 @@ def _get(url, binary=False):
 def sidecar(fixtures_dir):
     if not os.path.exists(SIDECAR):
         pytest.skip("gbwt-sidecar binary not built "
-                    "(cargo build --release --manifest-path tools/gbwt-sidecar/Cargo.toml)")
+                    "(cargo build --release --manifest-path gbwt/Cargo.toml)")
     gbz = str(fixtures_dir / "DRB1-3123.gbz")
     port = _free_port()
     proc = subprocess.Popen([SIDECAR, gbz, f"127.0.0.1:{port}"],

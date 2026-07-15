@@ -25,8 +25,8 @@ from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.path.join(REPO, "tools", "gbwt-sidecar", "target", "release", "gbwt-sidecar")
-BUILDER = os.path.join(REPO, "tools", "gbwt-build", "target", "release", "gbwt-build")
+SIDECAR = os.path.join(REPO, "gbwt", "target", "release", "gbwt-sidecar")
+BUILDER = os.path.join(REPO, "gbwt", "target", "release", "gbwt-build")
 
 pytestmark = [
     pytest.mark.skipif(not os.path.exists(SIDECAR), reason="gbwt-sidecar not built"),

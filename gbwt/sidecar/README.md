@@ -10,7 +10,7 @@ gbwt-sidecar <graph.gbwt|graph.gbz> [addr]   # addr default 127.0.0.1:5701
 
 Loads **either** format behind one wire contract (auto-detected):
 
-- **`graph.gbwt`** — a native compact GBWT built by `tools/gbwt-build` from
+- **`graph.gbwt`** — a native compact GBWT built by `gbwt/build` from
   PangyPlot's own paths. node id == segment id, no translation, no vg. The
   default production format (`pangyplot add --build-gbwt`).
 - **`graph.gbz`** — a GBZ (e.g. from `vg gbwt`), adopted via `add --gbz`. May be
@@ -25,7 +25,7 @@ per environment; `GbwtManager` (`pangyplot/db/gbwt_manager.py`) reads:
 | env var | meaning |
 |---|---|
 | `PANGYPLOT_GBWT` | `1`/`true` to enable the GBWT path engine |
-| `PANGYPLOT_GBWT_BIN` | sidecar binary path (default `tools/gbwt-sidecar/target/release/gbwt-sidecar`) |
+| `PANGYPLOT_GBWT_BIN` | sidecar binary path (default `gbwt/target/release/gbwt-sidecar`) |
 | `PANGYPLOT_GBWT_GBZ` | per-chr GBZ filename inside each chr dir (default `graph.gbz`) |
 | `PANGYPLOT_GBWT_URLS` | JSON `{chrom: base_url}` for externally-managed sidecars (no spawn) |
 

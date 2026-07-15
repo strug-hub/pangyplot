@@ -8,7 +8,7 @@ Configuration (env vars, read at startup — matches the rest of app.py):
 
     PANGYPLOT_GBWT       "1"/"true" to enable the GBWT path engine (default off)
     PANGYPLOT_GBWT_BIN   path to the gbwt-sidecar binary
-                         (default: tools/gbwt-sidecar/target/release/gbwt-sidecar)
+                         (default: gbwt/target/release/gbwt-sidecar)
     PANGYPLOT_GBWT_GBZ   per-chr GBZ filename inside each chr dir (default graph.gbz)
     PANGYPLOT_GBWT_URLS  optional JSON {chrom: base_url} — point at externally
                          managed sidecars instead of spawning. Production sets
@@ -28,7 +28,7 @@ import time
 
 from pangyplot.db.gbwt_client import GbwtClient
 
-DEFAULT_BIN = os.path.join("tools", "gbwt-sidecar", "target", "release", "gbwt-sidecar")
+DEFAULT_BIN = os.path.join("gbwt", "target", "release", "gbwt-sidecar")
 GBWT_NATIVE_NAME = "graph.gbwt"
 DEFAULT_GBZ_NAME = "graph.gbz"
 _TRUE = {"1", "true", "yes", "on"}

@@ -1,7 +1,7 @@
 """HTTP client for the GBWT sidecar (GBWT migration Stage 3).
 
 Thin wrapper over the sidecar's localhost wire protocol
-(see tools/gbwt-sidecar/README.md). The protocol — not this class — is the
+(see gbwt/sidecar/README.md). The protocol — not this class — is the
 boundary, so the sidecar can be reimplemented (e.g. C++) without touching callers.
 
 Walks come back as PangyPlot `combined` int64 arrays:

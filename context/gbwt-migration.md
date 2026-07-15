@@ -28,7 +28,7 @@
 > so a **compact GBWT + SegmentIndex ≈ a compact GBZ**. And because PangyPlot's
 > `combined = (seg<<1)|orient` value **is** the GBWT node handle
 > (`encode_node = 2*id+orient`), node id = segment id with **no chopping, no
-> translation, no vg**. Pieces: `tools/gbwt-build/` (Rust: pathdata → compact
+> translation, no vg**. Pieces: `gbwt/build/` (Rust: pathdata → compact
 > `graph.gbwt`); `preprocess/gbwt_build.py` (emits the pathdata intermediate from
 > parsed paths, runs the builder, cleans up); sidecar loads **GBWT or GBZ** behind
 > one wire contract (`Backend` enum; GBWT walk = `sequence(2*pid)`, count =
@@ -42,6 +42,24 @@
 > is avoided by keeping native (compact) the production path and vg GBZ a separate
 > optional *adopt* input. **Ahead:** Stage 4 binpath retirement; metadata parity
 > (sample-key reconciliation); GBZ-only input is the separate layout project.
+>
+> **OPEN — resident memory / process model (revisit).** The sidecar loads the
+> whole GBWT/GBZ into RAM (`serialize::load_from`) and holds it Arc-shared for the
+> process lifetime — one sidecar *process per chromosome*. This is a change from
+> binpaths (on-disk, fetched per-request, ~zero resident path memory) to
+> fully-resident-but-compressed. Per-chr it's cheap (spike: 1614-haplotype chrY =
+> 107 MB; a native `graph.gbwt` is smaller than a GBZ — no node DNA). The concern
+> is **whole-genome**: ~24 resident sidecars ≈ sum-of-per-chr RAM + N process
+> overheads. Options if it bites: one sidecar holding multiple chromosomes'
+> indexes, or lazy load/evict. Current wire contract is one-index-per-service.
+>
+> **Stage 3 file layout (2026-07-15):** the two native crates moved out of
+> `tools/` into a top-level `gbwt/` **Cargo workspace** (`gbwt/sidecar/`,
+> `gbwt/build/`) — one lockfile + `target/`, `gbz`/`simple-sds` compile once,
+> workspace deps hoisted. Binaries now at `gbwt/target/release/{gbwt-sidecar,
+> gbwt-build}`. The throwaway spike was deleted (numbers preserved in this doc).
+> Python glue stays idiomatic (`db/indexes/GbwtPathIndex`, `db/gbwt_*`,
+> `preprocess/gbwt_build`, `preprocess/gbz`).
 >
 > **Stage 1 landed (2026-07-15):** per-link `haplotype`/`reverse` masks dropped
 > from schema, inserts, `Link`, serialization, and 4 frontend passthroughs;
@@ -372,7 +390,7 @@ view and does NOT conflate them; we always use the segment-level one.
 
 **Sidecar built forward-compatible (from the start, costs nothing now):**
 - **The wire protocol is the boundary, not the language.** Documented as a
-  neutral contract (`tools/gbwt-sidecar/README.md`): plain HTTP, JSON metadata,
+  neutral contract (`gbwt/sidecar/README.md`): plain HTTP, JSON metadata,
   explicit LE-binary bulk. The C++ stack (`jltsiren/gbwt` + `gbwtgraph`) has the
   same ops, so a C++ swap is a drop-in behind the Python client — nothing above
   changes. This is what keeps the Rust-vs-C++ decision reversible.
@@ -430,7 +448,7 @@ Run in this order (cheapest + most decisive first); each has a go/no-go:
    IPC hop. Decision: feeds sidecar (isolation) vs in-process PyO3 (latency)
    in §7b. Query A stays debounced/view-triggered, so a hop is likely fine.
 
-Harness: `tools/gbwt-spike/` (Rust, `gbz` v0.6.1). Built + run 2026-07-15.
+Harness: `gbwt/`s throwaway spike (since removed) (Rust, `gbz` v0.6.1). Built + run 2026-07-15.
 
 #### Spike RESULTS (2026-07-15)
 

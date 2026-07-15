@@ -12,7 +12,7 @@ Usually invoked for you by `pangyplot add --build-gbwt`; run it directly only
 for debugging.
 
 ```sh
-cargo build --release --manifest-path tools/gbwt-build/Cargo.toml
+cargo build --release --manifest-path gbwt/Cargo.toml
 ```
 
 ## Why native (and why only a GBWT, not a GBZ)

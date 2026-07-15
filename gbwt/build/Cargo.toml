@@ -1,0 +1,17 @@
+[package]
+name = "gbwt-build"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Build a compact GBWT from PangyPlot paths (no vg, no chopping)"
+
+[[bin]]
+name = "gbwt-build"
+path = "src/main.rs"
+
+# gbwt-rs (package `gbz`) provides GBWTBuilder; simple-sds provides serialization.
+# gbwt-rs reads GBZs but is a full builder for GBWT, which is all the path engine
+# needs. Shared with the sidecar via the workspace so they compile once.
+[dependencies]
+gbz.workspace = true
+simple-sds.workspace = true
