@@ -103,6 +103,35 @@ def test_segment_index_from_gbz_matches_sqlite(graph_daemon, gfa_dir):
                               np.asarray(getattr(sqlite_idx, name))), name
 
 
+def _side_pair_edges(link_index):
+    """The set of bidirected edges a LinkIndex encodes, as unordered pairs of
+    (segment_id, side). This is RC-invariant: a link and its reverse-complement
+    twin map to the same pair, so it's the representation-independent invariant
+    the bubble builder actually consumes."""
+    edges = set()
+    for i in range(len(link_index)):
+        f, t = int(link_index.from_ids[i]), int(link_index.to_ids[i])
+        fs, ts = int(link_index.from_strands[i]), int(link_index.to_strands[i])
+        f_side = "E" if fs == 1 else "S"   # '+' leaves the END, '-' the START
+        t_side = "S" if ts == 1 else "E"   # '+' enters the START, '-' the END
+        edges.add(frozenset({(f, f_side), (t, t_side)}))
+    return edges
+
+
+def test_link_index_from_gbz_matches_sqlite(graph_daemon, gfa_dir):
+    # A LinkIndex hydrated from the GBZ must encode the same bidirected graph as
+    # one built from links.db. /links is bidirectional; _build_from_gbz collapses
+    # each RC pair to one link, so the link count and the side-pair edge set match.
+    from pangyplot.db.gbwt_client import GbwtClient
+    from pangyplot.db.indexes.LinkIndex import LinkIndex
+
+    sqlite_idx = LinkIndex(gfa_dir)
+    gbz_idx = LinkIndex(tempfile.mkdtemp(), client=GbwtClient(graph_daemon))
+
+    assert len(gbz_idx) == len(sqlite_idx)
+    assert _side_pair_edges(gbz_idx) == _side_pair_edges(sqlite_idx)
+
+
 def test_links_are_the_gfa_bidirected_edge_set(graph_daemon, gfa_dir):
     # GFA stores each link once; the GBWT is bidirectional and emits each link
     # AND its reverse-complement twin. The daemon's set must be exactly the GFA

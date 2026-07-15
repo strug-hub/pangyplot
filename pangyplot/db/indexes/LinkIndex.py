@@ -26,12 +26,15 @@ ARRAYS = {
 
 
 class LinkIndex:
-    def __init__(self, dir):
+    def __init__(self, dir, client=None):
         self.dir = dir
 
         self.strand_map = {'+': 1, '-': 0}
         self.rev_strand_map = {1: '+', 0: '-'}
 
+        # `client` (a GbwtClient in graph mode) sources links from the GBZ instead
+        # of links.db; without one this is the legacy SQLite build. The mmap cache
+        # wins first either way.
         if not self.load_mmap_index():
             self.from_ids = array('I')
             self.to_ids = array('I')
@@ -41,7 +44,10 @@ class LinkIndex:
             self.seg_index_counts = array('I')
             self.seg_index_flat = array('I')
 
-            self._load_links()
+            if client is not None:
+                self._build_from_gbz(client)
+            else:
+                self._load_links()
             self.save_mmap_index()
 
     def __iter__(self):
@@ -67,18 +73,41 @@ class LinkIndex:
 
     def _load_links(self):
         rows = db.load_links(self.dir)
+        self._build_arrays(
+            (r["from_id"], self.strand_map[r["from_strand"]],
+             r["to_id"], self.strand_map[r["to_strand"]])
+            for r in rows)
 
+    def _build_from_gbz(self, client):
+        """Build the link arrays from the graphd's /links. The GBWT is
+        bidirectional, so /links carries each edge AND its reverse-complement twin;
+        collapse each RC pair to one canonical representative (links.db stores one
+        direction per link) so the bidirected adjacency isn't doubled.
+        """
+        seen = set()
+        canonical = []
+        for f, fs, t, ts in client.links().tolist():
+            link = (int(f), int(fs), int(t), int(ts))
+            rc = (link[2], 1 - link[3], link[0], 1 - link[1])
+            key = min(link, rc)
+            if key not in seen:
+                seen.add(key)
+                canonical.append(key)
+        self._build_arrays(canonical)
+
+    def _build_arrays(self, edges):
+        """Populate the link + adjacency arrays from an iterable of
+        (from_id, from_strand, to_id, to_strand) with integer strands (1='+'/0='-').
+        Each link is indexed under both endpoints, so adjacency is bidirected.
+        """
         tmp = defaultdict(list)
         max_seg_id = -1
 
-        for i, row in enumerate(rows):
-            fid = row["from_id"]
-            tid = row["to_id"]
-
+        for i, (fid, fstrand, tid, tstrand) in enumerate(edges):
             self.from_ids.append(fid)
             self.to_ids.append(tid)
-            self.from_strands.append(self.strand_map[row["from_strand"]])
-            self.to_strands.append(self.strand_map[row["to_strand"]])
+            self.from_strands.append(fstrand)
+            self.to_strands.append(tstrand)
 
             tmp[fid].append(i)
             tmp[tid].append(i)

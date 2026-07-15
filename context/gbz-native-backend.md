@@ -73,14 +73,19 @@ translation (unchopped GBZ) each node id is its own segment.
 
 1. **graphd `/segments` + `/links`** (graph mode) — parity: sets match the
    GFA-built `segments.db` / `links.db` scalars.  ✅ done
-2. **`SegmentIndex`/`LinkIndex` `_build_from_gbz`** behind the same API — parity:
-   `GFAIndex` queries identical whether sourced from GFA or GBZ.
+2. **`SegmentIndex`/`LinkIndex` `_build_from_gbz`** behind the same API. ✅ done
    - `SegmentIndex._build_from_gbz` ✅ (scalar arrays length/gc/**n**/valid match
      `segments.db`; `n_count` promoted into the resident arrays so gc/n need no
      SQLite; coords come from the layout file, keyed by segment id).
-   - `LinkIndex._build_from_gbz` ← current. `/links` is bidirectional (both RC
-     directions); canonicalize to one-per-pair and validate the bidirected
-     adjacency (ultimately bubble parity, Phase 3), not byte-identical link rows.
+   - `LinkIndex._build_from_gbz` ✅ (`/links` is bidirectional; canonicalize each
+     RC pair to one link via `min(link, rc)`, then the shared `_build_arrays`
+     bidirected adjacency. Parity: same link count + identical bidirected
+     side-pair edge set as `links.db` — the RC-invariant the bubble builder reads.
+     Byte-identical link *rows* are not the target and not achievable, since the
+     GFA's per-link direction choice is arbitrary.)
+   - Still SQLite-backed (Phase 4 / needs `/sequence`): `SegmentIndex.__iter__` /
+     `__getitem__` (bubble builder reads these *with DNA*). `GFAIndex`/`add` don't
+     yet pass a client — the wiring is Phase 3.
 3. **`add --gbz-native`**: adopt GBZ + layout → run bubbles/skeleton unchanged off
    the GBZ-backed indexes; parity on `bubbles.db` + skeleton.
 4. **Retire** `segments.db` / `links.db` / `*.binpath` for GBZ-native datasets
