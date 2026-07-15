@@ -181,11 +181,28 @@ def compare_results(all_runs, baseline_name):
 
 
 def main():
+    global GFA_FILE, LAYOUT_FILE, OUTPUT_DIR, REF, CHR, DB_NAME
+
     parser = argparse.ArgumentParser(description="Benchmark PangyPlot ingestion")
     parser.add_argument("--runs", type=int, default=1, help="Number of runs (default: 1)")
     parser.add_argument("--save", type=str, help="Save results with this name")
     parser.add_argument("--compare", type=str, help="Compare against saved results")
+    parser.add_argument("--gfa", type=str, help=f"GFA to ingest (default: {GFA_FILE})")
+    parser.add_argument("--layout", type=str, help=f"odgi layout TSV (default: {LAYOUT_FILE})")
+    parser.add_argument("--outdir", type=str,
+                        help=f"Where to write the datastore (default: {OUTPUT_DIR})")
+    parser.add_argument("--ref", type=str, default=REF, help=f"Reference name (default: {REF})")
+    parser.add_argument("--chr", type=str, default=CHR, help=f"Chromosome (default: {CHR})")
+    parser.add_argument("--db", type=str, default=DB_NAME, help=f"DB name (default: {DB_NAME})")
     args = parser.parse_args()
+
+    if args.gfa:
+        GFA_FILE = args.gfa
+    if args.layout:
+        LAYOUT_FILE = args.layout
+    if args.outdir:
+        OUTPUT_DIR = args.outdir
+    REF, CHR, DB_NAME = args.ref, args.chr, args.db
 
     # Validate data files exist
     for path, label in [(GFA_FILE, "GFA"), (LAYOUT_FILE, "Layout")]:

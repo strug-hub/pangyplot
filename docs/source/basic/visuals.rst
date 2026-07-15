@@ -167,6 +167,14 @@ With a set of chains highlighted (:code:`Shift`-drag to select), act on the sele
             <div class="icon-description">Export the selected region as a GFA file (detail view).</div>
          </div>
       </div>
+
+      <div class="icon-item">
+         <i class="fa-solid fa-file-export"></i>
+         <div class="icon-text">
+            <div class="icon-label">Export GFA + Layout</div>
+            <div class="icon-description">Export the selected region as a GFA file along with its layout, in odgi and Bandage formats (detail view).</div>
+         </div>
+      </div>
    </div>
    <hr>
 

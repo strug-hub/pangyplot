@@ -32,7 +32,7 @@ SCREENSHOT WILL GO HERE
 ## Usage - Quick Start
 
 ```
-git clone https://github.com/ScottMastro/pangyplot.git
+git clone https://github.com/strug-hub/pangyplot.git
 cd pangyplot
 python pangyplot.py run --db hprc.clip --ref GRCh38 --annotations gencode48.chrY
 ```

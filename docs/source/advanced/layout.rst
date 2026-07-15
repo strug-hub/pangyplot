@@ -110,4 +110,23 @@ Bandage Layout
 `Bandage <https://github.com/asl/BandageNG>`_ can also be used to calculate the 2D layout of nodes.
 After opening the GFA file in Bandage, the layout can be exported via ``File -> Export Layout`` in the Bandage layout format (``*.layout``). The graph has to be small enough to be opened in Bandage, which is not always possible since Bandage loads the entire graph into memory.
 
+.. _exporting-a-layout:
+
+Exporting a Layout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A region viewed in PangyPlot can be exported with its layout, so it can be
+redrawn outside of PangyPlot. Select a region in the detail view and choose
+**Export GFA + Layout** from the right-click menu.
+
+The download is a zip containing the subsetted graph as a GFA, its layout in
+both the odgi (``*.lay``) and Bandage (``*.layout``) formats, and a README with
+the commands to render it in ``odgi draw``.
+
+.. note::
+
+   The graph and its layout are exported together because they are only usable
+   as a pair. Segment IDs are renumbered from 1, as odgi requires, and each
+   ``S`` line keeps its ID in the source graph as an ``ON:i:`` tag.
+
 

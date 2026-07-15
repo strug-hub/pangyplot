@@ -123,6 +123,35 @@ translation (unchopped GBZ) each node id is its own segment.
 4. **Retire** `segments.db` / `links.db` / `*.binpath` for GBZ-native datasets
    (GFA-native stays as the legacy loader). Mmap the `sequences` StringArray.
 
+## Multi-chromosome GBZs: split lives in the external layout tool
+
+A whole-genome GBZ holds every contig. PangyPlot ingests **one contig per
+`add --gbz`** and that stays unchanged — ingestion is single-contig, which also
+bounds peak memory to ~one chromosome. Splitting a whole-genome GBZ into per-chr
+GBZs is **out of scope for PangyPlot** (no in-repo `gbwt/split`); it belongs to
+the user's external gbz→layout tool, which already reads the whole GBZ and works
+per chromosome to lay each one out. Emitting a per-chr GBZ next to each per-chr
+`.lay.tsv` there is a small addition, and — because that one tool controls both
+outputs — it can guarantee the layout is keyed to the GBZ's own segments,
+retiring the interim positional-alignment assumption in `layout_coords_by_id`.
+
+**Contract** — for each chromosome the layout tool emits, and `add --gbz
+<chr.gbz> --layout <chr.lay.tsv>` then consumes:
+
+1. A valid **single-contig GBZ** (GBWT + GBWTGraph) the graphd can load.
+2. Segment **names = PangyPlot segment ids** (integers), preserved in the
+   `node_to_segment` translation. Node ids may be renumbered; segment names must
+   not be.
+3. The chromosome's paths (reference + haplotypes) with **contig metadata** such
+   that `parse_id_string(contig)["genome"] == --ref` identifies the ref path.
+4. The ref path's **genomic offset** in its contig name (`:start-end` /
+   `#…[start-end]`) — that's the bp offset `StepIndex` reads.
+5. A **layout aligned to that GBZ's segments** — keyed by segment id, or
+   positional in the graphd's `/segments` order.
+
+If these hold, split→ingest is byte-for-byte a direct single-contig ingest.
+PangyPlot's consumer side is already done (`add --gbz` tested end-to-end).
+
 ## The link RC-twin question (resolve empirically in Phase 1/3)
 
 GBWT edges are bidirectional, so each GFA link `L A + B +` also appears as its
