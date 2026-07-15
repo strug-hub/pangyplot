@@ -7,9 +7,9 @@
 > binpaths (Stage 4)" plan is **cancelled**: both the Rust and C++ GBWT load fully
 > into RAM, and a whole-genome resident GBWT is untenable against PangyPlot's
 > low-memory requirement. GBWT is opt-in (`PANGYPLOT_GBWT`); resident-lean
-> presence requires **memory-mapped serving**, which is the next investigation
-> (C++ sidecar — `context/gbwt-mmap-cpp-investigation.md`). Stages 1–3 (dead-mask
-> removal, region-scoped trace, the working GBWT engine + native builder) stand.
+> presence is provided by the **memory-mapped C++ sidecar** in `gbwt/sidecar/`
+> (see `gbwt/sidecar/IMPLEMENTATION.md`). Stages 1–3 (dead-mask removal,
+> region-scoped trace, the working GBWT engine + native builder) stand.
 >
 > **Status (2026-07-15):** Stages 1–2 landed + monotonicity hardening + Stage 3
 > spike run and decided (Rust sidecar; extract+counts+metadata all proven on a
@@ -63,11 +63,11 @@
 > **Decisions:** (1) keep the on-disk **binpath engine as the default** — do NOT
 > do Stage 4 (retiring binpaths) as previously planned; it would break the memory
 > constraint. (2) The GBWT stays **opt-in** (already is: `PANGYPLOT_GBWT` off →
-> binpaths). (3) To get resident-lean presence, build **memory-mapped serving in a
-> C++ sidecar** (sdsl has the richest mmap primitives; `gbwt`/`gbwtgraph` are the
-> mature reference; also sets up Stage 5). Full task brief:
-> **`context/gbwt-mmap-cpp-investigation.md`**. The wire contract makes the C++
-> sidecar a drop-in — nothing above the HTTP boundary changes.
+> binpaths). (3) Resident-lean presence comes from **memory-mapped serving in a
+> C++ sidecar** (sdsl mmap primitives; `gbwt`/`gbwtgraph` the reference; also sets
+> up Stage 5), now implemented in `gbwt/sidecar/` (see
+> `gbwt/sidecar/IMPLEMENTATION.md`). The wire contract makes the sidecar a drop-in
+> — nothing above the HTTP boundary changes.
 >
 > **mmap PROVEN — GO (2026-07-15).** The forked C++ `gbwt` (mmap-backed
 > `RecordArray` + DA opt-out) serves the **whole genome** (`hprc-v2.0-mc-grch38`,

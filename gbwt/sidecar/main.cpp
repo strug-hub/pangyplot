@@ -1,8 +1,8 @@
 // C++ GBWT path-service sidecar for PangyPlot.
 //
-// Drop-in replacement for the Rust sidecar (gbwt/sidecar/src/main.rs): same
-// localhost wire contract, so nothing above the HTTP boundary changes. The point
-// of the C++ version is MEMORY: it serves the GBWT **memory-mapped** from disk
+// Honours the localhost wire contract in gbwt/sidecar/README.md, so nothing above
+// the HTTP boundary changes. The point of the C++ implementation is MEMORY: it
+// serves the GBWT **memory-mapped** from disk
 // (fork github.com/ScottMastro/gbwt-mmap), so resident memory scales with the
 // working set of active queries instead of the whole index. The document-array
 // samples are skipped at load (with_da=false) since only `locate` needs them and
@@ -19,11 +19,16 @@
 // Usage: pangyplot-gbwt-sidecar <graph.gbwt|graph.gbz> [addr]   (default 127.0.0.1:5701)
 //
 // NOTE: native `graph.gbwt` (PangyPlot's build: node id == segment id) is fully
-// supported. A chopped GBZ needs its node->segment translation (in the GBWTGraph)
-// which this sidecar does not yet apply -- that is a follow-up; see README.
+// supported. A chopped GBZ carries a node->segment translation in its GBWTGraph
+// (segment names + an sd_vector marking each segment's first node id); we parse
+// that translation and collapse chopped node runs back to segment ids in /walk,
+// so an adopted chopped GBZ serves the same segment-level walks as the binpaths.
 
 #include <gbwt/gbwt.h>
 #include <gbwt/support.h>
+
+#include <sdsl/sd_vector.hpp>
+#include <sdsl/simple_sds.hpp>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -49,10 +54,29 @@ namespace {
 gbwt::GBWT g_index;
 void*      g_map = nullptr;   // mmap of the whole file; must outlive g_index
 size_t     g_map_len = 0;
-bool       g_has_translation = false; // true only once chopped-GBZ support lands
+
+// Node->segment translation from a chopped GBZ's GBWTGraph. Empty for a native
+// graph.gbwt (node id == segment id, nothing to translate). `g_segments[rank]`
+// is the segment name; `g_node_to_segment` has a set bit at each segment's first
+// node id, so `predecessor(node_id)->first` is that segment's rank.
+bool               g_has_translation = false;
+gbwt::StringArray  g_segments;
+sdsl::sd_vector<>  g_node_to_segment;
 
 constexpr std::uint32_t GBWT_TAG = 0x6B376B37;
 constexpr std::uint32_t GBZ_TAG  = 0x205A4247; // "GBZ "
+
+// GBWTGraph header: {u32 tag, u32 version, u64 nodes, u64 flags} = 24 bytes,
+// serialized raw (simple-sds "value"). See jltsiren/gbwtgraph gbwtgraph.h.
+struct GBWTGraphHeader {
+  std::uint32_t tag;
+  std::uint32_t version;
+  std::uint64_t nodes;
+  std::uint64_t flags;
+};
+constexpr std::uint32_t GBWTGRAPH_TAG              = 0x6B3764AF;
+constexpr std::uint32_t GBWTGRAPH_ZSTD_VERSION     = 4;      // >= 4: zstd sequences
+constexpr std::uint64_t GBWTGRAPH_FLAG_TRANSLATION = 0x0001;
 
 // ---- tiny HTTP plumbing (4 GET endpoints; no external dependency) -----------
 
@@ -146,17 +170,58 @@ Response handle_walk(const std::string& query) {
   long long pid = 0;
   if (!query_int(query, "path", pid) || pid < 0) return {400, "text/plain", "missing or bad ?path="};
 
-  // Native compact GBWT: the node handle IS `combined` (node id == segment id,
-  // 2*id + orient). The forward sequence of path p is sequence id 2*p.
+  // The forward sequence of path p is sequence id 2*p.
   gbwt::vector_type walk = g_index.extract(gbwt::Path::encode(static_cast<gbwt::size_type>(pid), false));
+
   std::string body;
-  body.resize(walk.size() * sizeof(std::int64_t));
-  char* w = body.data();
-  for (gbwt::node_type h : walk) {
-    std::int64_t v = static_cast<std::int64_t>(h); // handle == combined
-    std::memcpy(w, &v, sizeof(v));                 // little-endian on x86/ARM
-    w += sizeof(v);
+  if (!g_has_translation) {
+    // Native compact GBWT: the node handle IS `combined` (node id == segment id,
+    // 2*id + orient) -- emit it directly.
+    body.resize(walk.size() * sizeof(std::int64_t));
+    char* w = body.data();
+    for (gbwt::node_type h : walk) {
+      std::int64_t v = static_cast<std::int64_t>(h);
+      std::memcpy(w, &v, sizeof(v));               // little-endian on x86/ARM
+      w += sizeof(v);
+    }
+    return {200, "application/octet-stream", std::move(body)};
   }
+
+  // Chopped GBZ: map each node id back to its segment. vg chops a long segment
+  // into a run of contiguous node ids, so a single segment visit shows up as
+  // adjacent nodes (forward: id+1 each; reverse: id-1 each) all in one segment.
+  // Collapse *only* such runs into one segment step -- NOT genuine repeats of a
+  // segment (a self-loop revisits the same node id, which is not adjacent), so
+  // tandem repeats are preserved exactly as in the binpaths. Emit
+  // (segment_id<<1)|orient -- PangyPlot's `combined` form.
+  std::vector<std::int64_t> out;
+  out.reserve(walk.size());
+  bool have_prev = false;
+  std::size_t prev_rank = 0;
+  gbwt::size_type prev_nid = 0;
+  int prev_orient = -1;
+  for (gbwt::node_type h : walk) {
+    gbwt::size_type nid = gbwt::Node::id(h);
+    int orient = gbwt::Node::is_reverse(h) ? 1 : 0;
+    auto iter = g_node_to_segment.predecessor(nid);
+    if (iter == g_node_to_segment.one_end()) {
+      // No translation entry (should not happen for a valid GBZ): fall back to
+      // the raw node id as the segment id, and don't collapse across the gap.
+      out.push_back((static_cast<std::int64_t>(nid) << 1) | orient);
+      have_prev = false;
+      continue;
+    }
+    std::size_t rank = iter->first;                // segment index in g_segments
+    bool continues_run = have_prev && rank == prev_rank && orient == prev_orient &&
+                         ((orient == 0 && nid == prev_nid + 1) ||
+                          (orient == 1 && nid + 1 == prev_nid));
+    prev_nid = nid; prev_orient = orient; prev_rank = rank; have_prev = true;
+    if (continues_run) continue;
+    std::int64_t seg_id = std::strtoll(g_segments.str(rank).c_str(), nullptr, 10);
+    out.push_back((seg_id << 1) | orient);
+  }
+  body.resize(out.size() * sizeof(std::int64_t));
+  std::memcpy(body.data(), out.data(), body.size());
   return {200, "application/octet-stream", std::move(body)};
 }
 
@@ -270,10 +335,51 @@ std::uint32_t peek_tag(const std::string& filename) {
   return tag;
 }
 
-// mmap the file and load the GBWT in place (bulk zero-copy, DA skipped).
-// `gbwt_offset` is where the GBWT starts (0 for a native .gbwt; past the GBZ
-// header + tags for a .gbz).
-bool load_mmapped(const std::string& filename, std::streamoff gbwt_offset) {
+// Skip the GBWTGraph `sequences` without materializing the node DNA -- the whole
+// point of the mmap design is not to pull gigabytes of sequence into RAM. The
+// layout depends on the graph version:
+//   v>=4 (zstd, compress_even): index sd_vector | u64 string_size | zstd byte vec
+//   v<4  (plain StringArray):   index sd_vector | int_vector<8> alphabet | int_vector strings
+// For zstd we load the tiny index + size and seek past the compressed blob; for
+// the plain form we load-and-discard the (compact) components to stay in sync.
+void skip_sequences(std::istream& in, std::uint32_t version) {
+  sdsl::sd_vector<> index; index.simple_sds_load(in);   // one bit per sequence; small
+  if (version >= GBWTGRAPH_ZSTD_VERSION) {
+    (void) sdsl::simple_sds::load_value<std::uint64_t>(in);          // uncompressed length
+    std::uint64_t n = sdsl::simple_sds::load_value<std::uint64_t>(in); // zstd byte count
+    std::uint64_t padded = (n + 7) & ~static_cast<std::uint64_t>(7);
+    in.seekg(static_cast<std::streamoff>(padded), std::ios::cur);
+  } else {
+    sdsl::int_vector<8> alphabet; alphabet.simple_sds_load(in);
+    sdsl::int_vector<>  strings;  strings.simple_sds_load(in);
+  }
+}
+
+// Parse the node->segment translation from the GBWTGraph that follows the GBWT
+// in a GBZ. `in` must be positioned at the GBWTGraph header (where GBWT::load
+// leaves it). Loads only the translation (segment names + the node->segment
+// sd_vector); the node sequences are skipped, not read.
+void load_translation(std::istream& in) {
+  GBWTGraphHeader gh = sdsl::simple_sds::load_value<GBWTGraphHeader>(in);
+  if (gh.tag != GBWTGRAPH_TAG) {
+    std::cerr << "[gbwt-sidecar] GBWTGraph tag 0x" << std::hex << gh.tag << std::dec
+              << " unrecognized; serving raw node ids\n";
+    return;
+  }
+  skip_sequences(in, gh.version);
+
+  // The translation is always present in simple-sds (possibly empty).
+  g_segments.simple_sds_load(in);
+  g_node_to_segment.simple_sds_load(in);
+  g_has_translation = (gh.flags & GBWTGRAPH_FLAG_TRANSLATION) && g_segments.size() > 0;
+}
+
+// mmap the file and load the GBWT in place (bulk zero-copy, DA skipped). For a
+// GBZ, also parse the following GBWTGraph's node->segment translation so /walk
+// returns segment ids. `gbwt_offset` is where the GBWT starts (0 for a native
+// .gbwt; past the GBZ header + tags for a .gbz).
+bool load_mmapped(const std::string& filename, std::streamoff gbwt_offset,
+                  bool read_translation) {
   int fd = ::open(filename.c_str(), O_RDONLY);
   if (fd < 0) { std::perror("open"); return false; }
   struct stat sb{};
@@ -288,6 +394,9 @@ bool load_mmapped(const std::string& filename, std::streamoff gbwt_offset) {
   in.seekg(gbwt_offset);
   const auto* base = static_cast<const gbwt::byte_type*>(g_map);
   g_index.load(in, base, /*with_da=*/false);
+  // GBWT::load reads the DA option + metadata from `in`, so it is now positioned
+  // exactly at the start of the embedded GBWTGraph -- parse the translation.
+  if (read_translation) { load_translation(in); }
   return true;
 }
 
@@ -320,14 +429,14 @@ int main(int argc, char** argv) {
   std::uint32_t tag = peek_tag(filename);
   try {
     if (tag == GBZ_TAG) {
-      // Serve the GBWT embedded in the GBZ (mmap'd). The node->segment
-      // translation (GBWTGraph) is not applied yet, so a *chopped* GBZ would
-      // return chopped node ids -- correct only for an unchopped GBZ. TODO.
-      std::cerr << "[gbwt-sidecar] GBZ detected; serving embedded GBWT "
-                   "(chopped-translation not yet applied)\n";
-      if (!load_mmapped(filename, gbz_gbwt_offset(filename))) return 1;
+      // Serve the GBWT embedded in the GBZ (mmap'd) and parse the following
+      // GBWTGraph's node->segment translation, so a chopped GBZ returns
+      // segment-level walks (see load_translation / handle_walk).
+      std::cerr << "[gbwt-sidecar] GBZ detected; serving embedded GBWT\n";
+      if (!load_mmapped(filename, gbz_gbwt_offset(filename), /*read_translation=*/true))
+        return 1;
     } else if (tag == GBWT_TAG) {
-      if (!load_mmapped(filename, 0)) return 1;
+      if (!load_mmapped(filename, 0, /*read_translation=*/false)) return 1;
     } else {
       std::cerr << "[gbwt-sidecar] unrecognized file tag 0x" << std::hex << tag << "\n";
       return 1;

@@ -6,8 +6,8 @@ it replaces. It caught a real bug (vg chops long segments on GFA->GBZ, so raw
 node ids != segment ids; the sidecar must use the node->segment translation).
 
 Integration test: builds PangyPlot binpaths from the DRB1 fixture GFA, starts the
-Rust sidecar on the matching DRB1 GBZ fixture, and compares the full set of walks.
-Skipped if the sidecar binary hasn't been built (e.g. CI without a Rust toolchain).
+C++ sidecar on the matching (chopped) DRB1 GBZ fixture, and compares the full set
+of walks. Skipped if the sidecar binary hasn't been built.
 """
 import json
 import os
@@ -92,11 +92,6 @@ def _pangyplot_walks(pi):
     return walks
 
 
-@pytest.mark.xfail(
-    reason="the C++ sidecar does not apply a chopped GBZ's node->segment "
-           "translation yet (follow-up); PangyPlot's native compact graph.gbwt is "
-           "unaffected and fully covered by test_gbwt_native_build",
-    strict=False)
 class TestGbzBinpathParity:
     def test_walks_are_identical(self, sidecar, pangyplot_paths):
         gbz_walks, meta = _gbz_walks(sidecar)

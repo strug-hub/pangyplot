@@ -9,7 +9,7 @@ Replaces the Rust `gbwt/build` — this is the ingest half of the full-C++ pivot
 the Rust `gbwt/build` is retired, then it moves into place.
 
 ```sh
-./build.sh                       # links the gbwt fork + sdsl (see context/gbwt-mmap-cpp-investigation.md)
+./build.sh                       # links the gbwt fork + sdsl (see gbwt/sidecar/IMPLEMENTATION.md)
 gbwt-build <input.pathdata> <output.gbwt>
 ```
 

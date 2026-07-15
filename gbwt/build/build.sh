@@ -3,7 +3,7 @@
 #
 # Links against the C++ gbwt library (the gbwt-mmap fork) + the vgteam sdsl-lite
 # install -- the same toolchain the C++ sidecar uses. Both are built separately
-# (see context/gbwt-mmap-cpp-investigation.md). Override their locations with
+# (see gbwt/sidecar/IMPLEMENTATION.md). Override their locations with
 # GBWT_FORK / SDSL_PREFIX if they aren't in the default sibling layout.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"

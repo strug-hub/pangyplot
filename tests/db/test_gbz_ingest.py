@@ -44,10 +44,6 @@ def _walks_from_index(index):
     return walks
 
 
-@pytest.mark.xfail(
-    reason="the C++ sidecar does not apply a chopped GBZ's node->segment "
-           "translation yet (follow-up); native graph.gbwt is unaffected",
-    strict=False)
 @pytest.mark.skipif(shutil.which("vg") is None, reason="vg not installed")
 @pytest.mark.skipif(not os.path.exists(SIDECAR), reason="gbwt-sidecar not built")
 def test_adopted_gbz_serves_binpath_identical_walks(fixtures_dir):
