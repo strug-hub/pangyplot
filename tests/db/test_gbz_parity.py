@@ -26,7 +26,8 @@ from pangyplot.db.indexes.PathIndex import PathIndex
 
 REFERENCE = "gi|568815592"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SIDECAR = os.path.join(REPO, "gbwt", "target", "release", "gbwt-sidecar")
+SIDECAR = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
+    REPO, "gbwt", "target", "release", "gbwt-sidecar")
 
 
 def _free_port():
