@@ -26,7 +26,7 @@ from pangyplot.db.path_codec import read_path_index, read_binpath_combined
 
 GBWT_NAME = "graph.gbwt"
 PATHDATA_NAME = "paths.gbwtbuild"
-DEFAULT_BUILDER = os.path.join("gbwt", "target", "release", "gbwt-build")
+DEFAULT_BUILDER = os.path.join("gbwt", "build", "gbwt-build")
 
 
 def gbwt_path(chr_dir):
@@ -87,7 +87,7 @@ def _resolve_builder(builder_bin, repo_root):
     if shutil.which(builder_bin) is None and not os.path.exists(builder_bin):
         raise RuntimeError(
             f"gbwt-build binary not found at {builder_bin} "
-            f"(cargo build --release --manifest-path gbwt/Cargo.toml)")
+            f"(build it: ./gbwt/build/build.sh)")
     return builder_bin
 
 

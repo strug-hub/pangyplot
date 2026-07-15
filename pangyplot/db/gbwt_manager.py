@@ -8,7 +8,7 @@ Configuration (env vars, read at startup — matches the rest of app.py):
 
     PANGYPLOT_GBWT       "1"/"true" to enable the GBWT path engine (default off)
     PANGYPLOT_GBWT_BIN   path to the gbwt-sidecar binary
-                         (default: gbwt/target/release/gbwt-sidecar)
+                         (default: gbwt/sidecar/pangyplot-gbwt-sidecar)
     PANGYPLOT_GBWT_GBZ   per-chr GBZ filename inside each chr dir (default graph.gbz)
     PANGYPLOT_GBWT_URLS  optional JSON {chrom: base_url} — point at externally
                          managed sidecars instead of spawning. Production sets
@@ -20,7 +20,7 @@ on its own localhost port (the wire contract is one-GBZ-per-service). Spawned
 processes are terminated on shutdown (atexit + explicit shutdown()).
 
 LAUNCH CONTRACT (any sidecar binary must honor this so the manager spawns it
-unchanged — the Rust `gbwt/sidecar` today, the memory-mapped C++ sidecar next):
+unchanged — the memory-mapped C++ `gbwt/sidecar`, or a wire-compatible swap):
 
     <binary>  <index-file: graph.gbwt|graph.gbz>  <addr: 127.0.0.1:PORT>
 
@@ -40,7 +40,7 @@ import time
 
 from pangyplot.db.gbwt_client import GbwtClient
 
-DEFAULT_BIN = os.path.join("gbwt", "target", "release", "gbwt-sidecar")
+DEFAULT_BIN = os.path.join("gbwt", "sidecar", "pangyplot-gbwt-sidecar")
 GBWT_NATIVE_NAME = "graph.gbwt"
 DEFAULT_GBZ_NAME = "graph.gbz"
 _TRUE = {"1", "true", "yes", "on"}

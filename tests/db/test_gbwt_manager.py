@@ -13,7 +13,7 @@ from pangyplot.db.gbwt_manager import GbwtManager
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SIDECAR = os.environ.get("PANGYPLOT_GBWT_SIDECAR_BIN") or os.path.join(
-    REPO, "gbwt", "target", "release", "gbwt-sidecar")
+    REPO, "gbwt", "sidecar", "pangyplot-gbwt-sidecar")
 
 
 @pytest.fixture
