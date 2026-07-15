@@ -73,6 +73,21 @@
 > memory-lean default and must stay. `get_paths()` (core-viewer `/path`/`/export`)
 > remains served by the binpath engine; no need to port it under GBWT mode.
 >
+> **RESOLVED — presence needs COUNTS, not set-membership (`find().size()`, no DA).**
+> Code audit (2026-07-15): the only presence semantics PangyPlot has ever used is a
+> **count** — link `frequency` (fraction of paths per edge, `parse_gfa.py:94`),
+> stored, serialized (`Link.serialize`), and plumbed end-to-end to the frontend
+> (bubble-unpop/polychain adapters, pop-handler). It is currently a *passthrough*
+> (nothing reads `.frequency` downstream yet), but it is the field positioned for an
+> edge/bubble prevalence display — and it maps to GBWT `find().size()`, which needs
+> **no document-array (`DA`) / no `locate`**. The which-samples (set-membership)
+> path was explicitly DEAD and removed in Stage 1 (`haplotype`/`reverse` masks, read
+> nowhere). "Which samples are in view" (locate/DA) is speculative — not required by
+> any current or plumbed feature. The sidecar's `/count` already covers the real
+> need and is likewise unwired (no route/frontend consumer yet). The C++ mmap agent
+> is mapping the DA anyway as reclaimable insurance for a possible future `locate`,
+> at no correctness cost — but the DA is not needed for anything today.
+>
 > **Stage 3 file layout (2026-07-15):** the two native crates moved out of
 > `tools/` into a top-level `gbwt/` **Cargo workspace** (`gbwt/sidecar/`,
 > `gbwt/build/`) — one lockfile + `target/`, `gbz`/`simple-sds` compile once,
