@@ -110,6 +110,48 @@ class TestGbzBinpathParity:
         _, meta = _gbz_walks(sidecar)
         assert meta["has_translation"] is True
 
+    def test_region_slice_parity_through_query(self, sidecar, drb1_gfa_index,
+                                               drb1_step_index, drb1_bubble_index):
+        # The Flask seam: query.get_path_region_raw must yield identical region
+        # slices whether paths come from binpaths or the GBWT sidecar. Topology
+        # (steps/bubbles) is the compact GFA; only the path source is swapped.
+        from pangyplot.db import query
+        from pangyplot.db.path_codec import decode_combined
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+
+        CHROM, GENOME = "drb1", REFERENCE
+
+        def make_indexes(gfa):
+            idx = type("Idx", (), {})()
+            idx.gfa_index = {CHROM: gfa}
+            idx.step_index = {(CHROM, GENOME): drb1_step_index}
+            idx.bubble_index = {CHROM: drb1_bubble_index}
+            return idx
+
+        start = int(min(drb1_step_index.starts))
+        end = (start + int(max(drb1_step_index.ends))) // 2
+
+        def region_slices(path_index):
+            idx = make_indexes(drb1_gfa_index)
+            out = set()
+            for s in path_index.get_samples():
+                for i, _ in enumerate(path_index.get_path_meta(s)):
+                    raw = query.get_path_region_raw(idx, GENOME, CHROM, s, i, start, end)
+                    out.add(tuple(decode_combined(raw).tolist()))
+            return out
+
+        binpath_slices = region_slices(drb1_gfa_index.path_index)
+
+        orig = drb1_gfa_index.path_index
+        drb1_gfa_index.path_index = GbwtPathIndex(GbwtClient(sidecar))
+        try:
+            gbwt_slices = region_slices(drb1_gfa_index.path_index)
+        finally:
+            drb1_gfa_index.path_index = orig
+
+        assert binpath_slices == gbwt_slices
+
     def test_python_path_source_matches_binpaths(self, sidecar, pangyplot_paths):
         # Route through the real Python stack: GbwtClient -> GbwtPathIndex ->
         # get_path_combined, exactly as serving will. Walk set must still match.

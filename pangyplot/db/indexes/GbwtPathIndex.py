@@ -12,6 +12,8 @@ subpaths are grouped and labelled.
 """
 from collections import defaultdict
 
+from pangyplot.db.path_codec import encode_combined
+
 
 class GbwtPathIndex:
     def __init__(self, client):
@@ -56,6 +58,26 @@ class GbwtPathIndex:
         if file_index < 0 or file_index >= len(entries):
             return None
         return self.client.walk(entries[file_index]["id"])
+
+    def get_path_raw(self, sample, file_index):
+        """Whole-subpath gzipped varint bytes (for /path-data without a region).
+
+        Re-encodes the sidecar walk with the same codec the frontend decodes, so
+        the wire format is identical to the binpath one it replaces.
+        """
+        combined = self.get_path_combined(sample, file_index)
+        if combined is None:
+            return None
+        return encode_combined(combined)
+
+    def get_path_meta_with_bp(self, sample):
+        """Metadata for /path-meta. bp_start/bp_end are placeholders until the
+        metadata-parity step computes them from the walk + StepIndex."""
+        meta = self.get_path_meta(sample)
+        for e in meta:
+            e.setdefault("bp_start", None)
+            e.setdefault("bp_end", None)
+        return meta
 
     def __len__(self):
         return len(self._by_sample)
