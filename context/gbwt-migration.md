@@ -265,6 +265,43 @@ small — fix `/path` (Stage 2) + `_find_ends` ordering, remove dead `get_betwee
 - **Risk:** high — puts C++ query cost on a hot-ish path; the §7 shape decision
   lands here.
 
+#### Stage 3 spike — runbook (do BEFORE any integration; memory-heavy, run when free)
+
+Purpose: produce the numbers that decide (i) whether GBWT is worth adopting at
+all, (ii) sidecar vs in-process (§7b), (iii) whether set-membership needs C++
+`locate` or the count+lazy-resolve workaround (§7a option 3).
+
+Inputs: one real chromosome's `.gbz` (HPRC v2 GBZ on the NAS, or `vg` a v1 GFA →
+GBZ), the matching PangyPlot datastore, and `gbwt-rs` in a throwaway Rust bin.
+
+Run in this order (cheapest + most decisive first); each has a go/no-go:
+
+1. **Storage** — `du` the current per-region path artifacts (`paths/*.binpath` +
+   `paths/index.json`) vs the `.gbz`. Decision: if GBWT isn't materially smaller
+   on the multi-haplotype set, the storage argument is dead (we already knew this
+   was the weak case — confirm, don't assume). *Cheap, no code.*
+2. **Extract latency (Query B)** — time `GBZ::path`/`GBWT::sequence` extracting a
+   sample's walk over a node range, vs the current Stage-2 server-side binpath
+   slice. Decision: only worth replacing Stage 2 if GBWT extract is clearly
+   faster at scale; otherwise keep Stage 2's pure-Python slice and use GBWT only
+   for Query A.
+3. **Presence over a window (Query A)** — the load-bearing one. For a realistic
+   visible node set, time: (a) `find().len()` **counts** per edge (what `gbwt-rs`
+   supports), and (b) the aggregation over a window's full segment set.
+   **Use two windows** — a sparse one (~100s of segments, typical) and a **dense
+   one** (chrY 20–20.5 Mb was ~21k segments in 0.5 Mb during Stage 2 verify):
+   the dense case is the real worst case for per-window aggregation. Decision:
+   if counts are fast enough on the dense window, Query A can be count-only
+   (Rust, no C++); if exact set-membership is needed and too slow to reconstruct,
+   that's the one signal for C++ `locate` (needs a GBZ built WITH DA samples —
+   check the source GBZ carries them).
+4. **Wire-shape sanity** — from 2+3, estimate per-request latency inline vs one
+   IPC hop. Decision: feeds sidecar (isolation) vs in-process PyO3 (latency)
+   in §7b. Query A stays debounced/view-triggered, so a hop is likely fine.
+
+Deliverable: a short numbers table appended here, then the §7 decisions get made
+from data instead of priors.
+
 ### Stage 4 — Retire the old serving paths
 - Remove whole-path `/path-data` download path once Query B is region-scoped;
   remove any interim Stage-2 presence structure once GBWT owns Query A.
