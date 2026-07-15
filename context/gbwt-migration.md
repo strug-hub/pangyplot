@@ -12,6 +12,12 @@
 > new code reads old-schema datastores (re-ingest for a clean schema). Net
 > −165 / +9 lines across 9 files.
 >
+> **Stage 3 spike ran (2026-07-15):** on a v2 chrY GBZ (1614 haplotypes),
+> presence-counts are ~57 ns/node, depth-independent (30 µs–1.1 ms/viewport),
+> 107 MB RSS. Decisions: adopt GBWT for **Query A** counts as a **Rust sidecar**;
+> keep **Query B** on Stage 2's pure-Python slice; no C++ `locate` needed. See
+> the Stage 3 RESULTS block.
+>
 > **Stage 2 landed (2026-07-15):** region-scoped trace via `/path-data` +
 > `start`/`end` (Option A). `query.region_segment_ids` (step-range + full bubble
 > closure, ID-order-independent) + `get_path_region_raw` slice/re-encode;
@@ -305,11 +311,46 @@ Run in this order (cheapest + most decisive first); each has a go/no-go:
    IPC hop. Decision: feeds sidecar (isolation) vs in-process PyO3 (latency)
    in §7b. Query A stays debounced/view-triggered, so a hop is likely fine.
 
-Harness: `tools/gbwt-spike/` (Rust, `gbwt-rs`) implements steps (2) and (3) —
-written, not yet built/run. `cargo run --release -- <chrN.gbz> [lo hi]`.
+Harness: `tools/gbwt-spike/` (Rust, `gbz` v0.6.1). Built + run 2026-07-15.
 
-Deliverable: a short numbers table appended here, then the §7 decisions get made
-from data instead of priors.
+#### Spike RESULTS (2026-07-15)
+
+Ran on two MC v2 graphs. v2 chrY GBZ built from the clip GFA
+(`vg gbwt -G chrY.sorted.gfa --gbz-format`): 511M GFA → **41M GBZ** (12×), 26 s,
+1.6 G RAM.
+
+| graph | nodes | paths | load | RSS | extract 8 paths | presence /node |
+|---|---|---|---|---|---|---|
+| MC v2 `full.gbz` | 1.41M | 38 | 498 ms | 281 MB | 182 ms / 2.8M steps (64 ns) | 50 ns |
+| **v2 chrY** | 1.05M | **1614** | 163 ms | **107 MB** | 36 ms / 544k steps (66 ns) | 57 ns |
+
+Realistic Query-A viewport presence-counts (v2 chrY, 1614 haplotypes):
+- sparse (~500 nodes): **30 µs**
+- dense (~21k nodes, the chrY-20M worst case): **1.1 ms**
+
+**What the data settles:**
+1. **Query A (presence counts) — adopt; effectively free.** ~57 ns/node and
+   **depth-independent** (held from 38 → 1614 paths, because a count reads one
+   node-record number). Worst-case dense viewport 1.1 ms, normal 30 µs. Needs no
+   C++; fast enough to be inline, though keep it debounced/view-triggered (§8).
+2. **Query B (extract) — keep Stage 2's pure-Python slice.** GBWT extract is
+   ~66 ns/step → a viewport region is µs–~1.3 ms, comparable to the Stage-2
+   binpath slice. No latency reason to replace it; use GBWT for Query A only.
+   Shrinks the native serving surface.
+3. **Memory — trivial.** 107 MB RSS for a 41 M v2-chrY GBZ.
+4. **§7b wire-shape → SIDECAR.** Query A is µs–1 ms and debounced, so an IPC
+   hop (~0.1 ms) is negligible; in-process PyO3 buys nothing meaningful here, so
+   isolation wins. Decided.
+5. **§7a set-membership → count-only path is viable; no C++ `locate` needed.**
+   Counts cover "how many samples here / link weight"; the exact set resolves
+   lazily on sample-select via a Query-B extract. gbwt-rs's missing `locate`
+   does not block the planned UX.
+6. **Storage — GBZ is compact** (41 M for v2-chrY topology + 1614 haplotypes).
+   A full binpath-vs-GBWT comparison still needs a v2 `pangyplot add`, but the
+   presence-mask win was already banked in Stage 1, so storage isn't deciding.
+
+Net: **adopt GBWT for Query A as a Rust sidecar; leave Query B on Stage 2.**
+Remaining open item: a v2-scale `pangyplot add` to complete the storage number.
 
 ### Stage 4 — Retire the old serving paths
 - Remove whole-path `/path-data` download path once Query B is region-scoped;
@@ -395,14 +436,13 @@ The catch: **preprocessing-CLI-only cannot do query-time presence
 reconstruction** (Query A live), so it can't fully deliver the Stage 3 thesis —
 it re-bakes derived data instead. Sidecar and in-process both can.
 
-### Leaning
-**Rust for the Stage 3 query surface** (PyO3 in-process *or* Rust sidecar —
-decide from the Stage 3 spike's real latency numbers; Rust narrows the gap by
-removing pybind11's build + crash pains). This is a clean-slate choice for the
-serving-adjacent code; `gbz2layout` stays C++ *independently* (upstream/offline,
-odgi-derived) and does not bear on it. Query A stays a debounced,
-view-change-triggered call — never inline in `/select` — so IPC latency is a
-non-factor and isolation wins.
+### Leaning — DECIDED by the spike (2026-07-15)
+**Rust sidecar for Query A presence-counts; Query B stays on Stage 2's
+pure-Python slice.** The spike (see Stage 3 RESULTS) showed presence counts are
+~57 ns/node and depth-independent (30 µs–1.1 ms per viewport, debounced), so the
+IPC hop is negligible and process isolation wins over in-process PyO3.
+`gbz2layout` stays C++ *independently* (upstream/offline, odgi-derived). Exact
+set-membership isn't needed (count + lazy resolve), so no C++ `locate`.
 
 ## 8. Open questions
 
