@@ -163,8 +163,16 @@ def _find_bypass(superbubble, bubbleidx, gfaidx, seg_index):
     if not all_visited:
         return None
 
-    # Build representative polyline from first path (or all visited if no path)
-    path_for_polyline = first_path or sorted(all_visited)
+    # Prefer a real source->sink walk; else order by layout position, not
+    # segment id (id order only tracks left-to-right when ids follow position).
+    if first_path is not None:
+        path_for_polyline = first_path
+    else:
+        def _centroid_x(sid):
+            pt = _seg_centroid(sid, seg_index)
+            return pt[0] if pt else 0.0
+        path_for_polyline = sorted(all_visited, key=_centroid_x)
+
     pts = []
     for sid in path_for_polyline:
         pt = _seg_centroid(sid, seg_index)

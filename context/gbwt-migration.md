@@ -236,13 +236,13 @@ code that treats segment ID as a position proxy. **Result: localized, not
 pervasive.** The core serving surface (`/select`, `/pop`, `/chains`,
 `/detail-tiles`) is already **step/layout-coordinate based** and safe.
 
-Real dependencies (only 1 on a live serving path):
-| site | kind | note |
+Real dependencies (all now resolved):
+| site | kind | resolution |
 |---|---|---|
-| `Path.subset_path` (Path.py:71) + `query.get_path` (`/path`) | **Serving** | Fixed by Stage 2 (segment-set basis). |
-| `flat_chains._find_ends` (:49) — chain orientation by max ID | Preprocess | Real; may be cosmetic if `chain_step` direction isn't load-bearing. Reorder ends by step/bp. |
-| `chain_polyline.py:167` — fallback polyline in ID order | Cosmetic | Only when BFS finds no path. Order by layout x / step. |
-| `segment_db.get_segment_range` (`id BETWEEN`) + `SegmentIndex.get_between` | **Dead** | No callers. Fix-or-remove before wiring to any region query. |
+| `Path.subset_path` (Path.py:71) + `query.get_path` (`/path`) | **Serving** | **Fixed** by Stage 2 (segment-set basis). |
+| `flat_chains._find_ends` (:49) — chain orientation by max ID | Preprocess | **Verified not a bug — left as-is.** Determinism + byte-parity device; chain direction isn't load-bearing (`Bubble.correct_source_sink` renormalizes at serving; ranges are position-derived; render uses layout). Reordering would renumber every datastore. |
+| `chain_polyline.py:167` — fallback polyline in ID order | Cosmetic | **Fixed** — orders naked-internal fallback by centroid x (serving-time geometry, no parity concern). |
+| `segment_db.get_segment_range` (`id BETWEEN`) + `SegmentIndex.get_between` | **Dead** | **Removed** in Stage 2. |
 
 Safe (checked): `BubbleIndex` range queries (step-order), `bubble_db` chain_step
 BETWEEN, `StepIndex` bp-bisects (safe unless fed into an id-range), all

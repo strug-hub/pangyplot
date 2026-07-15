@@ -293,3 +293,44 @@ class TestFindJunctionGraphDRB1:
             key = frozenset([tuple(link[0]), tuple(link[1])])
             assert key not in seen, f"Duplicate junction link: {link}"
             seen.add(key)
+
+
+class TestBypassFallbackOrdering:
+    """The naked-internal fallback polyline must order by layout, not seg id
+    (guards the GBZ-no-sort case where id order != genomic position)."""
+
+    def test_fallback_ordered_by_layout_not_id(self):
+        from pangyplot.db.chain_polyline import _find_bypass
+
+        # centroid-x order is (2, 3, 1); segment-id order is (1, 2, 3)
+        class SegIdx:
+            def __init__(self):
+                n = 10
+                self.x1 = array('f', [0.0] * n)
+                self.x2 = array('f', [0.0] * n)
+                self.y1 = array('f', [0.0] * n)
+                self.y2 = array('f', [0.0] * n)
+                self.valid = array('B', [0] * n)
+                for sid, cx in [(1, 30.0), (2, 10.0), (3, 20.0)]:
+                    self.x1[sid] = self.x2[sid] = cx
+                    self.valid[sid] = 1
+
+        sb = Bubble()
+        sb.id = 1
+        sb.source_segments = [1]
+        sb.sink_segments = [9]      # unreachable -> no source->sink path
+        sb.inside = {1, 2, 3}
+        sb.children = []
+
+        class FakeBubbleIdx:
+            def _get_many(self, ids):
+                return []
+
+        class FakeGfa:
+            def get_neighbors(self, sid):
+                return {1: [2], 2: [3], 3: []}.get(sid, [])
+
+        res = _find_bypass(sb, FakeBubbleIdx(), FakeGfa(), SegIdx())
+        xs = [p[0] for p in res["polyline"]]
+        assert xs == sorted(xs)          # ordered left-to-right by layout
+        assert xs != [30.0, 10.0, 20.0]  # NOT segment-id order

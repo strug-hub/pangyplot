@@ -40,6 +40,11 @@ def _find_ends(g, fb, bubbles):
     Sorted descending by segment id, matching BubbleChain.find_ends. The
     direction matters: it decides which end `sort()` walks from, and hence the
     source/sink orientation of every bubble in the chain.
+
+    Kept as-is for non-monotonic ids (GBZ without `odgi sort`): the sort is a
+    determinism + byte-parity device, still deterministic there, and chain
+    direction is not load-bearing (Bubble.correct_source_sink renormalizes at
+    serving time). Reordering by position would renumber every datastore.
     """
     counts = Counter()
     for b in bubbles:
