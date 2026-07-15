@@ -152,6 +152,40 @@ class TestGbzBinpathParity:
 
         assert binpath_slices == gbwt_slices
 
+    def test_bp_ranges_match_binpaths(self, sidecar, pangyplot_paths, drb1_step_index):
+        # compute_bp_ranges must yield the same (bp_start, bp_end) per subpath
+        # whether the walk comes from binpaths or the GBWT sidecar -- both read
+        # the identical walk and the identical StepIndex, so /path-meta labels and
+        # region windows agree across the two engines.
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+
+        pangyplot_paths.compute_bp_ranges(drb1_step_index)
+        gpi = GbwtPathIndex(GbwtClient(sidecar))
+        gpi.compute_bp_ranges(drb1_step_index)
+
+        # Compare the multiset of bp ranges (sample keying differs between the
+        # engines; the set of subpath windows must not).
+        def ranges_of(index):
+            out = []
+            for s in index.get_samples():
+                for e in index.get_path_meta_with_bp(s):
+                    out.append((e["bp_start"], e["bp_end"]))
+            return sorted(out, key=lambda r: (r[0] is None, r))
+
+        assert ranges_of(gpi) == ranges_of(pangyplot_paths)
+
+    def test_sample_idx_is_a_stable_bijection(self, sidecar):
+        # /pathorder needs a sample -> contiguous index map. Every sample present
+        # gets exactly one index, and the indices are 0..N-1 with no gaps.
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+
+        gpi = GbwtPathIndex(GbwtClient(sidecar))
+        idx = gpi.get_sample_idx()
+        assert set(idx.keys()) == set(gpi.get_samples())
+        assert sorted(idx.values()) == list(range(len(gpi.get_samples())))
+
     def test_python_path_source_matches_binpaths(self, sidecar, pangyplot_paths):
         # Route through the real Python stack: GbwtClient -> GbwtPathIndex ->
         # get_path_combined, exactly as serving will. Walk set must still match.

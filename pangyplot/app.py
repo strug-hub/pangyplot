@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from pangyplot.routes import bp as routes_bp
 
 from pangyplot.db.indexes.GFAIndex import GFAIndex
+from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+from pangyplot.db.gbwt_manager import GbwtManager
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
 from pangyplot.db.indexes.AnnotationIndex import AnnotationIndex
@@ -79,6 +81,12 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
     app.genome = ref
     app.chromosomes = []
 
+    # GBWT path engine (opt-in via PANGYPLOT_GBWT). Off by default -> legacy
+    # binpath PathIndex. When on, each chr's path_index is swapped for a
+    # GbwtPathIndex backed by a per-chr sidecar (see GbwtManager).
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    app.gbwt_manager = GbwtManager(repo_root=repo_root)
+
     if annotation_name:
         annotation_path = os.path.join(data_dir, "annotations", ref, annotation_name)
         app.annotation_index[ref] = AnnotationIndex(annotation_name, annotation_path)
@@ -98,6 +106,10 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
         app.gfa_index[chr] = GFAIndex(chr_dir)
         print(f"gfa_index size:      {asizeof(app.gfa_index[chr]) / 1024**2:.2f} MB")
+
+        gbwt_client = app.gbwt_manager.client_for_chrom(chr, chr_dir)
+        if gbwt_client is not None:
+            app.gfa_index[chr].path_index = GbwtPathIndex(gbwt_client)
 
         app.step_index[(chr,ref)] = StepIndex(chr_dir, ref)
         print(f"step_index size:      {asizeof(app.step_index[(chr,ref)]) / 1024**2:.2f} MB")

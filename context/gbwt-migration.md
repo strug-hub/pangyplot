@@ -7,7 +7,20 @@
 >
 > **Status (2026-07-15):** Stages 1–2 landed + monotonicity hardening + Stage 3
 > spike run and decided (Rust sidecar; extract+counts+metadata all proven on a
-> v2 GBZ). Branch `gbwt-migration`.
+> v2 GBZ) + Stage 3 serving plumbing wired (below). Branch `gbwt-migration`.
+>
+> **Stage 3 plumbing landed (2026-07-15):** the GBWT path engine is now a live,
+> opt-in serving backend. `GbwtPathIndex` completes the simplify-viewer seam —
+> `get_samples`/`get_sample_idx` (`/pathorder`), `get_path_meta_with_bp` with
+> real contig/start/length + `compute_bp_ranges` from walk+StepIndex (`/path-meta`),
+> `get_path_raw`/`get_path_combined` whole + region-sliced (`/path-data`).
+> `GbwtManager` owns per-chr sidecar lifecycle (spawn on the chr GBZ / connect to
+> an external URL / gracefully fall back to binpaths), toggled by `PANGYPLOT_GBWT`.
+> `app.py` swaps `path_index` per chr when a sidecar comes up. Parity tests extended:
+> bp-range parity vs binpaths + sample-idx bijection + manager spawn/health/teardown.
+> 737 pytest green. **Deferred:** `get_paths()` (core-viewer `/path` + `/export`,
+> iterable Path objects) raises under GBWT mode — outside the simplify-viewer seam;
+> ingest (build/adopt the per-chr GBZ) and Stage 4 binpath retirement still ahead.
 >
 > **Stage 1 landed (2026-07-15):** per-link `haplotype`/`reverse` masks dropped
 > from schema, inserts, `Link`, serialization, and 4 frontend passthroughs;

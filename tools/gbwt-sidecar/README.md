@@ -8,6 +8,23 @@ Flask proxies these and does region filtering + varint encoding in Python.
 gbwt-sidecar <graph.gbz> [addr]     # addr default 127.0.0.1:5701
 ```
 
+## Turning it on in PangyPlot (opt-in)
+
+The GBWT path engine is off by default (legacy binpath `PathIndex`). Enable it
+per environment; `GbwtManager` (`pangyplot/db/gbwt_manager.py`) reads:
+
+| env var | meaning |
+|---|---|
+| `PANGYPLOT_GBWT` | `1`/`true` to enable the GBWT path engine |
+| `PANGYPLOT_GBWT_BIN` | sidecar binary path (default `tools/gbwt-sidecar/target/release/gbwt-sidecar`) |
+| `PANGYPLOT_GBWT_GBZ` | per-chr GBZ filename inside each chr dir (default `graph.gbz`) |
+| `PANGYPLOT_GBWT_URLS` | JSON `{chrom: base_url}` for externally-managed sidecars (no spawn) |
+
+Dev spawns one sidecar per chromosome on a free localhost port and tears them
+down at exit. Production sets `PANGYPLOT_GBWT_URLS` and runs the sidecars itself.
+A missing GBZ / binary is a warning, not a crash — that chr keeps the legacy
+engine.
+
 ## Wire protocol — the language-agnostic contract
 
 **This protocol, not the Rust code, is the boundary.** The Python client depends
