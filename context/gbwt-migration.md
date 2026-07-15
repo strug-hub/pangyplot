@@ -1,9 +1,13 @@
 # GBWT path model — migration plan
 
-> **Status (2026-07-15):** scoping. Branch `gbwt-migration`. Scope decision:
-> **staged, both** — ship the near-term wins that need no C++, then graduate to
-> a GBWT-backed query-time model. The C++ serving-integration shape is an open
-> decision gated to Stage 3 (see §7).
+> **GOAL:** replace PangyPlot's bespoke path engine (binpaths + codec + PathIndex
+> serving) with GBWT. The GBZ becomes the single source of truth for haplotype
+> paths, served by a **Rust sidecar** (decided — see Stage 3 / §7). Staged so
+> each step ships independently.
+>
+> **Status (2026-07-15):** Stages 1–2 landed + monotonicity hardening + Stage 3
+> spike run and decided (Rust sidecar; extract+counts+metadata all proven on a
+> v2 GBZ). Branch `gbwt-migration`.
 >
 > **Stage 1 landed (2026-07-15):** per-link `haplotype`/`reverse` masks dropped
 > from schema, inserts, `Link`, serialization, and 4 frontend passthroughs;
@@ -256,20 +260,55 @@ BETWEEN, `StepIndex` bp-bisects (safe unless fed into an id-range), all
 array-sizing `range(max_id+1)` (sparse indexing). **Blast radius for no-sort GBZ:
 small — fix `/path` (Stage 2) + `_find_ends` ordering, remove dead `get_between`.**
 
-### Stage 3 — GBWT backs Query A + Query B (C++ enters) — GATED on §7 decision
-- **Goal:** stand up the GBWT query surface; wire Query A (presence via locate)
-  and Query B (region extract) to it.
-- **Prereq spike (do first):** on a real chromosome, measure (a) GBWT/GBZ size
-  vs current per-region artifacts, (b) `locate` latency over a realistic visible
-  node set, (c) aggregation cost for a zoomed-out bubble spanning thousands of
-  segments. **Gate the rest of Stage 3 on this spike.**
-- **Language:** clean-slate choice — `gbz2layout` is a *separate upstream/offline*
-  tool (see §7a), so it does not pull this toward C++. Lean Rust (`gbwt-rs`).
-- **Validate:** presence set from GBWT == presence set reconstructed from the
-  old mask (before it was dropped — keep a fixture); trace slice == Stage 2
-  server-side slice.
-- **Risk:** high — puts C++ query cost on a hot-ish path; the §7 shape decision
-  lands here.
+### Stage 3 — GBWT *becomes* the path engine (Rust sidecar) — DECIDED
+
+**Goal (the actual target):** replace the bespoke path engine wholesale. The GBZ
+becomes the single source of truth for haplotype paths; a **Rust sidecar** over
+`gbwt-rs` serves every path operation. Not "GBWT adds presence" — GBWT *is* the
+engine. The spike de-risked this (see RESULTS): extract + counts + metadata all
+work on a real 1614-haplotype v2 GBZ, sub-ms, 107 MB RSS.
+
+**Language: Rust, decided.** The existing engine's operations (per-sample
+extract, sample list/metadata, ordering) are *all* covered by gbwt-rs — proven
+by the spike, not theory. The one gbwt-rs gap (sample-set enumeration via
+`locate`) is something the current engine never did either; count+lazy covers the
+future Query-A refinement. Load-bearing serving makes Rust's crash-isolation
+worth more, and continuing the working spike beats a C++ restart. Flip trigger:
+a *hard* requirement for exact server-side "which samples in view" enumeration →
+C++ `locate` on a DA-sampled GBZ. Building the GBZ stays a `vg gbwt` subprocess
+(26 s/chr in the spike), so it doesn't pull serving toward C++.
+
+**Retire (the old path engine):**
+- `paths/*.binpath` generation in `pangyplot add`; `path_codec.py` encode side,
+  `path_db.py` binpath storage, binpath logic in `PathIndex`, `ensure_paths.py`.
+- Stage 2's `get_path_region_raw` binpath slice — but `region_segment_ids` is
+  **kept**: it now bounds the GBWT extract instead of a binpath.
+
+**Sidecar query surface (Rust over the GBZ):**
+- **Trace (Query B):** `GBZ::path(sample)` → filter to the viewport's node set
+  (`region_segment_ids`) → re-encode to the **same delta-zigzag-varint gzip** and
+  return bytes.
+- **Presence (Query A):** `search_state(node).len()` counts.
+- **Metadata:** sample list / subpath meta / ordering from GBWT `Metadata`;
+  recompute `bp_ranges` from the GBWT walk + `StepIndex`.
+
+**Frontend seam — unchanged by design.** Flask proxies the sidecar's varint bytes
+under the existing `/path-data` / `/path-meta` / `/pathorder` contracts, so
+`path-codec.js`, `path-trace-engine`, and the viewer are untouched — the bytes
+just come from GBWT. `StepIndex` stays (coordinate index for `/select`/bubbles,
+not part of the path engine; can later be derived from the GBWT reference path).
+
+**Ingest:** `pangyplot add` builds a per-chr GBZ via `vg gbwt -G <gfa>
+--gbz-format` (or takes a GBZ input, per the GBZ-native project) and stops
+emitting binpaths.
+
+**Real tradeoff:** the sidecar is now **load-bearing** (no trace if it's down) —
+hence sidecar (crash-isolated; Flask degrades to "trace unavailable") over
+in-process. Set-membership stays count/lazy.
+
+**Validate:** sidecar trace bytes == Stage 2 binpath slice for the same
+sample+window (byte-identical, since same varint codec); `/path-meta` parity;
+presence counts sanity-checked.
 
 #### Stage 3 spike — runbook (do BEFORE any integration; memory-heavy, run when free)
 
@@ -352,10 +391,14 @@ Realistic Query-A viewport presence-counts (v2 chrY, 1614 haplotypes):
 Net: **adopt GBWT for Query A as a Rust sidecar; leave Query B on Stage 2.**
 Remaining open item: a v2-scale `pangyplot add` to complete the storage number.
 
-### Stage 4 — Retire the old serving paths
-- Remove whole-path `/path-data` download path once Query B is region-scoped;
-  remove any interim Stage-2 presence structure once GBWT owns Query A.
-- **Validate:** full suites; no references to removed endpoints/columns.
+### Stage 4 — Delete the old path engine
+Once the sidecar serves trace+metadata at parity (Stage 3 validated), remove the
+now-dead binpath code: `path_codec.py` encode side, `path_db.py` binpath storage,
+binpath paths in `PathIndex`, `ensure_paths.py`, and binpath emission in
+`pangyplot add`. `region_segment_ids` and the frontend codec **stay** (the sidecar
+speaks the same varint). Re-ingest drops `paths/*.binpath` from datastores.
+- **Validate:** full suites; trace works end-to-end via the sidecar only; no
+  references to removed binpath modules.
 
 ## 6. Validation strategy (fixtures)
 
