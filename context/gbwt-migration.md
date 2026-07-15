@@ -280,6 +280,12 @@ Run in this order (cheapest + most decisive first); each has a go/no-go:
    `paths/index.json`) vs the `.gbz`. Decision: if GBWT isn't materially smaller
    on the multi-haplotype set, the storage argument is dead (we already knew this
    was the weak case — confirm, don't assume). *Cheap, no code.*
+   - **Baseline captured (2026-07-15, chrY v1, ~20 haplotypes):** `paths/` = 1.1M
+     (163 `.binpath` + 28K index) out of a 130M datastore. So at v1 scale the
+     path data GBWT would replace is ~1% of the store — the storage win is
+     **negligible here and only becomes real at v2 scale** (hundreds of
+     haplotypes), which is the whole reason for the GBZ project. Re-measure
+     step 1 on a v2 chromosome; v1 chrY is not representative.
 2. **Extract latency (Query B)** — time `GBZ::path`/`GBWT::sequence` extracting a
    sample's walk over a node range, vs the current Stage-2 server-side binpath
    slice. Decision: only worth replacing Stage 2 if GBWT extract is clearly
