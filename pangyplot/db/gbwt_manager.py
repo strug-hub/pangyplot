@@ -18,6 +18,18 @@ Configuration (env vars, read at startup — matches the rest of app.py):
 Each chromosome's GBZ is a separate in-memory index, so it gets its own sidecar
 on its own localhost port (the wire contract is one-GBZ-per-service). Spawned
 processes are terminated on shutdown (atexit + explicit shutdown()).
+
+LAUNCH CONTRACT (any sidecar binary must honor this so the manager spawns it
+unchanged — the Rust `gbwt/sidecar` today, the memory-mapped C++ sidecar next):
+
+    <binary>  <index-file: graph.gbwt|graph.gbz>  <addr: 127.0.0.1:PORT>
+
+positional args, and it must answer the HTTP wire contract in
+`gbwt/sidecar/README.md` (/health, /meta, /walk, /count). The DA/document-array
+is loaded OFF by default (count/walk never need it; only a future `locate`
+would). The C++ mmap sidecar is therefore a drop-in: build it separately and set
+PANGYPLOT_GBWT_BIN to its path — same "optional external binary, gracefully
+skipped if absent" model as the Rust sidecar, since GBWT mode is opt-in anyway.
 """
 import atexit
 import json
