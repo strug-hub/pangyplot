@@ -25,9 +25,10 @@ Quick Links
       <div class="icon-item">
           <i class="fa-solid fa-table"></i>
           <div class="icon-text">
-          <div class="icon-label"> <a href="https://doi.org/10.5281/zenodo.17173731">Prepared Data</a></div>
+          <div class="icon-label"> <a href="https://doi.org/10.5281/zenodo.17173731">Input Data</a></div>
           <div class="icon-description">
-            HPRC data hosted above.
+            GFA + odgi layout for the HPRC data hosted above, ready to feed to
+            <code>pangyplot add</code>.
           </div>
           </div>
       </div>

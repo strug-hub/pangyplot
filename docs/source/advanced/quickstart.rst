@@ -11,11 +11,56 @@ Prerequisites
 
 .. code-block:: bash
 
-   git clone https://github.com/ScottMastro/pangyplot.git
+   git clone https://github.com/strug-hub/pangyplot.git
    cd pangyplot
    pip install -r requirements.txt
 
 ``gunicorn`` is additionally recommended for production deployment but is not required for local development (Flask's built-in server is used in that case). See the commented line in ``requirements.txt``.
+
+
+Quick Start - Docker Container
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you would rather skip installing Python and ``odgi`` yourself, a prebuilt
+container image ships the entire toolchain and serves the bundled chrY demo out
+of the box:
+
+.. code-block:: bash
+
+   docker run --rm -p 5700:5700 ghcr.io/strug-hub/pangyplot:latest
+
+Then open http://127.0.0.1:5700/#chrY:23129355-23199010.
+
+The image bundles ``odgi``, so it covers the full data-preparation pipeline
+(see *Preparing Data* below) as well as running — no manual dependency setup,
+which is convenient in environments like Google Colab or a fresh VM. To
+serve your own prepared data, mount a datastore directory over
+``/app/datastore`` and point the ``PANGYPLOT_*`` variables at it:
+
+.. code-block:: bash
+
+   docker run --rm -p 5700:5700 \
+       -v "$PWD/my-datastore:/app/datastore" \
+       -e PANGYPLOT_DB=my.db -e PANGYPLOT_REF=GRCh38 \
+       ghcr.io/strug-hub/pangyplot:latest
+
+See :ref:`setup` for the full list of ``PANGYPLOT_*`` variables the container reads.
+
+.. dropdown:: GPU-accelerated layout
+
+   ``odgi layout`` can be run on an NVIDIA GPU for a large speedup on complex
+   graphs. A second image tag bundles a CUDA-enabled ``odgi_gpu`` build:
+
+   .. code-block:: bash
+
+      docker run --rm --device nvidia.com/gpu=all -p 5700:5700 \
+          ghcr.io/strug-hub/pangyplot:gpu
+
+   This requires an NVIDIA host with the `nvidia-container-toolkit
+   <https://github.com/NVIDIA/nvidia-container-toolkit>`_ installed. The GPU
+   image also runs CPU-only if launched without ``--device``. Version-pinned
+   tags are published alongside the moving ``latest``/``gpu`` tags, e.g.
+   ``ghcr.io/strug-hub/pangyplot:0.2.0`` and ``:0.2.0-gpu``.
 
 
 Quick Start - Running PangyPlot
@@ -45,7 +90,7 @@ Quick Start - Loading Prepared Data
 
 .. code-block:: bash
 
-   wget https://zenodo.org/records/17173731/files/chrY.zip
+   wget https://zenodo.org/records/17174109/files/chrY.zip
    unzip chrY.zip
 
    mkdir -p datastore/graphs/hprc.prepared
@@ -55,8 +100,13 @@ Quick Start - Loading Prepared Data
 
 .. dropdown:: What is it doing?
 
-   HPRC chromosome data has been preprocessed and available at: https://doi.org/10.5281/zenodo.17173731
+   HPRC chromosome data has been preprocessed and available at: https://doi.org/10.5281/zenodo.17174109
    Here we manually set up the directory structure to store the prepared data.
+
+   Note that this is the *processed database* record, ready to ``run``. The
+   companion record https://doi.org/10.5281/zenodo.17173731 holds the *inputs*
+   (GFA + odgi layout) for those chromosomes, which is what you would feed to
+   ``pangyplot add`` if you wanted to preprocess them yourself.
 
    Zipping up the directory structure is a convenient way to share prepared PangyPlot data.
 
@@ -70,6 +120,12 @@ Quick Start - Preparing Data
    script from a few prompts. The manual walkthrough below is kept for
    reference and for cases where you want finer control over the
    individual ``odgi`` invocations.
+
+.. note::
+   For the HPRC chromosomes specifically, the ``vg``/``odgi`` steps below have
+   already been run for you: https://doi.org/10.5281/zenodo.17173731 hosts the
+   resulting GFA + layout pair per chromosome. Download one and skip straight to
+   ``pangyplot add``.
 
 .. code-block:: bash
 
