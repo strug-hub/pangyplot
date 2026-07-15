@@ -36,3 +36,12 @@ Trace-*.json
 
 # Playwright MCP
 .playwright-mcp/
+
+# Atlas — generated flow pages are per-machine build artifacts (absolute vscode://
+# paths + measurements from the local datastore). Regenerate: python tools/atlas/build.py
+tools/atlas/*.html
+tools/atlas/tests.*.json
+tools/atlas/.junit.*.xml
+tools/atlas/.vitest.json
+tools/atlas/__pycache__/
+tools/atlas/flows/__pycache__/
