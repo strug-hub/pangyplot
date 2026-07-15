@@ -302,6 +302,30 @@ not part of the path engine; can later be derived from the GBWT reference path).
 --gbz-format` (or takes a GBZ input, per the GBZ-native project) and stops
 emitting binpaths.
 
+**KEY FINDING — chopping + the parity test (2026-07-15).** vg **chops** long
+segments on GFA→GBZ import (DRB1: 3214 segs → 3218 nodes), so raw node id ≠
+segment id and PangyPlot's compact segments get split. The GBZ carries a
+node→segment **translation** for exactly this; `/walk` uses `segment_path` (whose
+`segment.name` is the GFA segment id) to collapse chopped nodes back to compact
+segments. The earlier "node = segment, drop the translation" assumption was
+WRONG and produced mismatched walks. Cross-validated by
+`tests/db/test_gbz_parity.py`: PangyPlot binpaths and the GBZ (via the sidecar)
+built from the same DRB1 GFA yield **byte-identical** walk sets — the load-bearing
+correctness guarantee for the whole migration. Works for user-supplied GBZs too
+(they may be chopped; the translation handles it). No need to disable chopping.
+
+**Sidecar built forward-compatible (from the start, costs nothing now):**
+- **The wire protocol is the boundary, not the language.** Documented as a
+  neutral contract (`tools/gbwt-sidecar/README.md`): plain HTTP, JSON metadata,
+  explicit LE-binary bulk. The C++ stack (`jltsiren/gbwt` + `gbwtgraph`) has the
+  same ops, so a C++ swap is a drop-in behind the Python client — nothing above
+  changes. This is what keeps the Rust-vs-C++ decision reversible.
+- **Threaded** (read-only `Arc`-shared GBZ, N workers, no locks) and **binary
+  bulk payloads** (`/walk` is packed LE-i64) — so we don't paint ourselves into a
+  serial/JSON corner before the `/select` hot path arrives in Stage 5.
+- **Transport swappable** (Unix socket / shm) behind the client if HTTP framing
+  ever profiles hot.
+
 **Real tradeoff:** the sidecar is now **load-bearing** (no trace if it's down) —
 hence sidecar (crash-isolated; Flask degrades to "trace unavailable") over
 in-process. Set-membership stays count/lazy.

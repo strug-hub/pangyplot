@@ -1,9 +1,10 @@
 // GBWT path-service sidecar for PangyPlot (Stage 3).
 //
 // Loads a per-chromosome GBZ once and answers path queries over localhost HTTP.
-// Node ids are used directly as PangyPlot segment ids (the ingest guarantees
-// node id == segment id; no chopping/translation). Flask does region filtering
-// and varint encoding in Python, so this service stays minimal.
+// Walks are returned in PangyPlot *segment* ids: when the GBZ was chopped on
+// import (has a node->segment translation) the segment name is the id; otherwise
+// node id == segment id. Flask does region filtering and varint encoding in
+// Python, so this service stays minimal.
 //
 // Endpoints:
 //   GET /health                 -> "ok"
@@ -46,21 +47,48 @@ fn main() -> Result<(), String> {
     );
     let gbz = Arc::new(gbz);
 
-    let server = Server::http(&addr).map_err(|e| e.to_string())?;
-    eprintln!("[gbwt-sidecar] listening on http://{}", addr);
+    // Serve concurrently: the GBZ is read-only and Arc-shared, so worker threads
+    // need no locking. Matters for the /select hot path (Stage 5); harmless for
+    // paths. tiny_http's Server is shareable and hands each request to one worker.
+    let server = Arc::new(Server::http(&addr).map_err(|e| e.to_string())?);
+    let workers = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4)
+        .clamp(2, 8);
+    eprintln!(
+        "[gbwt-sidecar] listening on http://{} ({} workers)",
+        addr, workers
+    );
 
-    for req in server.incoming_requests() {
-        let (path, query) = split_url(req.url());
-        let resp = match path.as_str() {
-            "/health" => text("ok"),
-            "/meta" => handle_meta(&gbz),
-            "/walk" => handle_walk(&gbz, &query),
-            "/count" => handle_count(&gbz, &query),
-            _ => text("not found").with_status_code(404),
-        };
-        let _ = req.respond(resp);
+    let mut handles = Vec::new();
+    for _ in 0..workers {
+        let server = Arc::clone(&server);
+        let gbz = Arc::clone(&gbz);
+        handles.push(std::thread::spawn(move || {
+            for req in server.incoming_requests() {
+                let (path, query) = split_url(req.url());
+                let resp = route(&gbz, &path, &query);
+                let _ = req.respond(resp);
+            }
+        }));
+    }
+    for h in handles {
+        let _ = h.join();
     }
     Ok(())
+}
+
+/// Dispatch a request. The (path, query) -> Resp mapping IS the wire contract;
+/// see README "Wire protocol". Any implementation (Rust now, C++ later) that
+/// honours it is a drop-in for the Python client.
+fn route(gbz: &GBZ, path: &str, query: &[(String, String)]) -> Resp {
+    match path {
+        "/health" => text("ok"),
+        "/meta" => handle_meta(gbz),
+        "/walk" => handle_walk(gbz, query),
+        "/count" => handle_count(gbz, query),
+        _ => text("not found").with_status_code(404),
+    }
 }
 
 // --- routing helpers -------------------------------------------------------
@@ -130,6 +158,7 @@ fn handle_meta(gbz: &GBZ) -> Resp {
             "nodes": gbz.nodes(),
             "paths": gbz.paths(),
             "has_metadata": gbz.has_metadata(),
+            "has_translation": gbz.has_translation(),
             "samples": samples,
             "path_list": path_list,
         })
@@ -144,15 +173,33 @@ fn handle_walk(gbz: &GBZ, query: &[(String, String)]) -> Resp {
     };
 
     // combined = (segment_id << 1) | orientation_bit, emitted as LE i64.
+    //
+    // When the GBZ has a node->segment translation (vg chops long segments on
+    // import, so node id != segment id), walk in terms of GFA *segments* so the
+    // steps match PangyPlot's compact segments. segment.name is the GFA segment
+    // name = PangyPlot segment id. Without a translation, node id == segment id.
     let mut buf: Vec<u8> = Vec::new();
-    if let Some(iter) = gbz.path(pid, Orientation::Forward) {
+
+    if gbz.has_translation() {
+        if let Some(iter) = gbz.segment_path(pid, Orientation::Forward) {
+            for (segment, orient) in iter {
+                match std::str::from_utf8(segment.name).ok().and_then(|s| s.parse::<i64>().ok()) {
+                    Some(seg_id) => push_combined(&mut buf, seg_id, orient == Orientation::Reverse),
+                    None => return bad_request("non-integer segment name; PangyPlot needs integer ids"),
+                }
+            }
+        }
+    } else if let Some(iter) = gbz.path(pid, Orientation::Forward) {
         for (node_id, orient) in iter {
-            let bit = if orient == Orientation::Reverse { 1 } else { 0 };
-            let combined = ((node_id as i64) << 1) | bit;
-            buf.extend_from_slice(&combined.to_le_bytes());
+            push_combined(&mut buf, node_id as i64, orient == Orientation::Reverse);
         }
     }
     binary(buf)
+}
+
+fn push_combined(buf: &mut Vec<u8>, seg_id: i64, reverse: bool) {
+    let combined = (seg_id << 1) | if reverse { 1 } else { 0 };
+    buf.extend_from_slice(&combined.to_le_bytes());
 }
 
 fn handle_count(gbz: &GBZ, query: &[(String, String)]) -> Resp {
