@@ -33,36 +33,28 @@ def gbwt_path(chr_dir):
     return os.path.join(chr_dir, GBWT_NAME)
 
 
-def _split_sample_hap(full_id):
-    """PangyPlot sample name + haplotype from a path's full id (PanSN-ish).
-
-    `sample#hap#...` -> ("sample", hap:int); no `#` -> (full_id, 0). Mirrors how
-    PathIndex/create_path derive sample and hap from full_id.
-    """
-    parts = full_id.split("#")
-    sample = parts[0]
-    hap = 0
-    if len(parts) > 1 and parts[1].isdigit():
-        hap = int(parts[1])
-    return sample, hap
-
-
 def _iter_path_records(chr_dir):
     """Yield (sample, contig, haplotype, fragment, combined) for every subpath,
-    read from the parsed binpaths + index.json (the canonical parse output)."""
+    read from the parsed binpaths + index.json (the canonical parse output).
+
+    The GBWT `sample` field carries PangyPlot's sample name **verbatim** (the
+    index.json outer key, already correct for P- and W-lines) with haplotype 0.
+    PangyPlot's own name already encodes the haplotype (`sample#hap`) when there
+    is one, and its "no-haplotype vs haplotype-0" distinction can't survive
+    GBWT's integer phase — so we keep the whole name and let GbwtPathIndex key on
+    it directly. `fragment` carries the subpath's genomic start.
+    """
     paths_dir = os.path.join(chr_dir, path_db.DB_NAME)
     index = read_path_index(paths_dir)
     for sample_key, entries in index.get("paths", {}).items():
         for entry in entries:
-            full_id = entry.get("full_id") or sample_key
-            sample, hap = _split_sample_hap(full_id)
             contig = entry.get("contig") or ""
             try:
                 fragment = int(entry.get("start"))
             except (TypeError, ValueError):
                 fragment = 0
             combined = read_binpath_combined(os.path.join(paths_dir, entry["file"]))
-            yield sample, contig, hap, fragment, combined
+            yield sample_key, contig, 0, fragment, combined
 
 
 def emit_pathdata(chr_dir):

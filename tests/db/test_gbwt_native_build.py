@@ -92,6 +92,50 @@ def test_native_gbwt_serves_binpath_identical_walks(drb1_chr_dir):
         proc.wait(timeout=5)
 
 
+def test_native_metadata_matches_legacy(drb1_chr_dir):
+    # Metadata parity: the native GBWT-backed index must expose the same sample
+    # keys and per-subpath metadata (contig, start, length, bp ranges) as the
+    # legacy PathIndex for the same data.
+    from pangyplot.db.indexes.StepIndex import StepIndex
+
+    step_index = StepIndex(drb1_chr_dir, REFERENCE)
+
+    legacy = PathIndex(drb1_chr_dir)
+    legacy.compute_bp_ranges(step_index)
+
+    out = gbwt_build.build_gbwt(drb1_chr_dir, builder_bin=BUILDER)
+    port = _free_port()
+    proc = subprocess.Popen([SIDECAR, out, f"127.0.0.1:{port}"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        client = GbwtClient(f"http://127.0.0.1:{port}")
+        for _ in range(100):
+            if client.health():
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError("sidecar did not become ready")
+
+        gbwt = GbwtPathIndex(client)
+        gbwt.compute_bp_ranges(step_index)
+
+        # Same sample keys (order-independent).
+        assert set(gbwt.get_samples()) == set(legacy.get_samples())
+
+        # Same per-subpath metadata for every sample.
+        def norm(entry):
+            return (entry.get("contig"), entry.get("start"), entry.get("length"),
+                    entry.get("bp_start"), entry.get("bp_end"))
+
+        for sample in legacy.get_samples():
+            leg = [norm(e) for e in legacy.get_path_meta_with_bp(sample)]
+            gb = [norm(e) for e in gbwt.get_path_meta_with_bp(sample)]
+            assert gb == leg, f"metadata mismatch for {sample}: {gb} != {leg}"
+    finally:
+        proc.terminate()
+        proc.wait(timeout=5)
+
+
 def test_emit_pathdata_roundtrips_counts(drb1_chr_dir):
     # The intermediate should list exactly the parsed subpaths.
     pi = PathIndex(drb1_chr_dir)

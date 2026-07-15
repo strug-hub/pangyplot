@@ -6,8 +6,11 @@ shape and serves each subpath's `combined` array via /walk, so region filtering
 + varint encoding (Stage 2) are reused unchanged. Byte-identical to binpaths
 (tests/db/test_gbz_parity.py).
 
-Sample keying is PanSN-ish (`sample#phase`). It does not affect walk correctness
-(validated by set-parity), only how subpaths are grouped/labelled and ordered.
+Sample keys and per-subpath metadata match the legacy PathIndex exactly for
+native builds (test_gbwt_native_build.test_native_metadata_matches_legacy): the
+native GBWT carries PangyPlot's sample name verbatim in `sample` (phase 0), so
+_sample_key returns it unchanged, and contig/start/length come straight from the
+GBWT metadata (bp ranges recomputed from the walk + StepIndex).
 
 Serving surface covered (the simplify-viewer path seam):
     /samples     -> get_samples
@@ -50,10 +53,16 @@ class GbwtPathIndex:
 
     @staticmethod
     def _sample_key(p):
-        """PangyPlot sample name from a GBWT path entry."""
+        """PangyPlot sample name from a GBWT path entry.
+
+        Native builds carry the full PangyPlot sample name in `sample` with
+        phase 0, so the name is returned verbatim (exact parity with the legacy
+        PathIndex keys). Foreign/vg GBZs use real PanSN phases, so a non-zero
+        phase is appended (`sample#phase`) to keep haplotypes distinct.
+        """
         sample = p.get("sample", "")
-        phase = p.get("phase", 0)
-        return f"{sample}#{phase}" if phase is not None else sample
+        phase = p.get("phase", 0) or 0
+        return f"{sample}#{phase}" if phase else sample
 
     # -- bp ranges --------------------------------------------------------
 
@@ -105,19 +114,20 @@ class GbwtPathIndex:
         return self._sample_idx
 
     def get_path_meta(self, sample):
-        """Subpath metadata for a sample (index = position in this list)."""
-        bp_ranges = self._subpath_bp_ranges.get(sample, [])
+        """Subpath metadata for a sample (index = position in this list).
+
+        Mirrors the legacy PathIndex meta shape: `contig`, `start` (the subpath's
+        genomic start, from the GBWT `fragment`), and `length` (None, as the
+        legacy index also stores it -- the frontend labels `contig:start` when it
+        is None). bp_start/bp_end are attached by get_path_meta_with_bp.
+        """
         out = []
-        for i, p in enumerate(self._by_sample.get(sample, [])):
-            bp_start, bp_end = bp_ranges[i] if i < len(bp_ranges) else (None, None)
-            length = (bp_end - bp_start) if (bp_start is not None
-                                             and bp_end is not None) else None
+        for p in self._by_sample.get(sample, []):
             out.append({
                 "contig": p.get("contig"),
-                "start": bp_start,
-                "length": length,
+                "start": p.get("fragment"),
+                "length": None,
                 "phase": p.get("phase"),
-                "fragment": p.get("fragment"),
                 "gbz_id": p.get("id"),
             })
         return out
