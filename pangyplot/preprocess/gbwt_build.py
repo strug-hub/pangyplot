@@ -12,7 +12,7 @@ owns every segment's DNA in SegmentIndex — so a compact GBWT + SegmentIndex is
 functionally a compact GBZ. The GBWT is a strict subset we can extend later
 without changing the (compact) node-id space.
 
-pathdata format — see gbwt/build/src/main.rs (single source of truth).
+pathdata format — see gbwt/build/main.cpp (single source of truth).
 """
 import os
 import shutil
