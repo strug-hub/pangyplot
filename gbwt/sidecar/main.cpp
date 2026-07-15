@@ -38,14 +38,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cctype>
 #include <csignal>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <utility>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -62,6 +66,12 @@ size_t     g_map_len = 0;
 bool               g_has_translation = false;
 gbwt::StringArray  g_segments;
 sdsl::sd_vector<>  g_node_to_segment;
+
+// Graph mode (opt-in via --graph): also serve segment/link topology + DNA, so the
+// GBZ can back SegmentIndex/LinkIndex (not just paths). `g_sequences` holds the
+// forward node DNA (loaded resident for now; mmap is the whole-genome follow-up).
+bool               g_graph_mode = false;
+gbwt::StringArray  g_sequences;
 
 constexpr std::uint32_t GBWT_TAG = 0x6B376B37;
 constexpr std::uint32_t GBZ_TAG  = 0x205A4247; // "GBZ "
@@ -233,11 +243,125 @@ Response handle_count(const std::string& query) {
   return {200, "text/plain", std::to_string(count)};
 }
 
+// Per-segment forward DNA stats (length + gc + n), summed over the segment's
+// node range. A chopped segment's nodes are contiguous, so the sequence indices
+// are contiguous too.
+void segment_seq_stats(gbwt::size_type start, gbwt::size_type limit,
+                       gbwt::size_type first_node,
+                       std::int64_t& len, std::int64_t& gc, std::int64_t& n) {
+  len = gc = n = 0;
+  for (gbwt::size_type v = start; v < limit; v++) {
+    std::size_t sidx = (2 * v - first_node) / 2;
+    std::string_view sv = g_sequences.view(sidx);
+    len += static_cast<std::int64_t>(sv.size());
+    for (char c : sv) {
+      char u = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+      if (u == 'G' || u == 'C') gc++;
+      else if (u == 'N')        n++;
+    }
+  }
+}
+
+// Bulk segment scalars: for each segment, {i64 id, i64 length, i64 gc, i64 n}.
+// Segment id is the translation's segment name (or the node id, unchopped).
+// Coordinates are NOT here -- they come from the layout file, not the GBZ.
+Response handle_segments() {
+  if (!g_graph_mode) return {400, "text/plain", "sidecar not in graph mode (--graph)"};
+  if (g_sequences.size() == 0)
+    return {400, "text/plain", "no node sequences (graph mode needs a GBZ)"};
+
+  const gbwt::size_type first_node = g_index.firstNode();
+  std::string body;
+  auto emit = [&](std::int64_t id, std::int64_t len, std::int64_t gc, std::int64_t n) {
+    std::int64_t rec[4] = {id, len, gc, n};
+    body.append(reinterpret_cast<const char*>(rec), sizeof(rec));
+  };
+
+  if (g_has_translation) {
+    // Each set bit is a segment's first node; the next set bit (or the node
+    // universe) is the exclusive limit.
+    std::vector<std::pair<gbwt::size_type, std::size_t>> segs;  // (start_node, rank)
+    for (auto it = g_node_to_segment.one_begin(); it != g_node_to_segment.one_end(); ++it)
+      segs.emplace_back(it->second, it->first);
+    gbwt::size_type universe = g_node_to_segment.size();
+    for (std::size_t i = 0; i < segs.size(); i++) {
+      gbwt::size_type start = segs[i].first;
+      gbwt::size_type limit = (i + 1 < segs.size()) ? segs[i + 1].first : universe;
+      std::int64_t id = std::strtoll(g_segments.str(segs[i].second).c_str(), nullptr, 10);
+      std::int64_t len, gc, n;
+      segment_seq_stats(start, limit, first_node, len, gc, n);
+      emit(id, len, gc, n);
+    }
+  } else {
+    // Unchopped: each node is its own segment (id == node id).
+    gbwt::size_type first_id = first_node / 2;
+    std::size_t num = g_sequences.size();
+    for (std::size_t i = 0; i < num; i++) {
+      gbwt::size_type v = first_id + static_cast<gbwt::size_type>(i);
+      std::int64_t len, gc, n;
+      segment_seq_stats(v, v + 1, first_node, len, gc, n);
+      emit(static_cast<std::int64_t>(v), len, gc, n);
+    }
+  }
+  return {200, "application/octet-stream", std::move(body)};
+}
+
+// Map a node id to its segment id (translation name), or the node id itself when
+// unchopped. `rank` is the segment's rank (SIZE_MAX if no translation entry).
+std::int64_t node_segment(gbwt::size_type nid, std::size_t& rank) {
+  if (!g_has_translation) { rank = nid; return static_cast<std::int64_t>(nid); }
+  auto it = g_node_to_segment.predecessor(nid);
+  if (it == g_node_to_segment.one_end()) { rank = SIZE_MAX; return static_cast<std::int64_t>(nid); }
+  rank = it->first;
+  return std::strtoll(g_segments.str(rank).c_str(), nullptr, 10);
+}
+
+// Bulk segment-level links: for each edge, {i64 from_id, i64 from_strand,
+// i64 to_id, i64 to_strand} with strand 1='+' / 0='-' (matching LinkIndex's
+// strand_map). Chop-internal edges (same segment, adjacent nodes) are dropped;
+// the rest are deduped. GBWT edges are bidirectional, so this emits each link and
+// its reverse-complement twin -- deduping keeps both distinct forms.
+Response handle_links() {
+  if (!g_graph_mode) return {400, "text/plain", "sidecar not in graph mode (--graph)"};
+
+  std::string body;
+  std::unordered_set<std::string> seen;
+  for (gbwt::comp_type comp = 1; comp < g_index.effective(); comp++) {
+    gbwt::node_type u = g_index.toNode(comp);
+    gbwt::size_type id_u = gbwt::Node::id(u);
+    int rev_u = gbwt::Node::is_reverse(u) ? 1 : 0;
+    std::size_t rank_u;
+    std::int64_t seg_u = node_segment(id_u, rank_u);
+    for (const gbwt::edge_type& e : g_index.edges(u)) {
+      gbwt::node_type w = e.first;
+      if (w == gbwt::ENDMARKER) continue;
+      gbwt::size_type id_w = gbwt::Node::id(w);
+      int rev_w = gbwt::Node::is_reverse(w) ? 1 : 0;
+      std::size_t rank_w;
+      std::int64_t seg_w = node_segment(id_w, rank_w);
+
+      // Drop the chop-internal edge (the linear chain within one segment).
+      if (g_has_translation && rank_u == rank_w) {
+        bool internal = (rev_u == 0 && rev_w == 0 && id_w == id_u + 1) ||
+                        (rev_u == 1 && rev_w == 1 && id_w + 1 == id_u);
+        if (internal) continue;
+      }
+
+      std::int64_t rec[4] = {seg_u, rev_u ? 0 : 1, seg_w, rev_w ? 0 : 1};
+      std::string key(reinterpret_cast<const char*>(rec), sizeof(rec));
+      if (seen.insert(key).second) body.append(key);
+    }
+  }
+  return {200, "application/octet-stream", std::move(body)};
+}
+
 Response route(const std::string& path, const std::string& query) {
-  if (path == "/health") return {200, "text/plain", "ok"};
-  if (path == "/meta")   return handle_meta();
-  if (path == "/walk")   return handle_walk(query);
-  if (path == "/count")  return handle_count(query);
+  if (path == "/health")   return {200, "text/plain", "ok"};
+  if (path == "/meta")     return handle_meta();
+  if (path == "/walk")     return handle_walk(query);
+  if (path == "/count")    return handle_count(query);
+  if (path == "/segments") return handle_segments();
+  if (path == "/links")    return handle_links();
   return {404, "text/plain", "not found"};
 }
 
@@ -355,10 +479,18 @@ void skip_sequences(std::istream& in, std::uint32_t version) {
   }
 }
 
+// Load the GBWTGraph `sequences` (forward node DNA) into g_sequences. Version
+// branch mirrors skip_sequences: v>=4 is the zstd compress_even form (decompress
+// to forward-only), v<4 is the plain forward-only StringArray.
+void load_sequences(std::istream& in, std::uint32_t version) {
+  if (version >= GBWTGRAPH_ZSTD_VERSION) { g_sequences.simple_sds_decompress(in); }
+  else                                   { g_sequences.simple_sds_load(in); }
+}
+
 // Parse the node->segment translation from the GBWTGraph that follows the GBWT
 // in a GBZ. `in` must be positioned at the GBWTGraph header (where GBWT::load
-// leaves it). Loads only the translation (segment names + the node->segment
-// sd_vector); the node sequences are skipped, not read.
+// leaves it). In path-only mode the node sequences are skipped, not read; in
+// graph mode they are loaded (for /segments DNA + gc/n).
 void load_translation(std::istream& in) {
   GBWTGraphHeader gh = sdsl::simple_sds::load_value<GBWTGraphHeader>(in);
   if (gh.tag != GBWTGRAPH_TAG) {
@@ -366,7 +498,8 @@ void load_translation(std::istream& in) {
               << " unrecognized; serving raw node ids\n";
     return;
   }
-  skip_sequences(in, gh.version);
+  if (g_graph_mode) { load_sequences(in, gh.version); }
+  else              { skip_sequences(in, gh.version); }
 
   // The translation is always present in simple-sds (possibly empty).
   g_segments.simple_sds_load(in);
@@ -413,12 +546,21 @@ std::streamoff gbz_gbwt_offset(const std::string& filename) {
 
 int main(int argc, char** argv) {
   std::signal(SIGPIPE, SIG_IGN);
-  if (argc < 2) {
-    std::cerr << "usage: " << argv[0] << " <graph.gbwt|graph.gbz> [addr]\n";
+
+  // Positional args are <index-file> [addr]; the optional --graph flag turns on
+  // graph mode (also serve segments/DNA, loaded resident) and may appear anywhere.
+  std::vector<std::string> pos;
+  for (int i = 1; i < argc; i++) {
+    std::string a = argv[i];
+    if (a == "--graph") g_graph_mode = true;
+    else pos.push_back(a);
+  }
+  if (pos.empty()) {
+    std::cerr << "usage: " << argv[0] << " <graph.gbwt|graph.gbz> [addr] [--graph]\n";
     return 1;
   }
-  std::string filename = argv[1];
-  std::string addr = (argc > 2) ? argv[2] : "127.0.0.1:5701";
+  std::string filename = pos[0];
+  std::string addr = (pos.size() > 1) ? pos[1] : "127.0.0.1:5701";
 
   std::string host = "127.0.0.1";
   int port = 5701;
