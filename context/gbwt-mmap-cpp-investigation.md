@@ -5,12 +5,34 @@ Read this, then `context/gbwt-migration.md` (the full migration plan) for depth.
 
 ---
 
+## 0. THE HARD GATE — read this first
+
+**Low resident memory is a GO/NO-GO condition, not a nice-to-have.** The entire
+reason to do this work is that the current (Rust) sidecar holds the whole GBWT in
+RAM, which is untenable at whole-genome scale (see §2). The project owner will
+adopt a full C++ stack **only if it demonstrably keeps memory low** — i.e. mmap
+must make RSS scale with *active queries*, not total mapped data.
+
+Therefore: **prove the memory win with a throwaway spike BEFORE building anything
+real** (see §9 step 0). If a minimal C++ program can `mmap` a chr-scale GBWT and
+answer presence/walk queries while RSS stays a small fraction of the index size,
+proceed. **If touching the index during normal queries pages most of it into RAM
+anyway, mmap does not help — STOP and report; the GBWT-serving direction is
+abandoned and PangyPlot stays binpath-only.** Do not build the full sidecar +
+build system until the spike proves the gate.
+
+**Full C++ is sanctioned.** You may replace the Rust stack entirely — *both* the
+serving sidecar and the ingest-time builder (`gbwt/build`) can become C++. The
+Rust crates in `gbwt/` are the reference for *behavior and the wire contract*, not
+something to preserve. Retire them once the C++ pipeline passes parity.
+
 ## 1. The one-sentence task
 
 Build a **C++ path-service sidecar** that serves PangyPlot's per-chromosome GBWT
 **memory-mapped from disk** (RSS scales with active queries, not total data),
 honoring the **exact existing wire contract** so it is a drop-in replacement for
-the current Rust sidecar — nothing above the HTTP boundary changes.
+the current Rust sidecar — nothing above the HTTP boundary changes. Full C++
+(sidecar **and** builder) is fine; the memory win in §0 is the gate.
 
 ## 2. Why this exists (the problem)
 
@@ -156,19 +178,34 @@ Reference genome id in tests: `gi|568815592`.
 
 ## 9. Suggested plan of attack
 
-1. **De-risk format compat**: build `graph.gbwt` with the existing Rust builder
-   (`gbwt/build`), then load it with C++ `gbwt::simple_sds_load`. Confirm it round
-   -trips. (If it fails, plan to build with C++ gbwt at ingest instead.)
-2. **Stand up a minimal C++ sidecar**: HTTP server + `/health` + load the GBWT
-   normally (in-RAM) + `/walk` + `/count` + `/meta`. Get the **parity tests green
-   first** — correctness before memory.
-3. **Switch loading to mmap**: use sdsl mmap facilities for the record array
-   (and whatever else is large). Verify parity still green.
-4. **Measure RSS**: idle vs active, single chr, then several chrs mapped at once.
-   Show resident memory scales with queries, not total mapped bytes. This is the
-   whole point — quantify it against the 107 MB/chr resident baseline.
-5. **Wire in**: point `PANGYPLOT_GBWT_BIN` at the C++ binary; run the full pytest
-   suite; document the build (CMake + sdsl/gbwt/gbwtgraph deps).
+**Step 0 comes first and is the gate (§0). Do not build the real sidecar until it
+passes.**
+
+0. **MEMORY SPIKE (GO/NO-GO).** Smallest possible C++ program: `mmap` a
+   chr-scale `.gbwt` (build one at ingest scale, or `vg gbwt` a real chromosome),
+   run a realistic burst of `/walk`-style extracts and `/count`/`find` queries
+   over a *viewport-sized* node range, and **measure RSS** (idle after map, then
+   after queries) against the full index size. **GO** if RSS stays a small
+   fraction of the index (queries are viewport-local → paging is bounded).
+   **NO-GO** if normal queries page most of the index in — then mmap doesn't
+   solve it; STOP and report, PangyPlot stays binpath-only. Report the numbers
+   before proceeding.
+1. **Build path (full C++).** Confirm you can build a `graph.gbwt` with C++
+   `gbwt` at ingest (its builder), OR that C++ `gbwt::simple_sds_load` loads a
+   `graph.gbwt` written by the existing Rust `gbwt/build` (they share the
+   simple-sds format by design). Either is fine — pick one and note it. The
+   builder can go C++; the Rust builder is not sacred.
+2. **Minimal C++ sidecar, correctness first.** HTTP server + `/health` + `/walk`
+   + `/count` + `/meta`, mmap loading from step 0. Get the **parity tests green**
+   (§6) — byte-identical walks to binpaths.
+3. **Confirm the memory win holds in the real sidecar** (not just the spike):
+   RSS idle vs active, single chr, then several chrs mapped at once (or one
+   process mapping many — see §10). Quantify against the 107 MB/chr resident
+   baseline.
+4. **Wire in and retire Rust.** Point `PANGYPLOT_GBWT_BIN` at the C++ binary; run
+   the full pytest suite; document the build (CMake + sdsl/gbwt/gbwtgraph deps).
+   Once green, retire the Rust `gbwt/sidecar` (and `gbwt/build` if the builder is
+   now C++).
 
 ## 10. Risks / open questions
 
