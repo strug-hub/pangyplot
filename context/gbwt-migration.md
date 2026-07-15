@@ -314,6 +314,28 @@ built from the same DRB1 GFA yield **byte-identical** walk sets — the load-bea
 correctness guarantee for the whole migration. Works for user-supplied GBZs too
 (they may be chopped; the translation handles it). No need to disable chopping.
 
+**THE CONTRACT — segment-level everywhere (enforce before Stage 5 / GBZ-input).**
+PangyPlot compacts internally: bubble calling runs `flat_graph.compact` /
+`compact_graph` (`bubble_gun.py:82,118`), merging degree-2 chains and *tracking*
+absorbed segment ids (`construct_bubble_index_flat.py:121` "plus compacted"), so
+a bubble's coverage — hence `region_segment_ids` — includes every original
+segment id it swallowed. Consequence: the system is correct **iff every engine
+(path, node, link, bubble) reads segment ids through the GBZ's segment-level view
+(the translation)** — `segment_path` for paths, `node_to_segment` for topology.
+A chopped GBZ exposes both a node-level (split) and a segment-level (original)
+view and does NOT conflate them; we always use the segment-level one.
+- **The dangerous mix** (would bite silently): building bubbles/topology from the
+  *node-level* (chopped) graph while paths come from the segment-level view →
+  bubble ids `1a,1b,1c` vs path id `1` mismatch → `region_segment_ids`, boundary
+  resolution, rendering all break. Compaction does NOT save this — it fixes
+  topology but leaves chopped-node ids.
+- **Why it's otherwise robust:** even a fragmented *source* graph is fine —
+  compaction records absorbed segments, so whatever ids a path walks are present
+  in the bubble's set. Consistency = "same ids everywhere", guaranteed by the
+  translation.
+- **Foreign-GBZ requirement:** the GBZ must carry the translation (chopped ones
+  always do; unchopped means node = segment). Always satisfiable.
+
 **Sidecar built forward-compatible (from the start, costs nothing now):**
 - **The wire protocol is the boundary, not the language.** Documented as a
   neutral contract (`tools/gbwt-sidecar/README.md`): plain HTTP, JSON metadata,

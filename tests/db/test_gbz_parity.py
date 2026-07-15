@@ -109,3 +109,19 @@ class TestGbzBinpathParity:
         # therefore proves the sidecar collapses chopped nodes via segment_path.
         _, meta = _gbz_walks(sidecar)
         assert meta["has_translation"] is True
+
+    def test_python_path_source_matches_binpaths(self, sidecar, pangyplot_paths):
+        # Route through the real Python stack: GbwtClient -> GbwtPathIndex ->
+        # get_path_combined, exactly as serving will. Walk set must still match.
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+
+        gpi = GbwtPathIndex(GbwtClient(sidecar))
+        gbwt_walks = set()
+        for sample in gpi.get_samples():
+            for i, _ in enumerate(gpi.get_path_meta(sample)):
+                c = gpi.get_path_combined(sample, i)
+                gbwt_walks.add(tuple(int(x) for x in c.tolist()))
+
+        pp_walks = _pangyplot_walks(pangyplot_paths)
+        assert gbwt_walks == pp_walks
