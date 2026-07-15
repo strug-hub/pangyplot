@@ -69,6 +69,24 @@
 > **`context/gbwt-mmap-cpp-investigation.md`**. The wire contract makes the C++
 > sidecar a drop-in — nothing above the HTTP boundary changes.
 >
+> **mmap PROVEN — GO (2026-07-15).** The forked C++ `gbwt` (mmap-backed
+> `RecordArray` + DA opt-out) serves the **whole genome** (`hprc-v2.0-mc-grch38`,
+> 5.42 GB) at **333 MB resident** — on a 15 GB box where a *resident* load
+> (`vg gbwt -Z`) **OOM-kills**. Localized viewport queries (the real use) are
+> **0.14 µs / +228 KB RSS** — a viewport stays local and does NOT page the index
+> in (the reference-slice reasoning, confirmed with a number); warm queries are
+> RAM-speed (0.35 µs), worst-case cold scatter still bounded (+183 MB for 50k
+> random). The DA opt-out (the counts-vs-locate finding above) is the 752→333 MB
+> win. Fork: `github.com/ScottMastro/gbwt-mmap` (`mmap-serving`). Full data in the
+> investigation doc's STEP 1–3 findings.
+> **Remaining, split in parallel:** (a) *contract side* — wrap the mmap library in
+> a C++ HTTP sidecar honoring the wire contract (other agent); (b) *PangyPlot
+> side* — parity tests are already env-swappable (`PANGYPLOT_GBWT_SIDECAR_BIN`)
+> and the launch contract is documented in `gbwt_manager`; once the C++ binary
+> passes parity, point `PANGYPLOT_GBWT_BIN` at it and retire the Rust
+> `gbwt/sidecar`. Ship model: optional external binary, gracefully skipped if
+> absent (same as the Rust sidecar; GBWT mode is opt-in).
+>
 > **NOTE — Stage 4 is cancelled** (was: retire binpaths). Binpaths are the
 > memory-lean default and must stay. `get_paths()` (core-viewer `/path`/`/export`)
 > remains served by the binpath engine; no need to port it under GBWT mode.
