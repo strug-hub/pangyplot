@@ -70,14 +70,18 @@ function makeLegacyLevel(polylines) {
     };
 }
 
+// Grid-varint coords are floor-snapped (cell corners); the decoder re-centers
+// with +cell/2. Expected render coords are the stored corners plus cell/2.
+const center = (points, cell) => points.map(([x, y]) => [x + cell / 2, y + cell / 2]);
+
 describe('skeleton-decoder grid-varint', () => {
 
-    it('decodes a single polyline with a chain id', () => {
+    it('decodes a single polyline with a chain id (re-centered)', () => {
         const level = makeVarintLevel([
             { points: [[200, 300], [300, 100], [300, 200]], chainId: 5 },
         ], 100);
         decodeLevel(level);
-        expect(level.polylines).toEqual([[[200, 300], [300, 100], [300, 200]]]);
+        expect(level.polylines).toEqual([center([[200, 300], [300, 100], [300, 200]], 100)]);
         expect(level.chainIds).toEqual([5]);
     });
 
@@ -89,17 +93,17 @@ describe('skeleton-decoder grid-varint', () => {
         ];
         const level = makeVarintLevel(polylines, 100);
         decodeLevel(level);
-        expect(level.polylines).toEqual(polylines.map(p => p.points));
+        expect(level.polylines).toEqual(polylines.map(p => center(p.points, 100)));
         expect(level.chainIds).toEqual([-1, 12, 12]);
     });
 
-    it('handles negative coordinates and larger cells', () => {
+    it('handles negative coordinates and larger cells (offset scales with cell)', () => {
         const polylines = [
             { points: [[-25000, 50000], [-50000, 50000], [-50000, 25000]], chainId: 3 },
         ];
         const level = makeVarintLevel(polylines, 25000);
         decodeLevel(level);
-        expect(level.polylines).toEqual([polylines[0].points]);
+        expect(level.polylines).toEqual([center(polylines[0].points, 25000)]);
         expect(level.chainIds).toEqual([3]);
     });
 
@@ -114,7 +118,8 @@ describe('skeleton-decoder grid-varint', () => {
         expect(level._binVarint).toBeNull();
     });
 
-    it('matches the legacy int32 decoder for the same geometry', () => {
+    it('deltas are unaffected by the offset (only the anchor shifts)', () => {
+        // A single +cell/2 on the anchor preserves every segment vector.
         const polylines = [
             { points: [[100, 100], [200, 100], [200, 300]], chainId: 7 },
             { points: [[1000, 1000], [900, 1000]], chainId: -1 },
@@ -123,7 +128,9 @@ describe('skeleton-decoder grid-varint', () => {
         const legacyLevel = makeLegacyLevel(polylines);
         decodeLevel(varintLevel);
         decodeLevel(legacyLevel);
-        expect(varintLevel.polylines).toEqual(legacyLevel.polylines);
+        // varint output is the legacy geometry shifted by exactly +cell/2
+        expect(varintLevel.polylines).toEqual(
+            legacyLevel.polylines.map(pl => pl.map(([x, y]) => [x + 50, y + 50])));
         expect(varintLevel.chainIds).toEqual(legacyLevel.chainIds);
     });
 });

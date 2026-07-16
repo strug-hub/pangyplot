@@ -172,6 +172,16 @@ class TestExportBinary:
         meta = json.load(gzip.open(meta_p, "rt"))
         blob = gzip.open(bin_p, "rb").read()
 
+        # reference: the same floor-snap cascade the producer uses, by cell
+        from pangyplot.preprocess.skeleton.skeleton_geometry import (
+            grid_simplify_cascade)
+        ref_by_cell = {
+            cell: [([(int(x), int(y)) for x, y in pl], int(c))
+                   for pl, c in zip(pls, cids) if len(pl) >= 2]
+            for cell, pls, cids in grid_simplify_cascade(
+                polylines, sp.VIEWER_GRID_SIZES, chain_ids=chain_ids)
+        }
+
         pos = 0
         for L in meta["levels"]:
             n, cell = L["numPolylines"], L["gridSize"]
@@ -181,11 +191,7 @@ class TestExportBinary:
                 level_bytes, n, cell)
             assert consumed == len(level_bytes)
 
-            # reference: grid_simplify then drop <2-point polylines and round
-            ref_pls, ref_cids = grid_simplify(polylines, cell,
-                                              chain_ids=chain_ids)
-            ref = [([(round(x), round(y)) for x, y in pl], int(c))
-                   for pl, c in zip(ref_pls, ref_cids) if len(pl) >= 2]
+            ref = ref_by_cell[cell]
             assert len(ref) == len(dec_pls)
             for (rpl, rc), dpl, dc in zip(ref, dec_pls, dec_cids):
                 assert rpl == dpl

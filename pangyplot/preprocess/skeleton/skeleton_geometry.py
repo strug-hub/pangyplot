@@ -154,3 +154,157 @@ def grid_simplify(polylines, cell_size, chain_ids=None):
     if chain_ids is not None:
         return new_polylines, new_chain_ids
     return new_polylines
+
+
+# ---------------------------------------------------------------------------
+# Dyadic floor-snap cascade
+#
+# The multi-resolution ladder is produced by building the finest level from the
+# original skeleton once, then deriving each coarser level from the previous
+# one (coarse <- fine) instead of re-snapping the original at every cell.
+#
+# This is exact ONLY when the grids are properly nested: with FLOOR snapping and
+# a dyadic ladder (each cell 2x the previous), snap_2C(snap_C(x)) == snap_2C(x)
+# always holds, so a level derived from the previous is byte-identical to one
+# rebuilt from the original. (Round-to-nearest breaks this; see grid_simplify.)
+#
+# Floor biases every point toward the cell's lower-left corner; the viewer adds
+# +cell/2 at render time to re-center (skeleton-decoder.js). Coordinates stay
+# exact multiples of the cell on disk, which the grid-varint codec relies on.
+# ---------------------------------------------------------------------------
+
+def _floor_snap(x, y, cell):
+    return (math.floor(x / cell) * cell, math.floor(y / cell) * cell)
+
+
+def _canon(a, b):
+    return (a, b) if a <= b else (b, a)
+
+
+def _finest_edge_hist(polylines, cell, chain_ids):
+    """Floor-snap the originals into {edge: {chain_id: weight}} for the finest
+    cell. Weight is the number of contributing snapped segments, used only to
+    pick the majority chain per traced polyline (order-independent, so the
+    cascade and a per-level rebuild agree exactly)."""
+    hist = {}
+    for i, pl in enumerate(polylines):
+        cid = chain_ids[i] if chain_ids is not None else -1
+        prev = _floor_snap(pl[0][0], pl[0][1], cell)
+        for p in pl[1:]:
+            cur = _floor_snap(p[0], p[1], cell)
+            if cur == prev:
+                continue
+            e = _canon(prev, cur)
+            d = hist.get(e)
+            if d is None:
+                hist[e] = {cid: 1}
+            else:
+                d[cid] = d.get(cid, 0) + 1
+            prev = cur
+    return hist
+
+
+def _coarsen_edge_hist(hist, cell):
+    """Derive the next-coarser level directly from a finer level's edges by
+    floor-snapping both endpoints to `cell` and merging chain histograms.
+    Edges whose endpoints collapse into one cell are sub-cell detail, dropped."""
+    out = {}
+    for (a, b), d in hist.items():
+        A = _floor_snap(a[0], a[1], cell)
+        B = _floor_snap(b[0], b[1], cell)
+        if A == B:
+            continue
+        e = _canon(A, B)
+        agg = out.get(e)
+        if agg is None:
+            out[e] = dict(d)
+        else:
+            for c, w in d.items():
+                agg[c] = agg.get(c, 0) + w
+    return out
+
+
+def _trace_edge_hist(hist, want_chains):
+    """Trace an {edge: {chain: weight}} level into polylines (same walk as
+    grid_simplify: junctions/dead-ends first, then leftover pure cycles).
+    Per-polyline chain = the weight-majority label along it, ties broken by the
+    smallest id so the result is deterministic and cascade-exact."""
+    adj = defaultdict(set)
+    for a, b in hist:
+        adj[a].add(b)
+        adj[b].add(a)
+
+    used = set()
+    polylines = []
+    chains = [] if want_chains else None
+
+    def trace_path(start, first_nbr):
+        path = [start]
+        path_edges = []
+        prev, cur = start, first_nbr
+        while True:
+            e = _canon(prev, cur)
+            if e in used:
+                break
+            path.append(cur)
+            used.add(e)
+            path_edges.append(e)
+            if len(adj[cur]) != 2:
+                break
+            nxt = [n for n in adj[cur] if n != prev]
+            if not nxt:
+                break
+            prev, cur = cur, nxt[0]
+        return path, path_edges
+
+    def majority(path_edges):
+        agg = {}
+        for e in path_edges:
+            for c, w in hist[e].items():
+                agg[c] = agg.get(c, 0) + w
+        if not agg:
+            return -1
+        best = max(agg.values())
+        return min(c for c, w in agg.items() if w == best)
+
+    for node in [n for n in adj if len(adj[n]) != 2]:
+        for nbr in list(adj[node]):
+            if _canon(node, nbr) in used:
+                continue
+            path, path_edges = trace_path(node, nbr)
+            if len(path) >= 2:
+                polylines.append(path)
+                if want_chains:
+                    chains.append(majority(path_edges))
+
+    for e in list(hist):
+        if e in used:
+            continue
+        path, path_edges = trace_path(e[0], e[1])
+        if len(path) >= 2:
+            polylines.append(path)
+            if want_chains:
+                chains.append(majority(path_edges))
+
+    return polylines, chains
+
+
+def grid_simplify_cascade(polylines, cells, chain_ids=None):
+    """Produce the whole multi-resolution ladder via a floor-snap dyadic
+    cascade: build the finest level from `polylines` once, then derive each
+    coarser level from the previous.
+
+    `cells` must be ascending with each cell an integer multiple (2x) of the
+    previous, or the coarsen step is not exact. Returns a list of
+    (cell, polylines, chain_ids) with chain_ids=None when none were supplied.
+    """
+    want = chain_ids is not None
+    cells = sorted(cells)
+    hist = _finest_edge_hist(polylines, cells[0], chain_ids)
+    out = []
+    for idx, cell in enumerate(cells):
+        if idx > 0:
+            hist = _coarsen_edge_hist(hist, cell)
+        pls, chains = _trace_edge_hist(hist, want)
+        out.append((cell, pls, chains))
+    return out

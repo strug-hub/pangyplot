@@ -19,7 +19,7 @@ from pangyplot.preprocess.skeleton.skeleton_pipeline import (
     VIEWER_GRID_SIZES, compute_grid_sizes,
     compute_degrees, find_junctions, find_linear_runs, run_to_polyline,
     load_segment_to_bubble, compute_run_chain_ids,
-    export_binary, summarize_grid_levels,
+    export_binary, summarize_grid_levels, SKELETON_SNAP,
 )
 from pangyplot.preprocess.skeleton.export_polychain import export_polychain_data
 from pangyplot.preprocess.spine.spine_builder import generate_spine, spine_filename
@@ -101,6 +101,18 @@ def _skeleton_version(meta_path):
         return None
 
 
+def _skeleton_snap(meta_path):
+    """Read the skeleton snap mode from the meta file. Absent on pre-cascade
+    skeletons (round snap), which must be rebuilt to the floor-snap cascade."""
+    try:
+        with gzip.open(meta_path, 'rt', encoding='utf-8') as f:
+            head = f.read(200)
+        m = re.search(r'"snap"\s*:\s*"([^"]+)"', head)
+        return m.group(1) if m else None
+    except Exception:
+        return None
+
+
 def ensure_skeleton(data_dir, db_name, ref):
     """Generate skeleton for any chromosome that is missing or stale.
 
@@ -124,9 +136,13 @@ def ensure_skeleton(data_dir, db_name, ref):
         if not os.path.exists(meta_path) or not os.path.exists(bin_path):
             print(f"\n[Skeleton] Missing skeleton for {chrom}, generating...")
             generate_skeleton(chr_dir, ref, chrom)
-        elif not is_compatible_version(_skeleton_version(meta_path)):
+        elif (not is_compatible_version(_skeleton_version(meta_path))
+              or _skeleton_snap(meta_path) != SKELETON_SNAP):
+            reason = (f"{_skeleton_version(meta_path)} → {__version__}"
+                      if not is_compatible_version(_skeleton_version(meta_path))
+                      else f"snap {_skeleton_snap(meta_path)} → {SKELETON_SNAP}")
             print(f"\n[Skeleton] Rebuilding stale skeleton for {chrom} "
-                  f"({_skeleton_version(meta_path)} → {__version__})...")
+                  f"({reason})...")
             generate_skeleton(chr_dir, ref, chrom)
         else:
             # Spine and polychain checked independently of skeleton

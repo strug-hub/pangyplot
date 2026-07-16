@@ -12,20 +12,27 @@ import numpy as np
 
 from pangyplot.db import db_utils
 from pangyplot.version import __version__
-from pangyplot.preprocess.skeleton.skeleton_geometry import grid_simplify
+from pangyplot.preprocess.skeleton.skeleton_geometry import (
+    grid_simplify, grid_simplify_cascade)
 from pangyplot.preprocess import log
 
 
-VIEWER_GRID_SIZES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000]
-FINE_GRID_CANDIDATES = [5, 10, 25, 50]
+# Dyadic ladder (each cell 2x the previous) so the floor-snap cascade is exact:
+# every coarser level is derived from the finer one, not rebuilt from scratch.
+VIEWER_GRID_SIZES = [100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
 
 # On-disk skeleton binary encoding. "grid-varint" stores coordinates as
 # grid-unit zigzag varints (every snapped value is a multiple of the level's
 # cell, so dividing it out collapses most components to one byte). The legacy
 # "binary" encoding stored fixed-width int32/uint32 and is still readable by
-# the viewer; see skeleton-decoder.js. Bump nothing here to add a new encoding —
-# the reader dispatches on meta.encoding.
+# the viewer; see skeleton-decoder.js. The reader dispatches on meta.encoding.
 SKELETON_ENCODING = "grid-varint"
+
+# Snapping mode written into the meta header. "floor" means levels were built
+# with the dyadic floor-snap cascade; the viewer adds +cell/2 at render time to
+# re-center. Skeletons stamped with any other snap mode are rebuilt on startup
+# (ensure_skeleton), independent of the global artifact version.
+SKELETON_SNAP = "floor"
 
 
 def compute_grid_sizes(segment_index):
@@ -54,8 +61,16 @@ def compute_grid_sizes(segment_index):
     extent = max(max_x - min_x, max_y - min_y)
     min_useful = extent / 2000
 
-    extra = [g for g in FINE_GRID_CANDIDATES if g >= min_useful and g < VIEWER_GRID_SIZES[0]]
-    return sorted(extra) + list(VIEWER_GRID_SIZES)
+    # Small graphs need finer levels than the default 100. Prepend exact halves
+    # (50, 25) so the whole ladder stays dyadic and integer — the cascade needs
+    # each cell to be exactly 2x the finer one. 25 is the finest integer step
+    # that keeps 100 reachable by doubling (25 -> 50 -> 100 -> ...).
+    sizes = list(VIEWER_GRID_SIZES)
+    finest = sizes[0]
+    while finest % 2 == 0 and (finest // 2) >= min_useful:
+        finest //= 2
+        sizes.insert(0, finest)
+    return sizes
 
 
 # ---------------------------------------------------------------------------
@@ -310,16 +325,15 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
     total_segments = len(segment_index)
     level_summaries = []
 
+    # Build every level in one floor-snap dyadic cascade (finest from the
+    # skeleton, each coarser derived from the previous — see
+    # grid_simplify_cascade). Falls back nowhere: the ladder is dyadic.
+    cascade = grid_simplify_cascade(polylines, grid_cell_sizes,
+                                    chain_ids=chain_ids)
+
     # Build all levels first to compute metadata
     all_levels = []
-    for cell in sorted(grid_cell_sizes):
-        if chain_ids is not None:
-            grid_pls, grid_chain_ids = grid_simplify(
-                polylines, cell, chain_ids=chain_ids)
-        else:
-            grid_pls = grid_simplify(polylines, cell)
-            grid_chain_ids = None
-
+    for cell, grid_pls, grid_chain_ids in cascade:
         # Filter polylines with <2 points, delta-encode coordinates
         point_counts = []
         level_chain_ids = []
@@ -361,7 +375,8 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
     # Build JSON header
     junction_count = int(np.count_nonzero(junctions)) if hasattr(junctions, 'dtype') else len(junctions)
     header = {
-        "meta": {"version": __version__, "encoding": SKELETON_ENCODING},
+        "meta": {"version": __version__, "encoding": SKELETON_ENCODING,
+                 "snap": SKELETON_SNAP},
         "stats": {
             "totalSegments": total_segments,
             "totalLinks": len(link_index),

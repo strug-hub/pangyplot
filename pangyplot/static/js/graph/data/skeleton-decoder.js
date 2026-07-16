@@ -92,12 +92,16 @@ function decodeLevelVarint(level) {
         cids[i] = prevGid;
     }
 
+    // Coordinates are floor-snapped multiples of cell (lower-left corner of
+    // each cell). Add +cell/2 to re-center on the cell so the floor bias
+    // cancels; applied once to the absolute anchor, deltas are unaffected.
+    const half = cell / 2;
     const polylines = new Array(numPl);
     for (let i = 0; i < numPl; i++) {
         const nPts = pointCounts[i];
         const pl = new Array(nPts);
-        let x = svarint() * cell;
-        let y = svarint() * cell;
+        let x = svarint() * cell + half;
+        let y = svarint() * cell + half;
         pl[0] = [x, y];
         for (let j = 1; j < nPts; j++) {
             x += svarint() * cell;
