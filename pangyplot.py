@@ -45,7 +45,7 @@ def parse_args():
     parser_add.add_argument('--chr', help='Chromosome name', required=True)
     parser_add.add_argument('--path', help='Reference path name', default=None, required=False)
     parser_add.add_argument('--gfa', help='Path to the GFA file (omit for GBZ-native ingest with --gbz)', default=None, required=False)
-    parser_add.add_argument('--layout', help='Path to the odgi layout TSV file', default=None, required=True)
+    parser_add.add_argument('--layout', help='Path to the layout file: odgi TSV (.lay.tsv), odgi native binary (.lay), or Bandage JSON. The format is detected automatically.', default=None, required=True)
     parser_add.add_argument('--dir', help='Directory to store database files', default=DEFAULT_DB_FOLDER)
     parser_add.add_argument('--force', help='Overwrite existing files without asking', action='store_true')
     parser_add.add_argument('--retry', help='Attempt to use existing GFA index', action='store_true')

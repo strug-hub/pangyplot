@@ -2,10 +2,29 @@ import json
 import gzip
 from array import array
 
+from pangyplot.utils.layout_reader import read_lay
+
 def get_reader(path):
     if path.endswith(".gz"):
         return gzip.open(path, 'rt')
     return open(path, 'r')
+
+
+def get_binary_reader(path):
+    if path.endswith(".gz"):
+        return gzip.open(path, 'rb')
+    return open(path, 'rb')
+
+
+def _read_head(path, n=16):
+    with get_binary_reader(path) as f:
+        return f.read(n)
+
+
+def _is_text(head):
+    # odgi's .lay opens with the raw bytes of a double, which for any real
+    # layout include unprintable bytes; both text formats are ASCII.
+    return all(0x20 <= b < 0x7F or b in (0x09, 0x0A, 0x0D) for b in head)
 
 
 class OdgiLayout:
@@ -63,6 +82,17 @@ def parse_odgi_layout(path):
 
     return {"type": "odgi", "layout": OdgiLayout(x1, y1, x2, y2)}
 
+def parse_native_odgi_layout(path):
+    """Parse odgi's binary .lay -- the same coords as its .lay.tsv view.
+
+    Positional like the TSV, so it is interchangeable with it downstream.
+    """
+    with get_binary_reader(path) as f:
+        data = f.read()
+
+    x1, y1, x2, y2 = read_lay(data)
+    return {"type": "odgi", "layout": OdgiLayout(x1, y1, x2, y2)}
+
 def parse_bandage_layout(path):
     layout_coords = dict()
     with get_reader(path) as f:
@@ -85,12 +115,17 @@ def parse_bandage_layout(path):
     return  {"type": "bandage", "layout": layout_coords}
 
 def parse_layout(path):
-    with get_reader(path) as f:
-        first_line = f.readline()
-    
+    """Parse a layout, detecting which of the three formats it is.
+
+    Bandage `.layout` (JSON), odgi's `.lay.tsv` (text), and odgi's native binary
+    `.lay` all arrive through the same option, so the format is sniffed rather
+    than declared.
+    """
+    head = _read_head(path)
+
     # Bandage layout is JSON (starts with '{' or whitespace + '{')
-    if first_line.strip().startswith("{"):
+    if head.lstrip().startswith(b"{"):
         return parse_bandage_layout(path)
-    else:
+    if _is_text(head):
         return parse_odgi_layout(path)
-    
+    return parse_native_odgi_layout(path)
