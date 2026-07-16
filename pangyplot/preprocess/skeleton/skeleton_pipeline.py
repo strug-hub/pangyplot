@@ -19,6 +19,14 @@ from pangyplot.preprocess import log
 VIEWER_GRID_SIZES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000]
 FINE_GRID_CANDIDATES = [5, 10, 25, 50]
 
+# On-disk skeleton binary encoding. "grid-varint" stores coordinates as
+# grid-unit zigzag varints (every snapped value is a multiple of the level's
+# cell, so dividing it out collapses most components to one byte). The legacy
+# "binary" encoding stored fixed-width int32/uint32 and is still readable by
+# the viewer; see skeleton-decoder.js. Bump nothing here to add a new encoding —
+# the reader dispatches on meta.encoding.
+SKELETON_ENCODING = "grid-varint"
+
 
 def compute_grid_sizes(segment_index):
     """Return grid sizes adapted to the layout extent.
@@ -244,12 +252,60 @@ def compute_run_chain_ids(runs, seg_to_bubble, bubble_to_chain, chain_stats=None
 # Binary export for viewer
 # ---------------------------------------------------------------------------
 
+def _append_uvarint(buf, u):
+    """LEB128-encode a non-negative int onto a bytearray."""
+    while u >= 0x80:
+        buf.append((u & 0x7F) | 0x80)
+        u >>= 7
+    buf.append(u)
+
+
+def _zigzag(values):
+    """Map signed int64 numpy array -> unsigned (small |v| -> small u)."""
+    v = values.astype(np.int64)
+    return (v << 1) ^ (v >> 63)
+
+
+def _encode_level_varint(point_counts, chain_ids, coords, cell):
+    """Encode one level as a grid-varint byte string.
+
+    coords is the same flat int32 array the legacy format wrote: per polyline,
+    the first (x, y) is absolute and the rest are deltas, every value an exact
+    multiple of `cell`. Dividing by `cell` yields the grid-unit integers we
+    zigzag-varint. Streams are concatenated: point_counts (varint count-2),
+    chain_ids (delta+zigzag varint), coords (zigzag varint of grid units).
+    """
+    buf = bytearray()
+
+    for c in point_counts:
+        _append_uvarint(buf, int(c) - 2)  # every kept polyline has >= 2 points
+
+    prev = 0
+    for g in chain_ids:
+        g = int(g)
+        _append_uvarint(buf, int(_zigzag(np.array([g - prev]))[0]))
+        prev = g
+
+    if len(coords):
+        coords = np.asarray(coords, dtype=np.int64)
+        if np.any(coords % cell):
+            raise ValueError(
+                f"skeleton coord not a multiple of cell={cell}; grid snapping "
+                f"invariant violated, grid-varint encoding would be lossy")
+        grid_units = coords // cell
+        for u in _zigzag(grid_units).tolist():
+            _append_uvarint(buf, u)
+
+    return bytes(buf)
+
+
 def export_binary(junctions, runs, segment_index, link_index, polylines,
                   grid_cell_sizes, meta_path, bin_path, chromosome=None,
                   chain_ids=None, chain_stats=None):
     """Export grid-based mipmap data as two files:
       meta_path  — gzipped JSON (stats, chainMeta, level metadata)
-      bin_path   — gzipped binary (pointCounts, chainIds, coords per level)
+      bin_path   — gzipped binary; per level, the grid-varint streams
+                   (pointCounts, chainIds, coords), sliced by meta.byteLength
     """
     total_segments = len(segment_index)
     level_summaries = []
@@ -289,21 +345,23 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
         num_polylines = len(point_counts)
         total_points = sum(point_counts)
 
+        encoded = _encode_level_varint(point_counts, level_chain_ids,
+                                       coords_arr, cell)
+
         all_levels.append({
             "cell": cell,
             "total_nodes": total_nodes,
             "num_polylines": num_polylines,
             "total_points": total_points,
-            "point_counts": np.array(point_counts, dtype=np.uint32),
-            "chain_ids": np.array(level_chain_ids, dtype=np.int32),
-            "coords": coords_arr,
+            "encoded": encoded,
+            "byte_length": len(encoded),
         })
         level_summaries.append((f"Grid {cell:,}", total_nodes, num_polylines))
 
     # Build JSON header
     junction_count = int(np.count_nonzero(junctions)) if hasattr(junctions, 'dtype') else len(junctions)
     header = {
-        "meta": {"version": __version__, "encoding": "binary"},
+        "meta": {"version": __version__, "encoding": SKELETON_ENCODING},
         "stats": {
             "totalSegments": total_segments,
             "totalLinks": len(link_index),
@@ -329,18 +387,18 @@ def export_binary(junctions, runs, segment_index, link_index, polylines,
             "polylineCount": level["num_polylines"],
             "numPolylines": level["num_polylines"],
             "totalPoints": level["total_points"],
+            "byteLength": level["byte_length"],
         })
 
     # Write meta JSON
     with gzip.open(meta_path, 'wt', encoding='utf-8', compresslevel=db_utils.GZIP_LEVEL) as f:
         json.dump(header, f, cls=db_utils.NumpyJSONEncoder)
 
-    # Write binary polylines
+    # Write binary polylines (grid-varint; levels concatenated, sliced by
+    # meta byteLength on read).
     with gzip.open(bin_path, 'wb', compresslevel=db_utils.GZIP_LEVEL) as f:
         for level in all_levels:
-            f.write(level["point_counts"].tobytes())
-            f.write(level["chain_ids"].tobytes())
-            f.write(level["coords"].tobytes())
+            f.write(level["encoded"])
 
     return {
         "total_segments": total_segments,

@@ -13,9 +13,25 @@ import { syncScaleSlider } from '../ui/polychain-force-settings.js';
 /**
  * Index the binary buffer — compute byte offsets per level without
  * reconstructing any polylines. Returns the raw slices for lazy decoding.
+ *
+ * Two on-disk encodings are supported (dispatch on meta.encoding):
+ *   - "grid-varint": per level a variable-length varint blob, sliced by the
+ *     meta byteLength; decoded lazily in skeleton-decoder.js.
+ *   - "binary" (legacy): fixed-width uint32/int32 streams, viewed zero-copy.
  */
-function indexBinaryLevels(buffer, levels) {
+function indexBinaryLevels(buffer, levels, encoding) {
     let offset = 0;
+    if (encoding === 'grid-varint') {
+        const bytes = new Uint8Array(buffer);
+        for (const level of levels) {
+            const len = level.byteLength;
+            level._binVarint = bytes.subarray(offset, offset + len);
+            offset += len;
+            level._decoded = false;
+        }
+        return;
+    }
+
     for (const level of levels) {
         const numPl = level.numPolylines;
         const totalPts = level.totalPoints;
@@ -63,7 +79,7 @@ export async function loadChromosome(chromosome) {
     console.log(`[load]   bin arraybuffer: ${(performance.now() - t1).toFixed(0)}ms`);
 
     t1 = performance.now();
-    indexBinaryLevels(binBuffer, raw.levels);
+    indexBinaryLevels(binBuffer, raw.levels, raw.meta?.encoding);
     console.log(`[load]   index levels: ${(performance.now() - t1).toFixed(0)}ms`);
 
     const tSkelParse = performance.now();
