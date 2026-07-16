@@ -53,10 +53,24 @@ class StepIndex:
 
         Mirrors write_step_index exactly: walk the reference path, and for each
         step emit (seg_id, start=pos+1, end=pos+length) accumulating pos by the
-        segment length. The reference path is the GBWT path whose contig parses to
-        `genome`; its genomic offset comes from the contig's `:start-end` range
-        (like the GFA path name), plus `ref_offset`. A reference split into several
-        subpaths is walked in genomic-start order.
+        segment length. A reference split into several subpaths is walked in
+        genomic-start order.
+
+        Two naming conventions have to be matched, because a GBZ's metadata is
+        already split into sample/contig/fragment fields:
+
+        PanSN (`GRCh38#0#chrM`, what vg and gbz2layout emit): the genome is the
+        *sample*, the contig is bare (`chrM`), and a fragmented reference's bp
+        offset is the *fragment* field -- the number GBWTGraph renders as the
+        `contig[offset]` suffix.
+
+        Legacy GFA-derived (`GRCh38.chrY:1-57227415`): nothing is split out, so
+        the whole name lands in the contig and parse_id_string digs the genome
+        and `:start-end` offset back out of it.
+
+        Matching only the second (the previous behaviour) silently produced a
+        ZERO-STEP reference on any PanSN GBZ: no match, no subpaths, no error --
+        just a viewer with no coordinate system.
         """
         from pangyplot.preprocess.parser.gfa.parse_utils import parse_id_string
 
@@ -69,10 +83,23 @@ class StepIndex:
 
         subpaths = []
         for p in client.meta().get("path_list", []):
-            info = parse_id_string(p.get("contig") or "")
-            if info["genome"] == self.genome:
-                subpaths.append((info["start"] + ref_offset, p["id"]))
+            if (p.get("sample") or "") == self.genome:
+                start = int(p.get("fragment") or 0)          # PanSN
+            else:
+                info = parse_id_string(p.get("contig") or "")   # legacy GFA name
+                if info["genome"] != self.genome:
+                    continue
+                start = info["start"]
+            subpaths.append((start + ref_offset, p["id"]))
         subpaths.sort()
+
+        if not subpaths:
+            samples = sorted({p.get("sample") or "" for p in client.meta().get("path_list", [])})
+            raise ValueError(
+                f"no reference path for genome '{self.genome}' in the GBZ. "
+                f"Samples present: {samples[:10]}"
+                + (" ..." if len(samples) > 10 else "")
+            )
 
         for start_offset, path_id in subpaths:
             combined = client.walk(path_id)

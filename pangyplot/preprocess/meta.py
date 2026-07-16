@@ -17,12 +17,17 @@ from pangyplot.db.indexes.GFAIndex import GFAIndex
 META_FILENAME = "meta.json"
 
 
-def compute_meta(chr_dir, ref, chromosome=None):
+def compute_meta(chr_dir, ref, chromosome=None, client=None):
     """Compute graph metadata for one chromosome directory.
 
     Returns a dict suitable for writing to meta.json.
+
+    `client` (a graph-mode GbwtClient) is required under GBZ-native ingest to
+    get sample_count. Segment/link counts survive without it because those
+    indexes have mmap caches; PathIndex has none, so with no client it falls
+    back to a paths SQLite that GBZ-native never writes and reports 0 samples.
     """
-    gfaidx = GFAIndex(chr_dir)
+    gfaidx = GFAIndex(chr_dir, client=client)
     segment_index = gfaidx.segment_index
     link_index = gfaidx.link_index
 
@@ -133,9 +138,9 @@ def compute_meta(chr_dir, ref, chromosome=None):
     return meta
 
 
-def generate_meta(chr_dir, ref, chromosome=None):
+def generate_meta(chr_dir, ref, chromosome=None, client=None):
     """Compute and write meta.json for one chromosome directory."""
-    meta = compute_meta(chr_dir, ref, chromosome)
+    meta = compute_meta(chr_dir, ref, chromosome, client=client)
     meta_path = os.path.join(chr_dir, META_FILENAME)
     with open(meta_path, 'w') as f:
         json.dump(meta, f, indent=2)

@@ -57,7 +57,11 @@ def _add_from_gbz(args, chr_path):
         with log.section("Computing subpath bp ranges."):
             gfa_index.path_index.compute_bp_ranges(step_index)
 
-    generate_skeleton(chr_path, args.ref, args.chr)
+        # Inside the serve_graph context, and passing the client: meta's
+        # sample_count comes from the path index, which under GBZ-native ingest
+        # only exists as GbwtPathIndex(client). Called outside, it silently
+        # reported 0 samples.
+        generate_skeleton(chr_path, args.ref, args.chr, client=client)
 
 def pangyplot_add(args):
     start_time = time.time()

@@ -30,8 +30,14 @@ SKELETON_META = "meta.json.gz"
 SKELETON_BIN = "polylines.bin.gz"
 POLYCHAIN_DATA_FILENAME = "polychain-data.json.gz"
 
-def generate_skeleton(chr_dir, ref, chrom):
-    """Build and export skeleton binary for a single chromosome directory."""
+def generate_skeleton(chr_dir, ref, chrom, client=None):
+    """Build and export skeleton binary for a single chromosome directory.
+
+    Under GBZ-native ingest, pass the graph-mode `client` and call this inside
+    the serve_graph context: the topology here loads fine from the segment/link
+    mmap caches, but meta's sample_count needs a live path source, and without a
+    client PathIndex falls back to a paths SQLite that GBZ-native never writes.
+    """
     skel_dir = os.path.join(chr_dir, SKELETON_DIR)
     os.makedirs(skel_dir, exist_ok=True)
     meta_path = os.path.join(skel_dir, SKELETON_META)
@@ -39,7 +45,7 @@ def generate_skeleton(chr_dir, ref, chrom):
 
     with log.section("Building skeleton."):
         with log.step("🦴", "Computing graph topology"):
-            gfaidx = GFAIndex(chr_dir)
+            gfaidx = GFAIndex(chr_dir, client=client)
             segment_index = gfaidx.segment_index
             link_index = gfaidx.link_index
             degrees = compute_degrees(link_index)
@@ -72,7 +78,7 @@ def generate_skeleton(chr_dir, ref, chrom):
         log.summary(summarize_grid_levels(export_stats))
 
         with log.step("📊", "Computing graph metadata"):
-            generate_meta(chr_dir, ref, chrom)
+            generate_meta(chr_dir, ref, chrom, client=client)
 
 
 def export_polychain_section(chr_dir, gfaidx, ref):
