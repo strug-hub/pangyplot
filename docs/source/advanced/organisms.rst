@@ -68,7 +68,7 @@ PangyPlot has built-in cytobands for the following:
 
 .. note::
 
-   More organisms can be added on request, if you have cytoband files. Please open an issue on the `GitHub repository <https://github.com/scottmastro/pangyplot/issues>`_.
+   More organisms can be added on request, if you have cytoband files. Please open an issue on the `GitHub repository <https://github.com/strug-hub/pangyplot/issues>`_.
 
 
 
