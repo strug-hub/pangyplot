@@ -54,3 +54,41 @@ a legitimate chr1 walk -- which is only true *because* serving does full walks.
 Region-scoping `/walk` largely dissolves this; settle it after, not before.
 Ingestion is unaffected either way: its full walks are a batch job with no server
 above them, so unbounded is correct there on its own merits.
+
+## chr22: gbz2layout emits 5 more links than pangyplot stores
+
+**Status:** deferred, low priority (5 links out of ~3.01M = 0.00017%). Found
+2026-07-17 during NAS/ingest review.
+
+- **gbz2layout** `--emit-links` -> `chr22.links.tsv`: **3,013,418** links
+  (3,013,419 file rows, 1 is the `a\tb` header). Confirmed: the 3,013,418 data
+  rows are all *distinct* `(a,b)` pairs -- zero exact duplicates.
+- **pangyplot** `meta.json.total_links` (chr22): **3,013,413** -- exactly 5 fewer.
+
+The two counts are produced by **independent extractors reading the same GBZ**,
+not one derived from the other:
+
+- gbz2layout writes its own 2-column `a b` adjacency (combined node handles, for
+  the SGD), during the layout run.
+- pangyplot's `LinkIndex._build_from_gbz` reads the **graphd's** `/links` and
+  RC-collapses each edge with its reverse-complement twin
+  (`key = min(link, rc)`, `pangyplot/db/indexes/LinkIndex.py`).
+
+So this is *not* simply pangyplot RC-collapsing gbz2layout's list. Proof: RC-
+canonicalizing gbz2layout's 3,013,418 edges (treating `a`/`b` as
+`node<<1|orient`, `rc = (b^1, a^1)`) yields **3,003,441**, ~10k off from
+pangyplot's number -- the graphd's edge set differs from gbz2layout's before any
+dedup. The near-exact 3,013,413 vs 3,013,418 agreement is between pangyplot's
+stored count and gbz2layout's *directed* count, off by 5.
+
+**Candidates for the exact 5** (unverified):
+- self-RC / palindromic edges (an edge whose reverse-complement is itself) or
+  self-loops, counted once by one path and twice (or zero) by the other;
+- chopped-GBZ node->segment translation: the graphd collapses chop-run edges
+  (`has_translation`), gbz2layout may not, so a handful of intra-run edges differ;
+- a header/off-by-one artifact compounding with one of the above.
+
+**To settle it** (when worth it): boot the graphd on chr22, dump its `/links`,
+canonicalize both sides into a common `(seg,orient)->(seg,orient)` form, and set-
+diff. The 5 asymmetric edges will name the mechanism. Needs both encodings
+aligned first (gbz2layout emit-links source + graphd link extraction).
