@@ -113,21 +113,23 @@ class GbwtManager:
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._procs.append(proc)
 
+        # Wait as long as the daemon is alive. Startup is dominated by loading
+        # the index, which scales with it (chr1's GBZ is 396 MB), so a fixed
+        # number of tries is a size we haven't hit yet -- and the failure here is
+        # quiet: a load that outran the wait fell back to the legacy engine with
+        # a warning, so a chr1-scale deploy would just be permanently slower with
+        # nothing to show for it. poll() catches the real failure (the daemon
+        # died) on every pass, which is the case that must not hang boot.
         client = GbwtClient(f"http://{addr}")
-        for _ in range(100):  # ~10s: GBZ load can take a few hundred ms
+        while not client.health():
             if proc.poll() is not None:
                 print(f"  ⚠️  gbwt-graphd for {chrom} exited "
                       f"(code {proc.returncode}); using the legacy path engine.")
                 return None
-            if client.health():
-                print(f"  🧬 GBWT graphd for {chrom} ready on {addr}")
-                return client
             time.sleep(0.1)
 
-        print(f"  ⚠️  gbwt-graphd for {chrom} did not become ready; "
-              f"using the legacy path engine.")
-        self._terminate(proc)
-        return None
+        print(f"  🧬 GBWT graphd for {chrom} ready on {addr}")
+        return client
 
     @staticmethod
     def _terminate(proc):

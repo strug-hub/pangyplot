@@ -54,11 +54,19 @@ def layout_coords_by_id(layout_coords, client):
 
 
 @contextlib.contextmanager
-def serve_graph(gbz_path, repo_root=None, timeout=30.0):
+def serve_graph(gbz_path, repo_root=None):
     """Context manager yielding a GbwtClient for `gbz_path` served in graph mode.
 
-    Raises RuntimeError if the binary is missing or the daemon never becomes
-    ready; always terminates the process on exit.
+    Raises RuntimeError if the binary is missing or the daemon exits; always
+    terminates the process on exit.
+
+    Waits for readiness as long as the daemon is alive, rather than to a
+    deadline: startup is dominated by loading the GBZ, which scales with it
+    (chr1's is 396 MB), so any fixed wait is a size we haven't hit yet. The real
+    failure -- the daemon dying -- is caught by poll() on every pass, so the only
+    thing a deadline adds is aborting a load that was going to succeed. A daemon
+    that stays alive without ever serving /health is a bug worth surfacing as a
+    hang, not converting into a misleading "did not become ready".
     """
     bin_path = _resolve_bin(repo_root)
     if not os.path.exists(bin_path):
@@ -70,16 +78,11 @@ def serve_graph(gbz_path, repo_root=None, timeout=30.0):
                             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     client = GbwtClient(f"http://{addr}")
     try:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
+        while not client.health():
             if proc.poll() is not None:
                 err = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
                 raise RuntimeError(f"graphd exited (code {proc.returncode}):\n{err}")
-            if client.health():
-                break
             time.sleep(0.1)
-        else:
-            raise RuntimeError("graphd did not become ready")
         yield client
     finally:
         if proc.poll() is None:

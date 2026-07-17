@@ -19,27 +19,28 @@ class GbwtClientError(RuntimeError):
     pass
 
 
-# Distinguishes "caller said nothing, use self.timeout" from an explicit
-# timeout=None, which urlopen reads as "block indefinitely".
-_DEFAULT_TIMEOUT = object()
-
-
 class GbwtClient:
-    # `timeout` covers the O(1) endpoints only; health() needs it, since it polls
-    # to decide whether the daemon ever came up. The bulk endpoints (/links,
-    # /segments) pass timeout=None deliberately: they stream the whole graph, so
-    # their cost scales with it (chr16's /links is 12.2M rows / 11s) and any fixed
-    # ceiling becomes a size-dependent failure at some larger graph. It would also
-    # guard nothing -- the graphd is a subprocess serve_graph() spawns and kills,
-    # so a hang there is a bug to surface, not to convert into a timeout.
+    # Data requests block until served: no timeout by default.
+    #
+    # Every data endpoint's cost scales with something -- /links and /segments
+    # with graph size, /walk with path length -- so any fixed ceiling is a
+    # failure waiting for a big enough input, and picking one per endpoint means
+    # classifying each correctly forever. That judgement is easy to get wrong:
+    # /walk looks like a cheap lookup but returns a whole haplotype (chr1's is
+    # ~6M steps / 48 MB), and a 10s ceiling silently broke it at chr1 scale.
+    # A timeout also guards nothing here -- the graphd is a subprocess
+    # serve_graph() spawns and kills, not a remote that can vanish, so a hang is
+    # a bug to surface rather than to rediscover as a timeout N minutes on.
+    #
+    # `timeout` therefore exists for health() alone, which is the one caller that
+    # needs to fail fast: it polls to decide whether the daemon came up at all,
+    # and must not block forever when the answer is "it didn't".
     def __init__(self, base_url, timeout=10.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-    def _get(self, path, timeout=_DEFAULT_TIMEOUT):
+    def _get(self, path, timeout=None):
         url = f"{self.base_url}{path}"
-        if timeout is _DEFAULT_TIMEOUT:
-            timeout = self.timeout
         try:
             with urllib.request.urlopen(url, timeout=timeout) as r:
                 return r.read()
@@ -48,7 +49,7 @@ class GbwtClient:
 
     def health(self):
         try:
-            return self._get("/health") == b"ok"
+            return self._get("/health", timeout=self.timeout) == b"ok"
         except GbwtClientError:
             return False
 
@@ -69,12 +70,12 @@ class GbwtClient:
     def segments(self):
         """Return an (N, 4) int64 array of segment scalars: columns id, length,
         gc, n. Graph mode only (the graphd must be started with --graph)."""
-        raw = self._get("/segments", timeout=None)  # bulk: no ceiling
+        raw = self._get("/segments")
         return np.frombuffer(raw, dtype="<i8").reshape(-1, 4)
 
     def links(self):
         """Return an (M, 4) int64 array of segment-level links: columns from_id,
         from_strand, to_id, to_strand (strand 1='+' / 0='-'). Bidirectional: each
         link appears with its reverse-complement twin. Graph mode only."""
-        raw = self._get("/links", timeout=None)  # bulk: no ceiling
+        raw = self._get("/links")
         return np.frombuffer(raw, dtype="<i8").reshape(-1, 4)
