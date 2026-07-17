@@ -91,7 +91,16 @@ def parse_args():
     #parser_run = subparsers.add_parser('reindex', help='Reindex all GFA files.')
     #parser_run.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
 
-    parser_preprocess = subparsers.add_parser('preprocess', help='Interactive generator for odgi preprocessing scripts.')
+    parser_preprocess = subparsers.add_parser('preprocess', help='Interactive generator for odgi preprocessing scripts (or --run to execute them).')
+    parser_preprocess.add_argument('--run', help='Execute the vg/odgi steps directly instead of generating a script (requires vg/odgi on PATH — intended for the container).', action='store_true')
+    parser_preprocess.add_argument('--input', help='Path to the input graph (.vg, .gfa, .gfa.gz, or .og). Required with --run.', default=None)
+    parser_preprocess.add_argument('--out-dir', help='Directory to write the sorted GFA + layout into (default: current directory).', default=os.getcwd())
+    parser_preprocess.add_argument('--prefix', help='Basename for output files (default: derived from --input).', default=None)
+    parser_preprocess.add_argument('--ref', help='Primary reference path name to prioritize during sort.', default=None)
+    parser_preprocess.add_argument('--paths', help='Comma-separated path names to prioritize during sort, in order (overrides --ref).', default=None)
+    parser_preprocess.add_argument('--threads', help='Number of threads for odgi (default: 4).', default=4, type=int)
+    parser_preprocess.add_argument('--gpu', help='Use odgi_gpu for the layout step.', action='store_true')
+    parser_preprocess.add_argument('--no-sort', help='Skip the 1D sort step.', dest='sort', action='store_false')
 
     parser_example = subparsers.add_parser('example', help='Adds example DRB1 data.')
     #parser_example.add_argument('--chrM', help='Use HPRC chrM data', action='store_true')

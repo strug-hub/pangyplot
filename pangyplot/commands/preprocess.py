@@ -2,9 +2,11 @@ import os
 import sys
 import glob
 import readline
+import subprocess
 from datetime import datetime
 
 from pangyplot.version import __version__
+from pangyplot.preprocess.layout_pipeline import run_layout_pipeline, ToolMissing
 
 # ANSI color codes
 BOLD = "\033[1m"
@@ -144,6 +146,12 @@ def prompt_int(question, default):
 
 
 def pangyplot_preprocess(args):
+    # --run executes the pipeline directly (for the container, where the toolchain
+    # is guaranteed) rather than emitting a script for the user to run themselves.
+    if getattr(args, "run", False):
+        _preprocess_run(args)
+        return
+
     print(f"{BOLD}{'=' * 50}")
     print(f" PangyPlot preprocessing script generator")
     print(f"{'=' * 50}{RESET}")
@@ -293,3 +301,52 @@ def pangyplot_preprocess(args):
         print(f"{GREEN}Script written to {out_file}{RESET}")
     else:
         print(script)
+
+
+def _preprocess_run(args):
+    """Non-interactive executor: run the vg/odgi pipeline directly (--run)."""
+    if not args.input:
+        print(f"{RED}--run requires --input <graph> (.vg/.gfa/.gfa.gz/.og){RESET}")
+        sys.exit(1)
+    if not os.path.isfile(args.input):
+        print(f"{RED}Input file not found: {args.input}{RESET}")
+        sys.exit(1)
+
+    # Sort priorities: --paths (comma list, in order) wins over --ref.
+    if args.paths:
+        paths = [p.strip() for p in args.paths.split(",") if p.strip()]
+    elif args.ref:
+        paths = [args.ref]
+    else:
+        paths = []
+
+    if args.sort and not paths:
+        print(f"{YELLOW}No --ref/--paths given: sorting without a reference priority.{RESET}")
+
+    try:
+        sorted_gfa, layout_tsv = run_layout_pipeline(
+            input_file=args.input,
+            output_dir=args.out_dir,
+            prefix=args.prefix,
+            paths=paths,
+            threads=args.threads,
+            gpu=args.gpu,
+            sort=args.sort,
+        )
+    except ToolMissing as e:
+        print(f"\n{RED}Required tool not found on PATH: {e.name}{RESET}")
+        print("  'pangyplot preprocess --run' executes vg/odgi directly and needs them installed.")
+        print("  The PangyPlot container ships them; on a bare install, generate a script instead")
+        print("  by running 'pangyplot preprocess' (no --run) and running it where the tools live.")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"\n{RED}A preprocessing step failed (exit {e.returncode}): {' '.join(e.cmd)}{RESET}")
+        sys.exit(e.returncode or 1)
+
+    print(f"\n{GREEN}Done.{RESET}")
+    print(f"  Sorted GFA: {sorted_gfa}")
+    print(f"  Layout:     {layout_tsv}")
+    print(f"\nNext, add it to a datastore:")
+    ref_flag = f" --ref {args.ref}" if args.ref else " --ref <REF>"
+    print(f"  pangyplot add --db <DB>{ref_flag} --chr <CHR> "
+          f"--gfa {sorted_gfa} --layout {layout_tsv}")
