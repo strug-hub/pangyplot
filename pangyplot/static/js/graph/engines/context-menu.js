@@ -98,21 +98,28 @@ function showMenu(x, y) {
     // --- Selection actions (when chains are highlighted) ---
     if (state.selectedChains.size > 0) {
         addCategoryLabel(menu, t('Selection:'));
-        addRow(menu, 'clipboard', t('Copy Approx Coordinates'), () => {
-            let minBp = Infinity, maxBp = -Infinity;
-            for (const [chain, clip] of state.selectedChains) {
-                if (chain.bpStart == null || chain.bpEnd == null) continue;
-                const span = chain.bpEnd - chain.bpStart;
-                const s = Math.round(chain.bpStart + span * clip.tStart);
-                const e = Math.round(chain.bpStart + span * clip.tEnd);
-                if (s < minBp) minBp = s;
-                if (e > maxBp) maxBp = e;
-            }
-            if (isFinite(minBp)) {
-                const coords = `${state.chromosome}:${minBp}-${maxBp}`;
-                navigator.clipboard.writeText(coords);
-            }
-        });
+        // Reference coordinates only exist for chains on the reference path. An
+        // alt-only selection has no reference bp, so the action can't produce
+        // anything -- omit it entirely rather than offer a no-op.
+        const hasRefCoords = [...state.selectedChains.keys()].some(
+            chain => chain.bpStart != null && chain.bpEnd != null);
+        if (hasRefCoords) {
+            addRow(menu, 'clipboard', t('Copy Approx Coordinates'), () => {
+                let minBp = Infinity, maxBp = -Infinity;
+                for (const [chain, clip] of state.selectedChains) {
+                    if (chain.bpStart == null || chain.bpEnd == null) continue;
+                    const span = chain.bpEnd - chain.bpStart;
+                    const s = Math.round(chain.bpStart + span * clip.tStart);
+                    const e = Math.round(chain.bpStart + span * clip.tEnd);
+                    if (s < minBp) minBp = s;
+                    if (e > maxBp) maxBp = e;
+                }
+                if (isFinite(minBp)) {
+                    const coords = `${state.chromosome}:${minBp}-${maxBp}`;
+                    navigator.clipboard.writeText(coords);
+                }
+            });
+        }
         addRow(menu, 'expand', t('Pop Highlighted'), () => {
             popHighlightedBubbles();
             scheduleFrame();

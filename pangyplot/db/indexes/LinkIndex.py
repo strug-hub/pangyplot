@@ -230,6 +230,13 @@ class LinkIndex:
             f"{self.to_ids[i]}{self.rev_strand_map[self.to_strands[i]]}"
 
     def get_link_by_index(self, i):
+        # GBZ-native: no links.db, so build the Link from the resident arrays
+        # (topology only). This makes get_links_by_segment -- the non-fast path
+        # /pop's get_subgraph uses -- work without SQLite. Full link data
+        # (haplotype/frequency) isn't available GBZ-native, and subgraph link
+        # discovery only needs topology anyway.
+        if self._client is not None:
+            return self.get_link_by_index_fast(i)
         return db.get_link(self.dir, self._get_link_id(i))
 
     def get_link_by_index_fast(self, i):

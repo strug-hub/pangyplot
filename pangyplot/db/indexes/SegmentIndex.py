@@ -113,7 +113,7 @@ class SegmentIndex:
     # BubbleGun backend, which needs DNA, isn't supported for GBZ-native input
     # until the graphd serves per-segment sequences.
 
-    def _segment_from_arrays(self, seg_id):
+    def _segment_from_arrays(self, seg_id, step_index=None):
         from pangyplot.objects.Segment import Segment
         seg = Segment()
         seg.id = seg_id
@@ -124,6 +124,10 @@ class SegmentIndex:
         seg.y1 = float(self.y1[seg_id])
         seg.x2 = float(self.x2[seg_id])
         seg.y2 = float(self.y2[seg_id])
+        # Match the SQLite path (create_segment): attach step/bp_start/bp_end so
+        # serialize() emits ranges + bp bounds. /pop depends on these.
+        if step_index:
+            seg.add_step(step_index)
         return seg
 
     def _iter_from_arrays(self):
@@ -233,4 +237,12 @@ class SegmentIndex:
     # -- query helpers (delegate to SQLite) --------------------------------
 
     def get_by_ids(self, seg_ids, step_index=None):
+        # GBZ-native builds have no segments.db: source Segments from the
+        # resident arrays, exactly as __getitem__/__iter__ do. Without this
+        # branch /pop opens a non-existent segments.db and 500s ("no such table:
+        # segments").
+        if self._client is not None:
+            return [self._segment_from_arrays(seg_id, step_index)
+                    for seg_id in seg_ids
+                    if seg_id < len(self.valid) and self.valid[seg_id]]
         return [db.get_segment(self.dir, seg_id, step_index) for seg_id in seg_ids if seg_id < len(self.valid) and self.valid[seg_id]]

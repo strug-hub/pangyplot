@@ -166,6 +166,66 @@ def test_step_index_from_gbz_matches_sqlite(graph_daemon, gfa_dir):
                               np.asarray(getattr(sqlite_steps, name))), name
 
 
+def test_pop_path_methods_are_sqlite_free_gbz_native(graph_daemon, gfa_dir):
+    # /pop drives three per-element lookups that, before the fix, ignored GBZ-native
+    # mode and hit SQLite: SegmentIndex.get_by_ids, LinkIndex.get_links_by_segment
+    # (the NON-fast path get_subgraph uses), and StepIndex.query_segment (via
+    # Segment.add_step). GBZ-native dirs have no segments.db/links.db/steps.db, so
+    # each opened a fresh empty SQLite file and raised "no such table: ..." -> 500.
+    #
+    # This proves all three source from the resident arrays instead: they return
+    # correct data AND no .db file is auto-created in the GBZ-native dir (SQLite
+    # creates the file on connect, so a stray .db is the bug's fingerprint).
+    from pangyplot.db.gbwt_client import GbwtClient
+    from pangyplot.db.indexes.SegmentIndex import SegmentIndex
+    from pangyplot.db.indexes.LinkIndex import LinkIndex
+    from pangyplot.db.indexes.StepIndex import StepIndex
+
+    coords = {r["id"]: (r["x1"], r["y1"], r["x2"], r["y2"])
+              for r in segment_db.get_index_info(gfa_dir)}
+    client = GbwtClient(graph_daemon)
+    gbz_dir = tempfile.mkdtemp()   # no *.db here, and none may appear
+    seg = SegmentIndex(gbz_dir, client=client, coords=coords)
+    link = LinkIndex(gbz_dir, client=client)
+    step = StepIndex(gbz_dir, REFERENCE, client=client, segment_index=seg)
+
+    seg_ids = [i for i in range(len(seg.valid)) if seg.valid[i]]
+    assert seg_ids, "fixture produced no valid segments"
+
+    # get_by_ids builds Segment objects and attaches steps (add_step -> query_segment).
+    # serialize() is exactly what /pop ships; it must not raise and must be populated.
+    segs = seg.get_by_ids(seg_ids, step)
+    assert len(segs) == len(seg_ids)
+    for s in segs:
+        d = s.serialize()
+        assert d["type"] == "segment" and d["id"] == f"s{s.id}"
+        assert "ranges" in d and "bp_start" in d and "bp_end" in d
+
+    # A reference-backbone segment must carry real bp bounds (the whole point of
+    # add_step); this is null-only when a segment is off the reference.
+    assert any(s.serialize()["bp_start"] is not None for s in segs)
+
+    # get_links_by_segment is the non-fast path get_subgraph calls; it must yield
+    # topology Links from the arrays, not raise on a missing links.db.
+    saw_link = False
+    for sid in seg_ids:
+        for l in link.get_links_by_segment(sid):
+            assert l.from_id is not None and l.to_id is not None
+            saw_link = True
+    assert saw_link, "expected at least one link in the DRB1 fixture"
+
+    # query_segment must match the SQLite build bit-for-bit (it is now a pure
+    # function of the same step arrays test_step_index_from_gbz_matches_sqlite pins).
+    sqlite_step = StepIndex(gfa_dir, REFERENCE)
+    for sid in seg_ids:
+        assert step.query_segment(sid) == sqlite_step.query_segment(sid), sid
+
+    # The fingerprint: no SQLite file was ever opened in the GBZ-native dir.
+    for name in ("segments.db", "links.db", "steps.db"):
+        assert not os.path.exists(os.path.join(gbz_dir, name)), \
+            f"{name} was auto-created -> a query path fell through to SQLite"
+
+
 def test_flat_bubbles_from_gbz_match_gfa(graph_daemon, gfa_dir):
     # The payoff: full bubbles.db built entirely off the GBZ (segments, links,
     # and steps) is byte-identical (same fingerprint) to the GFA build. Coords are

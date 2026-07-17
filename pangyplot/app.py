@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from pangyplot.routes import bp as routes_bp
 
 from pangyplot.db.indexes.GFAIndex import GFAIndex
-from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
 from pangyplot.db.gbwt_manager import GbwtManager
 from pangyplot.db.indexes.StepIndex import StepIndex
 from pangyplot.db.indexes.BubbleIndex import BubbleIndex
@@ -107,14 +106,19 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
         print(f"Loading: {chr}")
         chr_dir = os.path.join(graph_path, chr)
 
-        app.gfa_index[chr] = GFAIndex(chr_dir)
+        # Resolve the GBWT client first so it backs ALL sub-indexes, not just
+        # path_index: GBZ-native builds have no segments.db / links.db, so
+        # segment_index and link_index must source from the resident arrays too
+        # (otherwise /pop 500s on "no such table: segments"). client is None when
+        # GBWT is off -> legacy SQLite/binpath build, unchanged.
+        gbwt_client = app.gbwt_manager.client_for_chrom(chr, chr_dir)
+        app.gfa_index[chr] = GFAIndex(chr_dir, client=gbwt_client)
         print(f"gfa_index size:      {asizeof(app.gfa_index[chr]) / 1024**2:.2f} MB")
 
-        gbwt_client = app.gbwt_manager.client_for_chrom(chr, chr_dir)
-        if gbwt_client is not None:
-            app.gfa_index[chr].path_index = GbwtPathIndex(gbwt_client, chr_dir)
-
-        app.step_index[(chr,ref)] = StepIndex(chr_dir, ref)
+        # client threads GBZ-native mode through to query_segment (segment->steps
+        # reverse lookup): the mmap arrays load without a client, but query_segment
+        # falls back to a non-existent step_index SQLite table without it (/pop).
+        app.step_index[(chr,ref)] = StepIndex(chr_dir, ref, client=gbwt_client)
         print(f"step_index size:      {asizeof(app.step_index[(chr,ref)]) / 1024**2:.2f} MB")
 
         app.bubble_index[chr] = BubbleIndex(chr_dir, app.gfa_index[chr])
