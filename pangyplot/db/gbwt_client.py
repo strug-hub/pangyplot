@@ -19,15 +19,29 @@ class GbwtClientError(RuntimeError):
     pass
 
 
+# Distinguishes "caller said nothing, use self.timeout" from an explicit
+# timeout=None, which urlopen reads as "block indefinitely".
+_DEFAULT_TIMEOUT = object()
+
+
 class GbwtClient:
+    # `timeout` covers the O(1) endpoints only; health() needs it, since it polls
+    # to decide whether the daemon ever came up. The bulk endpoints (/links,
+    # /segments) pass timeout=None deliberately: they stream the whole graph, so
+    # their cost scales with it (chr16's /links is 12.2M rows / 11s) and any fixed
+    # ceiling becomes a size-dependent failure at some larger graph. It would also
+    # guard nothing -- the graphd is a subprocess serve_graph() spawns and kills,
+    # so a hang there is a bug to surface, not to convert into a timeout.
     def __init__(self, base_url, timeout=10.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-    def _get(self, path):
+    def _get(self, path, timeout=_DEFAULT_TIMEOUT):
         url = f"{self.base_url}{path}"
+        if timeout is _DEFAULT_TIMEOUT:
+            timeout = self.timeout
         try:
-            with urllib.request.urlopen(url, timeout=self.timeout) as r:
+            with urllib.request.urlopen(url, timeout=timeout) as r:
                 return r.read()
         except Exception as e:  # noqa: BLE001 - surface any transport error uniformly
             raise GbwtClientError(f"graphd request failed: {url}: {e}") from e
@@ -55,12 +69,12 @@ class GbwtClient:
     def segments(self):
         """Return an (N, 4) int64 array of segment scalars: columns id, length,
         gc, n. Graph mode only (the graphd must be started with --graph)."""
-        raw = self._get("/segments")
+        raw = self._get("/segments", timeout=None)  # bulk: no ceiling
         return np.frombuffer(raw, dtype="<i8").reshape(-1, 4)
 
     def links(self):
         """Return an (M, 4) int64 array of segment-level links: columns from_id,
         from_strand, to_id, to_strand (strand 1='+' / 0='-'). Bidirectional: each
         link appears with its reverse-complement twin. Graph mode only."""
-        raw = self._get("/links")
+        raw = self._get("/links", timeout=None)  # bulk: no ceiling
         return np.frombuffer(raw, dtype="<i8").reshape(-1, 4)
