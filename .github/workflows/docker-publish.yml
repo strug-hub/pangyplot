@@ -72,6 +72,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
+          labels: |
+            org.opencontainers.image.description=PangyPlot (${{ matrix.name }}) — interactive multi-scale visualization of pangenome variation graphs. Serves GFA/GBZ graphs, with the GBWT haplotype-path engine.
           tags: |
             type=semver,pattern={{version}},suffix=${{ matrix.suffix }}
             type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.suffix }}
