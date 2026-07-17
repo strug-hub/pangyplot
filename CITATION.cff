@@ -81,12 +81,21 @@ authors:
     orcid: "https://orcid.org/0000-0003-0503-9740"
     affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
 
-# Once you have a Zenodo DOI for a release, record it here so it resolves from
-# the citation metadata:
+# Zenodo DOI -- two-step, because the DOI does not exist until the release is
+# published:
+#   1. Cut a GitHub release off `main` (e.g. tag v0.3.0). With the Zenodo GitHub
+#      integration enabled, Zenodo auto-publishes the archive and mints the DOI
+#      within a minute or two -- you do not click "publish" on Zenodo yourself.
+#   2. Paste the CONCEPT DOI below and commit. Use the concept DOI (the stable,
+#      all-versions one), NOT the per-version DOI: it always resolves to the
+#      latest release, so you set it once and never touch it again.
+# (The v0.3.0 archive itself won't contain its own DOI -- this backfill is a
+#  normal follow-up commit. To embed the DOI in the archive, do a manual Zenodo
+#  upload and use its "Reserve DOI" button before publishing.)
 # identifiers:
 #   - type: doi
 #     value: "10.5281/zenodo.XXXXXXX"
-#     description: "Archived software release"
+#     description: "Concept DOI (all versions) -- Zenodo software archive"
 
 # The paper to cite. The manuscript is in preparation, so this record has no
 # link yet -- add `year`, `journal`, volume/pages, and a `doi`/`url` once it is
