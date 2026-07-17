@@ -84,26 +84,6 @@ e.g. ``ghcr.io/strug-hub/pangyplot:0.3.0``.
    See *Preparing Data* below for what each ``odgi`` step does. (Gene annotations
    are optional — add them later with ``pangyplot annotate``.)
 
-.. dropdown:: GPU-accelerated layout
-
-   ``odgi layout`` can be run on an NVIDIA GPU for a large speedup on complex
-   graphs. A CUDA-enabled ``odgi_gpu`` build is published under the ``:gpu`` tag:
-
-   .. code-block:: bash
-
-      docker run --rm --device nvidia.com/gpu=all -p 5700:5700 \
-          ghcr.io/strug-hub/pangyplot:gpu
-
-   This requires an NVIDIA host with the `nvidia-container-toolkit
-   <https://github.com/NVIDIA/nvidia-container-toolkit>`_ installed; it also runs
-   CPU-only if launched without ``--device``.
-
-   .. note::
-
-      The GPU image accelerates ``odgi layout`` for data preparation only; it
-      does not currently bundle the GBWT path daemon. Use the default (CPU)
-      image to serve GBZ-native datastores with ``PANGYPLOT_GBWT=1``.
-
 
 Quick Start - Running PangyPlot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
