@@ -1,0 +1,61 @@
+# This CITATION.cff makes the repository citable (GitHub renders a
+# "Cite this repository" widget) and feeds Zenodo's metadata on release.
+# Validate with: `pip install cffconvert && cffconvert --validate`
+#
+# TODO before publishing the Zenodo release:
+#   - add the remaining authors from the preprint (currently "Mastromatteo et al.")
+#   - add ORCIDs and affiliations for each author (fields are commented out below)
+#   - confirm `version` / `date-released` match the release you archive on Zenodo
+#   - once you have a Zenodo DOI, add it under `identifiers:` (see the commented block)
+cff-version: 1.2.0
+message: "If you use PangyPlot, please cite both the software (this record) and the paper under `preferred-citation` below."
+title: "PangyPlot: a pangenome reference browser"
+abstract: >-
+  PangyPlot is a genome graph visualization tool designed to offer intuitive and
+  interactive visualization of genomic data. It enables researchers and
+  biologists to effectively visualize and analyze complex genomic structures and
+  variations from pangenome graphs.
+type: software
+version: 0.2.0
+date-released: 2026-04-24
+license: MIT
+repository-code: "https://github.com/strug-hub/pangyplot"
+url: "https://pangyplot.research.sickkids.ca/"
+keywords:
+  - pangenome
+  - genome graph
+  - visualization
+  - bioinformatics
+  - HPRC
+  - reference bias
+authors:
+  - family-names: Mastromatteo
+    given-names: Scott
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO
+    # affiliation: "The Hospital for Sick Children, Toronto, Canada"  # TODO: confirm
+  # TODO: add the remaining authors from the preprint, in order, e.g.:
+  # - family-names: LastName
+  #   given-names: FirstName
+  #   orcid: "https://orcid.org/...."
+  #   affiliation: "...."
+
+# Once you have a Zenodo DOI for a release, record it here so it resolves from
+# the citation metadata:
+# identifiers:
+#   - type: doi
+#     value: "10.5281/zenodo.XXXXXXX"
+#     description: "Archived software release"
+
+# The paper to cite in text (a preprint at time of writing).
+preferred-citation:
+  type: article
+  title: "Beyond reference bias: Making pangenomes accessible with PangyPlot"
+  authors:
+    - family-names: Mastromatteo
+      given-names: Scott
+    # TODO: add the remaining authors, matching the preprint author list.
+  journal: "bioRxiv"
+  year: 2025
+  doi: "10.1101/2025.10.31.684064"
+  url: "https://doi.org/10.1101/2025.10.31.684064"
+  notes: "Preprint, article no. 2025.10.31.684064."
