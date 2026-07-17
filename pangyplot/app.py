@@ -83,16 +83,19 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
     # GBWT path engine (opt-in via PANGYPLOT_GBWT). Off by default -> legacy
     # binpath PathIndex. When on, each chr's path_index is swapped for a
-    # GbwtPathIndex backed by a per-chr graphd (see GbwtManager).
+    # GbwtPathIndex backed by one graphd serving every chromosome (see
+    # GbwtManager; PANGYPLOT_GBWT_URLS shards it per-chr instead).
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    app.gbwt_manager = GbwtManager(repo_root=repo_root)
+    graph_path = os.path.join(data_dir, "graphs", db_name)
+    # The manager discovers every chr index under graph_path and serves them all
+    # from one daemon (spawned on first use), rather than one daemon per chr.
+    app.gbwt_manager = GbwtManager(repo_root=repo_root, graph_path=graph_path)
 
     if annotation_name:
         annotation_path = os.path.join(data_dir, "annotations", ref, annotation_name)
         app.annotation_index[ref] = AnnotationIndex(annotation_name, annotation_path)
         print(f"annotation_index size: {asizeof(app.annotation_index[ref]) / 1024**2:.2f} MB")
 
-    graph_path = os.path.join(data_dir, "graphs", db_name)
     for chr in os.listdir(graph_path):
         chr_dir = os.path.join(graph_path, chr)
         if not os.path.isdir(chr_dir):
