@@ -3,9 +3,8 @@
 # Validate with: `pip install cffconvert && cffconvert --validate`
 #
 # Author list, ORCIDs, and affiliations are taken from the manuscript.
-# TODO before the Zenodo archival release:
+# TODO before the next release:
 #   - confirm `version` / `date-released` match the release you archive
-#   - once you have a Zenodo DOI, add it under `identifiers:` (commented below)
 #   - add the paper's year, journal, and doi/url once the manuscript is published
 #     (preferred-citation below is set up but intentionally has no link yet)
 #   - CFF allows only ONE affiliation per author; each author below carries their
@@ -81,21 +80,16 @@ authors:
     orcid: "https://orcid.org/0000-0003-0503-9740"
     affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
 
-# Zenodo DOI -- two-step, because the DOI does not exist until the release is
-# published:
-#   1. Cut a GitHub release off `main` (e.g. tag v0.3.0). With the Zenodo GitHub
-#      integration enabled, Zenodo auto-publishes the archive and mints the DOI
-#      within a minute or two -- you do not click "publish" on Zenodo yourself.
-#   2. Paste the CONCEPT DOI below and commit. Use the concept DOI (the stable,
-#      all-versions one), NOT the per-version DOI: it always resolves to the
-#      latest release, so you set it once and never touch it again.
-# (The v0.3.0 archive itself won't contain its own DOI -- this backfill is a
-#  normal follow-up commit. To embed the DOI in the archive, do a manual Zenodo
-#  upload and use its "Reserve DOI" button before publishing.)
-# identifiers:
-#   - type: doi
-#     value: "10.5281/zenodo.XXXXXXX"
-#     description: "Concept DOI (all versions) -- Zenodo software archive"
+# Zenodo software archive. The concept DOI is the stable, all-versions one: it
+# always resolves to the latest release, so it is set once and never changed.
+# The per-version DOI (v0.3.0) is listed second for precise provenance.
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21420029"
+    description: "Concept DOI (all versions) -- Zenodo software archive"
+  - type: doi
+    value: "10.5281/zenodo.21420030"
+    description: "Version DOI (v0.3.0) -- Zenodo software archive"
 
 # The paper to cite. The manuscript is in preparation, so this record has no
 # link yet -- add `year`, `journal`, volume/pages, and a `doi`/`url` once it is
