@@ -147,3 +147,35 @@ class TestGetChainGraph:
         result = query.get_chain_graph(indexes, 999999, REFERENCE, CHROM)
         assert result["nodes"] == []
         assert result["links"] == []
+
+
+class TestRegionComplexityGuard:
+    """The segment-count guard that turns an OOM-scale region into a 413."""
+
+    def test_small_region_passes(self, indexes):
+        # DRB1 is tiny, so a normal /select must stay well under the budget and
+        # return a graph rather than raising RegionTooComplex.
+        graph = query.get_bubble_graph(indexes, REFERENCE, CHROM, 32580000, 32585000)
+        assert isinstance(graph, dict)
+
+    def test_count_sums_inside_source_sink(self):
+        class B:
+            def __init__(self, inside, src, snk):
+                self.inside = set(range(inside))
+                self.source_segments = list(range(src))
+                self.sink_segments = list(range(snk))
+        assert query._region_segment_count([B(10, 2, 3), B(5, 1, 1)]) == 22
+
+    def test_guard_raises_over_budget_and_carries_counts(self):
+        class B:
+            def __init__(self, n):
+                self.inside = set(range(n))
+                self.source_segments = []
+                self.sink_segments = []
+        # Exactly at the limit is allowed (guard is strict >).
+        query._guard_region_complexity([B(query.MAX_REGION_SEGMENTS)])
+        # One over trips it, and the exception carries the counts for the 413.
+        with pytest.raises(query.RegionTooComplex) as ei:
+            query._guard_region_complexity([B(query.MAX_REGION_SEGMENTS + 1)])
+        assert ei.value.seg_count == query.MAX_REGION_SEGMENTS + 1
+        assert ei.value.limit == query.MAX_REGION_SEGMENTS

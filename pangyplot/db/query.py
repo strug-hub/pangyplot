@@ -1,37 +1,54 @@
 import numpy as np
 
 from pangyplot.db.chain_polyline import (
-    decompose_chain, find_junction_graph,
+    find_junction_graph,
     _seg_centroid,
 )
 from pangyplot.db.sqlite import bubble_db as db
 from pangyplot.utils import layout_writer
 
 
-def get_chains(indexes, genome, chrom, start, end, expand_threshold=None,
-               bubble_threshold=None):
-    stepidx = indexes.step_index.get((chrom, genome), None)
-    bubbleidx = indexes.bubble_index.get(chrom, None)
-    gfaidx = indexes.gfa_index.get(chrom, None)
+# A region's cost tracks graph density (segments/bubbles), NOT bp span: a narrow
+# window over a hypervariable locus can resolve to far more segments than a wide
+# window over a quiet one. Materializing all of them into Segment objects + JSON
+# is what OOMs the server, so we cap the *segment count* the region resolves to
+# and refuse (413) before the expensive build, rather than after RSS has blown
+# up. The count is summed from bubble.inside (resident after get_top_level_bubbles
+# loads it -- see bubble_db.create_bubble), so the guard is O(bubbles) and adds no
+# I/O. ~50k segments is ~25 MB of /select payload, far above any LOD-bounded
+# request the frontend actually makes; tune here if a legitimate view is refused.
+MAX_REGION_SEGMENTS = 50_000
 
-    if stepidx is None or bubbleidx is None:
-        raise ValueError(f"Genome '{genome}' or chromosome '{chrom}' not found in indexes.")
 
-    start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
-    chains = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=True)
+class RegionTooComplex(Exception):
+    """A region resolves to more segments than MAX_REGION_SEGMENTS.
 
-    seg_index = gfaidx.segment_index
+    Carries the counts so the route can turn it into a 413 the frontend can act
+    on (stay at a coarser LOD) instead of OOMing the whole server process.
+    """
+    def __init__(self, seg_count, limit=MAX_REGION_SEGMENTS):
+        self.seg_count = seg_count
+        self.limit = limit
+        super().__init__(
+            f"Region resolves to {seg_count} segments (limit {limit}); "
+            f"zoom in to a smaller or less variable region.")
 
-    chain_results = []
-    bubble_results = []
-    for chain in chains:
-        r = decompose_chain(
-            chain, expand_threshold, bubble_threshold,
-            bubbleidx, stepidx, seg_index, gfaidx, depth=0, max_depth=3)
-        chain_results.extend(r["chains"])
-        bubble_results.extend(r["bubbles"])
 
-    return {"chains": chain_results, "bubbles": bubble_results}
+def _region_segment_count(bubbles):
+    """Segments a region's bubbles resolve to. bubble.inside is pruned to
+    direct-only segments (Bubble.remove_inside), so summing over the flat
+    descendant list counts each segment once."""
+    return sum(len(b.inside) + len(b.source_segments) + len(b.sink_segments)
+               for b in bubbles)
+
+
+def _guard_region_complexity(bubbles):
+    """Raise RegionTooComplex if the region's segment count exceeds the budget.
+    Call after get_top_level_bubbles (cheap int-sets resident) and before any
+    Segment-object / JSON materialization (the memory blowup)."""
+    n = _region_segment_count(bubbles)
+    if n > MAX_REGION_SEGMENTS:
+        raise RegionTooComplex(n, MAX_REGION_SEGMENTS)
 
 
 def _bubbles_to_subgraph(bubbles, bubbleidx, gfaidx, stepidx):
@@ -170,6 +187,9 @@ def get_bubble_graph(indexes, genome, chrom, start, end):
 
     start_step, end_step = stepidx.query_coordinates(start, end, debug=False)
     bubbles = bubbleidx.get_top_level_bubbles(start_step, end_step, as_chains=False)
+
+    # Refuse before serializing every bubble's inside segments (the OOM risk).
+    _guard_region_complexity(bubbles)
 
     boundary_segs = set()
     for b in bubbles:

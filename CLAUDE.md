@@ -99,8 +99,7 @@ The viewer lives in `pangyplot/static/js/graph/` and uses raw canvas for multi-r
 | `GET /cytoband?chromosome=` | Returns cytoband data for ideogram |
 | `GET /samples` | Lists available samples/haplotypes |
 | `GET /skeleton?chromosome=` | Returns precomputed simplification data |
-| `GET /chains?genome=&chromosome=&start=&end=` | Returns chain decomposition for a region |
-| `GET /detail-tiles?genome=&chromosome=&start=&end=&ppbp=` | Returns high-resolution tiles for detail view |
+| `GET /detail-tiles?genome=&chromosome=&start=&end=&ppbp=` | Returns high-resolution tiles for detail view (the chain-decomposition path the frontend actually uses) |
 | `GET /chain-graph?id=&genome=&chromosome=` | Returns subgraph for a specific chain |
 
 ### Organism/cytoband configuration

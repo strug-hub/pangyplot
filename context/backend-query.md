@@ -19,8 +19,7 @@ Developer notes on the backend data flow, index classes, domain objects, and coo
 | `GET /chromosomes` | noncanonical (optional) | Lists available chromosomes |
 | `GET /cytoband` | chromosome | Cytoband data for ideogram |
 | `GET /skeleton` | chromosome | Precomputed simplification data |
-| `GET /chains` | genome, chromosome, start, end, expand, bubble | Chain decomposition for a region |
-| `GET /detail-tiles` | genome, chromosome, start, end, ppbp, expand | High-resolution tiles for detail view |
+| `GET /detail-tiles` | genome, chromosome, start, end, ppbp, expand | High-resolution tiles for detail view (the chain path the frontend uses) |
 | `GET /chain-graph` | id, genome, chromosome | Subgraph for a specific chain |
 
 All endpoints delegate to `pangyplot/db/query.py`. Errors raise `ValueError`, caught as JSON 404.
@@ -32,9 +31,9 @@ All endpoints delegate to `pangyplot/db/query.py`. Errors raise `ValueError`, ca
 Thin layer bridging routes to index classes.
 
 Key functions:
-- **`get_bubble_graph(indexes, genome, chrom, start, end)`** — main `/select` handler; returns bubbles + boundary links (pure s→s GFA links)
+- **`get_bubble_graph(indexes, genome, chrom, start, end)`** — main `/select` handler; returns bubbles + boundary links (pure s→s GFA links). Guarded by `RegionTooComplex`/`MAX_REGION_SEGMENTS`: a region resolving to more than the budget of segments returns 413 rather than materializing an OOM-scale response.
 - **`pop_bubble(indexes, id, genome, chrom)`** — expands a bubble via `BubbleIndex.get_popped_subgraph()`; returns `{source_segs, sink_segs, child_bubbles, nodes, links}`
-- **`get_chains(indexes, genome, chrom, start, end, expand_threshold, bubble_threshold)`** — `/chains` handler; decomposes top-level bubbles into polyline chains
+- (removed) `/chains` + `get_chains` — the frontend never called it (chains render via `/detail-tiles`), and `create_chains` loads each chain's *full* bubble set regardless of window, so a raw call was chromosome-scale (~7 s / OOM). The atlas `chains` flow documents the measurement.
 - **`get_chain_graph(indexes, chain_id, genome, chrom)`** — `/chain-graph` handler; builds hybrid subgraph for a chain (leaf bubbles as nodes, superbubbles auto-popped one level)
 - **`get_detail_tile(indexes, genome, chrom, start, end, ppbp, ...)`** — `/detail-tiles` handler; chains + junction graph + bypass links for the detail layer
 - **`get_bubbles_subgraph(indexes, bubble_ids, genome, chrom)`** — builds subgraph from a list of bubble IDs

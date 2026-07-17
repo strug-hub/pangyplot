@@ -204,29 +204,6 @@ def graph_meta():
     with open(meta_path, 'r') as f:
         return Response(f.read(), mimetype='application/json')
 
-@bp.route('/chains', methods=["GET"])
-def chains():
-    genome = request.args.get("genome")
-    chrom = request.args.get("chromosome")
-    start = int(request.args.get("start"))
-    end = int(request.args.get("end"))
-    expand = request.args.get("expand", type=int, default=None)
-    bubble = request.args.get("bubble", type=int, default=None)
-
-    print(f"Getting chains for {genome}#{chrom}:{start}-{end} expand={expand} bubble={bubble}...")
-    try:
-        result = query.get_chains(current_app, genome, chrom, start, end,
-                                  expand_threshold=expand, bubble_threshold=bubble)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 404
-
-    # Strip internal fields not meant for this endpoint's response
-    for c in result.get("chains", []):
-        c.pop("_bubble_ids", None)
-        c.pop("_layout_span", None)
-
-    return jsonify(result)
-
 @bp.route('/detail-tiles', methods=["GET"])
 def detail_tiles():
     genome = request.args.get("genome")
@@ -337,6 +314,9 @@ def select():
     print(f"Making graph for {genome}#{chrom}:{start}-{end}...")
     try:
         graph = query.get_bubble_graph(current_app, genome, chrom, start, end)
+    except query.RegionTooComplex as e:
+        return jsonify({"error": str(e), "seg_count": e.seg_count,
+                        "limit": e.limit}), 413
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 

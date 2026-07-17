@@ -1,4 +1,4 @@
-"""Route tests for /select, /pop, /chains, and /detail-tiles using DRB1-3123.
+"""Route tests for /select, /pop, and /detail-tiles using DRB1-3123.
 
 Specific pop test cases anchored to segments:
   - Simple SNP: endpoints 11/17, inside [12, 13], 4 nodes, 8 links
@@ -127,6 +127,19 @@ class TestSelectRoute:
             f"/select?genome=INVALID&chromosome={CHROM}&start={START}&end={END}")
         assert resp.status_code == 404
 
+    def test_region_too_complex_413(self, client, monkeypatch):
+        # A region resolving to more than the budget must 413 (and carry the
+        # counts) instead of building the response. DRB1 is tiny, so drop the
+        # budget under its segment count to exercise the guard's route wiring.
+        import pangyplot.db.query as query
+        monkeypatch.setattr(query, "MAX_REGION_SEGMENTS", 1)
+        resp = client.get(
+            f"/select?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
+        assert resp.status_code == 413
+        data = resp.get_json()
+        assert data["limit"] == 1
+        assert data["seg_count"] > 1
+
 
 # ---------------------------------------------------------------------------
 # /pop — generic
@@ -211,44 +224,11 @@ class TestPopNested:
 
 
 # ---------------------------------------------------------------------------
-# /chains
+# /chains was removed: not called by the frontend (chains render via
+# /detail-tiles), and inherently chromosome-scale (create_chains loads full
+# chains), so a raw call OOM'd the server. See the RegionTooComplex guard on
+# /select for the endpoint that stayed.
 # ---------------------------------------------------------------------------
-
-class TestChainsRoute:
-
-    def test_returns_200(self, client):
-        resp = client.get(
-            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
-        assert resp.status_code == 200
-
-    def test_has_chains_and_bubbles(self, client):
-        resp = client.get(
-            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
-        data = resp.get_json()
-        assert "chains" in data
-        assert "bubbles" in data
-
-    def test_chain_count(self, client):
-        resp = client.get(
-            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
-        data = resp.get_json()
-        assert len(data["chains"]) == 16
-
-    def test_chains_have_required_fields(self, client):
-        resp = client.get(
-            f"/chains?genome={REFERENCE}&chromosome={CHROM}&start={START}&end={END}")
-        data = resp.get_json()
-        for chain in data["chains"]:
-            assert "id" in chain
-            assert "polyline" in chain
-            assert "source_segs" in chain
-            assert "sink_segs" in chain
-            assert len(chain["polyline"]) >= 2
-
-    def test_invalid_genome_404(self, client):
-        resp = client.get(
-            f"/chains?genome=INVALID&chromosome={CHROM}&start={START}&end={END}")
-        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------

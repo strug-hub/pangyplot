@@ -6,9 +6,10 @@ indexes it consults, in the order a request actually visits them. Every timing o
 this page is a real request issued against the real datastore at build time,
 through the harness in _runtime.py — not a fixture, not an estimate.
 
-The last stage is /chains, the sibling endpoint the detail view calls over the
-same window. It is here because it answers the same question 2000x slower, and
-the reason is one line of code.
+The last stage is /chains — now REMOVED. It was the sibling endpoint over the
+same window that answered the same question 2000x slower (and OOM'd larger
+chromosomes). It is kept here as the record of why it was deleted; the frontend
+always used /detail-tiles, and /select is now guarded with a segment-count limit.
 """
 
 import time
@@ -209,17 +210,24 @@ STAGES = [
     "sub": [],
   },
   {
-    "id": "chains", "name": "/chains — the same window, 2000x slower", "timing_key": "chains",
-    "fns": [("pangyplot/routes.py", "chains"),
-            ("pangyplot/db/query.py", "get_chains")],
-    "gist": "The sibling endpoint the detail view calls over the same region. Same StepIndex lookup, same BubbleIndex range query — then as_chains=True, and the window stops mattering.",
+    "id": "chains", "name": "/chains — REMOVED (was 2000x slower; this is why)", "timing_key": "chains",
+    "fns": [("pangyplot/db/indexes/BubbleIndex.py", "create_chains"),
+            ("pangyplot/db/chain_polyline.py", "_project_points_onto_polyline")],
+    "gist": "REMOVED endpoint. It was the sibling of /select over the same region, but as_chains=True made the window stop mattering — a 100 kb request was chromosome-scale (~7 s, and OOM on larger chromosomes). The frontend never called it (it uses /detail-tiles); this flow is kept as the measurement that justified deleting it.",
     "inp": "the same genome, chromosome, start, end",
-    "out": "{'chains': [ {polyline, bubble_t, bubble_ids, ...} ], 'bubbles': []}",
+    "out": "(removed) was {'chains': [ {polyline, bubble_t, bubble_ids, ...} ], 'bubbles': []}",
     "artifacts": [],
     "checks": ["chains_window"],
     "tests": ["tests/db/test_chain_polyline.py", "tests/db/test_query_functions.py"],
     "hang": True,
     "notes": [
+      ("REMOVED — the route and get_chains are gone; /select is guarded instead",
+       "The <code>/chains</code> route and <code>get_chains</code> were deleted. <code>/select</code> (the live "
+       "viewer path) now returns <b>413</b> (<code>RegionTooComplex</code> / <code>MAX_REGION_SEGMENTS</code>) when a "
+       "region resolves to too many segments, instead of OOMing. The functions the notes below name — "
+       "<code>create_chains</code>, <code>_project_points_onto_polyline</code> — still exist (used by "
+       "<code>/detail-tiles</code> and the PolychainIndex prebuild), so the root-cause analysis stays accurate; only "
+       "the <code>/chains</code> entry point is gone. The measurements below are preserved verbatim as the record."),
       ("MEASURED: ~3 ms vs ~7,200 ms over the identical window",
        "chrY:2,700,000-2,800,000, same booted app, same process, best of three. <code>/select</code> → <b>3.2 ms</b> "
        "/ 12.5 KB / 11 nodes. <code>/chains</code> → <b>7,273 ms</b> / 186 KB / <b>1</b> chain. cProfile puts 6.78 s "
@@ -261,9 +269,9 @@ STAGES = [
     ],
     "sub": [
       {"name": "The same first two stages", "timing_key": "",
-       "fns": [("pangyplot/db/query.py", "get_chains")],
-       "gist": "query_coordinates, then get_top_level_bubbles — identical to /select up to this point.",
-       "cost": "~0 ms. Everything after this is the difference."},
+       "fns": [("pangyplot/db/query.py", "get_bubble_graph")],
+       "gist": "query_coordinates, then get_top_level_bubbles — /chains was identical to /select up to this point (get_bubble_graph still shows these two stages).",
+       "cost": "~0 ms. Everything after this was the difference."},
       {"name": "Back-fill the whole chain", "timing_key": "chains_create",
        "fns": [("pangyplot/db/indexes/BubbleIndex.py", "create_chains")],
        "gist": "Group the in-window bubbles by chain id, then fetch every OTHER bubble of those chains from SQLite so each Chain object is complete.",
@@ -293,11 +301,13 @@ DB = "hprc.clip"
 CHROM = "chrY"
 REF = "GRCh38"
 
-# (label, start, end, run_chains)
+# (label, start, end, run_chains) -- run_chains is False everywhere now: /chains
+# was removed, so the atlas no longer issues it. The chains flow above is kept as
+# the historical record of why it was removed.
 QUERIES = [
-    ("100 kb window", 2_700_000, 2_800_000, True),
-    ("2 Mb window", 2_700_000, 4_700_000, True),
-    ("empty region", 57_227_410, 57_227_415, True),
+    ("100 kb window", 2_700_000, 2_800_000, False),
+    ("2 Mb window", 2_700_000, 4_700_000, False),
+    ("empty region", 57_227_410, 57_227_415, False),
     ("missing &end", 2_700_000, None, False),
 ]
 
@@ -473,7 +483,8 @@ PANELS = [
       "the DRB1-3123 GFA fixture, runs bubble detection, and builds all four real indexes into a tempdir. So /select "
       "IS exercised end-to-end. But DRB1-3123 is a 5 kb region with a handful of bubbles: it can prove the response "
       "shape and the pop endpoints' exact node sets, and it cannot prove anything about cost. The 7-second /chains "
-      "on this page passes <code>tests/db/test_chain_polyline.py</code> without complaint."),
+      "documented on this page passed <code>tests/db/test_chain_polyline.py</code> without complaint — it was "
+      "removed only after being measured here, never by a test."),
      ("The conftest client is a stub, and the other route tests use it.",
       "<code>tests/routes/conftest.py</code> builds a bare Flask app with <b>only</b> cytoband data on it — no "
       "<code>step_index</code>, no <code>bubble_index</code>, no <code>gfa_index</code>. Everything that takes the "
@@ -492,10 +503,11 @@ PANELS = [
      ("/select",
       "Bubbles as nodes, GFA links between their boundary segments. Scales with the window. This is what the core "
       "viewer draws, and what <code>/pop</code> then expands node by node."),
-     ("/chains",
+     ("/chains (removed)",
       "The same bubbles, grouped into Chain objects and reduced to one polyline per chain. Documented as a region "
-      "query; is not one — <code>create_chains</code> back-fills each chain in full, so the response is the same 190 "
-      "KB whether you ask for 100 kb or 2 Mb of chrY."),
+      "query; was not one — <code>create_chains</code> back-fills each chain in full, so the response was the same 190 "
+      "KB whether you asked for 100 kb or 2 Mb of chrY. Deleted for that reason; /select carries a segment-count "
+      "guard so it cannot hit the same wall."),
      ("/detail-tiles",
       "What the simplify viewer actually calls. Reads the decompositions <code>PolychainIndex</code> precomputed "
       "during <code>pangyplot add</code> (see the ingest flow), which is why the same chain decomposition that costs "
