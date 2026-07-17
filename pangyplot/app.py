@@ -109,7 +109,7 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
         gbwt_client = app.gbwt_manager.client_for_chrom(chr, chr_dir)
         if gbwt_client is not None:
-            app.gfa_index[chr].path_index = GbwtPathIndex(gbwt_client)
+            app.gfa_index[chr].path_index = GbwtPathIndex(gbwt_client, chr_dir)
 
         app.step_index[(chr,ref)] = StepIndex(chr_dir, ref)
         print(f"step_index size:      {asizeof(app.step_index[(chr,ref)]) / 1024**2:.2f} MB")

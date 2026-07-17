@@ -176,6 +176,62 @@ class TestGbzBinpathParity:
 
         assert ranges_of(gpi) == ranges_of(pangyplot_paths)
 
+    def test_bp_ranges_cached_to_disk_and_reused(self, graphd, drb1_step_index, tmp_path):
+        # compute_bp_ranges walks every subpath in full, which on a whole-genome
+        # v2 datastore was ~1 min per chromosome -- ~25 min of every server start
+        # recomputing what add already computed. Cache it, as PathIndex does.
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex, BP_RANGES_CACHE
+
+        gpi = GbwtPathIndex(GbwtClient(graphd), str(tmp_path))
+        gpi.compute_bp_ranges(drb1_step_index)
+        expected = {s: gpi._subpath_bp_ranges[s] for s in gpi.get_samples()}
+        assert (tmp_path / BP_RANGES_CACHE).exists()
+
+        # A second index over the same dir must reuse the file, not re-walk. The
+        # client is poisoned so any /walk raises -- proving the cache was used
+        # rather than merely that the answer came out the same.
+        fresh = GbwtPathIndex(GbwtClient(graphd), str(tmp_path))
+
+        def explode(_):
+            raise AssertionError("walked despite a valid cache")
+
+        fresh.client.walk = explode
+        fresh.compute_bp_ranges(drb1_step_index)
+        assert {s: fresh._subpath_bp_ranges[s] for s in fresh.get_samples()} == expected
+
+    def test_stale_bp_ranges_cache_is_rejected(self, graphd, drb1_step_index, tmp_path):
+        # A cache written against a different graph would silently mislabel every
+        # subpath's coordinates, which is worse than no cache. The signature must
+        # catch it and force a recompute.
+        import json
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex, BP_RANGES_CACHE
+
+        gpi = GbwtPathIndex(GbwtClient(graphd), str(tmp_path))
+        gpi.compute_bp_ranges(drb1_step_index)
+        good = {s: gpi._subpath_bp_ranges[s] for s in gpi.get_samples()}
+
+        cache = tmp_path / BP_RANGES_CACHE
+        data = json.loads(cache.read_text())
+        data["signature"] = {s: n + 1 for s, n in data["signature"].items()}
+        data["ranges"] = {s: [[-1, -1] for _ in rr] for s, rr in data["ranges"].items()}
+        cache.write_text(json.dumps(data))
+
+        fresh = GbwtPathIndex(GbwtClient(graphd), str(tmp_path))
+        fresh.compute_bp_ranges(drb1_step_index)
+        assert {s: fresh._subpath_bp_ranges[s] for s in fresh.get_samples()} == good
+
+    def test_no_db_dir_still_computes(self, graphd, drb1_step_index):
+        # The dir is optional; without it there is nowhere to cache, and
+        # compute_bp_ranges must still work rather than blow up on a None path.
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+
+        gpi = GbwtPathIndex(GbwtClient(graphd))
+        gpi.compute_bp_ranges(drb1_step_index)
+        assert gpi._subpath_bp_ranges
+
     def test_sample_idx_is_a_stable_bijection(self, graphd):
         # /pathorder needs a sample -> contiguous index map. Every sample present
         # gets exactly one index, and the indices are 0..N-1 with no gaps.

@@ -12,7 +12,8 @@ class GFAIndex:
         # SQLite/binpath build.
         self.segment_index = SegmentIndex(db_dir, client=client, coords=coords)
         self.link_index = LinkIndex(db_dir, client=client)
-        self.path_index = GbwtPathIndex(client) if client is not None else PathIndex(db_dir)
+        self.path_index = (GbwtPathIndex(client, db_dir) if client is not None
+                           else PathIndex(db_dir))
 
     def __getitem__(self, segment_id):
         return self.segment_index[segment_id]

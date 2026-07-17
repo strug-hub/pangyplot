@@ -23,16 +23,28 @@ iterable Path domain objects with subset_path/serialize. Those consumers are
 outside the migration seam; they raise a clear error under GBWT mode until
 ported. See context/gbwt-migration.md (Stage 3 wiring).
 """
+import json
+import os
 from collections import defaultdict
 
 import numpy as np
 
 from pangyplot.db.path_codec import encode_combined
 
+# Deliberately NOT paths/bp_ranges.json, which is the binpath engine's cache: a
+# chr dir can hold both a paths/ store and a graph.gbz, and an adopted GBZ need
+# not walk identically to the binpaths it sits beside. Separate files let the two
+# engines cache independently instead of silently overwriting each other.
+BP_RANGES_CACHE = "bp_ranges.gbwt.json"
+
 
 class GbwtPathIndex:
-    def __init__(self, client):
+    def __init__(self, client, db_dir=None):
+        # db_dir is the chr directory, and is what makes bp-range caching
+        # possible; omit it (as the tests do) and compute_bp_ranges just
+        # recomputes every time.
         self.client = client
+        self.db_dir = db_dir
         meta = client.meta()
         self.has_translation = meta.get("has_translation", False)
         self._n_nodes = meta.get("nodes", 0)
@@ -66,6 +78,58 @@ class GbwtPathIndex:
 
     # -- bp ranges --------------------------------------------------------
 
+    def _bp_ranges_cache_path(self):
+        return os.path.join(self.db_dir, BP_RANGES_CACHE) if self.db_dir else None
+
+    def _cache_signature(self):
+        """What the cache must agree with to be reusable.
+
+        Cheap to compute and enough to catch the cache being read against a
+        different graph: the subpath count per sample is what the range lists are
+        positionally aligned to, so if either moves the cache is meaningless.
+        """
+        return {s: len(e) for s, e in self._by_sample.items()}
+
+    def _load_bp_ranges_cache(self):
+        path = self._bp_ranges_cache_path()
+        if not path or not os.path.exists(path):
+            return False
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            ranges = data["ranges"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            return False
+        # A stale cache is worse than no cache: it silently mislabels every
+        # subpath's coordinates. Recompute unless it matches this graph exactly.
+        if data.get("signature") != self._cache_signature():
+            return False
+        self._subpath_bp_ranges = {
+            s: [tuple(r) for r in rr] for s, rr in ranges.items()
+        }
+        return True
+
+    def _save_bp_ranges_cache(self):
+        path = self._bp_ranges_cache_path()
+        if not path:
+            return
+        payload = {
+            "signature": self._cache_signature(),
+            "ranges": {s: [list(r) for r in rr]
+                       for s, rr in self._subpath_bp_ranges.items()},
+        }
+        tmp = f"{path}.tmp"
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(tmp, "w") as f:
+                json.dump(payload, f)
+            os.replace(tmp, path)   # atomic: a killed server leaves no half-file
+        except OSError:
+            # A read-only or full datastore costs startup time, not correctness.
+            if os.path.exists(tmp):
+                try: os.remove(tmp)
+                except OSError: pass
+
     def compute_bp_ranges(self, step_index):
         """Precompute (bp_start, bp_end) per subpath from its walk + StepIndex.
 
@@ -74,7 +138,15 @@ class GbwtPathIndex:
         path. Guarantees the bp ranges match the binpath engine's exactly (both
         read the identical walk and the identical StepIndex). Called once at
         startup after PathIndex and StepIndex are loaded (app.py).
+
+        Cached to disk, as PathIndex does, because this is the single most
+        expensive thing at startup: it walks every subpath of every sample in
+        full, and a whole-genome v2 datastore made that ~1 min per chromosome --
+        ~25 min of a server start spent recomputing what `add` already computed.
         """
+        if self._load_bp_ranges_cache():
+            return
+
         segments = np.asarray(step_index.segments, dtype=np.int64)
         starts = np.asarray(step_index.starts, dtype=np.int64)
         ends = np.asarray(step_index.ends, dtype=np.int64)
@@ -103,6 +175,8 @@ class GbwtPathIndex:
                 ranges.append((int(seg_min[seg_ids].min()),
                                int(seg_max[seg_ids].max())))
             self._subpath_bp_ranges[sample] = ranges
+
+        self._save_bp_ranges_cache()
 
     # -- PathIndex-compatible surface -------------------------------------
 
