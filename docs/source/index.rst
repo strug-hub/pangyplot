@@ -35,9 +35,19 @@ Quick Links
       <div class="icon-item">
           <i class="fa-brands fa-github"></i>
           <div class="icon-text">
-          <div class="icon-label"><a href="https://github.com/scottmastro/pangyplot">GitHub</a></div>
+          <div class="icon-label"><a href="https://github.com/strug-hub/pangyplot">GitHub</a></div>
           <div class="icon-description">
             Repository for source code and issues.
+          </div>
+          </div>
+      </div>
+      <div class="icon-item">
+          <i class="fa-brands fa-docker"></i>
+          <div class="icon-text">
+          <div class="icon-label"><a href="https://github.com/strug-hub/pangyplot/pkgs/container/pangyplot">Container</a></div>
+          <div class="icon-description">
+            Prebuilt image (<code>ghcr.io/strug-hub/pangyplot</code>) with the full
+            toolchain &mdash; run or prepare data with no local install.
           </div>
           </div>
       </div>

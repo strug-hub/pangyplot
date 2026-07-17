@@ -39,6 +39,16 @@ python pangyplot.py run --db hprc.clip --ref GRCh38 --annotations gencode48.chrY
 
 This should launch a local web server at http://127.0.0.1:5700 with chrY data that is included with the codebase. Please consult this documentation page for further usage information and test datasets: https://pangyplot.readthedocs.io/en/latest/advanced/quickstart.html
 
+## Usage - Docker
+
+Prefer not to install Python and `odgi`? A prebuilt image ships the whole toolchain (`vg`, `odgi`, `pangyplot`, and the GBWT daemon) and serves the bundled chrY demo out of the box:
+
+```
+docker run --rm -p 5700:5700 ghcr.io/strug-hub/pangyplot:latest
+```
+
+Image: [ghcr.io/strug-hub/pangyplot](https://github.com/strug-hub/pangyplot/pkgs/container/pangyplot). You can also prepare your own data (GFA → server) entirely inside the container — see the [Docker quick start](https://pangyplot.readthedocs.io/en/latest/advanced/quickstart.html).
+
 # Documentation
 
 [![Documentation](https://img.shields.io/badge/docs-pangyplot-blue?logo=readthedocs)](https://pangyplot.readthedocs.io/en/latest/)

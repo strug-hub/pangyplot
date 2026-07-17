@@ -49,6 +49,42 @@ See :ref:`setup` for the full list of ``PANGYPLOT_*`` variables the container re
 The moving ``:latest`` tag tracks the newest build; pin a specific version with
 e.g. ``ghcr.io/strug-hub/pangyplot:0.3.0``.
 
+.. dropdown:: Prepare your own data in the container (GFA → server)
+
+   The image bundles the whole toolchain (``vg``, ``odgi``, ``pangyplot``, and
+   the GBWT ``graphd``), so the *Preparing Data* steps below run entirely inside
+   the container — nothing to install locally. Override the entrypoint to run the
+   pipeline into a mounted work directory, then serve what you built. Using the
+   same chrY example:
+
+   .. code-block:: bash
+
+      mkdir -p work
+      wget -P work https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.chroms/chrY.vg
+
+      # build the datastore in-container (vg -> odgi -> pangyplot add)
+      docker run --rm -v "$PWD/work:/work" --entrypoint bash \
+          ghcr.io/strug-hub/pangyplot:0.3.0 -c '
+        cd /work
+        vg convert --no-wline chrY.vg -f > chrY_unsorted.gfa
+        odgi build -O -g chrY_unsorted.gfa -o chrY_unsorted.og
+        odgi paths -L -i chrY_unsorted.og | grep GRCh38 >  path_sort_order.txt
+        odgi paths -L -i chrY_unsorted.og | grep CHM13  >> path_sort_order.txt
+        odgi sort -t 4 --optimize -Y -H path_sort_order.txt -i chrY_unsorted.og -o chrY.og -P
+        odgi layout -t 4 -i chrY.og --tsv chrY.lay.tsv -P
+        odgi view -i chrY.og -g > chrY.gfa
+        python pangyplot.py add --ref GRCh38 --chr chrY --db hprc.test \
+            --gfa chrY.gfa --layout chrY.lay.tsv --dir /work/datastore
+      '
+
+      # serve the datastore you just built
+      docker run --rm -p 5700:5700 -v "$PWD/work/datastore:/app/datastore" \
+          -e PANGYPLOT_DB=hprc.test -e PANGYPLOT_REF=GRCh38 -e PANGYPLOT_ANNOTATION= \
+          ghcr.io/strug-hub/pangyplot:0.3.0
+
+   See *Preparing Data* below for what each ``odgi`` step does. (Gene annotations
+   are optional — add them later with ``pangyplot annotate``.)
+
 .. dropdown:: GPU-accelerated layout
 
    ``odgi layout`` can be run on an NVIDIA GPU for a large speedup on complex
