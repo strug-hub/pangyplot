@@ -4,6 +4,7 @@ import os
 from pangyplot.commands import add
 from pangyplot.commands import cytoband
 from pangyplot.commands import run
+from pangyplot.commands import serve
 from pangyplot.commands import setup
 from pangyplot.commands import status
 from pangyplot.commands import annotate
@@ -38,6 +39,17 @@ def parse_args():
     parser_run.add_argument('--dir', help='Directory where the database files are', default=DEFAULT_DB_FOLDER)
     parser_run.add_argument('--annotations', help='Name of annotations to use', default=None, required=False)
     parser_run.add_argument('--debug', help='Enable debug mode in the frontend', action='store_true')
+
+    parser_serve = subparsers.add_parser('serve', help='Launch the software (production mode, via gunicorn).')
+    parser_serve.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
+    parser_serve.add_argument('--ref', help='Reference name', default=None, required=True)
+    parser_serve.add_argument('--port', help='Port to serve the app on', default=DEFAULT_PORT, type=int, required=False)
+    parser_serve.add_argument('--dir', help='Directory where the database files are', default=DEFAULT_DB_FOLDER)
+    parser_serve.add_argument('--annotations', help='Name of annotations to use', default=None, required=False)
+    parser_serve.add_argument('--host', help='Address to bind to (default 0.0.0.0, i.e. reachable from outside the host/container)', default='0.0.0.0')
+    parser_serve.add_argument('--workers', help='Number of gunicorn worker processes', default=1, type=int)
+    parser_serve.add_argument('--threads', help='Number of threads per gunicorn worker', default=4, type=int)
+    parser_serve.add_argument('--timeout', help='gunicorn worker timeout in seconds', default=120, type=int)
 
     parser_add = subparsers.add_parser('add', help='Add a dataset.')
     parser_add.add_argument('--db', help='Database name', default=DEFAULT_DB, required=True)
@@ -102,6 +114,9 @@ def parse_args():
 
     if args.command == 'run':
         run.pangyplot_run(args)
+
+    if args.command == 'serve':
+        serve.pangyplot_serve(args)
 
     if args.command == 'preprocess':
         preprocess.pangyplot_preprocess(args)

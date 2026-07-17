@@ -5,7 +5,7 @@
 #   # open http://localhost:5700/#chrY:23129355-23199010
 #
 # To serve your OWN preprocessed data instead of the bundled chrY demo,
-# uncomment the volume mount and point the env vars at your datastore.
+# uncomment the volume mount and the `command:` override pointing serve at it.
 
 services:
   # CPU image — small, runs anywhere.
@@ -16,11 +16,9 @@ services:
     image: pangyplot
     ports:
       - "5700:5700"
-    environment:
-      PANGYPLOT_DB: hprc.clip
-      PANGYPLOT_REF: GRCh38
-      PANGYPLOT_ANNOTATION: gencode48.chrY
-      PANGYPLOT_PORT: "5700"
+    # The image's default CMD serves the bundled chrY demo. To serve your own
+    # data, mount it below and override the command with your db/ref:
+    # command: ["serve", "--db", "my.db", "--ref", "GRCh38"]
     # volumes:
     #   - ./my-datastore:/app/datastore
 
@@ -34,11 +32,7 @@ services:
     image: pangyplot:gpu
     ports:
       - "5700:5700"
-    environment:
-      PANGYPLOT_DB: hprc.clip
-      PANGYPLOT_REF: GRCh38
-      PANGYPLOT_ANNOTATION: gencode48.chrY
-      PANGYPLOT_PORT: "5700"
+    # command: ["serve", "--db", "my.db", "--ref", "GRCh38"]   # to serve your own data
     devices:
       - "nvidia.com/gpu=all"      # Docker CDI syntax (Docker 25+ / recent engines)
     # volumes:

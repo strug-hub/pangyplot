@@ -31,19 +31,22 @@ of the box:
 
 Then open http://127.0.0.1:5700/#chrY:23129355-23199010.
 
-The image bundles ``odgi``, so it covers the full data-preparation pipeline
-(see *Preparing Data* below) as well as running. To serve your own prepared
-data, mount a datastore directory over ``/app/datastore`` and point the
-``PANGYPLOT_*`` variables at it:
+The container's entrypoint *is* the ``pangyplot`` command line, so anything you
+append to ``docker run`` runs as ``pangyplot <args>`` — identical to the commands
+you would type on a host. The default (no arguments) serves the bundled demo; to
+serve your own prepared data, mount a datastore over ``/app/datastore`` and pass
+the same ``--db``/``--ref`` flags you would use locally:
 
 .. code-block:: bash
 
    docker run --rm -p 5700:5700 \
        -v "$PWD/my-datastore:/app/datastore" \
-       -e PANGYPLOT_DB=my.db -e PANGYPLOT_REF=GRCh38 \
-       ghcr.io/strug-hub/pangyplot:latest
+       ghcr.io/strug-hub/pangyplot:latest \
+       serve --db my.db --ref GRCh38
 
-See :ref:`setup` for the full list of ``PANGYPLOT_*`` variables the container reads.
+``serve`` is the production sibling of ``run``: it warms the datastore and serves
+via ``gunicorn`` bound to ``0.0.0.0`` (so the port is reachable from outside the
+container), whereas ``run`` uses Flask's development server on ``127.0.0.1``.
 
 The moving ``:latest`` tag tracks the newest build; pin a specific version with
 e.g. ``ghcr.io/strug-hub/pangyplot:0.3.0``.
@@ -78,8 +81,8 @@ e.g. ``ghcr.io/strug-hub/pangyplot:0.3.0``.
 
       # serve the datastore you just built
       docker run --rm -p 5700:5700 -v "$PWD/work/datastore:/app/datastore" \
-          -e PANGYPLOT_DB=hprc.test -e PANGYPLOT_REF=GRCh38 \
-          ghcr.io/strug-hub/pangyplot:0.3.0
+          ghcr.io/strug-hub/pangyplot:0.3.0 \
+          serve --db hprc.test --ref GRCh38
 
    See *Preparing Data* below for what each ``odgi`` step does. (Gene annotations
    are optional — add them later with ``pangyplot annotate``.)

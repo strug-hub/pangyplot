@@ -103,6 +103,9 @@ ENV PANGYPLOT_DATA=/app/datastore \
 
 EXPOSE 5700
 
-# Invoked via bash so the move into docker/ doesn't depend on the exec bit
-# surviving checkout. WORKDIR stays /app, so gunicorn resolves wsgi:app.
-ENTRYPOINT ["bash", "docker/docker-entrypoint.sh"]
+# The entrypoint IS the CLI: `docker run <image> <args>` runs `pangyplot <args>`,
+# so container commands are identical to host commands (serve/add/annotate/...).
+# The default CMD serves the committed HPRC chrY demo; `serve` is the production
+# sibling of `run` (gunicorn, bound to 0.0.0.0 so it is reachable from the host).
+ENTRYPOINT ["python", "/app/pangyplot.py"]
+CMD ["serve", "--db", "hprc.clip", "--ref", "GRCh38", "--annotations", "gencode48.chrY"]
