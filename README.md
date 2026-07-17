@@ -5,6 +5,10 @@
   <img src="images/readme/pangyplot_text_outline.svg" alt="PangyPlot header" height="144">
 </p>
 
+<p align="center">
+  <a href="https://doi.org/10.5281/zenodo.21420029"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.21420029.svg" alt="DOI"></a>
+</p>
+
 Mastromatteo et al. 
 <b>Beyond reference bias: Making pangenomes accessible with PangyPlot</b>. 
 <i>bioRxiv</i>.  2025.10.31.684064.
