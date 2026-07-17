@@ -2,11 +2,14 @@
 # "Cite this repository" widget) and feeds Zenodo's metadata on release.
 # Validate with: `pip install cffconvert && cffconvert --validate`
 #
-# TODO before publishing the Zenodo release:
-#   - add the remaining authors from the preprint (currently "Mastromatteo et al.")
-#   - add ORCIDs and affiliations for each author (fields are commented out below)
-#   - confirm `version` / `date-released` match the release you archive on Zenodo
-#   - once you have a Zenodo DOI, add it under `identifiers:` (see the commented block)
+# Author list, ORCIDs, and affiliations are taken from the manuscript.
+# TODO before the Zenodo archival release:
+#   - confirm `version` / `date-released` match the release you archive
+#   - once you have a Zenodo DOI, add it under `identifiers:` (commented below)
+#   - add the paper's year, journal, and doi/url once the manuscript is published
+#     (preferred-citation below is set up but intentionally has no link yet)
+#   - CFF allows only ONE affiliation per author; each author below carries their
+#     primary affiliation. Add ORCIDs for the remaining authors if you have them.
 cff-version: 1.2.0
 message: "If you use PangyPlot, please cite both the software (this record) and the paper under `preferred-citation` below."
 title: "PangyPlot: a pangenome reference browser"
@@ -16,8 +19,8 @@ abstract: >-
   biologists to effectively visualize and analyze complex genomic structures and
   variations from pangenome graphs.
 type: software
-version: 0.2.0
-date-released: 2026-04-24
+version: 0.3.0
+date-released: 2026-07-17
 license: MIT
 repository-code: "https://github.com/strug-hub/pangyplot"
 url: "https://pangyplot.research.sickkids.ca/"
@@ -31,13 +34,52 @@ keywords:
 authors:
   - family-names: Mastromatteo
     given-names: Scott
-    # orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO
-    # affiliation: "The Hospital for Sick Children, Toronto, Canada"  # TODO: confirm
-  # TODO: add the remaining authors from the preprint, in order, e.g.:
-  # - family-names: LastName
-  #   given-names: FirstName
-  #   orcid: "https://orcid.org/...."
-  #   affiliation: "...."
+    orcid: "https://orcid.org/0000-0002-3551-2247"
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Chirmade
+    given-names: Shalvi
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Roshandel
+    given-names: Delnaz
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Thiruvahindrapuram
+    given-names: Bhooma
+    affiliation: "The Centre for Applied Genomics, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Wang
+    given-names: Zhuozhi
+    affiliation: "The Centre for Applied Genomics, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Patel
+    given-names: "Rohan V"
+    affiliation: "The Centre for Applied Genomics, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Sung
+    given-names: "Wilson W. L."
+    affiliation: "Department of Pediatric Laboratory Medicine, The Hospital for Sick Children, Toronto, Canada"
+  - family-names: Hajianpour
+    given-names: Amirhossein
+    affiliation: "The Centre for Applied Genomics, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Wang
+    given-names: Cheng
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Lin
+    given-names: Fan
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Keenan
+    given-names: Katherine
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Avolio
+    given-names: Julie
+    affiliation: "Translational Medicine, The Hospital for Sick Children, Toronto, ON, Canada"
+  - family-names: Eckford
+    given-names: Paul
+    affiliation: "Cystic Fibrosis Canada, Toronto, ON, Canada"
+  - family-names: Ratjen
+    given-names: Felix
+    affiliation: "Department of Pediatric Laboratory Medicine, The Hospital for Sick Children, Toronto, Canada"
+  - name: "Canadian Cystic Fibrosis Gene Modifier Consortium"
+  - family-names: Strug
+    given-names: "Lisa J"
+    orcid: "https://orcid.org/0000-0003-0503-9740"
+    affiliation: "Program in Genetics and Genome Biology, The Hospital for Sick Children, Toronto, ON, Canada"
 
 # Once you have a Zenodo DOI for a release, record it here so it resolves from
 # the citation metadata:
@@ -46,16 +88,44 @@ authors:
 #     value: "10.5281/zenodo.XXXXXXX"
 #     description: "Archived software release"
 
-# The paper to cite in text (a preprint at time of writing).
+# The paper to cite. The manuscript is in preparation, so this record has no
+# link yet -- add `year`, `journal`, volume/pages, and a `doi`/`url` once it is
+# published.
 preferred-citation:
   type: article
-  title: "Beyond reference bias: Making pangenomes accessible with PangyPlot"
+  title: "PangyPlot: multi-scale interactive visualization of pangenome variation graphs"
   authors:
     - family-names: Mastromatteo
       given-names: Scott
-    # TODO: add the remaining authors, matching the preprint author list.
-  journal: "bioRxiv"
-  year: 2025
-  doi: "10.1101/2025.10.31.684064"
-  url: "https://doi.org/10.1101/2025.10.31.684064"
-  notes: "Preprint, article no. 2025.10.31.684064."
+      orcid: "https://orcid.org/0000-0002-3551-2247"
+    - family-names: Chirmade
+      given-names: Shalvi
+    - family-names: Roshandel
+      given-names: Delnaz
+    - family-names: Thiruvahindrapuram
+      given-names: Bhooma
+    - family-names: Wang
+      given-names: Zhuozhi
+    - family-names: Patel
+      given-names: "Rohan V"
+    - family-names: Sung
+      given-names: "Wilson W. L."
+    - family-names: Hajianpour
+      given-names: Amirhossein
+    - family-names: Wang
+      given-names: Cheng
+    - family-names: Lin
+      given-names: Fan
+    - family-names: Keenan
+      given-names: Katherine
+    - family-names: Avolio
+      given-names: Julie
+    - family-names: Eckford
+      given-names: Paul
+    - family-names: Ratjen
+      given-names: Felix
+    - name: "Canadian Cystic Fibrosis Gene Modifier Consortium"
+    - family-names: Strug
+      given-names: "Lisa J"
+      orcid: "https://orcid.org/0000-0003-0503-9740"
+  notes: "Manuscript in preparation."
