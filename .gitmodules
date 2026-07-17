@@ -1,0 +1,7 @@
+[submodule "deps/sdsl-lite"]
+	path = deps/sdsl-lite
+	url = https://github.com/vgteam/sdsl-lite.git
+[submodule "deps/gbwt-mmap"]
+	path = deps/gbwt-mmap
+	url = https://github.com/ScottMastro/gbwt-mmap.git
+	branch = mmap-serving
