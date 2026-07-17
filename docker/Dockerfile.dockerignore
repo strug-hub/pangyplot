@@ -45,12 +45,3 @@ run_*.sh
 context
 CLAUDE.md
 Trace-*.json
-
-# Toolchain build outputs under deps/ (the graphd submodules). A fresh
-# --recurse-submodules clone has none; a *local* build leaves cmake caches with
-# host absolute paths that would break the in-image build. The submodule sources
-# themselves are still copied and rebuilt inside the builder stage.
-deps/**/build
-deps/**/*.o
-deps/**/*.a
-deps/sdsl-lite/Make.helper
