@@ -46,10 +46,13 @@ serve your own prepared data, mount a datastore directory over
 
 See :ref:`setup` for the full list of ``PANGYPLOT_*`` variables the container reads.
 
+The moving ``:latest`` tag tracks the newest build; pin a specific version with
+e.g. ``ghcr.io/strug-hub/pangyplot:0.3.0``.
+
 .. dropdown:: GPU-accelerated layout
 
    ``odgi layout`` can be run on an NVIDIA GPU for a large speedup on complex
-   graphs. A second image tag bundles a CUDA-enabled ``odgi_gpu`` build:
+   graphs. A CUDA-enabled ``odgi_gpu`` build is published under the ``:gpu`` tag:
 
    .. code-block:: bash
 
@@ -57,10 +60,14 @@ See :ref:`setup` for the full list of ``PANGYPLOT_*`` variables the container re
           ghcr.io/strug-hub/pangyplot:gpu
 
    This requires an NVIDIA host with the `nvidia-container-toolkit
-   <https://github.com/NVIDIA/nvidia-container-toolkit>`_ installed. The GPU
-   image also runs CPU-only if launched without ``--device``. Version-pinned
-   tags are published alongside the moving ``latest``/``gpu`` tags, e.g.
-   ``ghcr.io/strug-hub/pangyplot:0.2.0`` and ``:0.2.0-gpu``.
+   <https://github.com/NVIDIA/nvidia-container-toolkit>`_ installed; it also runs
+   CPU-only if launched without ``--device``.
+
+   .. note::
+
+      The GPU image accelerates ``odgi layout`` for data preparation only; it
+      does not currently bundle the GBWT path daemon. Use the default (CPU)
+      image to serve GBZ-native datastores with ``PANGYPLOT_GBWT=1``.
 
 
 Quick Start - Running PangyPlot

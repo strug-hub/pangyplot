@@ -29,17 +29,19 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false            # a CPU failure shouldn't cancel the GPU build (or vice versa)
+      fail-fast: false            # one variant failing shouldn't cancel the others
       matrix:
         include:
           - name: cpu
             dockerfile: docker/Dockerfile
             suffix: ""
             moving: latest
-          - name: gpu
-            dockerfile: docker/Dockerfile.gpu
-            suffix: "-gpu"
-            moving: gpu
+          # GPU image is disabled until docker/Dockerfile.gpu also builds the GBWT
+          # graphd (currently CPU-only); re-enable this entry once it carries it.
+          # - name: gpu
+          #   dockerfile: docker/Dockerfile.gpu
+          #   suffix: "-gpu"
+          #   moving: gpu
     steps:
       - name: Check out
         uses: actions/checkout@v4
