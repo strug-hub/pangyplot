@@ -14,4 +14,5 @@ Subcommands
    subcommands/pangyplot-cytoband
    subcommands/pangyplot-status
    subcommands/pangyplot-run
+   subcommands/pangyplot-serve
    subcommands/pangyplot-version
