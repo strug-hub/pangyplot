@@ -550,13 +550,23 @@ int main(int argc, char** argv) {
   // Positional args are <index-file> [addr]; the optional --graph flag turns on
   // graph mode (also serve segments/DNA, loaded resident) and may appear anywhere.
   std::vector<std::string> pos;
+  int workers_opt = 0;   // 0 = derive from hardware_concurrency (see below)
   for (int i = 1; i < argc; i++) {
     std::string a = argv[i];
     if (a == "--graph") g_graph_mode = true;
+    else if (a.rfind("--workers=", 0) == 0) workers_opt = std::stoi(a.substr(10));
     else pos.push_back(a);
   }
+  if (workers_opt < 0) {
+    std::cerr << "[gbwt-graphd] --workers must be >= 1\n";
+    return 1;
+  }
   if (pos.empty()) {
-    std::cerr << "usage: " << argv[0] << " <graph.gbwt|graph.gbz> [addr] [--graph]\n";
+    std::cerr << "usage: " << argv[0]
+              << " <graph.gbwt|graph.gbz> [addr] [--graph] [--workers=N]\n"
+                 "  --workers=N  accept threads (default: cores, clamped 2..8).\n"
+                 "               One daemon per chromosome wants far fewer than a\n"
+                 "               standalone one: a request only touches one graph.\n";
     return 1;
   }
   std::string filename = pos[0];
@@ -591,7 +601,17 @@ int main(int argc, char** argv) {
   gbwt::size_type npaths = g_index.hasMetadata() ? g_index.metadata.paths() : 0;
   std::cerr << "[gbwt-graphd] loaded: " << npaths << " paths (mmap'd, DA skipped)\n";
 
-  unsigned hw = std::thread::hardware_concurrency();
-  int workers = static_cast<int>(hw ? (hw < 2 ? 2 : (hw > 8 ? 8 : hw)) : 4);
+  // Default suits a standalone daemon serving one graph under load. It is the
+  // wrong shape when the app spawns one per chromosome -- 25 x 8 accept threads
+  // for a workload where a request only ever touches a single chromosome -- so
+  // the spawner passes --workers explicitly (see db/gbwt_manager.py). The cost
+  // is small (the threads sit in accept(); 25 daemons measured 227 threads,
+  // ~2.6 MB of kernel stacks, 0.37 GB RSS total), but it scales with chromosome
+  // count for no benefit, which matters under a container thread cap.
+  int workers = workers_opt;
+  if (workers == 0) {
+    unsigned hw = std::thread::hardware_concurrency();
+    workers = static_cast<int>(hw ? (hw < 2 ? 2 : (hw > 8 ? 8 : hw)) : 4);
+  }
   return run_server(host, port, workers);
 }

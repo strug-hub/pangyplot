@@ -10,6 +10,11 @@ Configuration (env vars, read at startup — matches the rest of app.py):
     PANGYPLOT_GBWT_BIN   path to the gbwt-graphd binary
                          (default: gbwt/graphd/pangyplot-graphd)
     PANGYPLOT_GBWT_GBZ   per-chr GBZ filename inside each chr dir (default graph.gbz)
+    PANGYPLOT_GBWT_WORKERS  accept threads per spawned daemon (default 2). One
+                         daemon per chromosome means the graphd's own default
+                         (cores, up to 8) multiplies by the genome: 25 chrs came
+                         to 227 threads. Raise it only if one chromosome is
+                         genuinely serving concurrent requests.
     PANGYPLOT_GBWT_URLS  optional JSON {chrom: base_url} — point at externally
                          managed graph daemons instead of spawning. Production sets
                          this and runs the graph daemons however it likes; Flask never
@@ -43,6 +48,10 @@ from pangyplot.db.gbwt_client import GbwtClient
 DEFAULT_BIN = os.path.join("gbwt", "graphd", "pangyplot-graphd")
 GBWT_NATIVE_NAME = "graph.gbwt"
 DEFAULT_GBZ_NAME = "graph.gbz"
+# Accept threads per spawned daemon. 2 rather than 1 so a slow request cannot
+# block the next one on the same chromosome; the breadth that matters is across
+# chromosomes, and that comes from having a daemon each.
+GRAPHD_WORKERS = int(os.getenv("PANGYPLOT_GBWT_WORKERS", "2"))
 _TRUE = {"1", "true", "yes", "on"}
 
 
@@ -109,8 +118,15 @@ class GbwtManager:
     def _spawn(self, chrom, index):
         port = _free_port()
         addr = f"127.0.0.1:{port}"
-        proc = subprocess.Popen([self.bin_path, index, addr],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # One daemon per chromosome, so the graphd's own default (cores, up to 8)
+        # multiplies by chromosome count: a 25-chr datastore spawned 227 accept
+        # threads. A request only ever touches one chromosome, so that breadth
+        # buys nothing -- concurrency across chromosomes is the app's job, not
+        # each daemon's. Cheap either way (those threads sit in accept()), but it
+        # should not scale with the genome.
+        proc = subprocess.Popen(
+            [self.bin_path, index, addr, f"--workers={GRAPHD_WORKERS}"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._procs.append(proc)
 
         # Wait as long as the daemon is alive. Startup is dominated by loading
