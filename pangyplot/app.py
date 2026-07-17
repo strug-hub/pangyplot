@@ -92,8 +92,15 @@ def load_indexes(app, data_dir, db_name, annotation_name, ref):
 
     if annotation_name:
         annotation_path = os.path.join(data_dir, "annotations", ref, annotation_name)
-        app.annotation_index[ref] = AnnotationIndex(annotation_name, annotation_path)
-        print(f"annotation_index size: {asizeof(app.annotation_index[ref]) / 1024**2:.2f} MB")
+        if os.path.isdir(annotation_path):
+            app.annotation_index[ref] = AnnotationIndex(annotation_name, annotation_path)
+            print(f"annotation_index size: {asizeof(app.annotation_index[ref]) / 1024**2:.2f} MB")
+        else:
+            # A missing annotation is not fatal: serve without genes rather than
+            # crash. Lets the container's demo default (PANGYPLOT_ANNOTATION) sit
+            # harmlessly when you point it at your own datastore.
+            print(f"annotation '{annotation_name}' not found at {annotation_path}; "
+                  f"serving without gene annotations")
 
     for chr in os.listdir(graph_path):
         chr_dir = os.path.join(graph_path, chr)

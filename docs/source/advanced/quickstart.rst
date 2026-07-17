@@ -72,13 +72,13 @@ e.g. ``ghcr.io/strug-hub/pangyplot:0.3.0``.
         odgi sort -t 4 --optimize -Y -H path_sort_order.txt -i chrY_unsorted.og -o chrY.og -P
         odgi layout -t 4 -i chrY.og --tsv chrY.lay.tsv -P
         odgi view -i chrY.og -g > chrY.gfa
-        python pangyplot.py add --ref GRCh38 --chr chrY --db hprc.test \
+        python /app/pangyplot.py add --ref GRCh38 --chr chrY --db hprc.test \
             --gfa chrY.gfa --layout chrY.lay.tsv --dir /work/datastore
       '
 
       # serve the datastore you just built
       docker run --rm -p 5700:5700 -v "$PWD/work/datastore:/app/datastore" \
-          -e PANGYPLOT_DB=hprc.test -e PANGYPLOT_REF=GRCh38 -e PANGYPLOT_ANNOTATION= \
+          -e PANGYPLOT_DB=hprc.test -e PANGYPLOT_REF=GRCh38 \
           ghcr.io/strug-hub/pangyplot:0.3.0
 
    See *Preparing Data* below for what each ``odgi`` step does. (Gene annotations
