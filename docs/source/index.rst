@@ -4,7 +4,11 @@
    :alt: PangyPlot
 
 
-PangyPlot is a browser that enables visualization of pangenomic data. 
+PangyPlot is a browser that enables visualization of pangenomic data.
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.21420029.svg
+   :target: https://doi.org/10.5281/zenodo.21420029
+   :alt: Software DOI
 
 Quick Links
 ----------------------------------------------
@@ -89,6 +93,10 @@ If you use PangyPlot in your research, please cite:
      year = {2025},
      doi = {10.1101/2025.10.31.684064}
    }
+
+To cite the software itself, use the Zenodo archive. The concept DOI
+`10.5281/zenodo.21420029 <https://doi.org/10.5281/zenodo.21420029>`__ always
+resolves to the latest release; each release also has its own version DOI.
 
 ----
 
