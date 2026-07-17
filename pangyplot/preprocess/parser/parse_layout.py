@@ -120,12 +120,19 @@ def parse_layout(path):
     Bandage `.layout` (JSON), odgi's `.lay.tsv` (text), and odgi's native binary
     `.lay` all arrive through the same option, so the format is sniffed rather
     than declared.
+
+    Binary is ruled out first, before any byte is read as a character. A .lay
+    opens with min_value as a raw double, so its leading byte takes whatever
+    value the layout's coordinates imply -- and '{' (0x7b) is one of the 256 it
+    can take. chrX's min_value of -4010694.31 encodes to 7b 14 ae 27 ..., so
+    testing for JSON first sent a binary layout to the Bandage parser, which
+    died on byte 2. Roughly 1 in 256 layouts would.
     """
     head = _read_head(path)
 
+    if not _is_text(head):
+        return parse_native_odgi_layout(path)
     # Bandage layout is JSON (starts with '{' or whitespace + '{')
     if head.lstrip().startswith(b"{"):
         return parse_bandage_layout(path)
-    if _is_text(head):
-        return parse_odgi_layout(path)
-    return parse_native_odgi_layout(path)
+    return parse_odgi_layout(path)

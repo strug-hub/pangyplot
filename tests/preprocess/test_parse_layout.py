@@ -16,6 +16,7 @@ positionally interchangeable with the TSV downstream (see utils/layout_reader).
 Bandage layout: JSON dict keyed by node names; coords are a list of [x,y]
 points; first and last points become x1/y1 and x2/y2.
 """
+import struct
 import io
 import pytest
 from pangyplot.preprocess.parser.parse_layout import (
@@ -56,6 +57,29 @@ class TestFormatAutoDetection:
         # A .lay routed to the TSV parser yields nothing, so a non-empty
         # layout proves it took the binary path.
         assert len(parse_layout(str(odgi_native_layout))["layout"]) > 0
+
+    def test_native_lay_whose_min_value_starts_with_a_brace(
+            self, odgi_native_layout, tmp_path):
+        # A .lay opens with min_value as a raw double, so its leading byte is
+        # whatever the coordinates imply -- including 0x7b, '{'. Testing for
+        # JSON before ruling out binary sent such a file to the Bandage parser,
+        # which died decoding byte 2. Real case: chrX's min_value of
+        # -4010694.31 packs to 7b 14 ae 27 ..., and ~1 layout in 256 collides.
+        #
+        # Rewriting min_value shifts every coordinate by a constant (they are
+        # stored as v - min_value), which detection does not care about; the
+        # point is only that a '{'-leading header still routes to binary.
+        brace_min = -4010694.06  # struct.pack("<d", ...)[0] == 0x7b
+        raw = bytearray(odgi_native_layout.read_bytes())
+        raw[:8] = struct.pack("<d", brace_min)
+        assert raw[:1] == b"{", "fixture setup: header must lead with '{'"
+
+        patched = tmp_path / "brace_min_value.lay"
+        patched.write_bytes(bytes(raw))
+
+        result = parse_layout(str(patched))
+        assert result["type"] == "odgi"
+        assert len(result["layout"]) == 300
 
 
 class TestNativeMatchesTsv:
