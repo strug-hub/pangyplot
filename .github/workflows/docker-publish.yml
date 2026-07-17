@@ -43,6 +43,10 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          # The CPU image builds the GBWT graphd from the deps/ submodules
+          # (sdsl-lite, gbwt-mmap + their nested submodules), so fetch them.
+          submodules: recursive
 
       # The GPU image (CUDA base + odgi source build) is large; the default
       # runner only has ~14 GB free, so reclaim space first.
