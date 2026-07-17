@@ -32,10 +32,9 @@ of the box:
 Then open http://127.0.0.1:5700/#chrY:23129355-23199010.
 
 The image bundles ``odgi``, so it covers the full data-preparation pipeline
-(see *Preparing Data* below) as well as running — no manual dependency setup,
-which is convenient in environments like Google Colab or a fresh VM. To
-serve your own prepared data, mount a datastore directory over
-``/app/datastore`` and point the ``PANGYPLOT_*`` variables at it:
+(see *Preparing Data* below) as well as running. To serve your own prepared
+data, mount a datastore directory over ``/app/datastore`` and point the
+``PANGYPLOT_*`` variables at it:
 
 .. code-block:: bash
 
