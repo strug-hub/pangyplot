@@ -238,17 +238,35 @@ class GbwtPathIndex:
         return encode_combined(combined)
 
     def get_paths(self, sample):
-        """Iterable Path domain objects — NOT yet ported to GBWT.
+        """Iterable Path domain objects, built from the graphd walks.
 
-        Only the core viewer's `/path` and `/export` use this; the simplify
-        viewer (the migration seam) does not. Raising keeps the failure explicit
-        instead of silently serving wrong data.
+        The GFA/layout exports (resolve_export_subgraph) consume paths by
+        iterating each as (seg_id, strand) and reading sample/hap/contig for the
+        P-line name. We reconstruct that from each subpath's walk: the combined
+        value is (seg_id << 1) | orient (+ = 0, - = 1), the same codec the binpath
+        Path uses, so add_step((seg_id), '+'/'-') yields an identical iteration.
+
+        The sample key already carries the phase (sample#phase, or bare for phase
+        0), so split it back into sample/hap to keep the P-line name in the
+        `sample#hap#contig` shape the binpath export produces.
         """
-        raise NotImplementedError(
-            "get_paths() (core-viewer /path, /export) is not supported under the "
-            "GBWT path engine yet; use the simplify viewer's /path-data. See "
-            "context/gbwt-migration.md."
-        )
+        from pangyplot.objects.Path import Path
+
+        key = str(sample)
+        base, hap = (key.split("#", 1) + [None])[:2] if "#" in key else (key, None)
+
+        paths = []
+        for entry in self._by_sample.get(sample, []):
+            combined = self.client.walk(entry["id"])
+            p = Path()
+            p.sample = base
+            p.hap = hap
+            p.contig = entry.get("contig")
+            p.start = entry.get("fragment", 0) or 0
+            for c in combined.tolist():
+                p.add_step(c >> 1, '+' if (c & 1) == 0 else '-')
+            paths.append(p)
+        return paths
 
     def __len__(self):
         return len(self._by_sample)

@@ -111,6 +111,30 @@ class TestGbzBinpathParity:
         _, meta = _gbz_walks(graphd)
         assert meta["has_translation"] is True
 
+    def test_get_paths_rebuilds_walks_for_export(self, graphd):
+        # get_paths (the GFA/layout export seam) used to raise NotImplementedError
+        # under GBWT, which 500'd /gfa, /layout and /path. It now rebuilds Path
+        # objects from the graphd walks. Each Path must iterate the exact
+        # (seg_id, strand) sequence get_path_combined decodes -- that is what the
+        # export writes as P-line steps -- and it must never raise again.
+        from pangyplot.db.gbwt_client import GbwtClient
+        from pangyplot.db.indexes.GbwtPathIndex import GbwtPathIndex
+
+        gpi = GbwtPathIndex(GbwtClient(graphd))
+        saw_steps = False
+        for sample in gpi.get_samples():
+            paths = gpi.get_paths(sample)                    # must not raise
+            assert len(paths) == len(gpi.get_path_meta(sample))
+            for i, path in enumerate(paths):
+                combined = gpi.get_path_combined(sample, i).tolist()
+                # combined = (seg_id << 1) | orient, + = 0 / - = 1
+                expected = [(c >> 1, '+' if (c & 1) == 0 else '-') for c in combined]
+                assert list(path) == expected                # export iterates the walk
+                assert path.sample is not None               # P-line name is buildable
+                if expected:
+                    saw_steps = True
+        assert saw_steps, "fixture yielded no path steps"
+
     def test_region_slice_parity_through_query(self, graphd, drb1_gfa_index,
                                                drb1_step_index, drb1_bubble_index):
         # The Flask seam: query.get_path_region_raw must yield identical region

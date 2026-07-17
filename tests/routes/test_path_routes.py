@@ -1,4 +1,4 @@
-"""Route tests for /path, /pathorder, /path-meta, /path-data, /samples using DRB1."""
+"""Route tests for /pathorder, /path-meta, /path-data, /samples using DRB1."""
 
 import shutil
 import tempfile
@@ -97,32 +97,10 @@ class TestPathOrderRoute:
 
 
 # ---------------------------------------------------------------------------
-# /path
+# /path (the GET route was removed -- no frontend caller, and it 500'd under the
+# GBWT engine; the export seam get_paths is covered by test_gbz_parity, and the
+# get_path query helper by test_query_functions)
 # ---------------------------------------------------------------------------
-
-class TestPathRoute:
-
-    def test_returns_200(self, client, first_sample):
-        resp = client.get(
-            f"/path?genome={REFERENCE}&chromosome={CHROM}"
-            f"&start={START}&end={END}&sample={first_sample}")
-        assert resp.status_code == 200
-
-    def test_has_subpaths_with_steps(self, client, first_sample):
-        resp = client.get(
-            f"/path?genome={REFERENCE}&chromosome={CHROM}"
-            f"&start={START}&end={END}&sample={first_sample}")
-        data = resp.get_json()
-        assert len(data) >= 1
-        for p in data:
-            assert len(p["path"]) > 0
-
-    def test_nonexistent_sample_empty(self, client):
-        resp = client.get(
-            f"/path?genome={REFERENCE}&chromosome={CHROM}"
-            f"&start={START}&end={END}&sample=NOSUCHSAMPLE")
-        data = resp.get_json()
-        assert data == []
 
 
 # ---------------------------------------------------------------------------
