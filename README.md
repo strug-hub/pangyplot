@@ -22,7 +22,9 @@ PangyPlot (*ˈpæŋ-ɡi-plɑt*) is a genome graph visualization tool designed to
 Preloaded with HPRC v.1.1:
 https://pangyplot.research.sickkids.ca/
 
-SCREENSHOT WILL GO HERE
+<p align="center">
+  <img src="images/readme/pangyplot_overview.png" alt="PangyPlot interface: chromosome and locus selectors, gene annotations, and the multi-resolution graph view (skeleton, bubble chains, bubbles, segments) around the DAZ1 locus on chrY" width="900">
+</p>
 
 # For "pan-genious" experts with their own data
 
