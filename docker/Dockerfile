@@ -46,6 +46,15 @@ RUN make -C gbwt/graphd -j"$(nproc)" GBWT_DIR=/src/deps/gbwt-mmap SDSL_PREFIX=/o
 # Stage 2 — runtime image.
 # ---------------------------------------------------------------------------
 FROM debian:12-slim
+
+# OCI image metadata — populates the GHCR package page and links it to the repo.
+LABEL org.opencontainers.image.title="PangyPlot" \
+      org.opencontainers.image.description="Interactive pangenome graph browser — serves the bundled HPRC chrY demo out of the box and runs the full raw-GFA -> odgi -> pangyplot pipeline. CPU image (default)." \
+      org.opencontainers.image.source="https://github.com/strug-hub/pangyplot" \
+      org.opencontainers.image.url="https://pangyplot.research.sickkids.ca/" \
+      org.opencontainers.image.documentation="https://pangyplot.readthedocs.io/" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Shell tools for generated preprocess scripts, curl for micromamba, and the

@@ -50,6 +50,15 @@ RUN git clone --recursive https://github.com/pangenome/odgi.git /opt/odgi-src \
 # Stage 2: runtime image — CUDA runtime + CPU odgi + Python + PangyPlot.
 # ---------------------------------------------------------------------------
 FROM nvidia/cuda:12.3.2-runtime-ubuntu22.04
+
+# OCI image metadata — populates the GHCR package page and links it to the repo.
+LABEL org.opencontainers.image.title="PangyPlot (GPU)" \
+      org.opencontainers.image.description="Interactive pangenome graph browser — serves the bundled HPRC chrY demo out of the box and runs the full raw-GFA -> odgi -> pangyplot pipeline. GPU image with CUDA-accelerated odgi layout." \
+      org.opencontainers.image.source="https://github.com/strug-hub/pangyplot" \
+      org.opencontainers.image.url="https://pangyplot.research.sickkids.ca/" \
+      org.opencontainers.image.documentation="https://pangyplot.readthedocs.io/" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Runtime libs odgi_gpu links against + shell tools used by generated preprocess
