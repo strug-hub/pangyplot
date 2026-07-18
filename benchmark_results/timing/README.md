@@ -5,7 +5,7 @@ preprocessing pipeline, over the full HPRC human genome for two graph builds.
 
 ## Files
 
-- **`per_chromosome_summary.csv`** — one row per (chromosome, assembler, code),
+- **`per_chromosome_summary.csv`** — one row per (chromosome, assembler),
   with node/step counts, peak RSS, total wall-clock minutes, and derived
   bytes-per-node / bytes-per-step.
 - **`per_phase_timing.csv`** — the full data: one row per pipeline phase of every
@@ -20,11 +20,8 @@ the wide, at-a-glance layout the sweep emitted as it ran.
 
 - **`assembler`** — `minigraph-cactus` (HPRC v1.1 MC clip, GRCh38) and `pggb`
   (HPRC v1.0 PGGB). Inputs: Zenodo 17173731 (MC) and 19580039 (PGGB).
-- **`code=new`** — the current flat-array bubble-detection path
+- The pipeline measured is the current flat-array bubble-detection path
   (`PANGYPLOT_FLAT_BUBBLES=1`, the default).
-- **`code=old`** — the vendored BubbleGun path (`PANGYPLOT_FLAT_BUBBLES=0`), run
-  on four chromosomes only, as a same-machine baseline for the new code and to
-  confirm `bubbles.db` is byte-identical between the two.
 
 ## Machine and method
 
@@ -42,21 +39,13 @@ elsewhere.
 - **Memory scales with nodes, not steps.** Across 318 K – 11.1 M nodes,
   peak RSS ≈ 0.55 GB + ~1200 B/node, independent of step count. chr16-PGGB's
   691 M steps (the most in the genome) still peaked at only 5.1 GB.
-- **New vs old, same machine:** peak RSS 2.0–2.2× lower, wall-clock unchanged.
-  `bubbles.db` byte-identical on all four old/new pairs (chr9, chr13, chr21,
-  chr22) — the port is a memory refactor, not a behaviour change.
-- **PGGB chr1 (11.1 M nodes) and chr9 (8.8 M)** — which the old code could not
-  index within memory at all — complete here at 12.7 and 12.2 GB.
+- **PGGB chr1 (11.1 M nodes) and chr9 (8.8 M)** — the largest graphs in the set —
+  complete at 12.7 and 12.2 GB.
 
 ## Caveats baked into specific rows
 
-- **`chr9` / `minigraph-cactus` / `old`** — its wall-clock is contaminated: the
-  machine switched from power-saver to performance mode mid-run, so its per-phase
-  seconds are not comparable. Its peak RSS (9.25 GB) is unaffected and valid. The
-  `code=new` chr9 row is a clean performance-mode re-measure.
-- All other runs are clean, single-governor, suspend-free (a system suspend
-  during the first PGGB chr7 run was detected and that run was discarded and
-  re-measured).
+- All runs are clean, single-governor, suspend-free (a system suspend during the
+  first PGGB chr7 run was detected and that run was discarded and re-measured).
 
 ## Reproducing
 
