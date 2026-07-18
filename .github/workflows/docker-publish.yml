@@ -72,6 +72,12 @@ jobs:
       - name: Derive image tags and labels
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          # GHCR reads a manifest-list image's description from the INDEX
+          # annotations, not the image config labels. buildx produces an index
+          # (provenance is on), so emit annotations at the index level too —
+          # otherwise the package page shows "No description provided".
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ${{ env.IMAGE }}
           labels: |
@@ -94,6 +100,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           # Layer cache via the GitHub Actions cache, kept separate per variant.
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
